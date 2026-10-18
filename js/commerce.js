@@ -200,6 +200,7 @@ async function showCheckout(){
       script.addEventListener("load",()=>{
         if(window.hcaptcha?.render){
           captchaWidgetId=window.hcaptcha.render("captchaWidget",{sitekey:config.sitekey});
+          if(quote?.purchasable) btn.disabled=false;
         }
       });
       script.addEventListener("error",()=>status("التحقق من الأمان مش متاح دلوقتي.",true));
@@ -224,8 +225,8 @@ async function showCheckout(){
       $("#grandTotal").textContent=money(q.grandTotal);
       if(!q.purchasable||priceNumber(q.grandTotal)===null){status("مش متاح إتمام الطلب للمحافظة أو المقاس الحالي.",true);return;}
       quote=q;
-      btn.disabled=false;
-      status("الإجمالي مؤكد وجاهز للمراجعة.");
+      btn.disabled=!(captchaEnabled && captchaWidgetId!==null);
+      status(captchaEnabled ? "الإجمالي مؤكد. كمّلي التحقق من الأمان قبل إرسال الطلب." : "ده إجمالي الطلب؛ استقبال الطلبات لسه تحت التجهيز حاليًا.",!captchaEnabled);
     }catch(e){status(msg(e),true);}
   };
   select.addEventListener("change",refresh);
@@ -267,7 +268,7 @@ async function showCheckout(){
       if(captchaEnabled && captchaWidgetId!==null) window.hcaptcha?.reset(captchaWidgetId);
       status(msg(err),true);
       if(err.message==="checkout_changed"||err.message==="checkout_not_purchasable") await refresh();
-      else btn.disabled=false; // retry uses the SAME key, never creates a different order.
+      else btn.disabled=!(captchaEnabled && captchaWidgetId!==null); // retry uses SAME key; never create duplicate.
     }
   });
 }
