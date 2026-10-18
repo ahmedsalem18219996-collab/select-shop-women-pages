@@ -1,0 +1,111 @@
+/* WOMEN commerce additions — use Claude-original brand tokens and fonts only.
+ * This is not a second design system. Source: css/styles.css.
+ */
+.commerce { padding-block: 18px 64px; max-width: 1120px; }
+.commerce-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:22px; }
+.commerce h1 { font-family: var(--f-display); font-weight:400; font-size: clamp(34px,7vw,60px); line-height:1.25; margin:0; }
+.commerce h2 { font: 700 20px/1.7 var(--f-body); margin:0 0 12px; }
+.commerce p { margin-block:6px 14px; }
+.commerce a, .commerce button { font:inherit; }
+.commerce-note { color:var(--dust); }
+.commerce-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); gap:clamp(18px,4vw,46px); }
+.commerce-card { border:1px solid var(--hair); background:var(--chalk); padding:clamp(16px,3vw,25px); border-radius:14px; min-width:0; margin-bottom:16px; }
+.commerce-image { display:block; width:100%; aspect-ratio:4/5; object-fit:cover; border-radius:13px; background:#dfe1e8; }
+.commerce-thumbs { display:flex; gap:10px; margin-block:12px; overflow-x:auto; }
+.commerce-thumbs button { width:75px; height:92px; flex:0 0 75px; border-radius:9px; border:2px solid transparent; overflow:hidden; }
+.commerce-thumbs button[aria-pressed="true"] { border-color:var(--pin); }
+.commerce-thumbs img { width:100%; height:100%; object-fit:cover; }
+.commerce-price { font:700 clamp(22px,4vw,29px)/1.4 var(--f-body); color:var(--ink); }
+.commerce-field { display:grid; gap:7px; margin-bottom:15px; font-weight:600; }
+.commerce-field input,.commerce-field select,.commerce-field textarea { font:inherit; min-height:48px; width:100%; padding:10px 12px; border:1px solid #acb0bc; border-radius:10px; background:var(--chalk); color:var(--ink); }
+.commerce-field textarea { min-height:85px; resize:vertical; }
+.commerce-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-block:20px; }
+.commerce-btn { min-height:50px; display:inline-flex; align-items:center; justify-content:center; text-align:center; gap:7px; border-radius:10px; padding:11px 20px; border:1px solid var(--ink); color:white!important; background:var(--ink); font-weight:700!important; cursor:pointer; text-decoration:none; }
+.commerce-btn:hover { opacity:.94; }
+.commerce-btn:disabled { background:#a4a7b1; border-color:#a4a7b1; cursor:not-allowed; }
+.commerce-btn--ghost { background:var(--chalk); color:var(--ink)!important; border-color:var(--hair); }
+.commerce-row { display:flex; gap:12px; align-items:center; margin-block:15px; border-bottom:1px solid var(--hair); padding-bottom:14px; }
+.commerce-row img { width:72px; aspect-ratio:4/5; object-fit:cover; border-radius:9px; background:var(--mirror); }
+.commerce-row .commerce-row-main { flex:1; min-width:0; }
+.commerce-row-main b { display:block; }
+.commerce-summary { display:flex; justify-content:space-between; gap:8px; padding:10px 0; border-bottom:1px solid var(--hair); }
+.commerce-summary.total { font-size:19px; font-weight:800; }
+.commerce-status { min-height:27px; color:var(--dust); }
+.commerce-status[role="alert"] { color:#9e253b; font-weight:600; }
+.commerce-controls { display:flex; gap:8px; align-items:center; }
+.commerce-controls button { border:1px solid var(--hair); border-radius:9px; min-width:40px; min-height:40px; }
+.commerce-tabs { position:fixed; bottom:0; inset-inline:0; z-index:40; background:var(--chalk); border-top:1px solid var(--hair); padding:11px 16px max(11px,env(safe-area-inset-bottom)); display:flex; justify-content:space-around; gap:12px; }
+.commerce-tabs a { color:var(--ink); text-decoration:none; font-size:13px; }
+.commerce-tabs a[aria-current="page"] { color:var(--pin); font-weight:700; }
+@media (min-width:760px) { .commerce-tabs {display:none} }
+@media (max-width:760px) { .commerce-grid {grid-template-columns:minmax(0,1fr);} .commerce {padding-top:10px} }
+@media (max-width:390px) { .commerce-card{padding:13px} .commerce-actions>*{flex:1} }
+@media (prefers-reduced-motion:reduce){.commerce *{transition:none!important;animation:none!important}}
+
+/* Approved Claude storefront visual parity (not a second design).
+   The header, icons, bottom navigation and yellow tape are the actual home
+   components; commerce pages inherit all original CSS variables and fonts. */
+.commerce-tape{height:30px;background:var(--tape);border-bottom:1px solid rgba(22,25,43,.10);overflow:hidden;}
+.commerce-tape-inner{height:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1200px;margin:auto;padding-inline:var(--gl) var(--gr);white-space:nowrap;font:600 9px/1 var(--f-num);letter-spacing:.1em;color:var(--ink)}
+.commerce-tape-ticks{flex:1;min-width:45px;height:16px;background:repeating-linear-gradient(to left,var(--ink) 0 1px,transparent 1px 9px) top/100% 7px no-repeat,repeating-linear-gradient(to left,var(--ink) 0 1px,transparent 1px 45px) top/100% 15px no-repeat;opacity:.66;}
+.commerce{padding-block:clamp(22px,4.5vw,52px) 88px;max-width:1200px}
+.commerce-head{align-items:end;margin-bottom:clamp(20px,4vw,34px)}
+.commerce-head h1{font-size:clamp(40px,7vw,68px);line-height:1.14}
+.commerce-head .commerce-note{font-size:13px;margin:5px 0 0}
+.commerce-kicker{font:600 10px/1.7 var(--f-num);letter-spacing:.12em;color:var(--dust);display:inline-block;margin-bottom:5px}
+.commerce-yellow-mark{position:relative;z-index:0;white-space:nowrap}
+.commerce-yellow-mark:before{content:"";position:absolute;background:var(--tape);height:.32em;bottom:.10em;inset-inline:0;z-index:-1}
+.commerce-crumb{display:flex;flex-wrap:wrap;align-items:center;gap:9px;color:var(--dust);font-size:12px}
+.commerce-crumb a{color:var(--ink)}
+.commerce-head-link{display:inline-flex;align-items:center;gap:7px;font-size:12px!important;font-weight:600!important;border-bottom:1px solid var(--ink);padding:0 0 5px}
+.commerce-head-link .i{width:17px;height:17px}
+.commerce-grid{gap:clamp(18px,5vw,60px);align-items:start}
+.commerce-grid>*{min-width:0}
+.commerce-card{border:1px solid var(--hair);border-radius:20px;padding:clamp(18px,3vw,30px);box-shadow:0 18px 35px -28px rgba(22,25,43,.3)}
+.commerce-media{min-width:0}
+.commerce-photo-frame{position:relative;overflow:hidden;border-radius:20px;background:#dfe1e8}
+.commerce-image{border-radius:0;aspect-ratio:4/4.8;object-fit:cover}
+.commerce-photo-label{position:absolute;bottom:14px;inset-inline-start:14px;background:rgba(255,255,255,.91);border-radius:999px;padding:5px 11px;color:var(--ink);font:600 10px/1.7 var(--f-num)}
+.commerce-thumbs{padding-block:3px;margin-top:14px}
+.commerce-thumbs button{width:76px;height:92px;flex-basis:76px;border-radius:12px;box-shadow:inset 0 0 0 1px var(--hair)}
+.commerce-thumbs button[aria-pressed="true"]{border:2px solid var(--pin);padding:2px}
+.commerce-card h1{font-size:clamp(28px,4.2vw,47px);line-height:1.35}
+.commerce-price{font-family:var(--f-num);font-weight:600;letter-spacing:-.035em;font-size:clamp(24px,3vw,32px)}
+.commerce-code{font-size:11px;font-family:var(--f-num);letter-spacing:.05em}
+.commerce-size-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-block:25px 8px;border-top:1px solid var(--hair);padding-top:16px}
+.commerce-size-heading b{font-size:14px}
+.commerce-size-heading span{font-size:11px;color:var(--dust)}
+.commerce-field input,.commerce-field select,.commerce-field textarea{border-color:#d8dbe3;background:#fff;border-radius:13px;min-height:52px}
+.commerce-field select:focus,.commerce-field input:focus,.commerce-field textarea:focus{outline:2px solid var(--tape);outline-offset:1px}
+#optionFields .commerce-field select{border:2px solid var(--ink);background:var(--chalk);font-weight:600}
+.commerce-actions{gap:12px;margin-block:20px 13px}
+.commerce .commerce-btn{min-height:52px;border-radius:999px!important;background:var(--ink);color:var(--chalk)!important;border:1px solid var(--ink);font-weight:600!important;padding-inline:22px;transition:transform .2s var(--spring),background .2s}
+.commerce .commerce-btn:active{transform:scale(.97)}
+.commerce .commerce-btn:disabled{background:#b9bcc8;border-color:#b9bcc8}
+.commerce .commerce-btn--ghost{background:#fff;color:var(--ink)!important;border-color:var(--hair)}
+.commerce-promises{border-top:1px solid var(--hair);display:flex;flex-wrap:wrap;gap:8px 16px;padding-top:16px;margin-top:14px;color:var(--dust);font-size:11px}
+.commerce-summary-card{position:sticky;top:calc(var(--hdr) + 42px)}
+.commerce-summary-card h2{font-family:var(--f-display);font-weight:400;font-size:29px}
+.commerce-row{align-items:flex-start}
+.commerce-row img{width:88px;border-radius:13px}
+.commerce-row-main b{font-weight:600}
+.commerce-controls button{border-radius:50%;background:var(--mirror);min-height:36px;min-width:36px}
+.commerce-status{font-size:12px}
+.commerce-success{text-align:center;max-width:650px;margin:35px auto;padding-block:55px}
+.commerce-nav{z-index:40}
+.commerce-nav .tabbar-in{grid-template-columns:repeat(4,1fr)}
+.commerce-nav .tabbar a{display:grid;justify-items:center;align-content:center;gap:3px}
+.commerce-nav .dot{top:6px;inset-inline-end:calc(50% - 22px)}
+@media(min-width:760px){.commerce-nav{display:none}}
+@media(max-width:760px){
+ .commerce-grid{grid-template-columns:minmax(0,1fr);gap:17px}
+ .commerce-summary-card{position:static}
+ .commerce-tape{height:27px}
+ .commerce-tape-inner{font-size:8px}
+ .commerce-head{margin-bottom:15px}
+ .commerce-card{border-radius:18px}
+ .commerce-photo-frame{border-radius:18px}
+ .commerce{padding-bottom:calc(var(--tab) + 55px)}
+ .commerce-nav .tabbar-in{height:var(--tab)}
+}
+@media(max-width:350px){.commerce-head-link{font-size:11px!important}.commerce-promises{font-size:10px}}
