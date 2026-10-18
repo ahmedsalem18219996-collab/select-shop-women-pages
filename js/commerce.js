@@ -132,7 +132,7 @@ async function showProduct() {
       const line={publicCode:p.publicCode,structureVersion:p.structureVersion,selection:v.selection,quantity};
       btn.disabled=true;status("بنضيف القطعة للشنطة…");
       try {
-        await api("/select-shop-women-pages/cart/add","POST",line);
+        await api("/cart/add","POST",line);
         const lines=cart(),pos=lines.findIndex(x=>addressKey(x)===addressKey(line));
         if(pos>=0)lines[pos].quantity=Math.min(99,lines[pos].quantity+quantity);
         else lines.push(line);
@@ -165,7 +165,7 @@ async function showCart(){
     const lines=cart();holder.replaceChildren();
     if(!lines.length){holder.append(make("p","الشنطة فاضية. اختاري اللي يعجبك من المتجر."));sum.textContent="—";go.setAttribute("aria-disabled","true");go.style.pointerEvents="none";return;}
     try{
-      const data=await api("/select-shop-women-pages/cart/resolve","POST",{lines});
+      const data=await api("/cart/resolve","POST",{lines});
       data.lines.forEach(l=>holder.append(cartRow(l,(_item,change)=>{
         const orig=cart(),i=orig.findIndex(x=>addressKey(x)===addressKey(l.address));
         if(i<0)return;
@@ -218,7 +218,7 @@ async function showCheckout(){
     if(!select.value){status("اختاري المحافظة لعرض سعر الشحن.");return;}
     status("بنحسب السعر والشحن من السيرفر…");
     try{
-      const q=await api("/select-shop-women-pages/checkout/quote","POST",{lines,deliveryRegionKey:select.value});
+      const q=await api("/checkout/quote","POST",{lines,deliveryRegionKey:select.value});
       q.lines.forEach(l=>$("#checkoutItems").append(make("p",(l.title||l.address?.publicCode||"قطعة")+" × "+l.quantity)));
       $("#subtotal").textContent=money(q.merchandiseSubtotal);
       $("#shipping").textContent=money(q.shippingTotal);
