@@ -53,7 +53,7 @@
     main.replaceChildren(photo, el("h1", { text: title }), price, points);
 
     if (item.purchasable === true) {
-      cta.href = CHECKOUT + "/select-shop-women-pages/p/?code=" + encodeURIComponent(code);
+      cta.href = CHECKOUT + "/p/?code=" + encodeURIComponent(code);
       cta.removeAttribute("aria-disabled");
     } else {
       cta.textContent = "غير متاح حاليًا";

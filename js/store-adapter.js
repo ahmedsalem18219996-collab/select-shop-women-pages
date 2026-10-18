@@ -30,7 +30,7 @@ window.SelectStore = (() => {
 
   return {
     // The full-stack cart uses its own origin-bound browser storage; never make a fake static-site bag.
-    cartUrl: demo ? null : SECURE_CHECKOUT_ORIGIN + "/select-shop-women-pages/cart/",
+    cartUrl: demo ? null : SECURE_CHECKOUT_ORIGIN + "/cart/",
     async loadCatalog() {
       if (demo) return window.SELECT_DEMO_DATA;
       window.SELECT_CONFIG.loadError = false;
@@ -67,7 +67,7 @@ window.SelectStore = (() => {
             isNew: item.isNew === true,
             image: validPhoto(item.image),
             // Opening a published product sends customers to the trusted, same-origin checkout stack.
-            url: SECURE_CHECKOUT_ORIGIN + "/select-shop-women-pages/p/?code=" + encodeURIComponent(item.publicCode),
+            url: SECURE_CHECKOUT_ORIGIN + "/p/?code=" + encodeURIComponent(item.publicCode),
             purchasable: item.purchasable === true,
           }));
         return { ...empty(), products };
