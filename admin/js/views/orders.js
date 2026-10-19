@@ -6,15 +6,84 @@ import { activityLine } from './dashboard.js';
 const STAGES = ['preparing', 'shipped', 'delivered'];
 const NEXT = { null: ['preparing'], preparing: ['shipped'], shipped: ['delivered', 'returned'], delivered: ['return_requested'], return_requested: ['returned', 'delivered'] };
 
-async function renderList({ el, query }) {
+// UTF-8 BOM CSV is directly editable in Excel without putting buyer data on a third-party service.
+// Prefix spreadsheet formula triggers so untrusted notes/addresses cannot execute as Excel formulas.
+const csvCell = (value) => {
+  let text = String(value ?? '').replace(/\u0000/g, '');
+  if (/^\s*[=+@-]/.test(text) || /^\s*[\t\r\n]/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
+};
+function orderShippingRow(data) {
+  const o = data?.order || {}, f = data?.fulfillment || {};
+  const groups = Array.isArray(o.groups) ? o.groups : [];
+  const items = groups.flatMap(g => Array.isArray(g.items) ? g.items : []);
+  const lines = items.length ? items : (Array.isArray(o.items) ? o.items : []);
+  const summary = lines.map(x => {
+    const sizes = (x.option_selections || []).map(v => v.value).join(' / ');
+    return [x.product_title || x.product_public_code || 'منتج', sizes, '×' + (x.quantity ?? 1)].filter(Boolean).join(' ');
+  }).join(' | ');
+  return [o.public_order_code, o.created_at, o.status, o.buyer_name, o.buyer_phone,
+    o.delivery_region_label, o.delivery_address, o.delivery_notes, summary,
+    lines.reduce((total,x)=>total+(Number(x.quantity)||0),0),
+    Number(o.merchandise_subtotal_minor || 0)/100,
+    Number(o.shipping_total_minor || 0)/100,
+    Number(o.grand_total_minor || 0)/100,
+    o.payment_method === 'cod' ? 'الدفع عند الاستلام' : (o.payment_method || ''),
+    f.carrier || '', f.tracking_code || ''];
+}
+async function exportShippingCsv(button, state) {
+  if (!confirm('تحميل بيانات عملاء الشحن على جهازك؟ احتفظ بالملف بأمان وشاركه مع شركة الشحن فقط.')) return;
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = 'بنجهز ملف الشحن…';
+  try {
+    // Existing privileged API caps lists to 100. Never silently export a partial batch.
+    const result = await call('orders.list', {
+      status: state.status || 'confirmed', q: state.q || null, stage: state.stage || null, limit: 100
+    });
+    if (result.outcome !== 'ok' || !Array.isArray(result.data)) { fail(result); return; }
+    if (result.data.length >= 100) {
+      alert('فيه 100 أوردر أو أكتر مطابقين للفلتر. ضيّق البحث أو اختار حالة محددة قبل التنزيل علشان ميفوتش أي أوردر.');
+      return;
+    }
+    const records = [];
+    for (const item of result.data) {
+      const detail = await call('orders.get', { code: item.public_order_code });
+      if (detail.outcome !== 'ok' || !detail.data?.order) {
+        throw new Error('تعذر قراءة تفاصيل أحد الأوردرات. لم ننزّل ملفًا ناقصًا.');
+      }
+      records.push(orderShippingRow(detail.data));
+    }
+    if (!records.length) { alert('مفيش أوردرات مطابقة للتصدير.'); return; }
+    const head = ['رقم الطلب','تاريخ الطلب','حالة الطلب','اسم العميل','الموبايل','المحافظة',
+      'العنوان بالتفصيل','ملاحظات التوصيل','المنتجات والمقاسات','إجمالي القطع',
+      'سعر المنتجات (جنيه)','مصاريف الشحن (جنيه)','الإجمالي للتحصيل (جنيه)',
+      'طريقة الدفع','شركة الشحن','رقم التتبع'];
+    const csv = '\uFEFF' + [head,...records].map(row=>row.map(csvCell).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'select-shop-women-shipping-' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    done('تم تجهيز ملف الشحن ('+records.length+' أوردر). افتحه في Excel.');
+  } catch (error) {
+    alert('التصدير وقف من غير تنزيل ملف ناقص: ' + String(error?.message || 'خطأ اتصال'));
+  } finally { button.disabled = false; button.textContent = original; }
+}
+
+async function renderList({ el, query, session }) {
   const state = { q: query.get('q') || '', status: query.get('status') || '', stage: query.get('stage') || '' };
   render(el, html`<div class="page">
-    <div class="page-head"><div><h2>${t('orders.title')}</h2><p>${t('orders.subtitle')}</p></div></div>
+    <div class="page-head"><div><h2>${t('orders.title')}</h2><p>${t('orders.subtitle')}</p></div>
+      ${session?.role === 'owner' ? html`<button type="button" class="btn btn-primary" data-export-shipping>تنزيل شيت الشحن (Excel)</button>` : ''}</div>
+    ${session?.role === 'owner' ? html`<p class="muted" style="font-size:12px">ينزّل الأوردرات المؤكدة حسب الفلتر الحالي (حتى 99 أوردر في كل ملف). الملف فيه بيانات العملاء؛ شاركه مع شركة الشحن فقط.</p>` : ''}
     <div class="toolbar"><label class="searchbox"><span class="sr">${t('app.search')}</span>${icon('search')}<input class="input" id="q" type="search" value="${state.q}" placeholder="${t('orders.searchPh')}" autocomplete="off"></label>
       <div class="chips" role="group" aria-label="${t('products.status')}" style="justify-content:flex-end">
         ${['', 'pending', 'confirmed', 'cancelled'].map((s) => html`<button class="chip" data-status="${s}" aria-pressed="${state.status === s}">${s ? t('status.' + s) : t('app.all')}</button>`)}</div></div>
     <div class="chips" role="group" aria-label="${t('orders.stageFilter')}">${['', 'none', 'preparing', 'shipped', 'delivered', 'return_requested', 'returned'].map((s) => html`<button class="chip" data-stage="${s}" aria-pressed="${state.stage === s}">${s ? t('stage.' + s) : t('orders.stageFilter')}</button>`)}</div>
     <div id="results">${skRows(6)}</div></div>`);
+  $('[data-export-shipping]', el)?.addEventListener('click',e=>exportShippingCsv(e.currentTarget,state));
   const results = $('#results', el);
   const load = async () => {
     const r = await call('orders.list', { q: state.q || null, status: state.status || null, stage: state.stage || null });
