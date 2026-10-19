@@ -79,8 +79,27 @@
 
   /* ---------- config-driven bits ---------- */
   if (CFG.demo) $('#demoNote').hidden = false;
-  if (CFG.whatsapp) $$('[data-wa]').forEach(a => { a.href = `https://wa.me/${CFG.whatsapp}`; });
-  if (CFG.links) $$('[data-link]').forEach(a => { const u = CFG.links[a.dataset.link]; if (u) a.href = u; });
+  // No dead '#' links on a public store: hide unresolved destinations.
+  // Owner-provided contact info from WOMEN Supabase can re-enable these links.
+  $$('[data-wa]').forEach(a => {
+    if (/^[1-9]\d{6,14}$/.test(CFG.whatsapp || '')) {
+      a.href = `https://wa.me/${CFG.whatsapp}`;
+      a.hidden = false;
+    } else {
+      a.hidden = true;
+      a.style.display = 'none';
+    }
+  });
+  $$('[data-link]').forEach(a => {
+    const u = CFG.links?.[a.dataset.link];
+    if (typeof u === 'string' && u.trim() && u !== '#' &&
+        (/^https:\/\//.test(u) || (u.startsWith('/') && !u.startsWith('//')) || u.startsWith('#'))) {
+      a.href = u;
+    } else {
+      a.hidden = true;
+      a.style.display = 'none';
+    }
+  });
 
   /* ---------- state + feedback ---------- */
   const toast = $('#toast'); let tt;
