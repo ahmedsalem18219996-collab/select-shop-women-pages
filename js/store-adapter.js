@@ -9,7 +9,29 @@ window.SelectStore = (() => {
   // Never submit an order or a browser-calculated price through this static page.
   const SECURE_CHECKOUT_ORIGIN = location.origin + "/select-shop-women-pages";
   const demo = new URLSearchParams(location.search).get("design-preview") === "1";
-  const saved = new Set();
+  // Guest favorites persist across page loads on this browser only.
+  // No customer PII, auth credentials, or private catalog data are stored.
+  const SAVED_KEY = "women.saved.v1";
+  const SAVED_LIMIT = 100;
+  const readSaved = () => {
+    try {
+      const values = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
+      return Array.isArray(values)
+        ? values.filter(x => typeof x === "string" && /^SS-[0-9]{4,19}$/.test(x)).slice(0, SAVED_LIMIT)
+        : [];
+    } catch { return []; }
+  };
+  const saved = new Set(readSaved());
+  const storeSaved = () => {
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify([...saved])); }
+    catch { /* Private-browsing storage may be unavailable; in-memory fallback. */ }
+  };
+  window.addEventListener("storage", (event) => {
+    if (event.key !== SAVED_KEY) return;
+    saved.clear();
+    readSaved().forEach(id => saved.add(id));
+    window.dispatchEvent(new Event("women-saved-changed"));
+  });
   let bagCount = 0;
   window.SELECT_CONFIG.demo = demo;
   const allowedCategories = ["فساتين", "أطقم", "عبايات", "بلوزات", "جيبات وبناطيل", "إكسسوارات", "أخرى"];
@@ -84,9 +106,16 @@ window.SelectStore = (() => {
       return { ok: true, count: bagCount };
     },
     async toggleSaved(productId) {
-      saved.has(productId) ? saved.delete(productId) : saved.add(productId);
-      return { saved: saved.has(productId), count: saved.size };
+      const id = String(productId || "");
+      if (!/^SS-[0-9]{4,19}$/.test(id)) return { saved: false, count: saved.size, invalid: true };
+      if (saved.has(id)) saved.delete(id);
+      else if (saved.size >= SAVED_LIMIT) return { saved: false, count: saved.size, limitReached: true };
+      else saved.add(id);
+      storeSaved();
+      return { saved: saved.has(id), count: saved.size };
     },
-    isSaved(productId) { return saved.has(productId); },
+    savedIds() { return [...saved]; },
+    savedCount() { return saved.size; },
+    isSaved(productId) { return saved.has(String(productId)); },
   };
 })();
