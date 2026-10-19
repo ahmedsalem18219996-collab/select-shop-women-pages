@@ -100,14 +100,44 @@ async function showProduct() {
     $("#productDescription").textContent=p.description||"";
     const photos=Array.isArray(p.media)?p.media.filter(x=>PHOTO.test(x.url)):[], primary=$("#productPhoto"),thumbs=$("#productThumbs");
     if(photos.length){
-      const show=src=>{primary.src=src.url;primary.alt=src.altText||p.title;primary.hidden=false;};
-      show(photos[0]);
+      const openZoom=$("#openPhoto"),viewer=$("#photoViewer"),zoomed=$("#photoZoomed");
+      let currentPhoto=0,touchStart=null;
+      const show=index=>{
+        currentPhoto=(index+photos.length)%photos.length;
+        const src=photos[currentPhoto];
+        primary.src=src.url;primary.alt=src.altText||p.title;primary.hidden=false;
+        zoomed.src=src.url;zoomed.alt=src.altText||p.title;
+        $("#photoCount").textContent="الصورة "+(currentPhoto+1)+" من "+photos.length;
+        thumbs.querySelectorAll("button").forEach((b,i)=>b.setAttribute("aria-pressed",String(i===currentPhoto)));
+      };
       photos.forEach((im,i)=>{
         const b=make("button");b.type="button";b.setAttribute("aria-pressed",String(i===0));
-        b.setAttribute("aria-label","الصورة "+(i+1));
+        b.setAttribute("aria-label","اعرضي الصورة "+(i+1));
         b.append(picture(im.url,im.altText||p.title));
-        b.addEventListener("click",()=>{show(im);thumbs.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));});
+        b.addEventListener("click",()=>show(i));
         thumbs.append(b);
+      });
+      show(0);openZoom.disabled=false;
+      openZoom.addEventListener("click",()=>{
+        if(!viewer.open){viewer.showModal();history.pushState({...(history.state||{}),womenPhotoViewer:true},"");$("#photoClose").focus();}
+      });
+      $("#photoPrev").addEventListener("click",()=>show(currentPhoto-1));
+      $("#photoNext").addEventListener("click",()=>show(currentPhoto+1));
+      $("#photoClose").addEventListener("click",()=>viewer.close());
+      viewer.addEventListener("keydown",e=>{
+        if(e.key==="ArrowLeft"){e.preventDefault();show(currentPhoto+1);}
+        if(e.key==="ArrowRight"){e.preventDefault();show(currentPhoto-1);}
+      });
+      viewer.addEventListener("pointerdown",e=>{touchStart={x:e.clientX,y:e.clientY};});
+      viewer.addEventListener("pointerup",e=>{
+        if(!touchStart)return;
+        const dx=e.clientX-touchStart.x,dy=e.clientY-touchStart.y;touchStart=null;
+        if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.3)show(currentPhoto+(dx>0?-1:1));
+      });
+      addEventListener("popstate",()=>{if(viewer.open)viewer.close();});
+      viewer.addEventListener("close",()=>{
+        openZoom.focus({preventScroll:true});
+        if(history.state?.womenPhotoViewer)history.back();
       });
     }
     const fields=[],holder=$("#optionFields");
@@ -136,7 +166,7 @@ async function showProduct() {
         const lines=cart(),pos=lines.findIndex(x=>addressKey(x)===addressKey(line));
         if(pos>=0)lines[pos].quantity=Math.min(99,lines[pos].quantity+quantity);
         else lines.push(line);
-        saveCart(lines);status("اتضافت للشنطة ✓");
+        saveCart(lines);status("اتضافت للشنطة ✓");$("#viewCartAfterAdd").hidden=false;
       } catch(e){status(msg(e),true);}
       finally {refresh(false);}
     });
@@ -144,9 +174,21 @@ async function showProduct() {
 }
 function cartRow(l,quantityChange) {
   const row=make("div",undefined,"commerce-row");
-  if(l.image?.url)row.append(picture(l.image.url,l.image.altText||l.title));
+  const code=l.address?.publicCode;
+  const href=validCode(code)?"/p/?code="+encodeURIComponent(code):null;
+  if(l.image?.url){
+    const image=picture(l.image.url,l.image.altText||l.title);
+    if(href){
+      const link=make("a",undefined,"commerce-row-product");link.href=href;
+      link.setAttribute("aria-label","افتحي تفاصيل "+(l.title||"المنتج"));
+      link.append(image);row.append(link);
+    }else row.append(image);
+  }
   const details=make("div",undefined,"commerce-row-main");
-  details.append(make("b",l.title||"المنتج"));
+  if(href){
+    const productLink=make("a",l.title||"المنتج","commerce-row-title");
+    productLink.href=href;details.append(productLink);
+  }else details.append(make("b",l.title||"المنتج"));
   details.append(make("div",(l.options||[]).map(o=>o.value).join(" • ")||"One Size","commerce-note"));
   details.append(make("div",money(l.lineTotal||l.unitPrice),"commerce-price"));
   const controls=make("div",undefined,"commerce-controls");
