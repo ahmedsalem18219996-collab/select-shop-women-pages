@@ -87,7 +87,7 @@
       <a href="#shop"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>الأقسام</a>
       <button type="button" data-open-saved><svg class="i" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>المحفوظة<span class="dot savedot" hidden>0</span></button>
       <button type="button" data-open-bag><svg class="i" viewBox="0 0 24 24"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>الشنطة<span class="dot bagdot" hidden>0</span></button>
-      <a href="#" data-link="account"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>حسابي</a>
+      <button type="button" data-open-account aria-haspopup="dialog"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>حسابي</button>
     </div>
   </nav>
 
@@ -119,6 +119,17 @@
       <button class="tap next" id="vNext" aria-label="التالي"></button>
       <div class="v-body"><h4 id="vLine"></h4><p id="vMeta"></p><button class="cta" id="vShop">تسوقيها</button></div>
     </div>
+  </div>
+
+  <div class="utility" id="utility" hidden>
+    <button type="button" class="utility-backdrop" data-close-utility aria-label="إغلاق النافذة"></button>
+    <section class="utility-dialog" role="dialog" aria-modal="true" aria-labelledby="utilityTitle" tabindex="-1">
+      <div class="utility-head">
+        <h2 id="utilityTitle"></h2>
+        <button type="button" class="utility-close" data-close-utility aria-label="إغلاق">×</button>
+      </div>
+      <div class="utility-body" id="utilityContent"></div>
+    </section>
   </div>
 
   <div class="toast" id="toast" role="status"><i></i><span id="toastText"></span></div>
