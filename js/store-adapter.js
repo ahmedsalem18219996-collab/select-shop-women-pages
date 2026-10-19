@@ -116,6 +116,16 @@ window.SelectStore = (() => {
     },
     savedIds() { return [...saved]; },
     savedCount() { return saved.size; },
+    // The public homepage badge reflects the exact same origin-bound cart used
+    // by product/cart/checkout; no product data or PII enters this adapter.
+    cartCount() {
+      try {
+        const lines=JSON.parse(localStorage.getItem("women.cart.v1")||"[]");
+        return Array.isArray(lines) ? lines.slice(0,50).reduce((total,line)=>
+          total+(line && /^SS-[0-9]{4,19}$/.test(line.publicCode||"") &&
+            Number.isInteger(line.quantity)&&line.quantity>0&&line.quantity<=99 ? line.quantity : 0),0) : 0;
+      } catch { return 0; }
+    },
     isSaved(productId) { return saved.has(String(productId)); },
   };
 })();
