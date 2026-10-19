@@ -93,7 +93,7 @@
 .commerce-status{font-size:12px}
 .commerce-success{text-align:center;max-width:650px;margin:35px auto;padding-block:55px}
 .commerce-nav{z-index:40}
-.commerce-nav .tabbar-in{grid-template-columns:repeat(4,1fr)}
+.commerce-nav .tabbar-in{grid-template-columns:repeat(5,minmax(0,1fr))}
 .commerce-nav .tabbar a{display:grid;justify-items:center;align-content:center;gap:3px}
 .commerce-nav .dot{top:6px;inset-inline-end:calc(50% - 22px)}
 @media(min-width:760px){.commerce-nav{display:none}}
