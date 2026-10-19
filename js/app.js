@@ -202,6 +202,10 @@
   }
   $$('[data-open-saved]').forEach(b => b.addEventListener('click', () => openUtility('saved')));
   $$('[data-open-account]').forEach(b => b.addEventListener('click', () => openUtility('account')));
+  // Deep links keep favorites/account reachable from product, cart and checkout.
+  // Only the two supported values may open a panel; unknown query values do nothing.
+  const requestedPanel = new URLSearchParams(location.search).get('panel');
+  if (requestedPanel === 'saved' || requestedPanel === 'account') openUtility(requestedPanel);
   utility.querySelectorAll('[data-close-utility]').forEach(b => b.addEventListener('click', () => closeUtility()));
   utilityBody.addEventListener('click', async event => {
     const remove = event.target.closest('[data-remove-saved]');
