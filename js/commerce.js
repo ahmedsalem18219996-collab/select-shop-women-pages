@@ -183,29 +183,13 @@ async function showCart(){
 async function showCheckout(){
   const lines=cart(),form=$("#orderForm"),select=$("#region"),btn=$("#placeOrder");
   let quote=null;
-  let captchaEnabled=false, captchaWidgetId=null;
-  const captchaArea=$("#captchaArea");
-  // A public site key is retrieved from Supabase only once server-side
-  // protection is configured. No CAPTCHA service credentials in static JS.
+  let orderReady=false;
+  // Only the reviewed WOMEN internal protection path may activate checkout.
+  // Older backends return 404 here, safely leaving order placement disabled.
   try {
-    const config=await api("/captcha-config");
-    if(config.enabled===true && /^[A-Za-z0-9_-]{12,80}$/.test(config.sitekey||"")){
-      captchaEnabled=true;
-      captchaArea.hidden=false;
-      const script=document.createElement("script");
-      script.src="https://js.hcaptcha.com/1/api.js?render=explicit";
-      script.async=true;
-      script.defer=true;
-      document.head.append(script);
-      script.addEventListener("load",()=>{
-        if(window.hcaptcha?.render){
-          captchaWidgetId=window.hcaptcha.render("captchaWidget",{sitekey:config.sitekey});
-          if(quote?.purchasable) btn.disabled=false;
-        }
-      });
-      script.addEventListener("error",()=>status("التحقق من الأمان مش متاح دلوقتي.",true));
-    }
-  } catch { /* Endpoint unavailable while orders disabled; server refuses writes. */ }
+    const cfg=await api("/checkout-config");
+    orderReady=cfg.enabled===true && cfg.mode==="internal";
+  } catch { /* Fail closed. */ }
   if(!lines.length){status("الشنطة فاضية، ارجعي واختاري منتجاتك.",true);return;}
   try{
     const regions=await api("/regions");
@@ -225,14 +209,14 @@ async function showCheckout(){
       $("#grandTotal").textContent=money(q.grandTotal);
       if(!q.purchasable||priceNumber(q.grandTotal)===null){status("مش متاح إتمام الطلب للمحافظة أو المقاس الحالي.",true);return;}
       quote=q;
-      btn.disabled=!(captchaEnabled && captchaWidgetId!==null);
-      status(captchaEnabled ? "الإجمالي مؤكد. كمّلي التحقق من الأمان قبل إرسال الطلب." : "ده إجمالي الطلب؛ استقبال الطلبات لسه تحت التجهيز حاليًا.",!captchaEnabled);
+      btn.disabled=!orderReady;
+      status(orderReady ? "الإجمالي مؤكد. راجعي بياناتك وأكّدي الطلب." : "ده إجمالي الطلب؛ استقبال الطلبات لسه تحت التجهيز حاليًا.",!orderReady);
     }catch(e){status(msg(e),true);}
   };
   select.addEventListener("change",refresh);
   await refresh();
   form.addEventListener("submit",async(e)=>{
-    e.preventDefault();if(!quote||!form.reportValidity())return;
+    e.preventDefault();if(!quote||!orderReady||!form.reportValidity())return;
     if(!crypto?.randomUUID){status("المتصفح لا يدعم الطلب الآمن. افتحي الموقع من متصفح أحدث.",true);return;}
     let key=sessionStorage.getItem(ORDER_KEY);
     if(!key){key=crypto.randomUUID().replace(/-/g,"");sessionStorage.setItem(ORDER_KEY,key);}
@@ -250,11 +234,6 @@ async function showCheckout(){
       confirmedShippingTotalPiastres:priceNumber(quote.shippingTotal),
       confirmedGrandTotalPiastres:priceNumber(quote.grandTotal),
     };
-    if(captchaEnabled){
-      const token=captchaWidgetId!==null && window.hcaptcha?.getResponse(captchaWidgetId);
-      if(!token){status("كمّلي التحقق من الأمان قبل تأكيد الطلب.",true);return;}
-      payload.captchaToken=token;
-    }
     btn.disabled=true;status("بنراجع الطلب…");
     try{
       const reply=await api("/orders","POST",payload);
@@ -263,12 +242,9 @@ async function showCheckout(){
       saveCart([]);
       location.href="/order-success/?order="+encodeURIComponent(reply.publicOrderCode);
     }catch(err){
-      // Verified tokens are one-time: any retry uses the SAME checkout
-      // idempotency key, but gets a NEW CAPTCHA answer.
-      if(captchaEnabled && captchaWidgetId!==null) window.hcaptcha?.reset(captchaWidgetId);
       status(msg(err),true);
       if(err.message==="checkout_changed"||err.message==="checkout_not_purchasable") await refresh();
-      else btn.disabled=!(captchaEnabled && captchaWidgetId!==null); // retry uses SAME key; never create duplicate.
+      else btn.disabled=!orderReady; // retry uses SAME key; never create duplicate.
     }
   });
 }
