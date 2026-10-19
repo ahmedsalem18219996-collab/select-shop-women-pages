@@ -107,7 +107,8 @@
   /* Android haptics; silently skipped on iOS/desktop and before the first tap (browsers block it) */
   const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) {} };
   function setDots(cls, n) { $$(cls).forEach(d => { d.hidden = !n; d.textContent = n; d.classList.add('pop'); setTimeout(() => d.classList.remove('pop'), 300); }); }
-  let bagCount = 0, savedCount = 0;
+  let bagCount = 0, savedCount = window.SelectStore.savedCount();
+  setDots('.savedot', savedCount);
 
   /* ---------- overlays: scroll lock, back button, focus trap ---------- */
   const viewer = $('#viewer'), sheet = $('#sheet'), scrim = $('#scrim');
@@ -115,16 +116,123 @@
   function lock(on) { document.documentElement.classList.toggle('ss-lock', on); }
   function pushOverlay() { if (!(history.state && history.state.ssOverlay)) history.pushState({ ssOverlay: 1 }, ''); }
   function popOverlay() { if (history.state && history.state.ssOverlay) history.back(); }
-  addEventListener('popstate', () => { if (isOpen(viewer)) closeStory(true); else if (isOpen(sheet)) closeSheet(true); });
+  addEventListener('popstate', () => { if (utilityOpen()) closeUtility(true); else if (isOpen(viewer)) closeStory(true); else if (isOpen(sheet)) closeSheet(true); });
   addEventListener('keydown', e => {
     if (e.key !== 'Tab') return;
-    const box = isOpen(viewer) ? viewer : isOpen(sheet) ? sheet : null; if (!box) return;
+    const box = utilityOpen() ? utilityDialog : isOpen(viewer) ? viewer : isOpen(sheet) ? sheet : null; if (!box) return;
     const f = [...box.querySelectorAll('button, a[href], input, summary')].filter(el => !el.disabled && el.offsetParent !== null);
     if (!f.length) return;
     const first = f[0], last = f[f.length - 1];
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
+
+
+  /* ---------- real favorites + guest account panels ---------- */
+  const utility = $('#utility'), utilityDialog = $('.utility-dialog');
+  const utilityTitle = $('#utilityTitle'), utilityBody = $('#utilityContent');
+  let activeUtility = null, utilityOpener = null;
+  const utilityOpen = () => !utility.hidden;
+  function syncSaved() {
+    savedCount = window.SelectStore.savedCount();
+    setDots('.savedot', savedCount);
+    $$('[data-save]').forEach(button => {
+      button.setAttribute('aria-pressed', String(window.SelectStore.isSaved(button.dataset.save)));
+    });
+    if (utilityOpen() && activeUtility === 'saved') renderSaved();
+    if (utilityOpen() && activeUtility === 'account') renderAccount();
+  }
+  function renderSaved() {
+    const ids = window.SelectStore.savedIds();
+    utilityTitle.textContent = 'المحفوظة';
+    if (!ids.length) {
+      utilityBody.innerHTML = `<div class="utility-empty"><span class="utility-empty-icon">♡</span><h3>لسه مفيش قطع محفوظة</h3><p>اضغطي على علامة القلب جنب أي موديل، وهتلاقيه هنا حتى بعد ما تقفلي الصفحة وتفتحيها تاني على نفس الجهاز.</p><button type="button" class="utility-main-btn" data-utility-shop>تصفحي الموديلات</button></div>`;
+      return;
+    }
+    utilityBody.innerHTML = `<p class="utility-intro">${pieces(ids.length)} محفوظة على الجهاز ده. افتحي القطعة أو شيليها من القائمة.</p>
+      <div class="utility-items">${ids.map(id => {
+        const p = byId(id);
+        const picture = p?.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">` : '<span class="utility-photo-fallback">♡</span>';
+        const action = p?.url
+          ? `<a class="utility-product-link" href="${esc(p.url)}">شوفي الموديل</a>`
+          : p ? `<button type="button" class="utility-product-link" data-utility-find="${esc(id)}">شوفي الموديل</button>`
+            : '<span class="utility-unavailable">المنتج غير متاح حاليًا</span>';
+        return `<article class="utility-item"><div class="utility-photo">${picture}</div>
+          <div class="utility-item-info"><h3>${esc(p?.name || id)}</h3>
+            ${p ? `<p>${fmt(p.price)} ${CUR_L}</p>` : ''}
+            <div class="utility-item-actions">${action}<button type="button" class="utility-remove" data-remove-saved="${esc(id)}" aria-label="إزالة ${esc(p?.name || id)} من المفضلة">إزالة ♡</button></div>
+          </div></article>`;
+      }).join('')}</div>`;
+  }
+  function renderAccount() {
+    utilityTitle.textContent = 'حسابي';
+    utilityBody.innerHTML = `<div class="utility-account">
+      <div class="utility-avatar" aria-hidden="true">♡</div>
+      <h3>أهلًا بيكي في SELECT SHOP</h3>
+      <p>تقدري ترجعي للموديلات اللي حفظتيها وتفتحي الشنطة على نفس الجهاز.</p>
+      <p class="utility-account-note">حساب العميلات وتسجيل الدخول ومتابعة الطلبات الشخصية لسه مش متاحين؛ المفضلة هنا محلية ومش مرتبطة بحساب أو رقم موبايل.</p>
+      <button type="button" class="utility-account-action" data-account-saved>♡ <span>المفضلة</span><strong>${savedCount}</strong></button>
+      <button type="button" class="utility-account-action" data-account-bag>◫ <span>الشنطة</span><b>عرض الشنطة</b></button>
+      <button type="button" class="utility-main-btn" data-utility-shop>كمّلي تسوق</button>
+    </div>`;
+  }
+  function openUtility(kind) {
+    if (utilityOpen()) {
+      activeUtility = kind;
+      kind === 'saved' ? renderSaved() : renderAccount();
+      utilityDialog.focus({ preventScroll: true });
+      return;
+    }
+    if (isOpen(viewer) || isOpen(sheet)) return;
+    utilityOpener = document.activeElement;
+    activeUtility = kind;
+    utility.hidden = false;
+    kind === 'saved' ? renderSaved() : renderAccount();
+    lock(true);
+    pushOverlay();
+    utility.querySelector('.utility-close').focus({ preventScroll: true });
+  }
+  function closeUtility(fromHistory = false) {
+    if (!utilityOpen()) return;
+    utility.hidden = true;
+    activeUtility = null;
+    lock(false);
+    if (!fromHistory) popOverlay();
+    utilityOpener?.focus?.({ preventScroll: true });
+  }
+  $$('[data-open-saved]').forEach(b => b.addEventListener('click', () => openUtility('saved')));
+  $$('[data-open-account]').forEach(b => b.addEventListener('click', () => openUtility('account')));
+  utility.querySelectorAll('[data-close-utility]').forEach(b => b.addEventListener('click', () => closeUtility()));
+  utilityBody.addEventListener('click', async event => {
+    const remove = event.target.closest('[data-remove-saved]');
+    if (remove) {
+      const id = remove.dataset.removeSaved;
+      if (window.SelectStore.isSaved(id)) await window.SelectStore.toggleSaved(id);
+      syncSaved();
+      return;
+    }
+    if (event.target.closest('[data-account-saved]')) { openUtility('saved'); return; }
+    if (event.target.closest('[data-account-bag]')) {
+      if (!CFG.demo && window.SelectStore.cartUrl) location.assign(window.SelectStore.cartUrl);
+      else say('الشنطة التجريبية متاحة من اختيار الموديلات.');
+      return;
+    }
+    if (event.target.closest('[data-utility-shop]')) {
+      closeUtility();
+      $('#shop')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+      return;
+    }
+    const find = event.target.closest('[data-utility-find]');
+    if (find) {
+      const card = $(`[data-save="${CSS.escape(find.dataset.utilityFind)}"]`);
+      closeUtility();
+      if (card) {
+        card.closest('.card')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+        card.focus({ preventScroll: true });
+      } else say('الموديل مش ظاهر في القسم الحالي؛ اختاري كل القطع.');
+    }
+  });
+  addEventListener('women-saved-changed', syncSaved);
 
   /* ---------- stories ---------- */
   $('#stories').innerHTML = STORIES.map((s, i) => { const p = byId(s.ids[0]);
@@ -253,9 +361,12 @@
   feed.addEventListener('click', async e => {
     const h = e.target.closest('[data-save]'), a = e.target.closest('[data-add]'), n = e.target.closest('[data-name]');
     if (h) {
-      const r = await window.SelectStore.toggleSaved(byId(h.dataset.save).id);
-      h.setAttribute('aria-pressed', r.saved); savedCount = r.count; setDots('.savedot', r.count); buzz(8);
-      say(r.saved ? 'اتحفظت في المحفوظة' : 'اتشالت من المحفوظة');
+      const product = byId(h.dataset.save);
+      if (!product) return;
+      const r = await window.SelectStore.toggleSaved(product.id);
+      if (r.invalid || r.limitReached) { say('المحفوظة مليانة أو الموديل غير متاح.'); return; }
+      syncSaved(); buzz(8);
+      say(r.saved ? 'اتحفظت في المفضلة ♡' : 'اتشالت من المفضلة');
     }
     if (a) {
       const item = byId(a.dataset.add);
@@ -317,7 +428,7 @@
     buzz([10, 40, 10]); closeSheet();
   };
   scrim.onclick = () => closeSheet(); $('#grab').onclick = () => closeSheet();
-  addEventListener('keydown', e => { if (e.key === 'Escape') { if (isOpen(viewer)) closeStory(); else if (isOpen(sheet)) closeSheet(); } if (isOpen(viewer)) { if (e.key === 'ArrowLeft') next(); if (e.key === 'ArrowRight') prev(); } });
+  addEventListener('keydown', e => { if (e.key === 'Escape') { if (utilityOpen()) closeUtility(); else if (isOpen(viewer)) closeStory(); else if (isOpen(sheet)) closeSheet(); } if (isOpen(viewer)) { if (e.key === 'ArrowLeft') next(); if (e.key === 'ArrowRight') prev(); } });
   /* drag the sheet down to close */
   let y0 = null;
   $('#grab').addEventListener('pointerdown', e => { y0 = e.clientY; sheet.classList.add('dragging'); $('#grab').setPointerCapture(e.pointerId); });
@@ -345,5 +456,5 @@
     if (!CFG.demo && window.SelectStore.cartUrl) location.assign(window.SelectStore.cartUrl);
     else say(bagCount ? `في الشنطة ${pieces(bagCount)}` : 'الشنطة فاضية. اضغطي + على أي قطعة');
   }));
-  $$('[data-open-saved]').forEach(b => b.addEventListener('click', () => say(savedCount ? `عندك ${pieces(savedCount)} في المحفوظة` : 'مفيش حاجة محفوظة. دوسي على القلب في أي قطعة')));
+
 })();
