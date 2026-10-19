@@ -310,3 +310,11 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .utility-account-action span { flex: 1; }
 .utility-account-action strong, .utility-account-action b { color: #654780; font-size: 12px; }
 @media(min-width:700px) { .utility { align-items: center; padding: 24px; } .utility-dialog { border-radius: 22px; max-height: min(720px, 88dvh); padding: 23px 25px 30px; } }
+
+
+/* Desktop header substitutes for the bottom navigation hidden at 980px. */
+.hdr-tools .hdr-desktop-action { display: none; }
+@media (min-width: 980px) {
+  .hdr-tools .hdr-desktop-action { display: grid; }
+  .hdr-tools .hdr-desktop-action:hover { background: var(--hair); }
+}
