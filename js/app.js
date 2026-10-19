@@ -19,6 +19,19 @@
   const P = DATA.products, LOOKS = DATA.looks, STORIES = DATA.stories, CATS = DATA.categories;
   const chart = DATA.sizeChart, chartMin = DATA.sizeChartMin || { bust: 80, waist: 62 };
   const byId = id => P.find(p => String(p.id) === String(id));
+  // Navigation follows the same live category list as the measuring-tape filter.
+  // Never retain hard-coded links for hidden/deleted categories.
+  const categoryNav = $('.hdr-links');
+  if (categoryNav) {
+    categoryNav.replaceChildren();
+    for (const cat of CATS.filter(c => c !== 'الكل' && (c !== 'تخفيضات' || P.some(p => p.was))).slice(0, 5)) {
+      const link = document.createElement('a');
+      link.href = '#shop';
+      link.dataset.jump = cat;
+      link.textContent = cat === 'الجديد' ? 'وصل جديد' : cat;
+      categoryNav.appendChild(link);
+    }
+  }
 
   // Public storefront = real WOMEN catalog. Claude's example data remains an
   // explicitly labelled comparison at ?design-preview=1 only.
