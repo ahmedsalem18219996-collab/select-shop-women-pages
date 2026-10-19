@@ -318,3 +318,19 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .hdr-tools .hdr-desktop-action { display: grid; }
   .hdr-tools .hdr-desktop-action:hover { background: var(--hair); }
 }
+
+
+/* WOMEN release navigation: image is the product detail link, with separate save/cart actions. */
+.shot-link{position:absolute;inset:0;display:block;z-index:1;overflow:hidden;border-radius:inherit}
+.shot-link img{transition:transform .25s var(--ease)}
+.shot-link:hover img,.shot-link:focus-visible img{transform:scale(1.04)}
+.shot-link:focus-visible{outline:3px solid var(--pin);outline-offset:-4px}
+.shot-link-label{position:absolute;inset-inline-start:10px;bottom:11px;padding:5px 10px;background:rgba(255,255,255,.93);color:var(--ink);border-radius:999px;font-size:11px;font-weight:600}
+.shot .heart,.shot .add{z-index:3}
+#shop{scroll-margin-top:calc(var(--hdr) + 12px)}
+/* An informational loading note is inline, never floating over the catalog. */
+.demo-note{position:static;z-index:auto;inset:auto;max-width:1200px;margin:10px auto 8px;padding:8px 14px;border-radius:12px;text-align:center;opacity:1;pointer-events:auto}
+@media(max-width:760px){
+ .tape-dock{position:relative;top:auto;z-index:5}
+ .shot-link-label{font-size:10px;padding:5px 8px}
+}
