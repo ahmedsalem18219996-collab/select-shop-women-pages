@@ -20,7 +20,7 @@ async function renderList(ctx) {
       <label class="searchbox"><span class="sr">${t('app.search')}</span>${icon('search')}<input class="input" id="q" type="search" value="${state.q}" placeholder="${t('products.searchPh')}" autocomplete="off"></label>
       <div class="row" style="justify-content:flex-end">
         <div class="chips" role="group" aria-label="${t('products.status')}">
-          ${['', 'public', 'draft', 'hidden'].map((s) => html`<button class="chip" data-status="${s}" aria-pressed="${state.status === s}">${s ? t('status.' + s) : t('app.all')}</button>`)}
+          ${['', 'public', 'draft', 'hidden', 'archived'].map((s) => html`<button class="chip" data-status="${s}" aria-pressed="${state.status === s}">${s === 'archived' ? 'المؤرشفة' : s ? t('status.' + s) : t('app.all')}</button>`)}
         </div>
         <select class="select" id="cat" style="width:auto;min-width:160px" aria-label="${t('products.category')}"><option value="">${t('products.allCategories')}</option></select>
       </div>
@@ -32,7 +32,7 @@ async function renderList(ctx) {
   const load = async () => {
     const r = await call('products.list', { q: state.q || null, status: state.status || null, category: state.category || null });
     if (r.outcome !== 'ok') { fail(r); return; }
-    const items = r.data;
+    const items = r.data.filter(p => state.status === 'archived' ? p.status === 'archived' : p.status !== 'archived');
     if (!items.length) {
       render(results, html`<div class="empty">${icon('box')}<b>${state.q || state.status || state.category ? t('products.empty') : t('products.emptyAll')}</b>
         ${can('products.edit') && !state.q ? html`<button class="btn btn-primary" data-new>${icon('plus')}${t('products.new')}</button>` : ''}</div>`);
@@ -55,7 +55,10 @@ async function renderList(ctx) {
           <td class="num">${p.stock_total === null ? html`<span class="muted">—</span>` : html`${fmtNum(p.stock_total)}${p.stock_low ? html` <span class="badge warn">${t('products.lowStock')}</span>` : ''}`}</td>
           <td class="num muted">${fmtNum(p.views_30d)}</td>
           <td>${statusBadge(p.status)}</td>
-          <td>${can('products.publish') && p.status !== 'archived' ? html`<button class="btn btn-soft btn-sm" data-toggle>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button>` : ''}</td>
+          <td><div class="row">
+            ${can('products.publish') && p.status !== 'archived' ? html`<button class="btn btn-soft btn-sm" data-toggle>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button>` : ''}
+            ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<button type="button" class="btn btn-danger btn-sm" data-archive>حذف المنتج</button>` : ''}
+          </div></td>
         </tr>`)}</tbody></table></div>`);
     // categories list may arrive after the first paint
     if (can('products.edit') && !categories.length) await loadCategories().then(load);
@@ -76,6 +79,19 @@ async function renderList(ctx) {
       if (['published', 'hidden', 'already_public', 'already_hidden'].includes(r.outcome)) { done(publish ? t('products.published') : t('products.hidden')); load(); }
       else if (r.outcome === 'rejected' && r.blockers) island('error', t('editor.blockers'), r.blockers.map((b) => t('blocker.' + b, b)).join('، '));
       else fail(r);
+    }
+    if (e.target.closest('[data-archive]') && tr && ctx.session?.role === 'owner') {
+      const code=tr.dataset.code;
+      const confirmed=await confirmDialog({
+        title:'حذف المنتج '+code,
+        text:'ده هيشيل المنتج من المتجر ويأرشفه نهائيًا، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. الحذف ده مش ممكن تتراجع عنه. متأكد؟',
+        okText:'تأكيد الحذف والأرشفة',danger:true
+      });
+      if(!confirmed)return;
+      const button=e.target.closest('[data-archive]');
+      const res=await withBusy(button,()=>call('products.archive',{code}));
+      if(['archived','already_archived'].includes(res.outcome)){done('تم أرشفة المنتج وإخفاؤه من المتجر');load();}
+      else fail(res);
     }
     if (e.target.closest('[data-price]') && tr) quickPrice(tr.dataset.code, load);
   });
