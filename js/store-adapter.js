@@ -34,10 +34,8 @@ window.SelectStore = (() => {
   });
   let bagCount = 0;
   window.SELECT_CONFIG.demo = demo;
-  const allowedCategories = ["فساتين", "أطقم", "عبايات", "بلوزات", "جيبات وبناطيل", "إكسسوارات", "أخرى"];
-  const categories = ["الكل", "الجديد", ...allowedCategories, "تخفيضات"];
   const empty = () => ({
-    sizes: [], categories, products: [], looks: [], stories: [],
+    sizes: [], categories: ["الكل"], products: [], looks: [], stories: [],
     sizeChart: [], sizeChartMin: { bust: 0, waist: 0 },
   });
 
@@ -64,7 +62,11 @@ window.SelectStore = (() => {
         });
         if (!response.ok) throw Error("catalog_http_" + response.status);
         const data = await response.json();
-        if (!Array.isArray(data.items)) throw Error("bad_catalog");
+        if (!Array.isArray(data.items) || !Array.isArray(data.categories)) throw Error("bad_catalog");
+        // Categories are authoritative in WOMEN Supabase; deleted/hidden ones must never reappear.
+        const visibleCategories = [...new Set(data.categories.filter(c =>
+          typeof c === "string" && c.length > 0 && c.length <= 70 && c.trim() === c))];
+        const visibleSet = new Set(visibleCategories);
         const brand = data.brand || {};
         const presentation = data.presentation || {};
         window.SELECT_CONFIG.presentation = presentation;
@@ -80,7 +82,7 @@ window.SelectStore = (() => {
           validPhoto(item.image)).map(item => ({
             id: item.publicCode,
             name: safeText(item.title, 200),
-            cat: allowedCategories.includes(item.category) ? item.category : "أخرى",
+            cat: visibleSet.has(item.category) ? item.category : (visibleSet.has("أخرى") ? "أخرى" : ""),
             price: item.priceMinor / 100,
             c: "#ECE8E5",
             sw: [],
@@ -92,7 +94,8 @@ window.SelectStore = (() => {
             url: SECURE_CHECKOUT_ORIGIN + "/p/?code=" + encodeURIComponent(item.publicCode),
             purchasable: item.purchasable === true,
           }));
-        return { ...empty(), products };
+        const categories = ["الكل", ...(products.some(p => p.isNew) ? ["الجديد"] : []), ...visibleCategories];
+        return { ...empty(), categories, products };
       } catch (error) {
         // Never fall back to fabricated demo products on a public storefront.
         window.SELECT_CONFIG.loadError = true;
