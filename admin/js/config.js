@@ -6,6 +6,8 @@ export const CONFIG = Object.freeze({
   api: 'https://byluoipdunralsurwebt.supabase.co/functions/v1/women-admin',
   storagePublic: 'https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/',
   // Where invitation and password-reset e-mails send people back to.
-  appUrl: 'https://selectshopeg.com/admin/',
+  // The same admin bundle works on github.io preview and the final custom domain.
+  // Auth allows only exact approved WOMEN admin callback origins/paths.
+  appUrl: new URL('../', import.meta.url).href,
   currency: 'EGP'
 });
