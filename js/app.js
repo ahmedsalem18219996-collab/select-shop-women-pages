@@ -51,7 +51,9 @@
     }
     const freshNote = $('#demoNote');
     if (freshNote) {
-      freshNote.hidden = false;
+      // Don't overlay live products with the old floating 'safe checkout' pill.
+      freshNote.hidden = P.length > 0 && !CFG.loadError;
+      $('#shop .shop-head')?.after(freshNote);
       freshNote.textContent = CFG.loadError
         ? 'تعذّر تحميل المنتجات حاليًا. البيانات التجريبية مش معروضة، جربي تحديث الصفحة.'
         : P.length ? 'اختاري الموديل، وكمّلي المقاس والطلب من صفحة المنتج الآمنة.'
@@ -350,7 +352,10 @@
     feed.innerHTML = list.length ? list.map((p, k) => `
       <article class="card" style="--k:${k}">
         <div class="shot" style="--c:${cssColor(p.c)}">
-          ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
+          <a class="shot-link" href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}" aria-label="افتحي تفاصيل ${esc(p.name)}">
+            ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
+            <span class="shot-link-label">شوفي التفاصيل ↗</span>
+          </a>
           ${p.was ? `<span class="badge">خصم ${Math.round((1 - p.price / p.was) * 100)}%</span>` : p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
           <button class="heart" data-save="${esc(p.id)}" aria-pressed="${window.SelectStore.isSaved(p.id)}" aria-label="احفظي ${esc(p.name)}"><svg class="i" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
           <button class="add" data-add="${esc(p.id)}" aria-label="ضيفي ${esc(p.name)} للشنطة"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
