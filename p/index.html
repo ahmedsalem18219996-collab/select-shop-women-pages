@@ -30,20 +30,33 @@
 </header>
 <div class="commerce-tape" aria-hidden="true"><div class="commerce-tape-inner"><span>SELECT SHOP WOMAN</span><span class="commerce-tape-ticks"></span><span>اختاري اللي على مقاسك</span></div></div>
 <main class="commerce wrap">
+<nav class="commerce-quick-links" aria-label="تنقل سريع"><a href="/#shop">← كل المنتجات</a><a href="/cart/">🛍️ شنطتك</a></nav>
 
 <div class="commerce-head"><div><span class="commerce-kicker">DETAILS · تفاصيل</span><div class="commerce-crumb"><a href="/">الرئيسية</a><span>‹</span><a href="/#shop">كل القطع</a><span>‹</span>تفاصيل القطعة</div></div><a class="commerce-head-link" href="/cart/"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg> شنطتك</a></div>
 <section class="commerce-grid" id="product" aria-busy="true">
-<div class="commerce-media"><div class="commerce-photo-frame"><img class="commerce-image" id="productPhoto" alt="" hidden><span class="commerce-photo-label">SELECT · WOMEN</span></div><div id="productThumbs" class="commerce-thumbs" aria-label="صور القطعة"></div></div>
+<div class="commerce-media"><div class="commerce-photo-frame"><button type="button" id="openPhoto" class="commerce-photo-zoom" aria-label="كبّري صورة المنتج" disabled><img class="commerce-image" id="productPhoto" alt="" hidden><span class="commerce-photo-hint">اضغطي لتكبير الصورة ⤢</span></button><span class="commerce-photo-label">SELECT · WOMEN</span></div><div id="productThumbs" class="commerce-thumbs" aria-label="صور القطعة"></div></div>
 <div><div class="commerce-card"><h1 id="productTitle">جارٍ تحميل المنتج…</h1>
 <p id="productCode" class="commerce-note commerce-code"></p>
 <p class="commerce-price" id="productPrice"></p>
 <p id="productDescription" class="commerce-note"></p>
 <div class="commerce-size-heading"><b>اختاري المقاس</b><span>القطع المتاحة فقط</span></div><div id="optionFields"></div>
 <label class="commerce-field" for="quantity">الكمية<input type="number" inputmode="numeric" min="1" max="99" value="1" id="quantity"></label>
-<div class="commerce-actions"><button id="addToCart" class="commerce-btn" disabled>أضيفي للشنطة</button><a href="/cart/" class="commerce-btn commerce-btn--ghost">الشنطة</a></div>
+<div class="commerce-actions"><button id="addToCart" class="commerce-btn" disabled>أضيفي للشنطة</button><a href="/cart/" class="commerce-btn commerce-btn--ghost">الشنطة</a></div><a id="viewCartAfterAdd" class="commerce-cart-ready" href="/cart/" hidden>✓ اتضافت للشنطة — افتحيها دلوقتي ←</a>
 <p class="commerce-status" id="status" role="status"></p><div class="commerce-promises"><span>♡ قطع مختارة بعناية</span><span>♢ شحن لجميع المحافظات</span><span>✓ الدفع عند الاستلام</span></div>
 </div></div>
 </section>
+<dialog id="photoViewer" class="commerce-lightbox" aria-label="معرض صور المنتج">
+  <div class="commerce-lightbox-bar">
+    <span id="photoCount" aria-live="polite"></span>
+    <button type="button" id="photoClose" aria-label="إغلاق الصورة">×</button>
+  </div>
+  <div class="commerce-lightbox-stage">
+    <button type="button" id="photoPrev" aria-label="الصورة السابقة">‹</button>
+    <img id="photoZoomed" alt="">
+    <button type="button" id="photoNext" aria-label="الصورة التالية">›</button>
+  </div>
+  <p class="commerce-lightbox-help">اسحبي الصورة يمين أو شمال للتنقل، واغلقيها للرجوع للتفاصيل.</p>
+</dialog>
 </main><nav class="tabbar commerce-nav" aria-label="التنقل">
   <div class="tabbar-in"><a href="/" ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>الرئيسية</a><a href="/?panel=saved" data-guest-panel-link="saved"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>المفضلة</a><a href="/cart/" ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>الشنطة<span class="dot" data-cart-count hidden>0</span></a><a href="/checkout/" ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="m9 12 2 2 4-4"/></svg>إتمام الطلب</a><a href="/?panel=account" data-guest-panel-link="account"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>حسابي</a></div>
 </nav>
