@@ -109,8 +109,17 @@
   /* Android haptics; silently skipped on iOS/desktop and before the first tap (browsers block it) */
   const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) {} };
   function setDots(cls, n) { $$(cls).forEach(d => { d.hidden = !n; d.textContent = n; d.classList.add('pop'); setTimeout(() => d.classList.remove('pop'), 300); }); }
-  let bagCount = 0, savedCount = window.SelectStore.savedCount();
+  let bagCount = CFG.demo ? 0 : window.SelectStore.cartCount(), savedCount = window.SelectStore.savedCount();
   setDots('.savedot', savedCount);
+  setDots('.bagdot', bagCount);
+  addEventListener('pageshow', () => {
+    if (!CFG.demo) { bagCount = window.SelectStore.cartCount(); setDots('.bagdot', bagCount); }
+  });
+  addEventListener('storage', e => {
+    if (e.key === 'women.cart.v1' && !CFG.demo) {
+      bagCount = window.SelectStore.cartCount(); setDots('.bagdot', bagCount);
+    }
+  });
 
   /* ---------- overlays: scroll lock, back button, focus trap ---------- */
   const viewer = $('#viewer'), sheet = $('#sheet'), scrim = $('#scrim');
