@@ -25,3 +25,40 @@
   script.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(measurementId);
   document.head.appendChild(script);
 })();
+
+/* Meta Pixel: WOMEN production only. No advanced matching or automatic events.
+ * Never load on order-success (its URL contains a private order reference).
+ * Explicit product events contain public catalog selectors only.
+ */
+(() => {
+  "use strict";
+  if (!["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase())) return;
+  if (new URLSearchParams(location.search).get("design-preview") === "1") return;
+  if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname)) return;
+  // Do not expose arbitrary URL parameters to Meta's automatic page context.
+  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","code","fbclid"]);
+  if ([...new URLSearchParams(location.search).keys()].some(k => !permitted.has(k))) return;
+  const pixelId = "992616030526349";
+  const fbq = window.fbq = window.fbq || function () {
+    fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments);
+  };
+  fbq.push = fbq; fbq.loaded = true; fbq.version = "2.0"; fbq.queue = fbq.queue || [];
+  fbq("set", "autoConfig", false, pixelId);
+  fbq("init", pixelId);
+  fbq("trackSingle", pixelId, "PageView");
+  window.womenMetaEvent = function (name, fields, eventId) {
+    try {
+      if (!["ViewContent","AddToCart","InitiateCheckout","Purchase"].includes(name)) return;
+      const items = Array.isArray(fields.items) ? fields.items.filter(i => /^SS-\d{4,19}$/.test(i.item_id || "")) : [];
+      if (!items.length) return;
+      const params = {currency:"EGP",content_type:"product",
+        content_ids:items.map(i=>i.item_id),
+        contents:items.map(i=>({id:i.item_id,quantity:Number.isInteger(i.quantity)&&i.quantity>0?i.quantity:1}))};
+      if (Number.isFinite(fields.value) && fields.value >= 0) params.value=fields.value;
+      fbq("trackSingle", pixelId, name, params, eventId ? {eventID:eventId} : {});
+    } catch { /* Analytics must not interrupt checkout. */ }
+  };
+  const script=document.createElement("script");
+  script.async=true; script.src="https://connect.facebook.net/en_US/fbevents.js";
+  document.head.appendChild(script);
+})();
