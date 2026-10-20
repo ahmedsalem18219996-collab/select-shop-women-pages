@@ -42,6 +42,7 @@
   const fbq = window.fbq = window.fbq || function () {
     fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments);
   };
+  if (!window._fbq) window._fbq = fbq;
   fbq.push = fbq; fbq.loaded = true; fbq.version = "2.0"; fbq.queue = fbq.queue || [];
   fbq("set", "autoConfig", false, pixelId);
   fbq("init", pixelId);
