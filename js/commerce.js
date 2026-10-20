@@ -6,6 +6,12 @@
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
 const CART_KEY = "women.cart.v1";
 const ORDER_KEY = "women.order.idempotency.v1";
+const GA_PURCHASE_KEY = "women.ga4.purchase.pending.v1";
+function gaEvent(name, fields) {
+  // Analytics is optional: blockers must never affect checkout.
+  try { if (typeof window.gtag === "function") window.gtag("event", name, fields); }
+  catch { /* Tracking cannot break commerce. */ }
+}
 const PHOTO = /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/(?:product-media|women-storefront)\//;
 const $ = (s) => document.querySelector(s);
 const money = (m) => m && Number.isSafeInteger(m.amountMinor) && m.currency === "EGP"
@@ -97,6 +103,7 @@ async function showProduct() {
     $("#product").setAttribute("aria-busy","false");
     $("#productTitle").textContent=p.title;
     $("#productCode").textContent=p.publicCode;
+    gaEvent("view_item", {currency:"EGP", items:[{item_id:p.publicCode, item_name:p.title}]});
     $("#productDescription").textContent=p.description||"";
     const photos=Array.isArray(p.media)?p.media.filter(x=>PHOTO.test(x.url)):[], primary=$("#productPhoto"),thumbs=$("#productThumbs");
     if(photos.length){
@@ -167,6 +174,13 @@ async function showProduct() {
         if(pos>=0)lines[pos].quantity=Math.min(99,lines[pos].quantity+quantity);
         else lines.push(line);
         saveCart(lines);status("اتضافت للشنطة ✓");$("#viewCartAfterAdd").hidden=false;
+        const unitMinor=priceNumber(v.unitPrice);
+        gaEvent("add_to_cart", {
+          currency:"EGP",
+          ...(unitMinor!==null?{value:unitMinor*quantity/100}:{}),
+          items:[{item_id:p.publicCode,item_name:p.title,quantity,
+            ...(unitMinor!==null?{price:unitMinor/100}:{})}]
+        });
       } catch(e){status(msg(e),true);}
       finally {refresh(false);}
     });
@@ -233,6 +247,8 @@ async function showCheckout(){
     orderReady=cfg.enabled===true && cfg.mode==="internal";
   } catch { /* Fail closed. */ }
   if(!lines.length){status("الشنطة فاضية، ارجعي واختاري منتجاتك.",true);return;}
+  if(orderReady) gaEvent("begin_checkout", {currency:"EGP",
+    items:lines.map(l=>({item_id:l.publicCode, quantity:l.quantity}))});
   try{
     const regions=await api("/regions");
     regions.regions.forEach(r=>{const op=make("option",r.label);op.value=r.key;select.append(op);});
@@ -280,6 +296,18 @@ async function showCheckout(){
     try{
       const reply=await api("/orders","POST",payload);
       if(!/^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(reply.publicOrderCode))throw new Error("write_unconfirmed");
+      // Only a real confirmed /orders response may arm a Purchase event.
+      // Public order code stays local, never exported to Analytics.
+      try {
+        sessionStorage.setItem(GA_PURCHASE_KEY,JSON.stringify({
+          code:reply.publicOrderCode,
+          transaction_id:crypto.randomUUID(),
+          currency:"EGP",
+          value:priceNumber(quote.merchandiseSubtotal)/100,
+          shipping:priceNumber(quote.shippingTotal)/100,
+          items:lines.map(l=>({item_id:l.publicCode,quantity:l.quantity}))
+        }));
+      } catch { /* Tracking is best-effort only. */ }
       sessionStorage.removeItem(ORDER_KEY);
       saveCart([]);
       location.href="/order-success/?order="+encodeURIComponent(reply.publicOrderCode);
@@ -293,6 +321,15 @@ async function showCheckout(){
 function success(){
   const code=new URLSearchParams(location.search).get("order")||"";
   $("#orderCode").textContent=/^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(code)?code:"رقم الطلب غير متاح";
+  // Never count a manually loaded success URL as a conversion.
+  try {
+    const pending=JSON.parse(sessionStorage.getItem(GA_PURCHASE_KEY)||"null");
+    if(pending?.code!==code || !/^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(code))return;
+    sessionStorage.removeItem(GA_PURCHASE_KEY); // at most one event per confirmed order
+    const {code:_localCode,...event}=pending;
+    if(Number.isFinite(event.value) && event.value>=0 && typeof event.transaction_id==="string"
+      && Array.isArray(event.items)) gaEvent("purchase",event);
+  } catch { /* Never interfere with confirmation screen. */ }
 }
 updateBagCount();
 const pathname=location.pathname;
