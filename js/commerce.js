@@ -303,7 +303,7 @@ async function showCheckout(){
           code:reply.publicOrderCode,
           transaction_id:crypto.randomUUID(),
           currency:"EGP",
-          value:priceNumber(quote.grandTotal)/100,
+          value:priceNumber(quote.merchandiseSubtotal)/100,
           shipping:priceNumber(quote.shippingTotal)/100,
           items:lines.map(l=>({item_id:l.publicCode,quantity:l.quantity}))
         }));
