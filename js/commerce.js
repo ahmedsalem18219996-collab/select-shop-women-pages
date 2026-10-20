@@ -11,6 +11,10 @@ function gaEvent(name, fields) {
   // Analytics is optional: blockers must never affect checkout.
   try { if (typeof window.gtag === "function") window.gtag("event", name, fields); }
   catch { /* Tracking cannot break commerce. */ }
+  try {
+    const metaName={view_item:"ViewContent",add_to_cart:"AddToCart",begin_checkout:"InitiateCheckout"}[name];
+    if(metaName && typeof window.womenMetaEvent==="function") window.womenMetaEvent(metaName,fields);
+  } catch { /* Optional tracking. */ }
 }
 const PHOTO = /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/(?:product-media|women-storefront)\//;
 const $ = (s) => document.querySelector(s);
@@ -296,6 +300,20 @@ async function showCheckout(){
     try{
       const reply=await api("/orders","POST",payload);
       if(!/^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(reply.publicOrderCode))throw new Error("write_unconfirmed");
+      // Meta Purchase is emitted only here, after the server confirms /orders.
+      // The public order code stays local; no buyer or address data goes to Meta.
+      try {
+        const seenKey="women.meta.purchase.sent.v1";
+        const seen=JSON.parse(localStorage.getItem(seenKey)||"[]");
+        if(Array.isArray(seen) && !seen.includes(reply.publicOrderCode)
+          && typeof window.womenMetaEvent==="function") {
+          localStorage.setItem(seenKey,JSON.stringify([...seen,reply.publicOrderCode].slice(-500)));
+          window.womenMetaEvent("Purchase", {
+            currency:"EGP", value:priceNumber(quote.merchandiseSubtotal)/100,
+            items:lines.map(l=>({item_id:l.publicCode,quantity:l.quantity}))
+          },crypto.randomUUID());
+        }
+      } catch { /* Fail closed if deduplication storage is unavailable. */ }
       // Only a real confirmed /orders response may arm a Purchase event.
       // Public order code stays local, never exported to Analytics.
       try {
