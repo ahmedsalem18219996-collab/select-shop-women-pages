@@ -76,6 +76,14 @@ async function runPage(browser, root, catalog, label) {
   });
   await page.addInitScript(() => {
     window.__qaLCP = 0;
+    window.__qaCLS = 0;
+    try {
+      new PerformanceObserver(list => {
+        for (const entry of list.getEntries()) {
+          if (!entry.hadRecentInput) window.__qaCLS += entry.value;
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    } catch {}
     try {
       new PerformanceObserver(list => {
         for (const entry of list.getEntries()) window.__qaLCP = entry.startTime;
@@ -97,6 +105,7 @@ async function runPage(browser, root, catalog, label) {
     const imgs = [...document.querySelectorAll("#feed article.card img")];
     return {
       lcpMs: Math.round(window.__qaLCP || 0),
+      cls: Number((window.__qaCLS || 0).toFixed(4)),
       firstImage: imgs[0]?.currentSrc || imgs[0]?.src,
       firstTwoLoaded: imgs.slice(0,2).every(im => im.complete && im.naturalWidth > 0),
       productCount: imgs.length,
@@ -134,6 +143,9 @@ async function runPage(browser, root, catalog, label) {
     const candidate = await runPage(browser, candidateDir, catalog, "candidate");
     console.log("WOMEN mobile smoke: " + JSON.stringify({ baseline, candidate }));
     if (candidate.productCount !== baseline.productCount) throw Error("Candidate lost products");
+    console.log("Local CLS baseline=" + baseline.cls + " candidate=" + candidate.cls);
+    if (candidate.cls > 0.12) throw Error("Candidate unexpectedly unstable: CLS " + candidate.cls);
+    if (baseline.cls > 0.15 && candidate.cls > baseline.cls * 0.75) throw Error("Insufficient CLS reduction in candidate");
     if (candidate.lcpMs > 0 && baseline.lcpMs > 0) {
       console.log("LCP local test: baseline " + baseline.lcpMs + "ms, candidate " + candidate.lcpMs + "ms (indicative only; not live PageSpeed)");
     }
