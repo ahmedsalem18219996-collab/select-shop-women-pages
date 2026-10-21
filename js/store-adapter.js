@@ -48,6 +48,16 @@ window.SelectStore = (() => {
     /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[0-9a-f]{32}\.(png|jpg|webp)$/.test(value)
       ? value : null;
 
+  // Only use a thumbnail when a locally generated, checked-in copy exists.
+  // Keep the original Supabase image on product detail pages.
+  const THUMB_BASE = new URL("../assets/catalog-thumbs/", document.currentScript.src);
+  const thumbnailNames = new Set(Array.isArray(window.SELECT_THUMBNAILS) ? window.SELECT_THUMBNAILS : []);
+  const thumbnailFor = source => {
+    if (!validPhoto(source)) return null;
+    const name = source.slice(source.lastIndexOf("/") + 1);
+    return thumbnailNames.has(name) ? new URL(name + ".webp", THUMB_BASE).href : source;
+  };
+
   return {
     // The full-stack cart uses its own origin-bound browser storage; never make a fake static-site bag.
     cartUrl: demo ? null : SECURE_CHECKOUT_ORIGIN + "/cart/",
@@ -89,7 +99,7 @@ window.SelectStore = (() => {
             out: [],
             one: false,
             isNew: item.isNew === true,
-            image: validPhoto(item.image),
+            image: thumbnailFor(item.image),
             // Opening a published product sends customers to the trusted, same-origin checkout stack.
             url: SECURE_CHECKOUT_ORIGIN + "/p/?code=" + encodeURIComponent(item.publicCode),
             purchasable: item.purchasable === true,
