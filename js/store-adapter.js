@@ -57,6 +57,13 @@ window.SelectStore = (() => {
     const name = source.slice(source.lastIndexOf("/") + 1);
     return thumbnailNames.has(name) ? new URL(name + ".webp", THUMB_BASE).href : source;
   };
+  // Responsive derivative is emitted only when source filename belongs to the public
+  // manifest; build step verifies every w400 asset before release.
+  const smallThumbnailFor = source => {
+    if (!validPhoto(source)) return null;
+    const name = source.slice(source.lastIndexOf("/") + 1);
+    return thumbnailNames.has(name) ? new URL(name + ".w400.webp", THUMB_BASE).href : null;
+  };
 
   return {
     // The full-stack cart uses its own origin-bound browser storage; never make a fake static-site bag.
@@ -100,6 +107,7 @@ window.SelectStore = (() => {
             one: false,
             isNew: item.isNew === true,
             image: thumbnailFor(item.image),
+            smallImage: smallThumbnailFor(item.image),
             // Last-resort fallback if a deployed thumbnail URL fails to load.
             originalImage: validPhoto(item.image),
             // Opening a published product sends customers to the trusted, same-origin checkout stack.
