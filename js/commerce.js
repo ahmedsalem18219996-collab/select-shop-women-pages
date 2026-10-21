@@ -274,6 +274,7 @@ async function showCheckout(){
   const lines=cart(),form=$("#orderForm"),select=$("#region"),btn=$("#placeOrder");
   let quote=null;
   let orderReady=false;
+  let attributionSupported=false;
   // Only the reviewed WOMEN internal protection path may activate checkout.
   // Older backends return 404 here, safely leaving order placement disabled.
   try {
