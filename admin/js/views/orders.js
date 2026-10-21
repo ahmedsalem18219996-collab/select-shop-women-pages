@@ -39,7 +39,7 @@ async function exportShippingCsv(button, state) {
   try {
     // Existing privileged API caps lists to 100. Never silently export a partial batch.
     const result = await call('orders.list', {
-      status: state.status || 'confirmed', q: state.q || null, stage: state.stage || null, limit: 100
+      status: (state.status === 'active' ? 'confirmed' : (state.status || 'confirmed')), q: state.q || null, stage: state.stage || null, limit: 100
     });
     if (result.outcome !== 'ok' || !Array.isArray(result.data)) { fail(result); return; }
     if (result.data.length >= 100) {
@@ -73,28 +73,43 @@ async function exportShippingCsv(button, state) {
 }
 
 async function renderList({ el, query, session }) {
-  const state = { q: query.get('q') || '', status: query.get('status') || '', stage: query.get('stage') || '' };
+  const state = { q: query.get('q') || '', status: query.get('status') ?? 'active', stage: query.get('stage') || '' };
   render(el, html`<div class="page">
     <div class="page-head"><div><h2>${t('orders.title')}</h2><p>${t('orders.subtitle')}</p></div>
       ${session?.role === 'owner' ? html`<button type="button" class="btn btn-primary" data-export-shipping>تنزيل شيت الشحن (Excel)</button>` : ''}</div>
     ${session?.role === 'owner' ? html`<p class="muted" style="font-size:12px">ينزّل الأوردرات المؤكدة حسب الفلتر الحالي (حتى 99 أوردر في كل ملف). الملف فيه بيانات العملاء؛ شاركه مع شركة الشحن فقط.</p>` : ''}
     <div class="toolbar"><label class="searchbox"><span class="sr">${t('app.search')}</span>${icon('search')}<input class="input" id="q" type="search" value="${state.q}" placeholder="${t('orders.searchPh')}" autocomplete="off"></label>
       <div class="chips" role="group" aria-label="${t('products.status')}" style="justify-content:flex-end">
-        ${['', 'pending', 'confirmed', 'cancelled'].map((s) => html`<button class="chip" data-status="${s}" aria-pressed="${state.status === s}">${s ? t('status.' + s) : t('app.all')}</button>`)}</div></div>
+        ${['active', '', 'pending', 'confirmed', 'cancelled'].map((s) => html`<button class="chip" data-status="${s}" aria-pressed="${state.status === s}">${s === 'active' ? 'الجارية' : s ? t('status.' + s) : t('app.all')}</button>`)}</div></div>
     <div class="chips" role="group" aria-label="${t('orders.stageFilter')}">${['', 'none', 'preparing', 'shipped', 'delivered', 'return_requested', 'returned'].map((s) => html`<button class="chip" data-stage="${s}" aria-pressed="${state.stage === s}">${s ? t('stage.' + s) : t('orders.stageFilter')}</button>`)}</div>
     <div id="results">${skRows(6)}</div></div>`);
   $('[data-export-shipping]', el)?.addEventListener('click',e=>exportShippingCsv(e.currentTarget,state));
   const results = $('#results', el);
+  let lastLoad = 0;
   const load = async () => {
-    const r = await call('orders.list', { q: state.q || null, status: state.status || null, stage: state.stage || null });
-    if (r.outcome !== 'ok') { fail(r); return; }
-    if (!r.data.length) { render(results, html`<div class="empty">${icon('cart')}<b>${t('orders.empty')}</b></div>`); return; }
+    const request = ++lastLoad;
+    // Active view queries both states independently; cancelled history stays available via its tab.
+    // We never delete, mutate, or silently count cancelled tests as active customer orders.
+    const responses = state.status === 'active'
+      ? await Promise.all(['pending', 'confirmed'].map(status => call('orders.list', {
+          q: state.q || null, status, stage: state.stage || null
+        })))
+      : [await call('orders.list', { q: state.q || null, status: state.status || null, stage: state.stage || null })];
+    if (request !== lastLoad) return;
+    const error = responses.find(r => r.outcome !== 'ok' || !Array.isArray(r.data));
+    if (error) { fail(error); return; }
+    const rows = state.status === 'active'
+      ? responses.flatMap(r => r.data).sort((a, b) =>
+          String(b.created_at).localeCompare(String(a.created_at)) ||
+          String(b.public_order_code).localeCompare(String(a.public_order_code))).slice(0, 100)
+      : responses[0].data;
+    if (!rows.length) { render(results, html`<div class="empty">${icon('cart')}<b>${t('orders.empty')}</b></div>`); return; }
     render(results, html`
-      <div class="list mobile-only">${r.data.map((o, k) => html`<a class="row-card" style="--k:${k};grid-template-columns:1fr auto" href="#/orders/${o.public_order_code}">
+      <div class="list mobile-only">${rows.map((o, k) => html`<a class="row-card" style="--k:${k};grid-template-columns:1fr auto" href="#/orders/${o.public_order_code}">
         <span class="row-main"><b>${o.buyer_name}</b><span class="row-meta"><span class="code">${o.public_order_code}</span><span>${o.delivery_region_label}</span><span>${ago(o.created_at)}</span></span></span>
         <span class="row-end"><b class="num">${money(o.grand_total_minor)}</b>${statusBadge(o.status)}${o.stage ? statusBadge(o.stage) : ''}</span></a>`)}</div>
       <div class="table-wrap desk-only"><table class="t"><thead><tr><th>#</th><th>${t('orders.customer')}</th><th>${t('orders.region')}</th><th>${t('orders.items')}</th><th>${t('orders.total')}</th><th>${t('products.status')}</th><th>${t('orders.fulfillment')}</th><th></th></tr></thead>
-        <tbody>${r.data.map((o) => html`<tr><td><a class="rowlink code" href="#/orders/${o.public_order_code}">${o.public_order_code}</a></td>
+        <tbody>${rows.map((o) => html`<tr><td><a class="rowlink code" href="#/orders/${o.public_order_code}">${o.public_order_code}</a></td>
           <td>${o.buyer_name}<br><small class="muted ltr">${o.buyer_phone}</small></td><td>${o.delivery_region_label}</td><td class="num">${fmtNum(o.item_quantity)}</td>
           <td class="num"><b>${money(o.grand_total_minor)}</b></td><td>${statusBadge(o.status)}</td><td>${o.stage ? statusBadge(o.stage) : html`<span class="muted">—</span>`}</td>
           <td class="muted">${ago(o.created_at)}</td></tr>`)}</tbody></table></div>`);
