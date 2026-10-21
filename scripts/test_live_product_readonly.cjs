@@ -11,9 +11,13 @@ const selected = ["SS-1008","SS-1011"];
   });
   const ctx = await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,locale:"ar-EG",serviceWorkers:"block"});
   const page = await ctx.newPage();
-  const blockedWrites=[], errors=[], detailStatus=[],blockedAnalytics=[],cartResponses=[];
+  const blockedWrites=[], errors=[], detailStatus=[],blockedAnalytics=[],cartResponses=[],resolveResponses=[];
   page.on("pageerror", e => errors.push(e.message));
   page.on("response",r=> {
+    if(r.url().includes("/functions/v1/women-checkout/cart/resolve")){
+      (async()=>{let detail="";try{const j=await r.json();detail=j.error||JSON.stringify({lines:j.lines?.length,status:j.status});}catch{}
+      resolveResponses.push({status:r.status(),detail:String(detail).slice(0,240)});})();
+    }
     if (r.url().includes("/functions/v1/women-checkout/cart/add")) {
       (async()=>{
         let responseMessage="";try{ const json=await r.json();responseMessage=json.error||json.status||""; }catch{}
@@ -97,7 +101,12 @@ const selected = ["SS-1008","SS-1011"];
     const localCart=await page.evaluate(()=>JSON.parse(localStorage.getItem("women.cart.v1")||"[]"));
     if(localCart.length!==1 || localCart[0].publicCode!=="SS-1008")throw Error("local cart failed");
     const cart=await page.goto(BASE+"/cart/",{waitUntil:"domcontentloaded",timeout:45000});
-    if(cart.status()===200) await page.waitForFunction(()=>document.querySelector("#cartItems")?.textContent?.includes("Leather jacket"),null,{timeout:20000});
+    if(cart.status()===200){
+      await page.waitForTimeout(5000);
+      const cartDebug=await page.evaluate(()=>({items:document.querySelector("#cartItems")?.innerText?.slice(0,280)||"",status:document.querySelector("#status")?.textContent?.slice(0,280)||"",keys:Object.keys(localStorage).filter(k=>k.startsWith("women.")).sort()}));
+      console.log("CART_VIEW_DIAGNOSTIC "+JSON.stringify({result:cartDebug,responses:resolveResponses,pageErrors:errors}));
+      if(!cartDebug.items.includes("Leather jacket"))throw Error("CART_RENDER_FAILED");
+    }
     if(cart.status()!==200 || !(await page.locator("h1").first().innerText()).includes("شنطتك"))
       throw Error("Cart page failed");
     const checkout=await page.goto(BASE+"/checkout/",{waitUntil:"domcontentloaded",timeout:45000});
