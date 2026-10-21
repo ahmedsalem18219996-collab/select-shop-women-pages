@@ -1,0 +1,62 @@
+name: WOMEN candidate — throttled responsive mobile QA
+
+on:
+  push:
+    branches:
+      - perf/first-row-no-animation-20261021
+    paths:
+      - index.html
+      - js/app.js
+      - css/styles.css
+      - js/store-adapter.js
+      - scripts/test_responsive_perf_mobile.cjs
+      - .github/workflows/women-no-animation-qa.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-qa:
+    if: github.ref == 'refs/heads/perf/first-row-no-animation-20261021'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Checkout production baseline read-only
+        run: git worktree add --detach /tmp/women-release origin/release
+      - name: Validate candidate scripts and all mobile assets
+        run: |
+          node --check js/app.js
+          node --check js/store-adapter.js
+          node --check scripts/test_responsive_perf_mobile.cjs
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          names = json.loads(Path('js/catalog-thumbs.js').read_text().split('Object.freeze(',1)[1].split(');',1)[0])
+          missing=[name for name in names if not Path('assets/catalog-thumbs/'+name+'.w400.webp').is_file()]
+          assert not missing and len(names)==35, (len(names),missing)
+          print('PASS 35/35 responsive 400px product images available')
+          PY
+      - name: Fetch public catalog for read-only local browser fixture
+        run: |
+          python3 - <<'PY'
+          from urllib.request import Request, urlopen
+          u='https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge/catalog'
+          with urlopen(Request(u,headers={'Accept':'application/json'}),timeout=25) as response:
+              data=response.read(3000001)
+          assert len(data)<=3000000
+          open('/tmp/women-public-catalog.json','wb').write(data)
+          print('Fetched public product catalog only; no customer data')
+          PY
+      - name: Install Playwright
+        run: npm install --no-save --no-package-lock --ignore-scripts playwright
+      - name: Find Chromium
+        run: |
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$CHROME" ]; then npx playwright install chromium
+          else echo "CHROME_BIN=$CHROME" >> "$GITHUB_ENV"; fi
+      - name: Compare release and candidate on throttled mobile
+        run: node scripts/test_responsive_perf_mobile.cjs "$GITHUB_WORKSPACE" /tmp/women-release /tmp/women-public-catalog.json
