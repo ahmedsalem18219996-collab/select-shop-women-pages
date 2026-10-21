@@ -61,6 +61,8 @@ async function runPage(browser, root, catalog, label) {
     }
     if (url.hostname === "byluoipdunralsurwebt.supabase.co" && url.pathname.endsWith("/catalog")) {
       catalogCalls++;
+      // Allow the initial HTML to paint without products; exercise visible layout stability.
+      await wait(1900);
       return route.fulfill({ status: 200, contentType: "application/json", headers: {
         "access-control-allow-origin": "*",
         "cache-control": "no-store"
