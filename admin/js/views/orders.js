@@ -5,6 +5,7 @@ import { activityLine } from './dashboard.js';
 
 const STAGES = ['preparing', 'shipped', 'delivered'];
 const SOURCE_LABELS = { facebook: 'Facebook', instagram: 'Instagram', meta: 'Meta (المنصة غير محددة)', google: 'Google', tiktok: 'TikTok', other: 'مصدر خارجي آخر', direct: 'زيارة مباشرة' };
+const SOURCE_MEDIUM = { paid_social: 'إعلان مدفوع حسب الرابط', organic_social: 'زيارة غير مدفوعة حسب الرابط', cpc: 'إعلان بالنقرة حسب الرابط' };
 const NEXT = { null: ['preparing'], preparing: ['shipped'], shipped: ['delivered', 'returned'], delivered: ['return_requested'], return_requested: ['returned', 'delivered'] };
 
 // UTF-8 BOM CSV is directly editable in Excel without putting buyer data on a third-party service.
@@ -164,10 +165,10 @@ async function renderDetail(ctx, code) {
           ${o.delivery_notes ? html`<dt>${t('orders.notes')}</dt><dd>${o.delivery_notes}</dd>` : ''}<dt>${t('orders.payment')}</dt><dd>${o.payment_method === 'cod' ? t('orders.cod') : o.payment_method}</dd></dl></section>
       <section class="card"><div class="card-head"><h3>مصدر الطلب</h3></div>
         <dl class="kv"><dt>المصدر</dt><dd>${SOURCE_LABELS[o.attribution?.source] || 'غير معروف (طلب قديم أو تتبع معطّل)'}</dd>
-          ${o.attribution?.medium ? html`<dt>نوع الزيارة</dt><dd>${o.attribution.medium}</dd>` : ''}
+          ${o.attribution?.medium ? html`<dt>نوع الزيارة</dt><dd>${SOURCE_MEDIUM[o.attribution.medium] || o.attribution.medium}</dd>` : ''}
           ${o.attribution?.campaign ? html`<dt>الحملة</dt><dd>${o.attribution.campaign}</dd>` : ''}
           ${o.attribution?.content ? html`<dt>الإعلان / المحتوى</dt><dd>${o.attribution.content}</dd>` : ''}</dl>
-        <small class="muted">المصدر حسب رابط الحملة أو إحالة المتصفح، وقد لا يحدد Facebook أو Instagram بدون UTM.</small></section>
+        <small class="muted">النتيجة حسب UTM أو إحالة المتصفح فقط؛ وحدها لا تثبت أن Meta احتسبت عملية شراء، أو أن الرابط لم يُشارك بين أشخاص.</small></section>
       <section class="card"><div class="card-head"><h3>${t('orders.history')}</h3></div><ul class="timeline">${history.map((h) => html`<li>${h.text}<small>${date(h.at)}</small></li>`)}</ul></section>
       ${activity?.length ? html`<section class="card"><div class="card-head"><h3>${t('nav.activity')}</h3></div><ul class="timeline">${activity.map((a) => html`<li>${activityLine(a)}<small>${date(a.at)}</small></li>`)}</ul></section>` : ''}
     </aside></div></div>`);
