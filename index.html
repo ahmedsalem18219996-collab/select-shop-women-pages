@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://byluoipdunralsurwebt.supabase.co" crossorigin>
 <!-- WOMEN public release: official verified domain. -->
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://selectshopeg.com/">
@@ -14,9 +15,21 @@
 <link rel="preload" href="assets/fonts/readex-pro-arabic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/styles.css">
+<script>
+/* Begin the public catalog request during HTML parsing instead of waiting for the UI bundle. */
+if (["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase()) &&
+    new URLSearchParams(location.search).get("design-preview") !== "1") {
+  window.__womenCatalogRequest = fetch(
+    "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge/catalog",
+    { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(12000) }
+  );
+  window.__womenCatalogRequest.catch(() => {});
+}
+</script>
 <script src="js/analytics.js?v=meta-20261021-2" defer></script>
 <script src="js/config.js" defer></script>
 <script src="js/data.js" defer></script>
+<script src="js/catalog-thumbs.js" defer></script>
 <script src="js/store-adapter.js" defer></script>
 <script src="js/app.js" defer></script>
 </head>

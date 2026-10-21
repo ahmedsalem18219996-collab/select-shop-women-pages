@@ -1,0 +1,68 @@
+name: WOMEN perf candidate mobile smoke
+
+on:
+  push:
+    branches:
+      - perf/mobile-first-images-catalog-20261021
+    paths:
+      - index.html
+      - js/**
+      - assets/catalog-thumbs/**
+      - scripts/test_perf_mobile.cjs
+      - .github/workflows/women-perf-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-smoke:
+    if: github.ref == 'refs/heads/perf/mobile-first-images-catalog-20261021'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Checkout reference release read-only
+        run: git worktree add --detach /tmp/women-release origin/release
+      - name: Verify JavaScript syntax and thumbnail manifest
+        run: |
+          node --check scripts/test_perf_mobile.cjs
+          node --check js/app.js
+          node --check js/store-adapter.js
+          node --check js/catalog-thumbs.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          text = Path('js/catalog-thumbs.js').read_text()
+          items = json.loads(text.split('Object.freeze(',1)[1].split(');',1)[0])
+          assert len(items) >= 30, "unexpectedly small thumbnail list"
+          assert all((Path('assets/catalog-thumbs')/(name+'.webp')).is_file() for name in items), "missing WebP assets"
+          print('PASS:',len(items),'WebP catalog files exist')
+          PY
+      - name: Fetch PUBLIC catalog into ephemeral runner memory
+        run: |
+          python3 - <<'PY'
+          import urllib.request
+          u='https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge/catalog'
+          req=urllib.request.Request(u,headers={'Accept':'application/json'})
+          with urllib.request.urlopen(req,timeout=25) as response:
+              payload=response.read(3_000_001)
+          assert len(payload) <= 3_000_000, 'catalog too large'
+          open('/tmp/women-public-catalog.json','wb').write(payload)
+          print('Loaded temporary public catalog for read-only browser smoke')
+          PY
+      - name: Install lightweight Playwright client
+        run: npm install --no-save --no-package-lock --ignore-scripts playwright
+      - name: Set browser path
+        run: |
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$CHROME" ]; then
+            npx playwright install chromium
+          else
+            echo "CHROME_BIN=$CHROME" >> "$GITHUB_ENV"
+          fi
+      - name: Compare original and candidate in isolated mobile browser
+        run: node scripts/test_perf_mobile.cjs "$GITHUB_WORKSPACE" /tmp/women-release /tmp/women-public-catalog.json
