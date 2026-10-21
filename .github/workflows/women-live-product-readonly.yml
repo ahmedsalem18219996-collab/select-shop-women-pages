@@ -1,0 +1,37 @@
+name: WOMEN — read-only live product flow check
+on:
+  push:
+    branches:
+      - qa/live-product-readonly-20261021
+    paths:
+      - scripts/test_live_product_readonly.cjs
+      - .github/workflows/women-live-product-readonly.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-product-flow:
+    if: github.ref == 'refs/heads/qa/live-product-readonly-20261021'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate script, install Playwright client
+        run: |
+          node --check scripts/test_live_product_readonly.cjs
+          npm install --no-save --no-package-lock --ignore-scripts playwright
+      - name: Choose browser executable
+        run: |
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$CHROME" ]; then
+            npx playwright install chromium
+          else
+            echo "CHROME_BIN=$CHROME" >> "$GITHUB_ENV"
+          fi
+      - name: Read-only PROD catalog → product → cart/checkout (no orders)
+        run: node scripts/test_live_product_readonly.cjs
