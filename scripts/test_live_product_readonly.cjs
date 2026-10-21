@@ -12,6 +12,7 @@ const selected = ["SS-1008","SS-1011"];
   const ctx = await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,locale:"ar-EG",serviceWorkers:"block"});
   const page = await ctx.newPage();
   const blockedWrites=[], errors=[], detailStatus=[],blockedAnalytics=[],cartResponses=[],resolveResponses=[];
+  const mockOrders=[];
   page.on("pageerror", e => errors.push(e.message));
   page.on("response",r=> {
     if(r.url().includes("/functions/v1/women-checkout/cart/resolve")){
@@ -32,6 +33,28 @@ const selected = ["SS-1008","SS-1011"];
     let u;
     try {u=new URL(req.url())}catch {return route.abort()};
     const checkoutOrigin = u.hostname==="byluoipdunralsurwebt.supabase.co";
+    // SAFETY: intercept /orders BEFORE any network continuation.
+    // Synthetic buyer details never leave the ephemeral CI browser.
+    if (checkoutOrigin && u.pathname === "/functions/v1/women-checkout/orders") {
+      if(req.method()!=="POST") return route.abort();
+      const data=req.postDataJSON();
+      if(!data || !Array.isArray(data.lines) || data.lines.length!==1 ||
+         data.lines[0].publicCode!=="SS-1008" ||
+         data.paymentMethod!=="cod" || data.deliveryRegionKey!=="cairo" ||
+         !/^[a-zA-Z0-9_-]{16,128}$/.test(data.idempotencyKey||"") ||
+         data.confirmedMerchandiseSubtotalPiastres<=0 ||
+         data.confirmedShippingTotalPiastres<=0 ||
+         data.confirmedGrandTotalPiastres !== data.confirmedMerchandiseSubtotalPiastres + data.confirmedShippingTotalPiastres ||
+         !data.buyer?.name?.startsWith("TEST QA") ||
+         data.buyer.phone!=="01000000000" ||
+         !String(data.buyer.address||"").includes("NO SHIPPING"))
+        throw Error("Invalid mock /orders payload");
+      mockOrders.push({lineCount:data.lines.length,amount:data.confirmedGrandTotalPiastres,region:data.deliveryRegionKey});
+      return route.fulfill({status:201,contentType:"application/json",
+        headers:{"access-control-allow-origin":BASE,"cache-control":"no-store"},
+        body:JSON.stringify({publicOrderCode:"ORD-23456789"})});
+    }
+
     // These three Edge routes are verified read-only pricing/cart validators.
     // ALL other POSTs, especially /orders, remain blocked by default.
     const readOnlyPost = checkoutOrigin && req.method()==="POST" &&
@@ -122,6 +145,27 @@ const selected = ["SS-1008","SS-1011"];
     }
     if(checkout.status()!==200 || !(await page.locator("h1").first().innerText()).includes("الطلب"))
       throw Error("Checkout page failed");
+    // Complete the user-visible flow using a strictly local mocked response.
+    // The mock route prevents creation of any real order or customer record.
+    await page.locator('[name="name"]').fill("TEST QA - DO NOT SHIP");
+    await page.locator('[name="phone"]').fill("01000000000");
+    await page.locator('[name="area"]').fill("QA TEST AREA");
+    await page.locator('[name="address"]').fill("NO SHIPPING - QA Browser Test");
+    await page.locator('[name="notes"]').fill("Automated browser test; response intercepted before Supabase");
+    if(!(await page.locator("#placeOrder").isEnabled()))throw Error("Expected checkout button enabled");
+    await Promise.all([
+      page.waitForURL(u=>u.pathname==="/order-success/" && u.searchParams.get("order")==="ORD-23456789",{timeout:20000}),
+      page.locator("#placeOrder").click(),
+    ]);
+    const orderMessage=await page.locator("#orderCode").innerText();
+    if(orderMessage.trim()!=="ORD-23456789" || mockOrders.length!==1)
+      throw Error("Synthetic confirmation response not displayed correctly");
+    const postCart=await page.evaluate(()=>JSON.parse(localStorage.getItem("women.cart.v1")||"[]"));
+    if(postCart.length!==0)throw Error("Cart persisted after simulated success");
+    console.log("PASS MOCKED_ORDER_SUCCESS "+JSON.stringify({
+      orderCodeRendered:true,cartCleared:true,requestIntercepted:true,
+      realOrdersCreated:0,amountMinor:mockOrders[0].amount,region:mockOrders[0].region
+    }));
     console.log("PASS read-only production smoke "+JSON.stringify({catalogProducts:count,pdpCount:tested.length,cart200:true,checkout200:true,writeCount:blockedWrites.length,analyticsHostsBlocked:[...new Set(blockedAnalytics)],pageErrors:errors}));
   } finally {await ctx.close();await browser.close()}
 })().catch(e=>{console.error("FAIL "+e.stack);process.exitCode=1});
