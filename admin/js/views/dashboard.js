@@ -8,6 +8,66 @@ export function activityLine(a) {
   return html`<b class="ltr">${who}</b> ${what} ${a.entity_ref && a.entity_type !== 'user' && !/^[0-9a-f-]{36}$/.test(a.entity_ref) ? html`<span class="code">${a.entity_ref}</span>` : ''}`;
 }
 
+
+/**
+ * Show every currently published product, even those with zero tracked views.
+ * The existing backend limits recorded events to one per browser/product in 24h;
+ * these are not exact unique people or all raw page loads.
+ * Use the authenticated products.list operation: no public analytics endpoint.
+ */
+async function populateProductViews(el, fallback = []) {
+  const list = $('#productViewsList', el);
+  const search = $('#productViewsSearch', el);
+  const count = $('#productViewsCount', el);
+  if (!list || !search || !count) return;
+
+  let rows = [];
+  let partial = false;
+  try {
+    const response = await call('products.list', { status: 'public', limit: 100 });
+    if (!list.isConnected) return;
+    if (response.outcome !== 'ok' || !Array.isArray(response.data) || response.data.length >= 100) {
+      partial = true;
+    } else {
+      rows = response.data.filter(p => p.status === 'public')
+        .map(p => ({
+          code: String(p.public_code || ''),
+          title: String(p.title || p.public_code || ''),
+          views: Math.max(0, Number(p.views_30d) || 0),
+        }))
+        .filter(p => p.code)
+        .sort((a, b) => b.views - a.views || a.code.localeCompare(b.code));
+    }
+  } catch {
+    partial = true;
+  }
+
+  if (partial) {
+    rows = (Array.isArray(fallback) ? fallback : [])
+      .map(p => ({ code: String(p.code || ''), title: String(p.title || ''), views: Math.max(0, Number(p.views) || 0) }))
+      .filter(p => p.code)
+      .sort((a, b) => b.views - a.views || a.code.localeCompare(b.code));
+  }
+  const update = () => {
+    if (!list.isConnected) return;
+    const q = search.value.trim().toLocaleLowerCase();
+    const matching = rows.filter(p => !q || p.title.toLocaleLowerCase().includes(q) || p.code.toLocaleLowerCase().includes(q));
+    count.textContent = partial ? 'بيانات جزئية' : fmtNum(rows.length) + ' منتج';
+    render(list, html`
+      ${partial ? html`<p class="muted" style="font-size:12px;margin:0 0 9px">تعذر تحميل جميع المنتجات؛ المعروض حاليًا المنتجات ذات الزيارات المسجلة فقط.</p>` : ''}
+      ${matching.length ? html`<div class="list" style="max-height:430px;overflow-y:auto;overscroll-behavior:contain;padding-inline-end:4px">
+        ${matching.map((p, k) => html`<a class="row-card" style="--k:${k};grid-template-columns:auto minmax(0,1fr) auto" href="#/products/${p.code}">
+          <span class="avatar" style="background:var(--surface-2);color:var(--ink)">${k + 1}</span>
+          <span class="row-main"><b>${p.title}</b><span class="row-meta code">${p.code}</span></span>
+          <span class="muted num" style="white-space:nowrap">${fmtNum(p.views)} زيارة</span>
+        </a>`)}
+      </div>` : html`<p class="muted" style="margin:0">${q ? 'مفيش منتجات مطابقة للبحث' : 'مفيش منتجات منشورة'}</p>`}
+    `);
+  };
+  search.addEventListener('input', update);
+  update();
+}
+
 export default {
   title: () => t('nav.dashboard'),
   async render({ el, session, can, go }) {
@@ -50,14 +110,15 @@ export default {
             <span class="row-main"><b>${x.buyer_name}</b><span class="row-meta"><span class="code">${x.code}</span><span>${ago(x.created_at)}</span></span></span>
             <span class="row-end"><b class="num">${money(x.total_minor)}</b>${statusBadge(x.status)}</span></a>`)}</div>`
           : html`<p class="muted" style="margin:0">${t('dash.noOrders')}</p>`}</section>` : ''}
-        <section class="card"><div class="card-head"><h3>${t('dash.topViewed')}</h3>${icon('chart')}</div>
-          ${d.top_viewed.length ? html`<div class="list">${d.top_viewed.map((x, k) => html`<a class="row-card" style="--k:${k};grid-template-columns:auto 1fr auto" href="#/products/${x.code}">
-            <span class="avatar" style="background:var(--surface-2);color:var(--ink)">${k + 1}</span><span class="row-main"><b>${x.title}</b><span class="row-meta code">${x.code}</span></span>
-            <span class="muted num">${fmtNum(x.views)} ${t('dash.views')}</span></a>`)}</div>`
-          : html`<p class="muted" style="margin:0">${t('dash.noViews')}</p>`}</section>
+        <section class="card"><div class="card-head"><h3>زيارات المنتجات (30 يوم)</h3><span class="muted" id="productViewsCount">—</span></div>
+          <p class="muted" style="font-size:12px;margin:0 0 12px">زيارات محسوبة: مرة لكل متصفح ومنتج خلال 24 ساعة، مش عدد أشخاص فريدين.</p>
+          <label class="searchbox" style="margin-bottom:12px"><span class="sr">بحث عن منتج</span>${icon('search')}<input class="input" id="productViewsSearch" type="search" placeholder="ابحث باسم المنتج أو الكود" autocomplete="off"></label>
+          <div id="productViewsList">${skRows(4)}</div>
+        </section>
         ${d.activity ? html`<section class="card"><div class="card-head"><h3>${t('dash.activity')}</h3><a class="btn btn-ghost btn-sm" href="#/activity">${t('app.more')}</a></div>
           <ul class="timeline">${d.activity.map((a) => html`<li>${activityLine(a)}<small>${ago(a.at)}</small></li>`)}</ul></section>` : ''}
       </div></div>`);
     spotlight(el); countUp(el);
+    void populateProductViews(el, d.top_viewed);
   },
 };
