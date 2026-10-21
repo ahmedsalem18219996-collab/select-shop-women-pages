@@ -121,6 +121,9 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .fade-r { right: 0; background: linear-gradient(270deg, var(--mirror), transparent); }
 
 /* ---------- feed ---------- */
+/* Reserve the initial mobile viewport while the asynchronous WOMEN catalog loads.
+   Release the space immediately when real products or an empty/error notice is rendered. */
+#feed:empty { min-height: max(700px, 100svh); }
 .feed { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 12px; padding-top: 6px; }
 .card { display: grid; gap: 9px; animation: cardIn .5s var(--ease) both; animation-delay: calc(var(--k) * 40ms); }
 @keyframes cardIn { from { transform: translateY(14px) scale(.98); } }
