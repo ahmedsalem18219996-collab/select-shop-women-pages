@@ -121,6 +121,10 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .fade-r { right: 0; background: linear-gradient(270deg, var(--mirror), transparent); }
 
 /* ---------- feed ---------- */
+/* Reserve the first mobile viewport during asynchronous catalog load.
+   Prevent footer/promise panels shifting into view before the product grid appears.
+   :empty releases this reservation as soon as real products or error text render. */
+#feed:empty { min-height: max(700px, 100svh); }
 .feed { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 12px; padding-top: 6px; }
 .card { display: grid; gap: 9px; animation: cardIn .5s var(--ease) both; animation-delay: calc(var(--k) * 40ms); }
 @keyframes cardIn { from { transform: translateY(14px) scale(.98); } }
