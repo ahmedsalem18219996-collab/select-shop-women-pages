@@ -337,3 +337,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
  .tape-dock{position:relative;top:auto;z-index:5}
  .shot-link-label{font-size:10px;padding:5px 8px}
 }
+
+/* Mobile performance: keep product cards immediately paintable. Animated entry on
+   every catalog item adds delayed composites to the critical first viewport. */
+@media (max-width: 699px) {
+  .feed .card { animation: none; }
+}
