@@ -76,7 +76,7 @@ window.SelectStore = (() => {
       return response.clone().json();
     }).then(data => {
       const first = Array.isArray(data?.items) ? data.items.find(item =>
-        item && /^SS-\\d{4,19}$/.test(String(item.publicCode || "")) &&
+        item && /^SS-\d{4,19}$/.test(String(item.publicCode || "")) &&
         Number.isSafeInteger(item.priceMinor) && item.priceMinor > 0 &&
         validPhoto(item.image)) : null;
       if (!first) return;
