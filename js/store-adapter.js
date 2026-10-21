@@ -100,6 +100,8 @@ window.SelectStore = (() => {
             one: false,
             isNew: item.isNew === true,
             image: thumbnailFor(item.image),
+            // Last-resort fallback if a deployed thumbnail URL fails to load.
+            originalImage: validPhoto(item.image),
             // Opening a published product sends customers to the trusted, same-origin checkout stack.
             url: SECURE_CHECKOUT_ORIGIN + "/p/?code=" + encodeURIComponent(item.publicCode),
             purchasable: item.purchasable === true,
