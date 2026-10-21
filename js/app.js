@@ -374,7 +374,7 @@
       <article class="card" style="--k:${k}">
         <div class="shot" style="--c:${cssColor(p.c)}">
           <a class="shot-link" href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}" aria-label="افتحي تفاصيل ${esc(p.name)}">
-            ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
+            ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" width="800" height="1000" loading="${k < 2 ? "eager" : "lazy"}" fetchpriority="${k < 2 ? "high" : "auto"}" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
             <span class="shot-link-label">شوفي التفاصيل ↗</span>
           </a>
           ${p.was ? `<span class="badge">خصم ${Math.round((1 - p.price / p.was) * 100)}%</span>` : p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
