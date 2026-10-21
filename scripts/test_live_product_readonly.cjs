@@ -47,6 +47,7 @@ const selected = ["SS-1008","SS-1011"];
     if(checkoutOrigin &&
       (u.pathname.startsWith("/functions/v1/women-checkout/product/") ||
        u.pathname === "/functions/v1/women-checkout/checkout-config" ||
+       u.pathname === "/functions/v1/women-checkout/regions" ||
        u.pathname === "/functions/v1/women-checkout/captcha-config" ||
        u.pathname.startsWith("/functions/v1/women-store-bridge/catalog") ||
        u.pathname.startsWith("/storage/v1/object/public/product-media/")))
