@@ -57,6 +57,42 @@ window.SelectStore = (() => {
     const name = source.slice(source.lastIndexOf("/") + 1);
     return thumbnailNames.has(name) ? new URL(name + ".webp", THUMB_BASE).href : source;
   };
+  // Responsive derivative is emitted only when source filename belongs to the public
+  // manifest; build step verifies every w400 asset before release.
+  const smallThumbnailFor = source => {
+    if (!validPhoto(source)) return null;
+    const name = source.slice(source.lastIndexOf("/") + 1);
+    return thumbnailNames.has(name) ? new URL(name + ".w400.webp", THUMB_BASE).href : null;
+  };
+
+
+  // Preload the CURRENT leading product photo, never a hard-coded product.
+  // Catalog is the server-owned truth; cloning the response leaves its only
+  // actual network request available to loadCatalog without a second fetch.
+  // This skips new photos whose static derivatives have not been built yet.
+  if (!demo && window.__womenCatalogRequest) {
+    window.__womenCatalogRequest.then(response => {
+      if (!response.ok) return null;
+      return response.clone().json();
+    }).then(data => {
+      const first = Array.isArray(data?.items) ? data.items.find(item =>
+        item && /^SS-\d{4,19}$/.test(String(item.publicCode || "")) &&
+        Number.isSafeInteger(item.priceMinor) && item.priceMinor > 0 &&
+        validPhoto(item.image)) : null;
+      if (!first) return;
+      const filename = first.image.slice(first.image.lastIndexOf("/") + 1);
+      if (!thumbnailNames.has(filename)) return;
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.fetchPriority = "high";
+      link.imageSrcset = new URL(filename + ".w400.webp", THUMB_BASE).href + " 400w, " +
+        new URL(filename + ".webp", THUMB_BASE).href + " 560w";
+      link.imageSizes = "(max-width: 699px) calc((100vw - 60px) / 2), " +
+        "(max-width: 979px) calc((100vw - 80px) / 3), 300px";
+      document.head.append(link);
+    }).catch(() => { /* A failed optimization must not affect product data. */ });
+  }
 
   return {
     // The full-stack cart uses its own origin-bound browser storage; never make a fake static-site bag.
@@ -100,6 +136,7 @@ window.SelectStore = (() => {
             one: false,
             isNew: item.isNew === true,
             image: thumbnailFor(item.image),
+            smallImage: smallThumbnailFor(item.image),
             // Last-resort fallback if a deployed thumbnail URL fails to load.
             originalImage: validPhoto(item.image),
             // Opening a published product sends customers to the trusted, same-origin checkout stack.

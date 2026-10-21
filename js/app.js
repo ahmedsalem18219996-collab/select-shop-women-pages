@@ -374,7 +374,7 @@
       <article class="card" style="--k:${k}">
         <div class="shot" style="--c:${cssColor(p.c)}">
           <a class="shot-link" href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}" aria-label="افتحي تفاصيل ${esc(p.name)}">
-            ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" width="600" height="800" data-fallback="${esc(p.originalImage && p.originalImage !== p.image ? p.originalImage : "")}" loading="${k < 2 ? "eager" : "lazy"}" fetchpriority="${k < 2 ? "high" : "auto"}" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
+            ${p.image ? `<img src="${esc(p.image)}" ${p.smallImage ? `srcset="${esc(p.smallImage)} 400w, ${esc(p.image)} 560w" sizes="(max-width: 699px) calc((100vw - 60px) / 2), (max-width: 979px) calc((100vw - 80px) / 3), 300px"` : ""} alt="${esc(p.name)}" width="600" height="800" data-fallback="${esc(p.originalImage && p.originalImage !== p.image ? p.originalImage : "")}" loading="${k < 2 ? "eager" : "lazy"}" fetchpriority="${k === 0 ? "high" : "auto"}" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
             <span class="shot-link-label">شوفي التفاصيل ↗</span>
           </a>
           ${p.was ? `<span class="badge">خصم ${Math.round((1 - p.price / p.was) * 100)}%</span>` : p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
@@ -395,6 +395,8 @@
     const backup = image.dataset.fallback;
     if (!backup) return;
     delete image.dataset.fallback;
+    image.removeAttribute('srcset');
+    image.removeAttribute('sizes');
     image.src = backup;
   }, true);
   feed.addEventListener('click', async e => {
