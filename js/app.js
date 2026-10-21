@@ -374,7 +374,7 @@
       <article class="card" style="--k:${k}">
         <div class="shot" style="--c:${cssColor(p.c)}">
           <a class="shot-link" href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}" aria-label="افتحي تفاصيل ${esc(p.name)}">
-            ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" width="800" height="1000" loading="${k < 2 ? "eager" : "lazy"}" fetchpriority="${k < 2 ? "high" : "auto"}" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
+            ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" width="600" height="800" data-fallback="${esc(p.originalImage && p.originalImage !== p.image ? p.originalImage : "")}" loading="${k < 2 ? "eager" : "lazy"}" fetchpriority="${k < 2 ? "high" : "auto"}" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
             <span class="shot-link-label">شوفي التفاصيل ↗</span>
           </a>
           ${p.was ? `<span class="badge">خصم ${Math.round((1 - p.price / p.was) * 100)}%</span>` : p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
@@ -388,6 +388,15 @@
         </div>
       </article>`).join('') : `<p class="empty">مفيش قطع في القسم ده دلوقتي. اسحبي الشريط لقسم تاني.</p>`;
   }
+  // Native image errors do not bubble; capture and retry with the already-validated original once.
+  feed.addEventListener('error', event => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement)) return;
+    const backup = image.dataset.fallback;
+    if (!backup) return;
+    delete image.dataset.fallback;
+    image.src = backup;
+  }, true);
   feed.addEventListener('click', async e => {
     const h = e.target.closest('[data-save]'), a = e.target.closest('[data-add]'), n = e.target.closest('[data-name]');
     if (h) {
