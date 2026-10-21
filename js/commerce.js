@@ -4,6 +4,35 @@
  * All totals and the transaction are authoritative on Supabase.
  */
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
+
+// Anonymous first-party product-view tracking for the Owner dashboard.
+// No name, phone, email, IP address or buyer/order details are sent or stored.
+// The server deduplicates this random browser key per product for 24 hours.
+// Never block rendering, cart or checkout when tracking is unavailable.
+const PRODUCT_VIEWS_API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-product-views";
+const PRODUCT_VIEW_KEY = "women.anonymous-product-views.v1";
+async function recordAnonymousProductView(code) {
+  if (!validCode(code)) return;
+  try {
+    if (navigator.globalPrivacyControl === true || navigator.doNotTrack === "1") return;
+    let visitorKey = localStorage.getItem(PRODUCT_VIEW_KEY);
+    if (!/^[0-9a-f]{64}$/.test(visitorKey || "")) {
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      visitorKey = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+      localStorage.setItem(PRODUCT_VIEW_KEY, visitorKey);
+    }
+    await fetch(PRODUCT_VIEWS_API, {
+      method: "POST",
+      mode: "cors",
+      credentials: "omit",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, visitorKey }),
+      keepalive: true,
+      signal: AbortSignal.timeout(6000),
+    });
+  } catch { /* Analytics must never block shopping. */ }
+}
+
 const CART_KEY = "women.cart.v1";
 const ORDER_KEY = "women.order.idempotency.v1";
 const GA_PURCHASE_KEY = "women.ga4.purchase.pending.v1";
@@ -107,6 +136,7 @@ async function showProduct() {
     $("#product").setAttribute("aria-busy","false");
     $("#productTitle").textContent=p.title;
     $("#productCode").textContent=p.publicCode;
+    void recordAnonymousProductView(p.publicCode);
     gaEvent("view_item", {currency:"EGP", items:[{item_id:p.publicCode, item_name:p.title}]});
     $("#productDescription").textContent=p.description||"";
     const photos=Array.isArray(p.media)?p.media.filter(x=>PHOTO.test(x.url)):[], primary=$("#productPhoto"),thumbs=$("#productThumbs");
