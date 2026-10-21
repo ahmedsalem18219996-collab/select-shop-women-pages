@@ -280,6 +280,8 @@ async function showCheckout(){
   try {
     const cfg=await api("/checkout-config");
     orderReady=cfg.enabled===true && cfg.mode==="internal";
+    // Old gateways reject unknown JSON keys; only send attribution after explicit opt-in.
+    attributionSupported=cfg.orderAttribution===1;
   } catch { /* Fail closed. */ }
   if(!lines.length){status("الشنطة فاضية، ارجعي واختاري منتجاتك.",true);return;}
   if(orderReady) gaEvent("begin_checkout", {currency:"EGP",
