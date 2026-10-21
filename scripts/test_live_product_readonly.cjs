@@ -11,9 +11,15 @@ const selected = ["SS-1008","SS-1011"];
   });
   const ctx = await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,locale:"ar-EG",serviceWorkers:"block"});
   const page = await ctx.newPage();
-  const blockedWrites=[], errors=[], detailStatus=[],blockedAnalytics=[];
+  const blockedWrites=[], errors=[], detailStatus=[],blockedAnalytics=[],cartResponses=[];
   page.on("pageerror", e => errors.push(e.message));
   page.on("response",r=> {
+    if (r.url().includes("/functions/v1/women-checkout/cart/add")) {
+      (async()=>{
+        let responseMessage="";try{ const json=await r.json();responseMessage=json.error||json.status||""; }catch{}
+        cartResponses.push({status:r.status(),message:String(responseMessage).slice(0,100)});
+      })();
+    }
     if (r.url().includes("/functions/v1/women-checkout/product/"))
       detailStatus.push({code:r.url().split("/product/")[1]?.split("?")[0],status:r.status()});
   });
@@ -81,7 +87,13 @@ const selected = ["SS-1008","SS-1011"];
     await page.goto(BASE+"/p/?code=SS-1008",{waitUntil:"domcontentloaded",timeout:45000});
     await page.waitForFunction(() => document.querySelector("#product")?.getAttribute("aria-busy")==="false",null,{timeout:30000});
     await page.locator("#addToCart").click();
-    await page.waitForFunction(() => (document.querySelector("#status")?.textContent||"").includes("اتضافت"),null,{timeout:20000});
+    await page.waitForFunction(() => {
+      const status=document.querySelector("#status")?.textContent||"";
+      return status.includes("اتضافت") || (status && !status.includes("بنضيف"));
+    },null,{timeout:12000});
+    const addDebug=await page.evaluate(()=>({status:document.querySelector("#status")?.textContent||"",buttonDisabled:document.querySelector("#addToCart")?.disabled}));
+    console.log("CART_ADD_RESULT "+JSON.stringify({message:addDebug.status,response:cartResponses,buttonDisabled:addDebug.buttonDisabled}));
+    if(!addDebug.status.includes("اتضافت")) throw Error("CART_ADD_FAILED "+JSON.stringify({message:addDebug.status,response:cartResponses}));
     const localCart=await page.evaluate(()=>JSON.parse(localStorage.getItem("women.cart.v1")||"[]"));
     if(localCart.length!==1 || localCart[0].publicCode!=="SS-1008")throw Error("local cart failed");
     const cart=await page.goto(BASE+"/cart/",{waitUntil:"domcontentloaded",timeout:45000});
