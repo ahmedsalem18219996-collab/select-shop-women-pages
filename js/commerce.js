@@ -331,7 +331,7 @@ async function showCheckout(){
     };
     // Channel is optional and excluded from request fingerprint and prices.
     const attribution = window.SelectOrderAttribution?.read?.();
-    if (attribution) payload.attribution = attribution;
+    if (attributionSupported && attribution) payload.attribution = attribution;
     btn.disabled=true;status("بنراجع الطلب…");
     try{
       const reply=await api("/orders","POST",payload);
