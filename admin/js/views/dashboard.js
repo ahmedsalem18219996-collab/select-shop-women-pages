@@ -15,6 +15,8 @@ export default {
     const r = await call('dashboard.summary');
     if (r.outcome !== 'ok') { fail(r); render(el, html`<div class="empty">${icon('alert')}<b>${t('err.server')}</b></div>`); return; }
     const d = r.data, o = d.orders;
+    // Recently cancelled trials belong in Order history, not the active dashboard feed.
+    const recentActiveOrders = (d.recent_orders || []).filter(item => item.status !== 'cancelled');
     const hour = new Date().getHours();
     const name = (session.email || '').split('@')[0];
     const maxDay = Math.max(1, ...(d.revenue_by_day || []).map((x) => x.minor));
@@ -44,7 +46,7 @@ export default {
             <span class="badge ${x.quantity === 0 ? 'danger' : 'warn'}">${fmtNum(x.quantity)} ${t('dash.piece')}</span></a>`)}</div>`
           : html`<p class="muted" style="margin:0">${t('dash.noLow')}</p>`}</section>
         ${o ? html`<section class="card"><div class="card-head"><h3>${t('dash.recentOrders')}</h3><a class="btn btn-ghost btn-sm" href="#/orders">${t('app.more')}</a></div>
-          ${d.recent_orders.length ? html`<div class="list">${d.recent_orders.map((x, k) => html`<a class="row-card" style="--k:${k};grid-template-columns:1fr auto" href="#/orders/${x.code}">
+          ${recentActiveOrders.length ? html`<div class="list">${recentActiveOrders.map((x, k) => html`<a class="row-card" style="--k:${k};grid-template-columns:1fr auto" href="#/orders/${x.code}">
             <span class="row-main"><b>${x.buyer_name}</b><span class="row-meta"><span class="code">${x.code}</span><span>${ago(x.created_at)}</span></span></span>
             <span class="row-end"><b class="num">${money(x.total_minor)}</b>${statusBadge(x.status)}</span></a>`)}</div>`
           : html`<p class="muted" style="margin:0">${t('dash.noOrders')}</p>`}</section>` : ''}
