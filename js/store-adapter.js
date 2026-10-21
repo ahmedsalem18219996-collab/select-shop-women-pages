@@ -55,11 +55,11 @@ window.SelectStore = (() => {
       if (demo) return window.SELECT_DEMO_DATA;
       window.SELECT_CONFIG.loadError = false;
       try {
-        const response = await fetch(API + "/catalog", {
+        const response = await (window.__womenCatalogRequest || fetch(API + "/catalog", {
           headers: { Accept: "application/json" },
           cache: "no-store",
           signal: AbortSignal.timeout(12000),
-        });
+        }));
         if (!response.ok) throw Error("catalog_http_" + response.status);
         const data = await response.json();
         if (!Array.isArray(data.items) || !Array.isArray(data.categories)) throw Error("bad_catalog");
