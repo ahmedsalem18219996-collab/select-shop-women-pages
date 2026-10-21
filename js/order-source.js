@@ -27,7 +27,7 @@
       const url = new URL(document.referrer);
       if (url.origin === location.origin) return null;
       const h = url.hostname.toLowerCase();
-      if (/(^\.)(facebook\.com|fb\.com)$/.test(h) || h === "facebook.com" || h === "fb.com") return "facebook";
+      if (/(^|\.)(facebook\.com|fb\.com)$/.test(h) || h === "facebook.com" || h === "fb.com") return "facebook";
       if (/(^|\.)instagram\.com$/.test(h)) return "instagram";
       if (/(^|\.)google\.[a-z.]+$/.test(h)) return "google";
       if (/(^|\.)tiktok\.com$/.test(h)) return "tiktok";
