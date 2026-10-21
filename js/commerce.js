@@ -274,11 +274,14 @@ async function showCheckout(){
   const lines=cart(),form=$("#orderForm"),select=$("#region"),btn=$("#placeOrder");
   let quote=null;
   let orderReady=false;
+  let attributionSupported=false;
   // Only the reviewed WOMEN internal protection path may activate checkout.
   // Older backends return 404 here, safely leaving order placement disabled.
   try {
     const cfg=await api("/checkout-config");
     orderReady=cfg.enabled===true && cfg.mode==="internal";
+    // Old gateways reject unknown JSON keys; only send attribution after explicit opt-in.
+    attributionSupported=cfg.orderAttribution===1;
   } catch { /* Fail closed. */ }
   if(!lines.length){status("الشنطة فاضية، ارجعي واختاري منتجاتك.",true);return;}
   if(orderReady) gaEvent("begin_checkout", {currency:"EGP",
@@ -326,6 +329,9 @@ async function showCheckout(){
       confirmedShippingTotalPiastres:priceNumber(quote.shippingTotal),
       confirmedGrandTotalPiastres:priceNumber(quote.grandTotal),
     };
+    // Channel is optional and excluded from request fingerprint and prices.
+    const attribution = window.SelectOrderAttribution?.read?.();
+    if (attributionSupported && attribution) payload.attribution = attribution;
     btn.disabled=true;status("بنراجع الطلب…");
     try{
       const reply=await api("/orders","POST",payload);
