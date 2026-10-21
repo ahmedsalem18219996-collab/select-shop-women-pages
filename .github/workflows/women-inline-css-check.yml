@@ -1,0 +1,30 @@
+name: WOMEN homepage inline CSS parity
+on:
+  push:
+    branches:
+      - perf/inline-home-css-20261021
+    paths:
+      - index.html
+      - css/styles.css
+      - scripts/sync_home_inline_css.py
+      - .github/workflows/women-inline-css-check.yml
+  pull_request:
+    branches:
+      - release
+    paths:
+      - index.html
+      - css/styles.css
+      - scripts/sync_home_inline_css.py
+      - .github/workflows/women-inline-css-check.yml
+permissions:
+  contents: read
+jobs:
+  css-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check inline stylesheet exactly matches canonical source
+        run: python3 scripts/sync_home_inline_css.py --check index.html css/styles.css
+      - name: Validate storefront JavaScript syntax
+        run: node --check js/app.js
