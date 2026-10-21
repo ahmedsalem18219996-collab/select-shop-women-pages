@@ -361,8 +361,7 @@
   /* mobile browsers fire resize when the address bar hides: only re-lay the tape when the width changes */
   let lastW = tape.clientWidth;
   addEventListener('resize', () => { if (tape.clientWidth === lastW) return; lastW = tape.clientWidth; padTape(); center(liveSeg, true); });
-  padTape(); segs[0].classList.add('on');
-  requestAnimationFrame(() => { tape.scrollLeft = 0; center(segs[0], true); });
+  // Render products before running measuring-tape layout calculations.
 
   /* ---------- feed ---------- */
   const feed = $('#feed');
@@ -423,6 +422,8 @@
     }
   });
   apply('الكل');
+  padTape(); segs[0].classList.add('on');
+  requestAnimationFrame(() => { tape.scrollLeft = 0; center(segs[0], true); });
 
   /* ---------- bottom sheet ---------- */
   const addBtn = $('#shAdd');
