@@ -3,10 +3,11 @@ name: WOMEN perf candidate mobile smoke
 on:
   push:
     branches:
-      - perf/mobile-first-images-catalog-20261021
+      - perf/stable-product-layout-20261021
     paths:
       - index.html
       - js/**
+      - css/styles.css
       - assets/catalog-thumbs/**
       - scripts/test_perf_mobile.cjs
       - .github/workflows/women-perf-smoke.yml
@@ -17,7 +18,7 @@ permissions:
 
 jobs:
   mobile-smoke:
-    if: github.ref == 'refs/heads/perf/mobile-first-images-catalog-20261021'
+    if: github.ref == 'refs/heads/perf/stable-product-layout-20261021'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
