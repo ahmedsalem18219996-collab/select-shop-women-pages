@@ -199,18 +199,15 @@ async function loadProductDiscovery(currentCode) {
   }
 }
 function scheduleProductDiscovery(code) {
-  const section = $("#productDiscovery");
-  if (!section) return;
-  if (!("IntersectionObserver" in window)) {
-    void loadProductDiscovery(code);
-    return;
+  if (!$("#productDiscovery")) return;
+  // A hidden section cannot intersect an observer. Wait until the main product
+  // has rendered, then fetch the lightweight public catalog without blocking it.
+  const load = () => { void loadProductDiscovery(code); };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(load, { timeout: 2000 });
+  } else {
+    setTimeout(load, 200);
   }
-  const observer = new IntersectionObserver(entries => {
-    if (!entries.some(entry => entry.isIntersecting)) return;
-    observer.disconnect();
-    void loadProductDiscovery(code);
-  }, { rootMargin: "500px 0px" });
-  observer.observe(section);
 }
 
 async function showProduct() {
