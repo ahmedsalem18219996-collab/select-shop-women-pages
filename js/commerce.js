@@ -155,7 +155,7 @@ async function showProduct() {
   if (!validCode(code)){status("رابط المنتج مش صحيح.",true);$("#productTitle").textContent="المنتج غير موجود";$("#product").setAttribute("aria-busy","false");return;}
   try {
     const {product:p}=await getProductWithRetry(code);
-    if (!p || !p.variants || !p.options) throw new Error("unavailable");
+    if (!p || !Array.isArray(p.variants) || !Array.isArray(p.options)) throw new Error("invalid_product_payload");
     $("#product").setAttribute("aria-busy","false");
     $("#productTitle").textContent=p.title;
     $("#productCode").textContent=p.publicCode;
