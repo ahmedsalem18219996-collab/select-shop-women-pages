@@ -120,6 +120,7 @@ function quickPrice(code, after) {
 // ======================================================================= create
 function createSheet(ctx) {
   const sizes = [];
+  const colors = [];
   const box = sheet({ title: t('create.title'), body: html`
     <label class="field"><span>${t('create.name')}</span><input class="input" id="c-title" maxlength="200" placeholder="${t('create.namePh')}"></label>
     <label class="field"><span>${t('create.description')}</span><textarea class="textarea" id="c-desc" maxlength="10000"></textarea></label>
@@ -131,6 +132,7 @@ function createSheet(ctx) {
       <button class="chip" type="button" id="c-one-size" aria-pressed="false">${t('create.oneSize')}</button>
       <div class="chips" id="c-sizes" style="flex-wrap:wrap"></div>
       <input class="input" id="c-size" placeholder="${t('create.sizesPh')}" maxlength="18"><small>${t('create.sizesHint')}</small></div>
+    <div class="field"><span>ألوان المنتج (اختياري)</span><div class="chips" id="c-colors" style="flex-wrap:wrap"></div><input class="input" id="c-color" maxlength="35" placeholder="اكتبي كل لون واضغطي Enter"><small>كل لون هيكون اختيار في الطلب، وممكن تربطيه بصورة مخصصة.</small></div>
     <label class="switch"><input type="checkbox" id="c-new" checked><i></i>${t('create.isNew')}</label>
     <ol class="blockers" id="c-steps" hidden></ol>`,
     foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>${t('create.submit')}</button>` });
@@ -165,13 +167,40 @@ function createSheet(ctx) {
     e.target.value = ''; paintSizes();
   });
   $('#c-sizes', box).addEventListener('click', (e) => { const b = e.target.closest('[data-rm]'); if (b) { sizes.splice(+b.dataset.rm, 1); paintSizes(); } });
-  const key = idempotencyKey();
+  const paintColors = () => {
+    const holder = $("#c-colors", box); holder.replaceChildren();
+    colors.forEach((color, index) => {
+      const button = document.createElement("button"); button.type = "button";
+      button.className = "chip"; button.textContent = color + " ×";
+      button.setAttribute("aria-label", "احذفي " + color);
+      button.addEventListener("click", () => { colors.splice(index, 1); paintColors(); });
+      holder.append(button);
+    });
+  };
+  const addColor = () => {
+    const input = $("#c-color", box), value = input.value.trim();
+    if (value && colors.length < 12 && !colors.some(x => x.toLocaleLowerCase() === value.toLocaleLowerCase())) {
+      colors.push(value); paintColors();
+    }
+    input.value = "";
+  };
+  $("#c-color", box).addEventListener("keydown", e => {
+    if (e.key !== "Enter" && e.key !== ",") return;
+    e.preventDefault(); addColor();
+  });
+    const key = idempotencyKey();
   $('[data-create]', box).onclick = async (e) => {
     const title = $('#c-title', box).value.trim();
     if (!title) { $('#c-title', box).setAttribute('aria-invalid', 'true'); $('#c-title', box).focus(); return; }
     const priceIn = $('#c-price', box)?.value.trim();
     const price = priceIn ? toMinor(priceIn) : null;
     if (priceIn && (price === null || price < 100)) { $('#c-price', box).parentElement.style.borderColor = 'var(--danger)'; return; }
+    const lastSize = $("#c-size", box).value.trim();
+    if (lastSize && sizes.length < 20 && !sizes.some(x => x.toLocaleLowerCase() === lastSize.toLocaleLowerCase())) sizes.push(lastSize);
+    addColor();
+    if (Math.max(1, sizes.length) * Math.max(1, colors.length) > 60) {
+      island("error", "الحد الأقصى 60 تركيبة لون ومقاس للمنتج الواحد"); return;
+    }
     const steps = $('#c-steps', box); steps.hidden = false;
     const step = (label, state) => { const li = document.createElement('li'); li.textContent = `${state === 'ok' ? '✓' : '…'} ${label}`; steps.append(li); return li; };
     await withBusy(e.currentTarget, async () => {
@@ -181,13 +210,21 @@ function createSheet(ctx) {
       li.textContent = '✓ ' + t('create.steps.create');
       const code = r.code; let version = r.structure_version;
       if (price) { li = step(t('create.steps.price')); const pr = await call('products.set_price', { code, amount_minor: price }); li.textContent = (pr.outcome === 'saved' ? '✓ ' : '✗ ') + t('create.steps.price'); }
-      if (sizes.length && r.outcome === 'created') {
-        li = step(t('create.steps.sizes'));
-        const a = await call('products.structure', { code, version, change: { op: 'add_option', name: 'المقاس', values: sizes } });
-        if (a.outcome === 'applied') { version = a.structure_version; const v = await call('products.structure', { code, version, change: { op: 'create_variants', selections: sizes.map((_, i) => [i]) } }); li.textContent = (v.outcome === 'applied' ? '✓ ' : '✗ ') + t('create.steps.sizes'); }
-        else li.textContent = '✗ ' + t('create.steps.sizes');
-      } else if (!sizes.length && r.outcome === 'created') {
-        await call('products.structure', { code, version, change: { op: 'create_variants', selections: [[]] } });
+      if (r.outcome === 'created') {
+        const dimensions = [];
+        if (sizes.length) dimensions.push({ name: 'المقاس', values: sizes });
+        if (colors.length) dimensions.push({ name: 'اللون', values: colors });
+        for (const dim of dimensions) {
+          li = step('إضافة ' + dim.name);
+          const updated = await call('products.structure', { code, version, change: { op: 'add_option', name: dim.name, values: dim.values } });
+          if (updated.outcome !== 'applied') { li.textContent = '✗ ' + dim.name; fail(updated); return; }
+          version = updated.structure_version; li.textContent = '✓ ' + dim.name;
+        }
+        const selections = dimensions.reduce((items, dim) => items.flatMap(picks => dim.values.map((_, idx) => [...picks, idx])), [[]]);
+        li = step('إنشاء تركيبات المقاسات والألوان');
+        const variants = await call('products.structure', { code, version, change: { op: 'create_variants', selections } });
+        if (variants.outcome !== 'applied') { li.textContent = '✗ إنشاء التركيبات'; fail(variants); return; }
+        li.textContent = '✓ إنشاء التركيبات';
       }
       // Shipping is a separate explicit product assignment. Without it, an Owner-created
       // product may be visible but cannot be quoted correctly at checkout.
