@@ -15,7 +15,7 @@ export function activityLine(a) {
  * these are not exact unique people or all raw page loads.
  * Use the authenticated products.list operation: no public analytics endpoint.
  */
-async function populateProductViews(el, fallback = []) {
+async function populateProductViews(el, fallback = [], canReadSales = false) {
   const list = $('#productViewsList', el);
   const search = $('#productViewsSearch', el);
   const count = $('#productViewsCount', el);
@@ -66,6 +66,91 @@ async function populateProductViews(el, fallback = []) {
   };
   search.addEventListener('input', update);
   update();
+  void populateWinnerPanel(el, rows, partial, canReadSales);
+}
+
+const WINNER_MAX_ORDERS = 40;
+function orderProductLines(detail) {
+  const order = detail?.order || {};
+  const groups = Array.isArray(order.groups) ? order.groups : [];
+  const items = groups.flatMap(group => Array.isArray(group.items) ? group.items : []);
+  return items.length ? items : (Array.isArray(order.items) ? order.items : []);
+}
+async function loadWinnerSales(canReadSales) {
+  if (!canReadSales) return { ok: false, reason: 'ما عندكيش صلاحية عرض الطلبات؛ WINNER بالمشاهدات فقط.' };
+  try {
+    const responses = await Promise.all(['confirmed', 'pending'].map(status =>
+      call('orders.list', { status, limit: 100 })
+    ));
+    if (responses.some(r => r.outcome !== 'ok' || !Array.isArray(r.data)))
+      return { ok: false, reason: 'تعذر تحميل طلبات البيع؛ مش هنحسب مبيعات غير مؤكدة.' };
+    const [confirmed, pending] = responses.map(r => r.data);
+    if (confirmed.length >= 100 || pending.length >= 100 ||
+        confirmed.length + pending.length > WINNER_MAX_ORDERS)
+      return { ok: false, reason: 'عدد الطلبات أكبر من حد التقرير الدقيق؛ محتاجين تجميع من الخادم بدل ترتيب ناقص.' };
+    const since = Date.now() - 30 * 86400000;
+    const byCode = new Map();
+    for (const [status, records] of [['confirmed', confirmed], ['pending', pending]]) {
+      for (const row of records) {
+        if (!row?.public_order_code) continue;
+        const created = Date.parse(row.created_at);
+        if (!Number.isFinite(created) || created < since || created > Date.now() + 60000) continue;
+        const result = await call('orders.get', { code: row.public_order_code });
+        if (result.outcome !== 'ok' || !result.data?.order)
+          return { ok: false, reason: 'تعذر قراءة تفاصيل طلب؛ التقرير متوقف علشان ما نعرضش أرقام ناقصة.' };
+        const detail = result.data;
+        if (detail.order.status !== status) continue;
+        const stage = String(detail.fulfillment?.stage || '').toLowerCase();
+        if (stage === 'returned' || stage === 'return_requested') continue;
+        for (const item of orderProductLines(detail)) {
+          const code = String(item.product_public_code || '');
+          const qty = Number(item.quantity);
+          if (!/^SS-\d{4,19}$/.test(code) || !Number.isSafeInteger(qty) || qty <= 0) continue;
+          const stats = byCode.get(code) || { confirmed: 0, pending: 0 };
+          stats[status] += qty;
+          byCode.set(code, stats);
+        }
+      }
+    }
+    return { ok: true, byCode };
+  } catch {
+    return { ok: false, reason: 'فيه مشكلة اتصال ببيانات الطلبات؛ هنكتفي بالمشاهدات.' };
+  }
+}
+async function populateWinnerPanel(el, rows, viewsPartial, canReadSales) {
+  const panel = $('#womenWinnerPanel', el);
+  if (!panel) return;
+  const sales = await loadWinnerSales(canReadSales);
+  if (!panel.isConnected) return;
+  const ranked = rows.map(p => ({ ...p, confirmed: sales.byCode?.get(p.code)?.confirmed || 0,
+    pending: sales.byCode?.get(p.code)?.pending || 0 }));
+  ranked.sort((a,b) => b.confirmed - a.confirmed || b.views - a.views ||
+    a.code.localeCompare(b.code));
+  const trusted = !viewsPartial && sales.ok;
+  const leader = ranked[0];
+  const hasConfirmed = ranked.some(p => p.confirmed > 0);
+  const reason = viewsPartial ? 'المشاهدات جزئية؛ مفيش WINNER مؤكد.'
+    : !sales.ok ? sales.reason : '';
+  render(panel, html`
+    ${reason ? html`<p class="muted" style="font-size:12px">${reason}</p>` : ''}
+    ${leader && !viewsPartial ? html`
+      <a class="row-card" href="#/products/${leader.code}" style="grid-template-columns:minmax(0,1fr) auto;background:var(--surface-2)">
+        <span class="row-main"><b>${hasConfirmed && trusted ? '🏆 WINNER المبيعات' : '⭐ الأكثر مشاهدة'} — ${leader.title}</b>
+          <span class="row-meta code">${leader.code}</span></span>
+        <span class="row-end" style="text-align:end">
+          <b class="num">${fmtNum(leader.views)} مشاهدة</b>
+          ${sales.ok ? html`<small>${fmtNum(leader.confirmed)} قطعة مؤكدة · ${fmtNum(leader.pending)} قيد المراجعة</small>` : ''}
+        </span>
+      </a>
+      ${!hasConfirmed && sales.ok ? html`<p class="muted" style="font-size:12px;margin:9px 0">لسه مفيش قطع في طلبات مؤكدة؛ المعروض هو الأكثر جذبًا للزيارات، مش الأكثر بيعًا.</p>` : ''}
+      <div class="list" style="margin-top:12px">
+        ${ranked.slice(0, 5).map((p, i) => html`<a class="row-card" href="#/products/${p.code}" style="--k:${i};grid-template-columns:auto minmax(0,1fr) auto">
+          <span class="avatar">${i + 1}</span><span class="row-main"><b>${p.title}</b><span class="row-meta code">${p.code}</span></span>
+          <span class="row-end num">${fmtNum(p.views)} مشاهدة ${sales.ok ? html`<small>${fmtNum(p.confirmed)} مؤكدة · ${fmtNum(p.pending)} معلقة</small>` : ''}</span>
+        </a>`)}
+      </div>` : html`<p class="muted">لسه مفيش بيانات كافية لاختيار منتج WINNER.</p>`}
+    <p class="muted" style="font-size:11px;margin:10px 0 0">آخر 30 يوم: المشاهدات محسوبة مرة لكل متصفح ومنتج خلال 24 ساعة. المبيعات هنا عدد القطع في الطلبات المؤكدة، مش الشحنات المسلَّمة أو الإيراد المحصَّل. الطلبات الملغية والمرتجعة مستبعدة.</p>
+  `);
 }
 
 export default {
@@ -110,6 +195,7 @@ export default {
             <span class="row-main"><b>${x.buyer_name}</b><span class="row-meta"><span class="code">${x.code}</span><span>${ago(x.created_at)}</span></span></span>
             <span class="row-end"><b class="num">${money(x.total_minor)}</b>${statusBadge(x.status)}</span></a>`)}</div>`
           : html`<p class="muted" style="margin:0">${t('dash.noOrders')}</p>`}</section>` : ''}
+        <section class="card spotlight"><div class="card-head"><h3>🏆 WINNER — أداء المنتجات (30 يوم)</h3></div><div id="womenWinnerPanel">${skRows(2)}</div></section>
         <section class="card"><div class="card-head"><h3>زيارات المنتجات (30 يوم)</h3><span class="muted" id="productViewsCount">—</span></div>
           <p class="muted" style="font-size:12px;margin:0 0 12px">زيارات محسوبة: مرة لكل متصفح ومنتج خلال 24 ساعة، مش عدد أشخاص فريدين.</p>
           <label class="searchbox" style="margin-bottom:12px"><span class="sr">بحث عن منتج</span>${icon('search')}<input class="input" id="productViewsSearch" type="search" placeholder="ابحث باسم المنتج أو الكود" autocomplete="off"></label>
@@ -119,6 +205,6 @@ export default {
           <ul class="timeline">${d.activity.map((a) => html`<li>${activityLine(a)}<small>${ago(a.at)}</small></li>`)}</ul></section>` : ''}
       </div></div>`);
     spotlight(el); countUp(el);
-    void populateProductViews(el, d.top_viewed);
+    void populateProductViews(el, d.top_viewed, Boolean(o && can('orders.view')));
   },
 };

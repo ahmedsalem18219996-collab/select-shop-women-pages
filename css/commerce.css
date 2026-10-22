@@ -137,3 +137,26 @@
 .commerce-lightbox button:focus-visible{outline:3px solid var(--tape);outline-offset:2px}
 .commerce-lightbox-help{margin:7px 0;text-align:center;font-size:11px;color:#c7cbd8}
 @media(max-width:760px){.commerce-lightbox-stage{grid-template-columns:35px minmax(0,1fr) 35px;gap:2px}.commerce-lightbox-stage button{width:34px;height:54px;font-size:30px}.commerce-quick-links{margin-top:2px}.commerce-quick-links a{flex:1;padding:8px 10px}.commerce-photo-hint{font-size:10px}}
+
+
+/* Product discovery — same tokens as the existing WOMEN commerce UI. */
+.commerce-discovery{margin:clamp(30px,6vw,65px) 0 0;padding-top:clamp(24px,4vw,35px);border-top:1px solid var(--hair)}
+.commerce-discovery[hidden],.commerce-discovery-more[hidden],.commerce-discovery-heading[hidden]{display:none!important}
+.commerce-discovery-heading{display:flex;align-items:end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.commerce-discovery-heading h2{margin:3px 0 0;font-size:clamp(20px,3.4vw,28px);line-height:1.35;color:var(--ink)}
+.commerce-discovery-heading p{font-size:12px;color:var(--dust);margin:0 0 3px}
+.commerce-discovery-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(10px,2.2vw,18px)}
+.commerce-discovery-item{display:block;min-width:0;border:1px solid var(--hair);border-radius:15px;overflow:hidden;background:var(--chalk);color:var(--ink)!important;text-decoration:none;transition:transform .16s ease,box-shadow .16s ease}
+.commerce-discovery-item:hover{transform:translateY(-2px);box-shadow:0 9px 22px -16px rgba(22,25,43,.35)}
+.commerce-discovery-item:focus-visible{outline:3px solid var(--pin);outline-offset:3px}
+.commerce-discovery-photo{display:block;aspect-ratio:4/5;background:var(--mirror);overflow:hidden}
+.commerce-discovery-img{display:block;width:100%;height:100%;object-fit:cover}
+.commerce-discovery-info{display:grid;gap:3px;padding:10px 11px 13px}
+.commerce-discovery-category{font-size:10px;color:var(--dust)}
+.commerce-discovery-name{font-size:13px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.commerce-discovery-price{font-size:14px;font-family:var(--f-num);font-weight:700}
+.commerce-discovery-more{margin-top:32px}
+.commerce-discovery-all{display:flex;align-items:center;justify-content:center;gap:10px;width:fit-content;margin:25px auto 0;min-height:44px;padding:10px 20px;border:1px solid var(--ink);border-radius:999px;font-weight:700;text-align:center}
+.commerce-discovery-all:focus-visible{outline:3px solid var(--pin);outline-offset:3px}
+@media(max-width:700px){.commerce-discovery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.commerce-discovery-heading p{width:100%}.commerce-discovery-more{margin-top:27px}}
+@media(prefers-reduced-motion:reduce){.commerce-discovery-item{transition:none}.commerce-discovery-item:hover{transform:none}}

@@ -127,6 +127,89 @@ function selectedVariant(product, fields) {
   const values=[...fields].map((f)=>Number(f.value));
   return product.variants.find(v=>v.selection.every((x,i)=>x.valuePosition===values[i]));
 }
+
+// Product discovery uses only the current public WOMEN catalog (never demo data).
+// Defer the separate catalog request until customers approach this below-the-fold section.
+function discoveryCard(item) {
+  const link = make("a", undefined, "commerce-discovery-item");
+  link.href = "/p/?code=" + encodeURIComponent(item.publicCode);
+  link.setAttribute("aria-label", "شوفي " + item.title + " — " + money({ amountMinor:item.priceMinor, currency:"EGP" }));
+  const imageWrap = make("span", undefined, "commerce-discovery-photo");
+  const image = picture(item.image, item.title, "commerce-discovery-img");
+  image.decoding = "async";
+  imageWrap.append(image);
+  link.append(imageWrap);
+  const info = make("span", undefined, "commerce-discovery-info");
+  info.append(make("span", item.category || "SELECT SHOP", "commerce-discovery-category"));
+  info.append(make("strong", item.title, "commerce-discovery-name"));
+  info.append(make("b", money({ amountMinor:item.priceMinor, currency:"EGP" }), "commerce-discovery-price"));
+  link.append(info);
+  return link;
+}
+function fillDiscovery(id, items) {
+  const holder = $(id);
+  if (!holder) return;
+  const fragment = document.createDocumentFragment();
+  items.forEach(item => fragment.append(discoveryCard(item)));
+  holder.replaceChildren(fragment);
+}
+async function loadProductDiscovery(currentCode) {
+  const section = $("#productDiscovery");
+  if (!section) return;
+  try {
+    const result = await api("/catalog");
+    if (!Array.isArray(result.items)) throw new Error("unavailable");
+    const seen = new Set();
+    const candidates = result.items.filter(item => {
+      if (!item || !validCode(item.publicCode) || item.publicCode === currentCode ||
+          seen.has(item.publicCode) || item.purchasable !== true ||
+          !Number.isSafeInteger(item.priceMinor) || item.priceMinor <= 0 ||
+          !PHOTO.test(item.image || "") || typeof item.title !== "string" || !item.title.trim()) return false;
+      seen.add(item.publicCode);
+      return true;
+    });
+    const current = result.items.find(item => item && item.publicCode === currentCode);
+    const category = current && typeof current.category === "string" ? current.category : "";
+    const basePrice = Number.isSafeInteger(current?.priceMinor) ? current.priceMinor : 0;
+    const byRelevance = [...candidates].sort((a, b) => {
+      const sameA = Number(Boolean(category && a.category === category));
+      const sameB = Number(Boolean(category && b.category === category));
+      if (sameA !== sameB) return sameB - sameA;
+      if (basePrice) {
+        const difference = Math.abs(a.priceMinor - basePrice) - Math.abs(b.priceMinor - basePrice);
+        if (difference) return difference;
+      }
+      return a.publicCode.localeCompare(b.publicCode);
+    });
+    const suggested = byRelevance.slice(0, 4);
+    const selected = new Set(suggested.map(item => item.publicCode));
+    const rest = candidates.filter(item => !selected.has(item.publicCode)).slice(0, 8);
+    const heading = section.querySelector(".commerce-discovery-heading");
+    if (heading) heading.hidden = suggested.length === 0;
+    fillDiscovery("#relatedProducts", suggested);
+    fillDiscovery("#browseProducts", rest);
+    const more = $("#browseProductsPanel");
+    if (more) more.hidden = rest.length === 0;
+    section.hidden = false;
+  } catch {
+    // Keep a navigation path to all products even if the catalog is offline.
+    const heading = section.querySelector(".commerce-discovery-heading");
+    if (heading) heading.hidden = true;
+    section.hidden = false;
+  }
+}
+function scheduleProductDiscovery(code) {
+  if (!$("#productDiscovery")) return;
+  // A hidden section cannot intersect an observer. Wait until the main product
+  // has rendered, then fetch the lightweight public catalog without blocking it.
+  const load = () => { void loadProductDiscovery(code); };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(load, { timeout: 2000 });
+  } else {
+    setTimeout(load, 200);
+  }
+}
+
 async function showProduct() {
   const code=new URLSearchParams(location.search).get("code");
   if (!validCode(code)){status("رابط المنتج مش صحيح.",true);$("#productTitle").textContent="المنتج غير موجود";return;}
@@ -137,28 +220,51 @@ async function showProduct() {
     $("#productTitle").textContent=p.title;
     $("#productCode").textContent=p.publicCode;
     void recordAnonymousProductView(p.publicCode);
+    scheduleProductDiscovery(p.publicCode);
     gaEvent("view_item", {currency:"EGP", items:[{item_id:p.publicCode, item_name:p.title}]});
     $("#productDescription").textContent=p.description||"";
     const photos=Array.isArray(p.media)?p.media.filter(x=>PHOTO.test(x.url)):[], primary=$("#productPhoto"),thumbs=$("#productThumbs");
+    let refreshGallery = () => {};
     if(photos.length){
       const openZoom=$("#openPhoto"),viewer=$("#photoViewer"),zoomed=$("#photoZoomed");
-      let currentPhoto=0,touchStart=null;
+      let activePhotos=photos,currentPhoto=0,touchStart=null;
       const show=index=>{
-        currentPhoto=(index+photos.length)%photos.length;
-        const src=photos[currentPhoto];
+        if(!activePhotos.length)return;
+        currentPhoto=(index+activePhotos.length)%activePhotos.length;
+        const src=activePhotos[currentPhoto];
         primary.src=src.url;primary.alt=src.altText||p.title;primary.hidden=false;
         zoomed.src=src.url;zoomed.alt=src.altText||p.title;
-        $("#photoCount").textContent="الصورة "+(currentPhoto+1)+" من "+photos.length;
+        $("#photoCount").textContent="الصورة "+(currentPhoto+1)+" من "+activePhotos.length;
         thumbs.querySelectorAll("button").forEach((b,i)=>b.setAttribute("aria-pressed",String(i===currentPhoto)));
       };
-      photos.forEach((im,i)=>{
-        const b=make("button");b.type="button";b.setAttribute("aria-pressed",String(i===0));
-        b.setAttribute("aria-label","اعرضي الصورة "+(i+1));
-        b.append(picture(im.url,im.altText||p.title));
-        b.addEventListener("click",()=>show(i));
-        thumbs.append(b);
-      });
-      show(0);openZoom.disabled=false;
+      refreshGallery=()=>{
+        const selection=p.options.map((o,i)=>({optionPosition:o.position,valuePosition:Number(fields[i]?.value)}));
+        activePhotos=photos.filter(photo=>{
+          const target=photo.target;
+          if(!target || target.kind==="product")return true; // older API: legacy general image
+          if(target.kind==="value") return selection.some(chosen=>chosen.optionPosition===target.optionPosition && chosen.valuePosition===target.valuePosition);
+          if(target.kind==="variant" && Array.isArray(target.selection))
+            return target.selection.length===selection.length && target.selection.every((x,j)=>x.optionPosition===selection[j].optionPosition && x.valuePosition===selection[j].valuePosition);
+          return false;
+        });
+        // When a color has its own photo, show it FIRST; generic cover follows.
+        activePhotos.sort((a,b) =>
+          Number(Boolean(b.target && b.target.kind !== "product")) -
+          Number(Boolean(a.target && a.target.kind !== "product")));
+        thumbs.replaceChildren();
+        if(!activePhotos.length){
+          primary.removeAttribute("src");primary.hidden=true;openZoom.disabled=true;
+          return;
+        }
+        activePhotos.forEach((im,index)=>{
+          const button=make("button");button.type="button";button.setAttribute("aria-pressed",String(index===0));
+          button.setAttribute("aria-label","اعرضي الصورة "+(index+1));
+          button.append(picture(im.url,im.altText||p.title));
+          button.addEventListener("click",()=>show(index));
+          thumbs.append(button);
+        });
+        show(0);openZoom.disabled=false;
+      };
       openZoom.addEventListener("click",()=>{
         if(!viewer.open){viewer.showModal();history.pushState({...(history.state||{}),womenPhotoViewer:true},"");$("#photoClose").focus();}
       });
@@ -191,6 +297,7 @@ async function showProduct() {
     const btn=$("#addToCart");
     const refresh=(resetMessage=true)=>{
       const selected=selectedVariant(p,fields);
+      refreshGallery();
       $("#productPrice").textContent=money(selected?.unitPrice);
       btn.disabled=!selected?.purchasable;
       if(!selected?.purchasable) status("المقاس ده مش متاح حاليًا.",true);
