@@ -127,6 +127,92 @@ function selectedVariant(product, fields) {
   const values=[...fields].map((f)=>Number(f.value));
   return product.variants.find(v=>v.selection.every((x,i)=>x.valuePosition===values[i]));
 }
+
+// Product discovery uses only the current public WOMEN catalog (never demo data).
+// Defer the separate catalog request until customers approach this below-the-fold section.
+function discoveryCard(item) {
+  const link = make("a", undefined, "commerce-discovery-item");
+  link.href = "/p/?code=" + encodeURIComponent(item.publicCode);
+  link.setAttribute("aria-label", "شوفي " + item.title + " — " + money({ amountMinor:item.priceMinor, currency:"EGP" }));
+  const imageWrap = make("span", undefined, "commerce-discovery-photo");
+  const image = picture(item.image, item.title, "commerce-discovery-img");
+  image.decoding = "async";
+  imageWrap.append(image);
+  link.append(imageWrap);
+  const info = make("span", undefined, "commerce-discovery-info");
+  info.append(make("span", item.category || "SELECT SHOP", "commerce-discovery-category"));
+  info.append(make("strong", item.title, "commerce-discovery-name"));
+  info.append(make("b", money({ amountMinor:item.priceMinor, currency:"EGP" }), "commerce-discovery-price"));
+  link.append(info);
+  return link;
+}
+function fillDiscovery(id, items) {
+  const holder = $(id);
+  if (!holder) return;
+  const fragment = document.createDocumentFragment();
+  items.forEach(item => fragment.append(discoveryCard(item)));
+  holder.replaceChildren(fragment);
+}
+async function loadProductDiscovery(currentCode) {
+  const section = $("#productDiscovery");
+  if (!section) return;
+  try {
+    const result = await api("/catalog");
+    if (!Array.isArray(result.items)) throw new Error("unavailable");
+    const seen = new Set();
+    const candidates = result.items.filter(item => {
+      if (!item || !validCode(item.publicCode) || item.publicCode === currentCode ||
+          seen.has(item.publicCode) || item.purchasable !== true ||
+          !Number.isSafeInteger(item.priceMinor) || item.priceMinor <= 0 ||
+          !PHOTO.test(item.image || "") || typeof item.title !== "string" || !item.title.trim()) return false;
+      seen.add(item.publicCode);
+      return true;
+    });
+    const current = result.items.find(item => item && item.publicCode === currentCode);
+    const category = current && typeof current.category === "string" ? current.category : "";
+    const basePrice = Number.isSafeInteger(current?.priceMinor) ? current.priceMinor : 0;
+    const byRelevance = [...candidates].sort((a, b) => {
+      const sameA = Number(Boolean(category && a.category === category));
+      const sameB = Number(Boolean(category && b.category === category));
+      if (sameA !== sameB) return sameB - sameA;
+      if (basePrice) {
+        const difference = Math.abs(a.priceMinor - basePrice) - Math.abs(b.priceMinor - basePrice);
+        if (difference) return difference;
+      }
+      return a.publicCode.localeCompare(b.publicCode);
+    });
+    const suggested = byRelevance.slice(0, 4);
+    const selected = new Set(suggested.map(item => item.publicCode));
+    const rest = candidates.filter(item => !selected.has(item.publicCode)).slice(0, 8);
+    const heading = section.querySelector(".commerce-discovery-heading");
+    if (heading) heading.hidden = suggested.length === 0;
+    fillDiscovery("#relatedProducts", suggested);
+    fillDiscovery("#browseProducts", rest);
+    const more = $("#browseProductsPanel");
+    if (more) more.hidden = rest.length === 0;
+    section.hidden = false;
+  } catch {
+    // Keep a navigation path to all products even if the catalog is offline.
+    const heading = section.querySelector(".commerce-discovery-heading");
+    if (heading) heading.hidden = true;
+    section.hidden = false;
+  }
+}
+function scheduleProductDiscovery(code) {
+  const section = $("#productDiscovery");
+  if (!section) return;
+  if (!("IntersectionObserver" in window)) {
+    void loadProductDiscovery(code);
+    return;
+  }
+  const observer = new IntersectionObserver(entries => {
+    if (!entries.some(entry => entry.isIntersecting)) return;
+    observer.disconnect();
+    void loadProductDiscovery(code);
+  }, { rootMargin: "500px 0px" });
+  observer.observe(section);
+}
+
 async function showProduct() {
   const code=new URLSearchParams(location.search).get("code");
   if (!validCode(code)){status("رابط المنتج مش صحيح.",true);$("#productTitle").textContent="المنتج غير موجود";return;}
@@ -137,6 +223,7 @@ async function showProduct() {
     $("#productTitle").textContent=p.title;
     $("#productCode").textContent=p.publicCode;
     void recordAnonymousProductView(p.publicCode);
+    scheduleProductDiscovery(p.publicCode);
     gaEvent("view_item", {currency:"EGP", items:[{item_id:p.publicCode, item_name:p.title}]});
     $("#productDescription").textContent=p.description||"";
     const photos=Array.isArray(p.media)?p.media.filter(x=>PHOTO.test(x.url)):[], primary=$("#productPhoto"),thumbs=$("#productThumbs");
