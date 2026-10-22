@@ -247,6 +247,10 @@ async function showProduct() {
             return target.selection.length===selection.length && target.selection.every((x,j)=>x.optionPosition===selection[j].optionPosition && x.valuePosition===selection[j].valuePosition);
           return false;
         });
+        // When a color has its own photo, show it FIRST; generic cover follows.
+        activePhotos.sort((a,b) =>
+          Number(Boolean(b.target && b.target.kind !== "product")) -
+          Number(Boolean(a.target && a.target.kind !== "product")));
         thumbs.replaceChildren();
         if(!activePhotos.length){
           primary.removeAttribute("src");primary.hidden=true;openZoom.disabled=true;
