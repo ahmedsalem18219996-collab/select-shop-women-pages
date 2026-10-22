@@ -224,25 +224,43 @@ async function showProduct() {
     gaEvent("view_item", {currency:"EGP", items:[{item_id:p.publicCode, item_name:p.title}]});
     $("#productDescription").textContent=p.description||"";
     const photos=Array.isArray(p.media)?p.media.filter(x=>PHOTO.test(x.url)):[], primary=$("#productPhoto"),thumbs=$("#productThumbs");
+    let refreshGallery = () => {};
     if(photos.length){
       const openZoom=$("#openPhoto"),viewer=$("#photoViewer"),zoomed=$("#photoZoomed");
-      let currentPhoto=0,touchStart=null;
+      let activePhotos=photos,currentPhoto=0,touchStart=null;
       const show=index=>{
-        currentPhoto=(index+photos.length)%photos.length;
-        const src=photos[currentPhoto];
+        if(!activePhotos.length)return;
+        currentPhoto=(index+activePhotos.length)%activePhotos.length;
+        const src=activePhotos[currentPhoto];
         primary.src=src.url;primary.alt=src.altText||p.title;primary.hidden=false;
         zoomed.src=src.url;zoomed.alt=src.altText||p.title;
-        $("#photoCount").textContent="الصورة "+(currentPhoto+1)+" من "+photos.length;
+        $("#photoCount").textContent="الصورة "+(currentPhoto+1)+" من "+activePhotos.length;
         thumbs.querySelectorAll("button").forEach((b,i)=>b.setAttribute("aria-pressed",String(i===currentPhoto)));
       };
-      photos.forEach((im,i)=>{
-        const b=make("button");b.type="button";b.setAttribute("aria-pressed",String(i===0));
-        b.setAttribute("aria-label","اعرضي الصورة "+(i+1));
-        b.append(picture(im.url,im.altText||p.title));
-        b.addEventListener("click",()=>show(i));
-        thumbs.append(b);
-      });
-      show(0);openZoom.disabled=false;
+      refreshGallery=()=>{
+        const selection=p.options.map((o,i)=>({optionPosition:o.position,valuePosition:Number(fields[i]?.value)}));
+        activePhotos=photos.filter(photo=>{
+          const target=photo.target;
+          if(!target || target.kind==="product")return true; // older API: legacy general image
+          if(target.kind==="value") return selection.some(chosen=>chosen.optionPosition===target.optionPosition && chosen.valuePosition===target.valuePosition);
+          if(target.kind==="variant" && Array.isArray(target.selection))
+            return target.selection.length===selection.length && target.selection.every((x,j)=>x.optionPosition===selection[j].optionPosition && x.valuePosition===selection[j].valuePosition);
+          return false;
+        });
+        thumbs.replaceChildren();
+        if(!activePhotos.length){
+          primary.removeAttribute("src");primary.hidden=true;openZoom.disabled=true;
+          return;
+        }
+        activePhotos.forEach((im,index)=>{
+          const button=make("button");button.type="button";button.setAttribute("aria-pressed",String(index===0));
+          button.setAttribute("aria-label","اعرضي الصورة "+(index+1));
+          button.append(picture(im.url,im.altText||p.title));
+          button.addEventListener("click",()=>show(index));
+          thumbs.append(button);
+        });
+        show(0);openZoom.disabled=false;
+      };
       openZoom.addEventListener("click",()=>{
         if(!viewer.open){viewer.showModal();history.pushState({...(history.state||{}),womenPhotoViewer:true},"");$("#photoClose").focus();}
       });
@@ -275,6 +293,7 @@ async function showProduct() {
     const btn=$("#addToCart");
     const refresh=(resetMessage=true)=>{
       const selected=selectedVariant(p,fields);
+      refreshGallery();
       $("#productPrice").textContent=money(selected?.unitPrice);
       btn.disabled=!selected?.purchasable;
       if(!selected?.purchasable) status("المقاس ده مش متاح حاليًا.",true);
