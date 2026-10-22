@@ -46,6 +46,16 @@ function gaEvent(name, fields) {
   } catch { /* Optional tracking. */ }
 }
 const PHOTO = /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/(?:product-media|women-storefront)\//;
+// Use only checked-in image derivatives from the public catalog thumbnail manifest.
+// New product photos not in that manifest safely fall back to their original URLs.
+const LOCAL_THUMBNAILS = new Set(Array.isArray(window.SELECT_THUMBNAILS) ? window.SELECT_THUMBNAILS : []);
+const PRODUCT_MEDIA_FILENAME = /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/([0-9a-f]{32}\.(?:jpg|png|webp))$/;
+function displayPhotoUrl(src, small=false) {
+  const file = typeof src === "string" ? PRODUCT_MEDIA_FILENAME.exec(src)?.[1] : null;
+  if (!file || !LOCAL_THUMBNAILS.has(file)) return src;
+  return "/assets/catalog-thumbs/" + encodeURIComponent(file) + (small ? ".w400.webp" : ".webp");
+}
+
 const $ = (s) => document.querySelector(s);
 const money = (m) => m && Number.isSafeInteger(m.amountMinor) && m.currency === "EGP"
   ? new Intl.NumberFormat("ar-EG").format(m.amountMinor / 100) + " ج.م"
@@ -103,7 +113,9 @@ function picture(src,alt,klass) {
   const img=make("img",undefined,klass);
   img.alt=alt||"";
   img.loading="lazy";
-  if (typeof src === "string" && PHOTO.test(src)) img.src=src;
+  img.decoding="async";
+  img.fetchPriority="low";
+  if (typeof src === "string" && PHOTO.test(src)) img.src=displayPhotoUrl(src,true);
   return img;
 }
 const addressKey = x => x.publicCode + "@" + x.structureVersion + ":" +
@@ -146,8 +158,12 @@ async function showProduct() {
       const show=index=>{
         currentPhoto=(index+photos.length)%photos.length;
         const src=photos[currentPhoto];
-        primary.src=src.url;primary.alt=src.altText||p.title;primary.hidden=false;
-        zoomed.src=src.url;zoomed.alt=src.altText||p.title;
+        primary.src=displayPhotoUrl(src.url);primary.alt=src.altText||p.title;primary.hidden=false;
+        primary.loading="eager";primary.fetchPriority="high";primary.decoding="async";
+        // The full-resolution asset is reserved for a deliberate zoom action.
+        if(viewer.open) zoomed.src=src.url;
+        else zoomed.removeAttribute("src");
+        zoomed.alt=src.altText||p.title;
         $("#photoCount").textContent="الصورة "+(currentPhoto+1)+" من "+photos.length;
         thumbs.querySelectorAll("button").forEach((b,i)=>b.setAttribute("aria-pressed",String(i===currentPhoto)));
       };
@@ -160,7 +176,7 @@ async function showProduct() {
       });
       show(0);openZoom.disabled=false;
       openZoom.addEventListener("click",()=>{
-        if(!viewer.open){viewer.showModal();history.pushState({...(history.state||{}),womenPhotoViewer:true},"");$("#photoClose").focus();}
+        if(!viewer.open){zoomed.src=photos[currentPhoto].url;viewer.showModal();history.pushState({...(history.state||{}),womenPhotoViewer:true},"");$("#photoClose").focus();}
       });
       $("#photoPrev").addEventListener("click",()=>show(currentPhoto-1));
       $("#photoNext").addEventListener("click",()=>show(currentPhoto+1));
