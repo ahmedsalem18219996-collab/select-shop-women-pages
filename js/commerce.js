@@ -139,11 +139,22 @@ function selectedVariant(product, fields) {
   const values=[...fields].map((f)=>Number(f.value));
   return product.variants.find(v=>v.selection.every((x,i)=>x.valuePosition===values[i]));
 }
+async function getProductWithRetry(code) {
+  // Retrying is safe for a public read; never retry cart or order writes.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try { return await api("/product/" + encodeURIComponent(code)); }
+    catch (e) {
+      const temporary = !e?.status || e.status === 429 || e.status >= 500;
+      if (attempt === 1 || !temporary) throw e;
+      await new Promise(resolve => setTimeout(resolve, 350));
+    }
+  }
+}
 async function showProduct() {
   const code=new URLSearchParams(location.search).get("code");
-  if (!validCode(code)){status("رابط المنتج مش صحيح.",true);$("#productTitle").textContent="المنتج غير موجود";return;}
+  if (!validCode(code)){status("رابط المنتج مش صحيح.",true);$("#productTitle").textContent="المنتج غير موجود";$("#product").setAttribute("aria-busy","false");return;}
   try {
-    const {product:p}=await api("/product/"+encodeURIComponent(code));
+    const {product:p}=await getProductWithRetry(code);
     if (!p || !p.variants || !p.options) throw new Error("unavailable");
     $("#product").setAttribute("aria-busy","false");
     $("#productTitle").textContent=p.title;
@@ -158,8 +169,9 @@ async function showProduct() {
       const show=index=>{
         currentPhoto=(index+photos.length)%photos.length;
         const src=photos[currentPhoto];
-        primary.src=displayPhotoUrl(src.url);primary.alt=src.altText||p.title;primary.hidden=false;
+        // Set eager priority before assigning src so the hero image is fetched first.
         primary.loading="eager";primary.fetchPriority="high";primary.decoding="async";
+        primary.src=displayPhotoUrl(src.url);primary.alt=src.altText||p.title;primary.hidden=false;
         // The full-resolution asset is reserved for a deliberate zoom action.
         if(viewer.open) zoomed.src=src.url;
         else zoomed.removeAttribute("src");
@@ -234,7 +246,25 @@ async function showProduct() {
       } catch(e){status(msg(e),true);}
       finally {refresh(false);}
     });
-  } catch(e){$("#productTitle").textContent="المنتج مش متاح";$("#product").setAttribute("aria-busy","false");status(msg(e),true);}
+  } catch(e){
+    const missing = e?.status === 404 || e?.message === "unavailable";
+    $("#product").setAttribute("aria-busy","false");
+    $("#productTitle").textContent = missing ? "المنتج غير متاح حاليًا" : "تعذر تحميل تفاصيل المنتج";
+    status(missing
+      ? "المنتج غير متاح حاليًا. تقدري تتصفحي باقي الموديلات."
+      : "فيه مشكلة مؤقتة في تحميل التفاصيل. جربي مرة تانية.", true);
+    if (!missing) {
+      const retry = make("button","إعادة المحاولة","commerce-btn commerce-btn--ghost");
+      retry.type = "button";
+      retry.addEventListener("click", () => {
+        $("#productTitle").textContent = "جارٍ تحميل المنتج…";
+        $("#product").setAttribute("aria-busy","true");
+        status("بنحاول نحمّل التفاصيل مرة تانية…");
+        void showProduct();
+      });
+      $("#status").append(" ",retry);
+    }
+  }
 }
 function cartRow(l,quantityChange) {
   const row=make("div",undefined,"commerce-row");
