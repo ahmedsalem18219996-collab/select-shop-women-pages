@@ -332,11 +332,16 @@ const TABS = {
   media(body, { ctx, d, code, reload }) {
     const media = [...(d.media?.media || [])].filter((m) => !m.delete_pending).sort((a, b) => a.position - b.position);
     const canEdit = ctx.can('media.manage');
+    const colorOptions = (d.product.options || []).filter(o => /^(اللون|لون|color|colour)$/i.test(String(o.name || '').trim()));
+    const colorValues = colorOptions.flatMap(o => (o.values || []).filter(v => v.active !== false).map(v => ({option:Number(o.position),value:Number(v.position),label:String(v.value)})));
+
     render(body, html`<section class="card stack"><div class="card-head"><h3>${t('editor.media')}</h3><span class="muted">${fmtNum(media.length)}</span></div>
       <p class="muted" style="margin:0;font-size:12.5px">${t('editor.uploadHint')}</p>
+      <div id="colorPhotoAssign"></div>
       <div class="media-grid">
         ${media.map((m, i) => html`<figure class="media ${m.hidden ? 'hidden' : ''}" data-id="${m.media_id}" style="margin:0">
           <img src="${imgUrl(m.storage_path)}" alt="${m.alt_text || ''}" loading="lazy">
+          ${m.option_value?.value ? html`<figcaption class="muted" style="font-size:11px">اللون: ${m.option_value.value}</figcaption>` : ''}
           ${i === 0 ? html`<span class="badge ok cover">${t('editor.cover')}</span>` : ''}
           ${canEdit ? html`<div class="tools">
             ${i > 0 ? html`<button class="icon-btn" data-act="primary" title="${t('editor.makeCover')}" aria-label="${t('editor.makeCover')}">${icon('star')}</button>` : ''}
@@ -347,6 +352,21 @@ const TABS = {
         </figure>`)}
         ${canEdit ? html`<label class="drop" id="drop">${icon('upload')}<span>${t('editor.upload')}</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" id="file"></label>` : ''}
       </div>${!media.length && !canEdit ? html`<p class="muted">${t('editor.noMedia')}</p>` : ''}</section>`);
+    const colorHolder = $("#colorPhotoAssign", body);
+    const label = document.createElement("label"); label.className = "field";
+    const title = document.createElement("span"); title.textContent = colorValues.length ? "اللون اللي الصور دي تخصه" : "ربط صور بالألوان";
+    label.append(title);
+    let colorPicker = null;
+    if (colorValues.length) {
+      colorPicker = document.createElement("select"); colorPicker.className = "select"; colorPicker.id = "media-color";
+      colorPicker.add(new Option("صور عامة لكل الألوان", ""));
+      colorValues.forEach(v => colorPicker.add(new Option(v.label, v.option + ":" + v.value)));
+      label.append(colorPicker);
+      const hint = document.createElement("small"); hint.textContent = "اختاري اللون، ارفعي صوره، وبعدها اختاري اللون التالي وارفعي صوره."; label.append(hint);
+    } else {
+      const hint = document.createElement("small"); hint.textContent = "المنتج ده مفيهوش خيار لون مستقل. أضيفي ألوان وقت إنشاء المنتج الجديد عشان تختاري صور كل لون."; label.append(hint);
+    }
+    colorHolder.append(label);
     if (!canEdit) return;
     const upload = async (files) => {
       const list = [...files].filter((f) => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= 5 * 1024 * 1024);
@@ -355,6 +375,14 @@ const TABS = {
       for (const [i, f] of list.entries()) {
         island('busy', `${t('editor.upload')} ${i + 1}/${list.length}`);
         const fd = new FormData(); fd.append('code', code); fd.append('image', f); fd.append('version', String(version)); fd.append('alt', d.product.title);
+        if (colorPicker?.value) {
+          const [option, value] = colorPicker.value.split(":").map(Number);
+          if (!colorValues.some(v => v.option === option && v.value === value)) {
+            island("error", "اللون اتغير؛ حدثي الصفحة وارفعي الصورة من جديد."); return;
+          }
+          fd.append("option_position", String(option));
+          fd.append("value_position", String(value));
+        }
         const res = await uploadProductImage(fd);
         if (res.outcome === 'saved') ok++; else { fail(res); break; }
       }
