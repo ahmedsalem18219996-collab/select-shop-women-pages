@@ -1,6 +1,10 @@
 name: WOMEN live links smoke (manual only)
 on:
   workflow_dispatch:
+  push:
+    branches: [release]
+    paths:
+      - .github/workflows/women-live-links-smoke.yml
 
 permissions:
   contents: read
