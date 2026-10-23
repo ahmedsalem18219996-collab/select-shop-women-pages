@@ -1,0 +1,62 @@
+name: WOMEN live links smoke (manual only)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check public DNS from Google and Cloudflare
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in selectshopeg.com www.selectshopeg.com; do
+            for resolver in 1.1.1.1 8.8.8.8; do
+              response=$(dig +short +time=6 +tries=1 "@$resolver" "$name" A)
+              echo "$name DNS via $resolver: $response"
+              if ! grep -Eq '185\.199\.(108|109|110|111)\.153' <<< "$response"; then
+                echo "::error::Public DNS does not currently resolve $name to the expected GitHub Pages IPv4 at $resolver"
+                exit 1
+              fi
+            done
+          done
+
+      - name: Check HTTPS homepage, www redirect, and two product HTML routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLSs --retry 1 --connect-timeout 10 --max-time 30 "https://selectshopeg.com/" -o /tmp/women-home.html
+          grep -Fq 'js/store-adapter.js?v=webview-20261024' /tmp/women-home.html
+          echo "PASS: apex homepage HTTPS and new cached JS version"
+          curl -fLSs --retry 1 --connect-timeout 10 --max-time 30 "https://www.selectshopeg.com/" -o /tmp/women-www.html
+          grep -Fq 'js/store-adapter.js?v=webview-20261024' /tmp/women-www.html
+          echo "PASS: www HTTPS and new cached JS version"
+          for code in SS-1011 SS-1043; do
+            curl -fLSs --retry 1 --connect-timeout 10 --max-time 30 "https://selectshopeg.com/p/?code=$code" -o "/tmp/women-$code.html"
+            grep -Fq '../js/commerce.js?v=webview-20261024' "/tmp/women-$code.html"
+            echo "PASS: direct product link HTTPS and JS $code"
+          done
+
+      - name: Verify both products load from WOMEN public backend (read only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for code in SS-1011 SS-1043; do
+            curl -fLSs --retry 1 --connect-timeout 10 --max-time 30 -H 'Accept: application/json' \
+              "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout/product/$code" \
+              -o "/tmp/api-$code.json"
+            python3 - "$code" <<'PY'
+          import json,sys
+          code=sys.argv[1]
+          with open('/tmp/api-'+code+'.json',encoding='utf-8') as f:
+              data=json.load(f)
+          p=data.get('product')
+          assert isinstance(p,dict) and p.get('publicCode') == code, 'Unexpected product payload or missing item '+code
+          assert isinstance(p.get('variants'),list) and isinstance(p.get('options'),list), 'Incomplete product '+code
+          print('PASS: WOMEN backend returned product '+code)
+          PY
+          done
