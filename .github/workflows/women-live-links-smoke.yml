@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           for code in SS-1011 SS-1043; do
-            curl -fLSs --retry 1 --connect-timeout 10 --max-time 30 -H 'Accept: application/json' \
+            curl -fLSs --retry 1 --connect-timeout 10 --max-time 30 -H 'Accept: application/json' -H 'Origin: https://selectshopeg.com' \
               "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout/product/$code" \
               -o "/tmp/api-$code.json"
             python3 - "$code" <<'PY'
