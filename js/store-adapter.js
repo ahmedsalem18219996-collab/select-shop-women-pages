@@ -104,7 +104,7 @@ window.SelectStore = (() => {
         const response = await (window.__womenCatalogRequest || fetch(API + "/catalog", {
           headers: { Accept: "application/json" },
           cache: "no-store",
-          signal: AbortSignal.timeout(12000),
+          signal: (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(12000) : undefined),
         }));
         if (!response.ok) throw Error("catalog_http_" + response.status);
         const data = await response.json();
