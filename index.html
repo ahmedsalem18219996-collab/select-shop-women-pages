@@ -463,7 +463,7 @@ if (["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLo
     new URLSearchParams(location.search).get("design-preview") !== "1") {
   window.__womenCatalogRequest = fetch(
     "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge/catalog",
-    { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(12000) }
+    { headers: { Accept: "application/json" }, cache: "no-store", signal: (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(12000) : undefined) }
   );
   window.__womenCatalogRequest.catch(() => {});
 }
@@ -472,7 +472,7 @@ if (["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLo
 <script src="js/config.js" defer></script>
 <script src="js/data.js" defer></script>
 <script src="js/catalog-thumbs.js" defer></script>
-<script src="js/store-adapter.js" defer></script>
+<script src="js/store-adapter.js?v=webview-20261024" defer></script>
 <script src="js/app.js" defer></script>
 </head>
 <body>

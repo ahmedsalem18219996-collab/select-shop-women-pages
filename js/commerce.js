@@ -28,7 +28,7 @@ async function recordAnonymousProductView(code) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, visitorKey }),
       keepalive: true,
-      signal: AbortSignal.timeout(6000),
+      signal: (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(6000) : undefined),
     });
   } catch { /* Analytics must never block shopping. */ }
 }
@@ -98,7 +98,7 @@ function saveCart(lines) {
   updateBagCount();
 }
 async function api(path, method="GET", body=null) {
-  const opts = {method, cache:"no-store", headers:{Accept:"application/json"}, signal:AbortSignal.timeout(15000)};
+  const opts = {method, cache:"no-store", headers:{Accept:"application/json"}, signal:(typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(15000) : undefined)};
   if (body !== null) { opts.headers["Content-Type"]="application/json"; opts.body=JSON.stringify(body); }
   const r=await fetch(API + path,opts);
   let data={};try { data=await r.json(); } catch {}
