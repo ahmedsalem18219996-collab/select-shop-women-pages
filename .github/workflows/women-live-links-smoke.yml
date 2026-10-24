@@ -41,7 +41,7 @@ jobs:
           echo "PASS: www HTTPS and new cached JS version"
           for code in SS-1011 SS-1043; do
             curl -fLSs --retry 1 --connect-timeout 10 --max-time 30 "https://selectshopeg.com/p/?code=$code" -o "/tmp/women-$code.html"
-            grep -Fq '../js/commerce.js?v=webview-20261024' "/tmp/women-$code.html"
+            grep -Fq '../js/commerce.js?v=product-recovery-20261024-1' "/tmp/women-$code.html"
             echo "PASS: direct product link HTTPS and JS $code"
           done
 
