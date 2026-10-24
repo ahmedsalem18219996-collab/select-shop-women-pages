@@ -265,6 +265,7 @@ async function showProduct() {
       : "network_or_browser";
     // Only public product code + coarse error type; no visitor/customer data.
     console.warn("WOMEN product_load_failed", { code, reason });
+    gaEvent("product_load_error",{product_code:code,error_reason:offline?"offline":reason});
     $("#product").setAttribute("aria-busy","false");
     $("#productTitle").textContent = missing ? "المنتج غير متاح حاليًا" : "تعذر تحميل تفاصيل المنتج";
     status(missing
