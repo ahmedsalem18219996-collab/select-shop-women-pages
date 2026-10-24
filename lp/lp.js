@@ -10,7 +10,8 @@
   const bar = document.getElementById("bar");
   const cta = document.getElementById("cta");
   const wa = document.getElementById("wa");
-  const code = String(new URLSearchParams(location.search).get("p") || "").toUpperCase();
+  const params = new URLSearchParams(location.search);
+  const code = String(params.get("p") || params.get("code") || "").trim().toUpperCase();
 
   const el = (tag, props, ...kids) => {
     const n = document.createElement(tag);
@@ -25,7 +26,10 @@
   const egp = minor => (minor / 100).toLocaleString("en-US", { maximumFractionDigits: 2 });
 
   async function run() {
-    if (!/^SS-\d{4,19}$/.test(code)) return note("اللينك ده مش مكتمل. افتحي المتجر واختاري القطعة.");
+    if (!/^SS-\d{4,19}$/.test(code)) {
+      location.replace("/");
+      return;
+    }
     let data;
     try {
       const r = await fetch(API, { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(12000) });
