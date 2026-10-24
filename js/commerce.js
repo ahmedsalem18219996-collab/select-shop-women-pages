@@ -97,8 +97,8 @@ function saveCart(lines) {
   localStorage.setItem(CART_KEY,JSON.stringify(lines.slice(0,50)));
   updateBagCount();
 }
-async function api(path, method="GET", body=null) {
-  const opts = {method, cache:"no-store", headers:{Accept:"application/json"}, signal:(typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(15000) : undefined)};
+async function api(path, method="GET", body=null, timeoutMs=15000) {
+  const opts = {method, cache:"no-store", headers:{Accept:"application/json"}, signal:(typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(timeoutMs) : undefined)};
   if (body !== null) { opts.headers["Content-Type"]="application/json"; opts.body=JSON.stringify(body); }
   const r=await fetch(API + path,opts);
   let data={};try { data=await r.json(); } catch {}
@@ -140,13 +140,23 @@ function selectedVariant(product, fields) {
   return product.variants.find(v=>v.selection.every((x,i)=>x.valuePosition===values[i]));
 }
 async function getProductWithRetry(code) {
-  // Retrying is safe for a public read; never retry cart or order writes.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try { return await api("/product/" + encodeURIComponent(code)); }
-    catch (e) {
-      const temporary = !e?.status || e.status === 429 || e.status >= 500;
-      if (attempt === 1 || !temporary) throw e;
-      await new Promise(resolve => setTimeout(resolve, 350));
+  // Public reads only: bounded recovery for flaky in-app browsers or network handoffs.
+  // Never retry cart/order writes, and never mask a real 403/404.
+  const timeouts = [7000, 9000, 12000];
+  const backoffs = [450, 1000];
+  for (let attempt = 0; attempt < timeouts.length; attempt++) {
+    try {
+      const data = await api("/product/" + encodeURIComponent(code), "GET", null, timeouts[attempt]);
+      if (!data?.product || !Array.isArray(data.product.variants) || !Array.isArray(data.product.options)) {
+        const error = new Error("invalid_product_payload");
+        error.retryable = true;
+        throw error;
+      }
+      return data;
+    } catch (e) {
+      const temporary = e?.retryable === true || !e?.status || e.status === 429 || e.status >= 500;
+      if (!temporary || attempt === timeouts.length - 1) throw e;
+      await new Promise(resolve => setTimeout(resolve, backoffs[attempt]));
     }
   }
 }
@@ -248,11 +258,20 @@ async function showProduct() {
     });
   } catch(e){
     const missing = e?.status === 404 || e?.message === "unavailable";
+    const offline = navigator.onLine === false;
+    const reason = e?.status ? "http_" + e.status
+      : e?.message === "invalid_product_payload" ? "invalid_payload"
+      : e?.name === "TimeoutError" || e?.name === "AbortError" ? "timeout"
+      : "network_or_browser";
+    // Only public product code + coarse error type; no visitor/customer data.
+    console.warn("WOMEN product_load_failed", { code, reason });
     $("#product").setAttribute("aria-busy","false");
     $("#productTitle").textContent = missing ? "المنتج غير متاح حاليًا" : "تعذر تحميل تفاصيل المنتج";
     status(missing
       ? "المنتج غير متاح حاليًا. تقدري تتصفحي باقي الموديلات."
-      : "فيه مشكلة مؤقتة في تحميل التفاصيل. جربي مرة تانية.", true);
+      : offline
+        ? "الإنترنت فصل. أول ما يرجع هنحاول نحمّل المنتج تلقائيًا."
+        : "الاتصال بتفاصيل المنتج اتعطل مؤقتًا. جربي إعادة المحاولة.", true);
     if (!missing) {
       const retry = make("button","إعادة المحاولة","commerce-btn commerce-btn--ghost");
       retry.type = "button";
@@ -263,6 +282,15 @@ async function showProduct() {
         void showProduct();
       });
       $("#status").append(" ",retry);
+      if (offline) {
+        window.addEventListener("online", () => {
+          if ($("#productTitle")?.textContent !== "تعذر تحميل تفاصيل المنتج") return;
+          $("#productTitle").textContent = "جارٍ تحميل المنتج…";
+          $("#product").setAttribute("aria-busy","true");
+          status("رجع الاتصال، بنحمّل تفاصيل المنتج…");
+          void showProduct();
+        }, { once: true });
+      }
     }
   }
 }
