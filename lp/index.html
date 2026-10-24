@@ -53,6 +53,14 @@ li b { display: grid; place-items: center; flex: none; width: 26px; height: 26px
   </main>
 </div>
 <div class="bar" id="bar" hidden><div><a class="cta" id="cta" href="#" aria-disabled="true">اطلبي دلوقتي</a><a class="wa" id="wa" href="#" hidden aria-label="واتساب">واتساب</a></div></div>
-<script src="lp.js" defer></script>
+<script>
+// Redirect generic or invalid landing URLs without waiting for a cached external script.
+(() => {
+  const params = new URLSearchParams(location.search);
+  const productCode = String(params.get("p") || params.get("code") || "").trim().toUpperCase();
+  if (!/^SS-\d{4,19}$/.test(productCode)) location.replace("/");
+})();
+</script>
+<script src="lp.js?v=20261024-7421971" defer></script>
 </body>
 </html>
