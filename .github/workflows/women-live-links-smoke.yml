@@ -12,7 +12,7 @@ permissions:
 jobs:
   live-links:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 12
     steps:
       - name: Check public DNS from Google and Cloudflare
         shell: bash
@@ -64,3 +64,78 @@ jobs:
           print('PASS: WOMEN backend returned product '+code)
           PY
           done
+
+      - name: Mobile browser end-to-end product rendering (no orders or analytics)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$CHROME" ]; then npx playwright install chromium; fi
+          CHROME_BIN="$CHROME" node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});
+            try{
+              const cases=[
+                {code:'SS-1011',host:'selectshopeg.com',fb:false,interrupt:false},
+                {code:'SS-1043',host:'selectshopeg.com',fb:true,interrupt:false},
+                {code:'SS-1011',host:'www.selectshopeg.com',fb:true,interrupt:false},
+                {code:'SS-1043',host:'www.selectshopeg.com',fb:false,interrupt:true},
+              ];
+              for(const test of cases){
+                const ctx=await browser.newContext({
+                  viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'ar-EG',
+                  serviceWorkers:'block',
+                  ...(test.fb?{userAgent:'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/580.0.0.51.74;IABMV/1;]'}:{})
+                });
+                const page=await ctx.newPage();
+                const errs=[], productRequests=[];
+                let interrupted=false;
+                page.on('pageerror', e=>errs.push(e.message.slice(0,180)));
+                page.on('response',res=>{
+                  if(res.url().includes('/women-checkout/product/'))productRequests.push(res.status());
+                });
+                page.on('requestfailed',req=>{
+                  if(req.url().includes('/women-checkout/product/'))productRequests.push('failed:'+String(req.failure()?.errorText).slice(0,100));
+                });
+                await page.route('**/*', route=>{
+                  const req=route.request(),u=new URL(req.url());
+                  if(u.pathname.includes('/women-product-views')||u.hostname.includes('google-analytics')||
+                      u.hostname.includes('googletagmanager')||u.hostname.includes('facebook.net')||
+                      u.hostname.includes('facebook.com')||req.method()==='POST'){
+                    return route.abort();
+                  }
+                  if(test.interrupt&&!interrupted&&u.pathname.includes('/women-checkout/product/')){
+                    interrupted=true;
+                    return route.abort('failed');
+                  }
+                  return route.continue();
+                });
+                const url='https://'+test.host+'/p/?code='+test.code;
+                const nav=await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+                await page.waitForFunction(code=>{
+                  const id=document.querySelector('#productCode')?.textContent?.trim();
+                  const h=document.querySelector('#productTitle')?.textContent||'';
+                  return id===code || h.includes('تعذر تحميل') || h.includes('غير متاح');
+                },test.code,{timeout:40000});
+                const dom=await page.evaluate(()=>{
+                  return {
+                    code:document.querySelector('#productCode')?.textContent?.trim(),
+                    title:document.querySelector('#productTitle')?.textContent?.trim(),
+                    status:document.querySelector('#status')?.textContent?.trim(),
+                    price:document.querySelector('#productPrice')?.textContent?.trim(),
+                    img:document.querySelector('#productPhoto')?.getAttribute('src')||''
+                  };
+                });
+                const pass=nav?.status()===200 && dom.code===test.code && !!dom.title && !dom.title.includes('تعذر تحميل') &&
+                           (!test.interrupt||interrupted);
+                console.log(JSON.stringify({test:{code:test.code,host:test.host,fb:test.fb,interrupt:test.interrupt},http:nav?.status(),
+                           finalHost:new URL(page.url()).hostname,dom,productRequests,errs,pass}));
+                await ctx.close();
+                if(!pass)throw Error('Mobile browser product rendering FAILED: '+test.code+' '+test.host);
+              }
+              console.log('PASS: actual mobile browser rendered both product detail pages, www redirect and one transient network error');
+            }finally{await browser.close();}
+          })().catch(e=>{console.error(e);process.exitCode=1;});
+          JS
