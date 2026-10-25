@@ -76,7 +76,7 @@ body{background:var(--mirror)}
 .commerce-card h1{font:600 clamp(25px,4vw,42px)/1.4 var(--f-body)}
 .commerce-price{font:600 clamp(23px,3vw,30px)/1.4 var(--f-num)}
 .commerce-photo-frame{border-radius:17px;background:var(--tape)}
-.commerce-photo-label{background:rgba(255,255,255,.94);color:var(--ink)}
+.commerce-photo-label{display:none}
 .commerce-quick-links a{border-color:var(--hair);background:#fff}
 .commerce .commerce-btn{background:var(--ink);border-color:var(--ink);color:white!important;border-radius:12px!important;min-height:52px;transition:background .15s ease}
 .commerce .commerce-btn:active{transform:none;background:var(--pin)}
@@ -106,8 +106,8 @@ body{background:var(--mirror)}
   .commerce-kicker{display:none}
   .commerce-crumb{font-size:11px}
   .commerce-photo-frame{border-radius:14px}
-  .commerce-quick-links{gap:7px;margin-bottom:9px}
-  .commerce-quick-links a{min-height:38px}
+  /* The bottom tab bar already links home and to the bag; the photo comes first. */
+  .commerce-quick-links{display:none}
   .commerce{padding-bottom:calc(var(--tab) + env(safe-area-inset-bottom,0px) + 155px)}
   .commerce-mobile-buybar:not([hidden]){
     position:fixed;inset-inline:0;bottom:calc(var(--tab) + env(safe-area-inset-bottom,0px));

@@ -8,6 +8,11 @@ from pathlib import Path
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 CATALOG = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge/catalog"
+# Public product detail (read-only): adds every gallery photo, not just the catalog cover, so product
+# page thumbnails never download full-size originals. The API only answers the storefront origin.
+PRODUCT = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout/product/"
+ORIGIN = "https://selectshopeg.com"
+CODE = re.compile(r"^SS-\d{4,19}$")
 IMAGE_BASE = "https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/"
 ALLOWED = re.compile(r"^[0-9a-f]{32}\.(?:jpg|png|webp)$")
 OUT = Path("assets/catalog-thumbs")
@@ -15,7 +20,8 @@ MANIFEST = Path("js/catalog-thumbs.js")
 Image.MAX_IMAGE_PIXELS = 25_000_000
 
 def get(url, limit):
-    request = urllib.request.Request(url, headers={"Accept": "application/json" if url == CATALOG else "image/*", "User-Agent": "SELECT-SHOP-WOMEN-static-thumbnail-builder/1.0"})
+    api = url == CATALOG or url.startswith(PRODUCT)
+    request = urllib.request.Request(url, headers={**({"Origin": ORIGIN} if url.startswith(PRODUCT) else {}), "Accept": "application/json" if api else "image/*", "User-Agent": "SELECT-SHOP-WOMEN-static-thumbnail-builder/1.0"})
     with urllib.request.urlopen(request, timeout=25) as response:
         content = response.read(limit + 1)
     if len(content) > limit:
@@ -37,6 +43,16 @@ def main():
         name = url[len(IMAGE_BASE):]
         if ALLOWED.fullmatch(name):
             names.add(name)
+        code = item.get("publicCode")
+        if isinstance(code, str) and CODE.fullmatch(code):
+            try:
+                product = json.loads(get(PRODUCT + code, 500_000)).get("product") or {}
+            except (OSError, ValueError) as exc:
+                raise ValueError(f"Product {code} unreadable; manifest unchanged") from exc
+            for media in product.get("media") or []:
+                murl = media.get("url") if isinstance(media, dict) else None
+                if isinstance(murl, str) and murl.startswith(IMAGE_BASE) and ALLOWED.fullmatch(murl[len(IMAGE_BASE):]):
+                    names.add(murl[len(IMAGE_BASE):])
     if not names:
         raise ValueError("No valid public photos; existing manifest will not be replaced")
     OUT.mkdir(parents=True, exist_ok=True)

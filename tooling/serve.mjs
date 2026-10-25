@@ -6,6 +6,7 @@ import http from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { gzipSync } from "node:zlib";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const FIX = path.join(ROOT, "tooling", "fixtures");
@@ -70,7 +71,7 @@ async function mockApi(req, url, body) {
   return [404, { error: "not_found" }];
 }
 
-async function serveFile(res, url) {
+async function serveFile(req, res, url) {
   let rel = decodeURIComponent(url.pathname);
   let file = path.join(ROOT, rel);
   if (!file.startsWith(ROOT) || rel.includes("/tooling/node_modules")) { res.writeHead(403).end(); return; }
@@ -83,7 +84,13 @@ async function serveFile(res, url) {
   const ext = path.extname(file);
   let data = await readFile(file);
   if (/\.(html|js|mjs|css|json)$/.test(ext)) data = Buffer.from(data.toString("utf8").replaceAll(PROD + "/functions/v1", ORIGIN + "/__mock/functions/v1"));
-  res.writeHead(200, { "Content-Type": TYPES[ext] || "application/octet-stream", "Cache-Control": "no-cache" }).end(data);
+  const headers = { "Content-Type": TYPES[ext] || "application/octet-stream", "Cache-Control": "no-cache" };
+  // GitHub Pages gzips text responses; do the same so Lighthouse measures realistic transfer sizes.
+  if (/\.(html|js|mjs|css|json|svg|txt)$/.test(ext) && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
+    data = gzipSync(data);
+    Object.assign(headers, { "Content-Encoding": "gzip", Vary: "Accept-Encoding" });
+  }
+  res.writeHead(200, headers).end(data);
 }
 
 export function start(port = PORT) {
@@ -99,7 +106,7 @@ export function start(port = PORT) {
         res.writeHead(code, { "Content-Type": "application/json", "Cache-Control": "no-store" }).end(payload === null ? "" : JSON.stringify(payload));
         return;
       }
-      await serveFile(res, url);
+      await serveFile(req, res, url);
     } catch (e) { res.writeHead(500).end(String(e?.message || e)); }
   });
   return new Promise(r => server.listen(port, "127.0.0.1", () => { console.log(`QA server ${ORIGIN}`); r(server); }));

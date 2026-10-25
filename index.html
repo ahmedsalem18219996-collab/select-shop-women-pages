@@ -489,13 +489,16 @@ body{background:var(--mirror)}
 .cta:disabled{background:#BCB0BA}
 .shop{padding-top:34px}
 .shop-head h2{font:600 clamp(25px,6vw,38px)/1.4 var(--f-body)}
-.tape-dock{padding-block:10px;top:calc(var(--hdr) + env(safe-area-inset-top,0px));background:var(--mirror)}
+/* top stays from the base rule: sticky on desktop, auto (relative) on phones, so the tape never overlaps the feed. */
+.tape-dock{padding-block:10px;background:var(--mirror)}
 .tape-box{padding-inline:var(--gl) var(--gr)}
 .tape{border-radius:999px;box-shadow:none;background:#fff;border:1px solid var(--hair);scroll-snap-type:x proximity}
 .tape-in{height:51px;background:#fff}
 .tape-in::after,.cm,.needle,.fade-l,.fade-r{display:none}
 .seg{height:45px;width:auto;min-width:105px;padding:6px 16px;place-items:center;align-self:center;border-radius:999px;color:var(--dust);font-size:13px;font-weight:500;transform:none;transition:background .15s}
 .seg.on{background:var(--pin);color:#fff;transform:none;font-weight:600}
+/* Clean product photos: the title under each card is already the details link. */
+.shot-link-label{display:none}
 .feed{gap:22px 13px}
 .card{animation:none;gap:8px;min-width:0}
 .shot{border-radius:15px;background:#F1EAEE}
@@ -557,6 +560,7 @@ body{background:var(--mirror)}
   .shop{padding-top:14px}
   .shop-head h2{font-size:27px}
   .tape-dock{margin-top:5px}
+  .hero p{min-height:3.2em}
   .tape-in{height:47px}
   .seg{height:41px}
 }
@@ -608,8 +612,8 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
     </div>
 
     <section class="wrap hero">
-      <h1>ستايل يليق <span class="hl">بيكي.</span></h1>
-      <p>اختاري موديلك المفضل، شوفي الصور والتفاصيل الحقيقية، واطلبي بكل سهولة.</p>
+      <h1>اختاري ستايلك <span class="hl">بطريقتك.</span></h1>
+      <p>تصفحي الموديلات المتاحة بصورها وأسعارها الحقيقية، واختاري القطعة اللي تحبيها.</p>
     </section>
 
     <section class="wrap looks" id="looks" aria-label="لوكات الأسبوع"></section>

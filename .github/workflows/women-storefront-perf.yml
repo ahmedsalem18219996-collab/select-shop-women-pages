@@ -10,6 +10,9 @@ on:
       - 'js/commerce.js'
       - '.github/workflows/women-storefront-perf.yml'
       - 'tooling/lighthouserc.storefront.json'
+      - 'tooling/serve.mjs'
+      - 'js/catalog-thumbs.js'
+      - 'assets/catalog-thumbs/**'
   workflow_dispatch:
 permissions:
   contents: read
