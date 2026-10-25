@@ -544,7 +544,11 @@ body{background:var(--mirror)}
 </style>
 <script>
 /* Begin the public catalog request during HTML parsing instead of waiting for the UI bundle. */
-if (["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase()) &&
+// Include only our isolated QA server so GitHub Lighthouse measures the same
+// early catalog request timing as production (the QA server rewrites the API).
+const prefetchHost = location.hostname.toLowerCase();
+if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
+     (prefetchHost === "127.0.0.1" && location.port === "4173")) &&
     new URLSearchParams(location.search).get("design-preview") !== "1") {
   window.__womenCatalogRequest = fetch(
     "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge/catalog",
