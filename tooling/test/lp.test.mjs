@@ -1,16 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { lineOk, mergeLine, findVariant, sellableValues } from "../../lp/runtime.js";
+import { lineOk, mergeLine, findVariant, sellableValues, priceLabel } from "../../lp/runtime.js";
 import { render, photos, esc, AB_SNIPPET } from "../build-lp.mjs";
 
 const line = (q = 1, sel = []) => ({ publicCode: "SS-1008", structureVersion: 2, quantity: q, selection: sel });
 const sized = {
-  publicCode: "SS-9001", structureVersion: 3, purchasable: true, title: "Test", price: { minAmountMinor: 50000 },
+  publicCode: "SS-9001", structureVersion: 3, purchasable: true, title: "Test", price: { currency: "EGP", minAmountMinor: 50000, maxAmountMinor: 55000 },
   options: [{ name: "المقاس", values: [{ position: 0, value: "S" }, { position: 1, value: "M" }] }],
   variants: [
-    { selection: [{ optionPosition: 0, valuePosition: 0 }], purchasable: false, unitPrice: { amountMinor: 50000 } },
-    { selection: [{ optionPosition: 0, valuePosition: 1 }], purchasable: true, unitPrice: { amountMinor: 55000 } },
+    { selection: [{ optionPosition: 0, valuePosition: 0 }], purchasable: false, unitPrice: { currency: "EGP", amountMinor: 50000 } },
+    { selection: [{ optionPosition: 0, valuePosition: 1 }], purchasable: true, unitPrice: { currency: "EGP", amountMinor: 55000 } },
   ],
 };
 
@@ -27,6 +27,14 @@ test("variant lookup and sellable sizes", () => {
   assert.equal(findVariant(sized, [1]).unitPrice.amountMinor, 55000);
   assert.equal(findVariant(sized, [2]), undefined);
   assert.deepEqual([...sellableValues(sized, 0)], [1]);
+});
+
+test("one price text for page and sticky bar: variant, range, or none", () => {
+  assert.equal(priceLabel(sized, sized.variants[1]), "٥٥٠");
+  assert.equal(priceLabel(sized, null), "من ٥٠٠");
+  assert.equal(priceLabel({ price: { currency: "EGP", minAmountMinor: 120000, maxAmountMinor: 120000 } }, null), "١٬٢٠٠");
+  assert.equal(priceLabel({ price: { currency: "USD", minAmountMinor: 100 } }, null), "—");
+  assert.equal(priceLabel({ price: {} }, { unitPrice: { currency: "EGP", amountMinor: 0 } }), "—");
 });
 
 test("A/B snippet: forced ?lpv wins, then stored bucket, then coin", () => {

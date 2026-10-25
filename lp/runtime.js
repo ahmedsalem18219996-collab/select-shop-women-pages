@@ -10,6 +10,9 @@ const VIEWS_API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-p
 const CART_KEY = "women.cart.v1"; // same key and line shape as js/commerce.js
 const VIEW_KEY = "women.anonymous-product-views.v1";
 const VARIANT_KEY = "women.lp.variant.v1"; // bucket is chosen before paint by the inline #lp-ab script
+const ATTRIBUTION_KEY = "women.lp.attribution.v1"; // read by js/commerce.js to tag the purchase event
+const ANALYTICS_SRC = "/js/analytics.js?v=lp-20261025";
+const EARLY_CLICK_WAIT_MS = 800;
 
 /** @typedef {{optionPosition:number, valuePosition:number}} Pick */
 /** @typedef {{publicCode:string, structureVersion:number, quantity:number, selection:Pick[]}} Line */
@@ -50,9 +53,50 @@ export function sellableValues(/** @type {any} */ product, /** @type {number} */
 }
 
 export const egp = (/** @type {number} */ minor) => new Intl.NumberFormat("ar-EG").format(minor / 100);
+const okMinor = (/** @type {unknown} */ m) => typeof m === "number" && Number.isSafeInteger(m) && m > 0;
 
-function track(/** @type {string} */ name, /** @type {Record<string, unknown>} */ fields) {
-  try { const w = /** @type {any} */ (window); if (typeof w.gtag === "function") w.gtag("event", name, fields); } catch { /* optional */ }
+/** The one price text both displays show: the chosen variant's price, else the product minimum ("من" when sizes
+ *  cost differently), else "—" when no verified EGP price exists. */
+export function priceLabel(/** @type {any} */ product, /** @type {any} */ variant) {
+  if (variant && variant.unitPrice?.currency === "EGP" && okMinor(variant.unitPrice.amountMinor)) return egp(variant.unitPrice.amountMinor);
+  const p = product?.price;
+  if (!p || p.currency !== "EGP" || !okMinor(p.minAmountMinor)) return "—";
+  return (okMinor(p.maxAmountMinor) && p.maxAmountMinor > p.minAmountMinor ? "من " : "") + egp(p.minAmountMinor);
+}
+
+/* Analytics: every GA4 / Meta call waits in this queue until /js/analytics.js has run (it defines gtag config and
+ * window.womenMetaEvent), then the queue is flushed exactly once. Nothing is sent twice and nothing blocks shopping. */
+/** @type {(() => void)[]} */
+const queue = [];
+let flushed = false;
+/** @type {Promise<void>|null} */
+let analyticsLoaded = null;
+const safe = (/** @type {() => void} */ fn) => { try { fn(); } catch { /* analytics never breaks the page */ } };
+function emit(/** @type {() => void} */ fn) { if (flushed) safe(fn); else queue.push(fn); }
+function loadAnalytics() {
+  if (!analyticsLoaded) {
+    analyticsLoaded = new Promise(resolve => {
+      const s = document.createElement("script");
+      s.src = ANALYTICS_SRC;
+      s.onload = s.onerror = () => resolve();
+      document.head.append(s);
+    }).then(() => { flushed = true; queue.splice(0).forEach(safe); });
+  }
+  return analyticsLoaded;
+}
+function loadAnalyticsWhenIdle() {
+  // GA4 + Meta Pixel (~380 KB) wait until the page is idle so they never compete with the photo or the first tap.
+  const idle = () => ("requestIdleCallback" in window ? requestIdleCallback(() => loadAnalytics(), { timeout: 3500 }) : setTimeout(loadAnalytics, 1500));
+  if (document.readyState === "complete") idle(); else addEventListener("load", idle, { once: true });
+}
+/** Mirrors gaEvent() in js/commerce.js: GA4 event + the matching Meta standard event, public product codes only. */
+function funnel(/** @type {string} */ name, /** @type {Record<string, any>} */ fields) {
+  emit(() => {
+    const w = /** @type {any} */ (window);
+    if (typeof w.gtag === "function") w.gtag("event", name, fields);
+    const metaName = /** @type {Record<string,string>} */ ({ view_item: "ViewContent", add_to_cart: "AddToCart" })[name];
+    if (metaName && typeof w.womenMetaEvent === "function") w.womenMetaEvent(metaName, fields);
+  });
 }
 
 async function recordView(/** @type {string} */ code) {
@@ -79,13 +123,6 @@ async function api(/** @type {string} */ path, method = "GET", /** @type {unknow
   return /** @type {any} */ (data);
 }
 
-function loadAnalyticsLater() {
-  // GA4 + Meta Pixel (~380 KB) wait until the page is idle so they never compete with the photo or the first tap.
-  const go = () => { const s = document.createElement("script"); s.src = "/js/analytics.js?v=lp-20261025"; document.head.append(s); };
-  const idle = () => ("requestIdleCallback" in window ? requestIdleCallback(go, { timeout: 3500 }) : setTimeout(go, 1500));
-  if (document.readyState === "complete") idle(); else addEventListener("load", idle, { once: true });
-}
-
 function lazyVideo() {
   // The video file is requested only after the visitor taps play.
   document.querySelectorAll("[data-lp-video]").forEach(btn => btn.addEventListener("click", () => {
@@ -102,35 +139,40 @@ async function init() {
   const dataEl = document.getElementById("lp-data");
   if (!dataEl) return;
   const page = JSON.parse(dataEl.textContent || "{}");
-  if (!validCode(page.code)) return;
+  if (!validCode(page.code) || !/^[a-z0-9-]{3,40}$/.test(page.id || "")) return;
   const $ = (/** @type {string} */ s) => /** @type {HTMLElement} */ (document.querySelector(s));
-  const variant = document.documentElement.dataset.v || "a";
+  const bucket = document.documentElement.dataset.v === "b" ? "b" : "a";
+  const variantId = page.id + ":" + bucket; // the ONE value used for the user property and every event parameter
   const cta = /** @type {HTMLButtonElement} */ ($("#lpOrder"));
   const status = $("#lpStatus");
   const say = (/** @type {string} */ t, error = false) => { status.textContent = t; status.dataset.error = String(error); };
+  const setPrice = (/** @type {string} */ text) => { $("#lpPrice").textContent = text; $("#lpBarPrice").textContent = text === "—" ? "—" : text + " ج"; };
+  const unavailable = (/** @type {string} */ text) => { setPrice("—"); cta.disabled = true; cta.textContent = "غير متاح حاليًا"; say(text, true); };
 
-  try { const w = /** @type {any} */ (window); w.dataLayer = w.dataLayer || []; w.gtag = w.gtag || function () { w.dataLayer.push(arguments); };
-    w.gtag("set", "user_properties", { lp_variant: page.id + ":" + variant }); } catch { /* optional */ }
-  loadAnalyticsLater();
+  emit(() => { const w = /** @type {any} */ (window); if (typeof w.gtag === "function") w.gtag("set", "user_properties", { lp_variant: variantId }); });
+  funnel("lp_view", { lp_id: page.id, lp_variant: variantId, item_id: page.code });
+  loadAnalyticsWhenIdle();
   lazyVideo();
-  track("lp_view", { lp_id: page.id, lp_variant: variant, item_id: page.code });
   void recordView(page.code);
 
   let product;
   try { ({ product } = await api("/product/" + encodeURIComponent(page.code))); }
-  catch { say("مش قادرين نتأكد من التوفر دلوقتي. جرّبي تاني بعد شوية.", true); return; }
-  if (!product || !Array.isArray(product.variants) || !Array.isArray(product.options)) { say("القطعة دي مش متاحة دلوقتي.", true); return; }
+  catch (e) {
+    // A missing product is unavailable; a network failure leaves no verified price either, so neither is shown.
+    return unavailable(/** @type {any} */ (e)?.status === 404 ? "القطعة دي مش متاحة دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. جرّبي تاني بعد شوية.");
+  }
+  if (!product || product.publicCode !== page.code || !Array.isArray(product.variants) || !Array.isArray(product.options)) return unavailable("القطعة دي مش متاحة دلوقتي.");
+  if (product.purchasable !== true || priceLabel(product, null) === "—") return unavailable("القطعة دي خلصت حاليًا.");
+  funnel("view_item", { currency: "EGP", items: [{ item_id: product.publicCode, item_name: String(product.title || "").slice(0, 100) }] });
 
   const holder = $("#lpOptions");
   /** @type {number[]} */
   const chosen = product.options.map(() => -1);
-  const priceEl = $("#lpPrice");
   const refresh = () => {
     const v = chosen.every(x => x >= 0) ? findVariant(product, chosen) : null;
-    const minor = v?.unitPrice?.amountMinor ?? product.price?.minAmountMinor;
-    if (Number.isSafeInteger(minor) && minor > 0) priceEl.textContent = egp(minor); // live price always replaces the build-time one
-    cta.disabled = product.purchasable !== true;
-    cta.textContent = product.purchasable === true ? "اطلبي دلوقتي" : "غير متاح حاليًا";
+    setPrice(priceLabel(product, v)); // live, verified price: always the same text in the page and the sticky bar
+    cta.disabled = false;
+    cta.textContent = "اطلبي دلوقتي";
     return v;
   };
   product.options.forEach((/** @type {any} */ o, /** @type {number} */ i) => {
@@ -163,20 +205,25 @@ async function init() {
     cta.disabled = true; say("بنجهز طلبك…");
     try {
       await api("/cart/add", "POST", line); // server re-validates the variant address; nothing is ordered here
-      let lines = [];
-      try { lines = JSON.parse(localStorage.getItem(CART_KEY) || "[]"); } catch { /* corrupt cart = empty */ }
-      localStorage.setItem(CART_KEY, JSON.stringify(mergeLine(Array.isArray(lines) ? lines : [], line)));
-      track("lp_order_click", { lp_id: page.id, lp_variant: variant, item_id: product.publicCode });
-      track("add_to_cart", { currency: "EGP", value: (v.unitPrice?.amountMinor || 0) / 100, items: [{ item_id: product.publicCode, quantity: 1 }] });
-      location.href = "/checkout/";
     } catch (e) {
       cta.disabled = false;
       say(/** @type {any} */ (e)?.message === "unavailable" ? "المقاس ده خلص، اختاري مقاس تاني." : "حصلت مشكلة اتصال، جرّبي تاني.", true);
+      return; // rejected: no cart change and no AddToCart event
     }
+    let lines = [];
+    try { lines = JSON.parse(localStorage.getItem(CART_KEY) || "[]"); } catch { /* corrupt cart = empty */ }
+    localStorage.setItem(CART_KEY, JSON.stringify(mergeLine(Array.isArray(lines) ? lines : [], line)));
+    try { sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify({ id: page.id, variant: variantId, code: product.publicCode })); } catch { /* optional */ }
+    funnel("lp_order_click", { lp_id: page.id, lp_variant: variantId, item_id: product.publicCode });
+    funnel("add_to_cart", { currency: "EGP", ...(okMinor(v.unitPrice?.amountMinor) ? { value: v.unitPrice.amountMinor / 100 } : {}),
+      items: [{ item_id: product.publicCode, quantity: 1 }] });
+    // An early tap may come before the idle analytics load: start it now and wait briefly so queued events go out once.
+    await Promise.race([loadAnalytics(), new Promise(r => setTimeout(r, EARLY_CLICK_WAIT_MS))]);
+    location.href = "/checkout/";
   });
 }
 
 if (typeof document !== "undefined") {
-  try { localStorage.setItem(VARIANT_KEY, document.documentElement.dataset.v || "a"); } catch { /* private mode */ }
+  try { localStorage.setItem(VARIANT_KEY, document.documentElement.dataset.v === "b" ? "b" : "a"); } catch { /* private mode */ }
   void init();
 }

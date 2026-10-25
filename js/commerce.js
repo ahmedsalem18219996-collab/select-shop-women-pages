@@ -36,6 +36,16 @@ async function recordAnonymousProductView(code) {
 const CART_KEY = "women.cart.v1";
 const ORDER_KEY = "women.order.idempotency.v1";
 const GA_PURCHASE_KEY = "women.ga4.purchase.pending.v1";
+// Set by lp/runtime.js after a confirmed landing-page cart add; tags the GA4 purchase with the same "<page>:<a|b>" value.
+const LP_ATTRIBUTION_KEY = "women.lp.attribution.v1";
+function lpAttribution(lines) {
+  try {
+    const a = JSON.parse(sessionStorage.getItem(LP_ATTRIBUTION_KEY) || "null");
+    if (a && /^[a-z0-9-]{3,40}$/.test(a.id) && (a.variant === a.id + ":a" || a.variant === a.id + ":b")
+      && lines.some(l => l.publicCode === a.code)) return { lp_id: a.id, lp_variant: a.variant };
+  } catch { /* attribution is optional */ }
+  return {};
+}
 function gaEvent(name, fields) {
   // Analytics is optional: blockers must never affect checkout.
   try { if (typeof window.gtag === "function") window.gtag("event", name, fields); }
@@ -428,9 +438,11 @@ async function showCheckout(){
           currency:"EGP",
           value:priceNumber(quote.merchandiseSubtotal)/100,
           shipping:priceNumber(quote.shippingTotal)/100,
-          items:lines.map(l=>({item_id:l.publicCode,quantity:l.quantity}))
+          items:lines.map(l=>({item_id:l.publicCode,quantity:l.quantity})),
+          ...lpAttribution(lines)
         }));
       } catch { /* Tracking is best-effort only. */ }
+      try { sessionStorage.removeItem(LP_ATTRIBUTION_KEY); } catch { /* one landing page credit per confirmed order */ }
       sessionStorage.removeItem(ORDER_KEY);
       saveCart([]);
       location.href="/order-success/?order="+encodeURIComponent(reply.publicOrderCode);

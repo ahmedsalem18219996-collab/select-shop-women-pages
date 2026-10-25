@@ -5,6 +5,7 @@
 import { readFile, writeFile, mkdir, access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { priceLabel } from "../lp/runtime.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
@@ -14,7 +15,6 @@ const GALLERY_WIDTH = 480;
 const MAX_GALLERY = 5;
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const egp = (minor) => new Intl.NumberFormat("ar-EG").format(minor / 100);
 
 // Runs inline in <head> before first paint so the A/B layout never shifts. Kept tiny on purpose.
 export const AB_SNIPPET = `(()=>{let s=null;try{s=localStorage.getItem("women.lp.variant.v1")}catch(e){}const f=new URLSearchParams(location.search).get("lpv"),ok=x=>x==="a"||x==="b";document.documentElement.dataset.v=ok(f)?f:ok(s)?s:(Math.random()<.5?"a":"b")})()`;
@@ -28,8 +28,8 @@ export function photos(product) {
 export function render(page, product, fontFaces = "") {
   const pics = photos(product);
   if (!pics.length) throw new Error(`${page.code}: no public photo`);
-  const minor = product.price?.minAmountMinor;
-  if (!Number.isSafeInteger(minor) || minor <= 0) throw new Error(`${page.code}: no real price`);
+  const price = priceLabel(product, null); // same text the runtime shows, so the live re-check never flips it
+  if (price === "—") throw new Error(`${page.code}: no real price`);
   const title = String(product.title || "").trim().slice(0, 200);
   const alt = (m) => esc(m.altText || title);
   const src = (i, w, ext) => `img/${i}-${w}.${ext}`;
@@ -113,14 +113,14 @@ html[data-v="b"] .head{order:-2}
 <main>
 <div class="hero"><picture><source type="image/avif" srcset="${set(0, "avif")}" sizes="${sizes}"><source type="image/webp" srcset="${set(0, "webp")}" sizes="${sizes}"><img src="${src(0, 800, "webp")}" alt="${alt(pics[0])}" width="800" height="1000" fetchpriority="high" decoding="async"></picture><i class="tape"></i></div>
 ${gallery ? `<div class="gallery" aria-label="صور تانية للقطعة">${gallery}</div>` : ""}
-<div class="head"><h1>${esc(title)}</h1><p class="price"><span id="lpPrice">${egp(minor)}</span><small>جنيه</small></p></div>
+<div class="head"><h1>${esc(title)}</h1><p class="price"><span id="lpPrice">${price}</span><small>جنيه</small></p></div>
 <section class="buy" aria-label="اختيار المقاس"><div id="lpOptions"></div><p id="lpStatus" role="status" aria-live="polite"></p></section>
 ${desc.length ? `<div class="desc">${desc.map(l => `<p>${esc(l)}</p>`).join("")}</div>` : ""}
 <ul>${page.benefits.map(t => `<li><b aria-hidden="true">✓</b><span>${esc(t)}</span></li>`).join("")}</ul>
 ${video}
 </main>
 </div>
-<div class="bar"><div><span class="p" aria-hidden="true">${egp(minor)} ج</span><button type="button" id="lpOrder" disabled>اطلبي دلوقتي</button></div></div>
+<div class="bar"><div><span class="p" id="lpBarPrice" aria-hidden="true">${price} ج</span><button type="button" id="lpOrder" disabled>اطلبي دلوقتي</button></div></div>
 <noscript><p style="text-align:center"><a href="/p/?code=${esc(product.publicCode)}">افتحي صفحة المنتج للطلب</a></p></noscript>
 <script type="application/json" id="lp-data">${data}</script>
 <script type="module" src="/lp/runtime.js?v=20261025"></script>
