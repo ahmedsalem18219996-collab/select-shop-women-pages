@@ -20,32 +20,18 @@ test("premium storefront renders verified catalog and retains product navigation
   // Model colours are one public card; legacy SKU product URLs remain tested independently.
   await expect(page.locator('#feed .card .shot-link[href$="/lp/ballon-suit/"]')).toHaveCount(1);
   await expect(page.locator('#feed .card .shot-link[href$="/lp/ss-1008/"]')).toHaveCount(1);
-  const productLink = page.locator('#feed .card .shot-link[href*="/p/?code=SS-"]').first();
-  await expect(productLink).toHaveAttribute("href", /\/p\/\?code=SS-\d+/);
+  const modelLink = page.locator('#feed .card .shot-link[href$="/lp/ss-1008/"]').first();
+  await expect(modelLink).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await mkdir("preview-output", { recursive: true });
   await page.screenshot({ path: `preview-output/${info.project.name}-home.png`, animations: "disabled" });
-  await productLink.click();
-  await expect(page).toHaveURL(/\/p\/\?code=SS-\d+/);
-  await expect(page.locator("#productTitle")).not.toContainText("جارٍ تحميل", { timeout: 12000 });
-  await expect(page.locator("#productPrice")).not.toBeEmpty();
-  await expect(page.locator("#addToCart")).toBeEnabled();
-  await expect(page.locator("#productPhoto")).toBeVisible();
-  const thumbs = page.locator("#productThumbs img");
-  await expect(thumbs).toHaveCount(4);
-  await thumbs.last().scrollIntoViewIfNeeded();
-  await expect.poll(() => thumbs.evaluateAll(images => images.every(img => img.complete && img.naturalWidth > 0)), { timeout: 15000 }).toBe(true);
-  await expect(page.locator(".commerce-size-heading > b")).toHaveText("مقاس واحد");
-  await expect(page.locator("#optionFields select")).toHaveCount(0);
-  if (info.project.name === "mobile") {
-    await expect(page.locator("#productMobileBuyBar")).toBeVisible();
-    expect(await page.locator("#productMobilePrice").textContent()).toBe(await page.locator("#productPrice").textContent());
-    await expect(page.locator("#productMobileOrder")).toBeEnabled();
-  } else {
-    await expect(page.locator("#productMobileBuyBar")).toBeHidden();
-  }
+  await modelLink.click();
+  await expect(page).toHaveURL(/\/lp\/ss-1008\/$/);
+  await expect(page.locator("#lpPrice")).not.toBeEmpty();
+  await expect(page.locator("#lpColors .chip")).toHaveCount(2);
+  await expect(page.locator("#lpOrder")).toBeEnabled();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: `preview-output/${info.project.name}-product.png`, fullPage: true, animations: "disabled" });
+  await page.screenshot({ path: `preview-output/${info.project.name}-product-model.png`, fullPage: true, animations: "disabled" });
   expect(errors).toEqual([]);
 });
 
