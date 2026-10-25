@@ -45,6 +45,12 @@ test("journey: home → product → cart → checkout → confirmation, one orde
   await expect(page.locator("#status")).toContainText("اتضافت للشنطة");
   await page.goto("/cart/");
   await expect(page.locator("#toCheckout")).toHaveAttribute("aria-disabled", "false", { timeout: 12000 });
+  // The cart must use the same local WebP derivative manifest as the product page;
+  // it must never fetch full-resolution Supabase photos for a tiny cart row.
+  const cartImage = page.locator("#cartItems .commerce-row-product img").first();
+  await expect(cartImage).toHaveAttribute("src", /^\/assets\/catalog-thumbs\/[0-9a-f]{32}\.(?:jpg|png|webp)\.w400\.webp$/);
+  await expect.poll(() => cartImage.evaluate(img => img.complete && img.naturalWidth > 0), { timeout: 12000 }).toBe(true);
+  expect(page.external).toEqual([]);
   await page.locator("#toCheckout").click();
   await page.waitForURL("**/checkout/");
   await page.locator("#region").selectOption("cairo");
