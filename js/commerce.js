@@ -125,7 +125,15 @@ function picture(src,alt,klass) {
   img.loading="lazy";
   img.decoding="async";
   img.fetchPriority="low";
-  if (typeof src === "string" && PHOTO.test(src)) img.src=displayPhotoUrl(src,true);
+  if (typeof src === "string" && PHOTO.test(src)) {
+    // Some catalog derivatives can be absent during image-sync. Fall back
+    // once to the approved public original rather than showing an empty box.
+    const preview = displayPhotoUrl(src,true);
+    img.src = preview;
+    if (preview !== src) img.addEventListener("error", () => {
+      if (img.src !== src) img.src = src;
+    });
+  }
   return img;
 }
 const addressKey = x => x.publicCode + "@" + x.structureVersion + ":" +
@@ -171,6 +179,8 @@ async function getProductWithRetry(code) {
   }
 }
 async function showProduct() {
+  const mobileBar=$("#productMobileBuyBar");
+  if (mobileBar) mobileBar.hidden=true; // never show a stale price during retry
   const code=new URLSearchParams(location.search).get("code");
   if (!validCode(code)){status("رابط المنتج مش صحيح.",true);$("#productTitle").textContent="المنتج غير موجود";$("#product").setAttribute("aria-busy","false");return;}
   try {
@@ -230,6 +240,11 @@ async function showProduct() {
       });
     }
     const fields=[],holder=$("#optionFields");
+    // One-size products have no option selection; don't ask for a size that doesn't exist.
+    const sizeHeading=document.querySelector(".commerce-size-heading > b");
+    const sizeHelp=document.querySelector(".commerce-size-heading > span");
+    if(sizeHeading) sizeHeading.textContent=p.options.length ? "اختاري المقاس" : "مقاس واحد";
+    if(sizeHelp) sizeHelp.textContent=p.options.length ? "القطع المتاحة فقط" : "جاهز للطلب";
     p.options.forEach((o,i)=>{
       const label=make("label",undefined,"commerce-field");label.append(make("span",o.name||"المقاس"));
       const s=make("select");s.setAttribute("aria-label",o.name||"المقاس");
@@ -237,19 +252,28 @@ async function showProduct() {
       label.append(s);holder.append(label);fields.push(s);
     });
     const btn=$("#addToCart");
+    const mobileButton=$("#productMobileOrder");
+    const mobilePrice=$("#productMobilePrice");
     const refresh=(resetMessage=true)=>{
       const selected=selectedVariant(p,fields);
-      $("#productPrice").textContent=money(selected?.unitPrice);
+      const verifiedPrice=money(selected?.unitPrice);
+      $("#productPrice").textContent=verifiedPrice;
+      if(mobilePrice) mobilePrice.textContent=verifiedPrice;
       btn.disabled=!selected?.purchasable;
-      if(!selected?.purchasable) status("المقاس ده مش متاح حاليًا.",true);
+      if(mobileButton) mobileButton.disabled=btn.disabled;
+      if(!selected?.purchasable) status(p.options.length ? "المقاس ده مش متاح حاليًا." : "المنتج مش متاح حاليًا.",true);
       else if(resetMessage) status("");
     };
     fields.forEach(f=>f.addEventListener("change",refresh));refresh();
+    if(mobileBar) mobileBar.hidden=false;
+    // Delegate to the existing /cart/add handler, never create a parallel order flow.
+    mobileButton?.addEventListener("click",()=>{if(!btn.disabled) btn.click();});
     btn.addEventListener("click",async()=>{
       const v=selectedVariant(p,fields),quantity=Number($("#quantity").value);
       if(!v||!v.purchasable||!Number.isInteger(quantity)||quantity<1||quantity>99){status("اختاري المقاس والكمية الصح.",true);return;}
       const line={publicCode:p.publicCode,structureVersion:p.structureVersion,selection:v.selection,quantity};
-      btn.disabled=true;status("بنضيف القطعة للشنطة…");
+      btn.disabled=true;if(mobileButton) mobileButton.disabled=true;
+      status("بنضيف القطعة للشنطة…");
       try {
         await api("/cart/add","POST",line);
         const lines=cart(),pos=lines.findIndex(x=>addressKey(x)===addressKey(line));
