@@ -6,6 +6,8 @@ on:
     paths:
       - 'index.html'
       - 'js/app.js'
+      - 'p/index.html'
+      - 'js/commerce.js'
       - '.github/workflows/women-storefront-perf.yml'
       - 'tooling/lighthouserc.storefront.json'
   workflow_dispatch:
