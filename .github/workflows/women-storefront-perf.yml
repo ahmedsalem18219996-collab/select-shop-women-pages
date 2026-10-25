@@ -3,9 +3,11 @@ on:
   push:
     branches:
       - 'feature/lp-premium-storefront-*'
+      - 'feature/women-model-colors-lp-*'
     paths:
       - 'index.html'
       - 'js/app.js'
+      - 'js/store-adapter.js'
       - 'p/index.html'
       - 'js/commerce.js'
       - '.github/workflows/women-storefront-perf.yml'
