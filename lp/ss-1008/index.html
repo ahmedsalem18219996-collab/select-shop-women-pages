@@ -35,7 +35,14 @@ a{color:var(--ink)}
 .gallery:empty{display:none}
 .gallery img{width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:10px;background:var(--surface)}
 .info{padding:18px 20px 0;display:flex;flex-direction:column;gap:18px;min-width:0}
-.head{display:flex;flex-direction:column;gap:2px}
+.head{display:flex;flex-direction:column;gap:5px}
+.eyebrow{margin:0 0 2px;font-size:10px;letter-spacing:.18em;font-weight:600;color:var(--mauve);text-transform:uppercase}
+.head .desc{line-height:1.8}
+.notes{border:1px solid var(--line);background:#fff;border-radius:16px;padding:12px 14px}
+.notes li{position:relative;padding-inline-start:23px}
+.notes li::before{content:"✓";position:absolute;inset-inline-start:1px;top:0;color:var(--mauve);font-weight:700}
+.headline-note{color:var(--muted);font-size:12px;margin:0;line-height:1.7}
+@media(min-width:900px){.pick .row{grid-auto-columns:minmax(95px,110px);grid-auto-flow:column;max-width:100%}}
 .head .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
 .price{margin:0;font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -43,10 +50,19 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 .pick{border:0;margin:0;padding:0;min-width:0}
 .pick legend{padding:0;margin-bottom:10px;font-weight:600;font-size:14px}
 .pick legend span{font-weight:400;color:var(--muted)}
-.pick .row{display:flex;flex-wrap:wrap;gap:8px}
-.chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 15px 0 12px;border:1px solid var(--line);border-radius:22px;background:#fff;color:var(--ink);font:400 14px var(--f);cursor:pointer}
-.chip i{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 1px rgba(42,33,41,.15)}
-.chip[aria-pressed="true"],.lp-opt input:checked+span{border-color:var(--ink);box-shadow:0 0 0 .5px var(--ink),inset 0 -2px 0 var(--gold)}
+.pick{padding:16px 14px;border:1px solid var(--line);background:#fff;border-radius:18px}
+.pick legend{padding:0 6px;font-size:14px;color:var(--ink)}
+.pick legend strong{font-weight:600;color:var(--mauve)}
+.pick .row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(94px,112px);gap:9px;overflow-x:auto;scroll-snap-type:x mandatory;padding:3px 1px 7px;scrollbar-width:thin;overscroll-behavior-x:contain}
+.chip{display:flex;flex-direction:column;gap:5px;min-width:0;min-height:112px;padding:5px;border:1.5px solid var(--line);border-radius:13px;background:var(--bg);color:var(--ink);font:500 12px var(--f);cursor:pointer;scroll-snap-align:start;text-align:center;transition:border-color .15s,box-shadow .15s}
+.chip img{width:100%;height:84px;display:block;object-fit:contain;border-radius:9px;background:var(--surface)}
+.chip-name{display:flex;justify-content:center;gap:6px;align-items:center;min-height:22px;line-height:1.4}
+.chip i{flex:none;width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 1px rgba(42,33,41,.15)}
+.chip[aria-pressed="true"],.lp-opt input:checked+span{border-color:var(--mauve);box-shadow:0 0 0 1px var(--mauve),inset 0 -3px 0 var(--gold)}
+.chip[aria-pressed="true"]{background:#fff}
+.chip:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.color-help{font-size:11px;color:var(--muted);margin:5px 0 0}
+.color-count{font-size:12px;font-weight:400;color:var(--muted)}
 #lpOptions{min-height:44px}
 .lp-opt{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
 .lp-opt legend{padding:0;margin-bottom:10px;font-weight:600;font-size:14px}
@@ -69,7 +85,8 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 .bar .sum span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #lpOrder{flex:1;height:52px;border:0;border-radius:14px;background:var(--ink);color:var(--bg);font:600 16px var(--f);cursor:pointer}
 #lpOrder:disabled{background:#D9CCD4;color:#4A3F49;cursor:default}
-html[data-v="b"] .pick,html[data-v="b"] #lpOptions{order:-1}
+/* Variant B keeps the same semantic purchase order; only CTA emphasis varies. */
+html[data-v="b"] #lpOrder{box-shadow:0 3px 14px rgba(42,33,41,.13)}
 @media (min-width:900px){
 .page{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:48px;padding:8px 20px 56px;align-items:start}
 .media{display:block;min-width:0}
@@ -87,10 +104,11 @@ h1{font-size:34px}.price{font-size:26px}
 <div class="gallery" id="lpGallery"><img src="img/SS-1008/1-320.webp" alt="Leather jacket باللون بني" width="320" height="400" loading="lazy" decoding="async"><img src="img/SS-1008/2-320.webp" alt="Leather jacket باللون بني" width="320" height="400" loading="lazy" decoding="async"><img src="img/SS-1008/3-320.webp" alt="Leather jacket باللون بني" width="320" height="400" loading="lazy" decoding="async"></div>
 </div>
 <div class="info">
-<div class="head"><div class="row"><h1>Leather jacket</h1><p class="price"><span id="lpPrice">١٬٢٠٠</span><small>جنيه</small></p></div><p class="desc">جاكيت جلد بتصميم انيق وتفاصيل مميزه</p></div>
-<fieldset class="pick" id="lpColors"><legend>اللون: <span id="lpColorName">بني</span></legend><div class="row"><button type="button" class="chip" data-code="SS-1008" aria-pressed="true"><i style="background:#5A3B2C"></i>بني</button><button type="button" class="chip" data-code="SS-1009" aria-pressed="false"><i style="background:#1F1B1E"></i>أسود</button></div></fieldset>
+<div class="head"><p class="eyebrow">SELECT SHOP WOMEN · اختاري إطلالتك</p><div class="row"><h1>Leather jacket</h1><p class="price"><span id="lpPrice">١٬٢٠٠</span><small>جنيه</small></p></div><p class="desc">جاكيت جلد بتصميم انيق وتفاصيل مميزه</p></div>
+<fieldset class="pick" id="lpColors"><legend>اختاري اللون: <strong id="lpColorName">بني</strong> <span class="color-count">· 2 ألوان</span></legend><div class="row"><button type="button" class="chip" data-code="SS-1008" aria-pressed="true"><img src="data:image/webp;base64,UklGRtQCAABXRUJQVlA4IMgCAAAwDwCdASpAAFAAPuVgqE8pJSOpsZLpyTAciU1yqv1uwQqO57OAWcODvlALqCY7EvdE3ahiOcxIHYdCNM1H4ZsE5ezPklT3g8FVMiAE6XZ/Ep7wZzntnmzKyx8t/s3pVHseSFTVufwNN1hnOOxNzniQvmDrzUn84uX4SO3Hv0qy8F+AAP7vtuf0HTH9WDp2kqwPwspCy0oEDjwKBe9nw6/o0pOY2zXga9iYIUpRQeS5n2qarX39i43uufIhA41nWw9rTpZ98GuXGlvnjDiSeybsPks+FwsGtZ2jK1+aNjiV6nY0vpV+EnrGBi7c6rOuxrZIbtHhX6tX8XzFEdM+Dwk0ygOr8UXx7i15HlEZFfnZrFoWuKRr8aLm4E4Kdox+e9G+eZ9Y+s61q478CqF69Mm8fHfXBArOOtiwINFQ863C9KYHfJSLetT1Y6XW2vypTw5xeh4l23zitlKF/cRWJjdnigxsWddVY2HOoj0H5GYWCN1wYBgkXy2aooAgeJo7OZfFGhEowKiiO2ady+tevj7zNAVhzttgQpISH6rL8PuazzNxXQpu60LuBKRqXPTyLVzX7ECTTNc0eMLwKsxLRqjXYy4DCcUOjFKE3haZP844Af1BaSsVTmk22WcFN9sCOqOo5ZaIEPB69qq/P+9N3OeAohiQCXwSwXj3uiToghTvJliteeBtYlH0gvI30FsxygKRZ455/w1RnN8Opgbw4NrXUeXS/OY24TjwO/CNzWyI23ovL82gA8EwjakUAA+NE9x3wXSm6xmwMBhQpufeaKatl2SuSnQ7M/o8htQkQEsKx62HoN3vFaPaIuAREXcH6g3DXPKsGNEnabFKs/df+sC2l9LUzqjP8E2SPmxwLt3ksHf7VMXBBPJJdcm7t3L3GHTeKATiWpDSYxGQbrMgDhxK6eCylpFGQxMfcnOwqMjnOTMMJPkIBgAA" alt="" width="64" height="80" loading="lazy" decoding="async"><span class="chip-name"><i style="background:#5A3B2C"></i>بني</span></button><button type="button" class="chip" data-code="SS-1009" aria-pressed="false"><img src="data:image/webp;base64,UklGRkoDAABXRUJQVlA4ID4DAABwEgCdASpAAFAAPuVkrE8pJaQprNQKqTAciWMAzD2A/IztDn1tVmjhJbRqvGMTgKlxTSESlCxMpeyjS9dInrrxGTvN5loYNyKe09WxVWaabpi9rhHSXf/u1fIobrDbTadd6s3jY877ZN83rlNSlxKZy9Vol24wRcYVgl4hPaml6rRVqjFOQn3UGs1sUACk1TkRHs22C7lqotewv2gA/vKYHXrgEnpS3PAViEsvYBOUrH2F7RnMiNOeYDjAUEp8Mc+ODD5ynGBKUKcAmD4fru6w+KKevccmRMoqkgghLwSdvn7W67Q3JnAJikMMaoJhfWw8hGKdCDRqc900DfLa0huDchEL14V4ISZFpiXFv5A9fFu18VF+GQmu9y7zWG2uT5k3wVY2HUmGO7ajouB1yY5Un6EG3bbA2JnaGm/5AJNCobMF9SkecVcKU6ZQVE2rxXefYIV7NMckL5VYm2UTBlqmMTsHg8RoM8W3ECUWyeeMhS9gCbG6AnaBuf1ZIcLVr50rmAaq2FQ7Vowj+KXLYh9reg+gRzd49MCG2P53x+5ZmJ5QxG3TQfoLyNezFsmvVRyF/ARQhGS1I7izTTC+CuhEk/CZ2sR0KKpULZWcpjn8ZymmDRGnaYidvuyuzyAydr1Lud0JqJeG+CkXkbKjlFXkz1MappQJrliPxAeyvsGIF8SMzVSHos6a7kMDFMI9Ynna4fE6gTtEF/MVAV+oMiTTNRhphCo/NKRPwqv9mU2qUslwGz7WndT8pQTLNW+9DDZcMuqdY+0El/FIQnngdcpbIOxBsAD3BUXrVeXfBBYXU2yDWXz8BWSyun47chfTWQ3YMBY+0NSraRgBDHfHwm9SnRjLDvfdz2oKXsiIgaZXBKkyceBMfD8LJO8vDdoBK1Yrmu76r+jrecN6lGXbSrp6a8J93V/wSjs0wq9fANqOs4tJ5ZNYSFnrUEYx46OWQb6a4jO2nj9kHFKEZba6fUvLg1afjFurvoIXJRrH1PCQ504buux7/gr293wK2k+zWBcY4yuQ3zNj1WPARgmAg6lfpqfLCFp2wOFgtHAmBtrPgMH/WU9DzjK52rlq3nhGUn8QRRntqzcz9ZhipAAAAA==" alt="" width="64" height="80" loading="lazy" decoding="async"><span class="chip-name"><i style="background:#1F1B1E"></i>أسود</span></button></div><p class="color-help">اضغطي على صورة اللون علشان تشوفي الموديل بيه</p></fieldset>
 <div id="lpOptions"><div class="lp-opt"><span class="one">مقاس واحد</span></div></div>
 <p id="lpStatus" role="status" aria-live="polite"></p>
+<p class="headline-note">السعر والتوفر بيتأكدوا من المتجر قبل إضافة القطعة، والشحن بيتحسب قبل تأكيد الطلب.</p>
 <div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">١٬٢٠٠ ج</b><span id="lpBarChoice">بني · مقاس واحد</span></span><button type="button" id="lpOrder" disabled>اطلبي دلوقتي</button></div></div>
 <ul class="notes"><li>الدفع عند الاستلام، والمعاينة متاحة عند الاستلام</li><li>الشحن لكل المحافظات، ومصاريفه بتظهر قبل ما تأكدي الطلب</li><li>هتكملي بياناتك في صفحة واحدة</li></ul>
 <div class="desc"><p style="margin:0">اللون:بني</p><p style="margin:0">ONE SIZE</p></div>

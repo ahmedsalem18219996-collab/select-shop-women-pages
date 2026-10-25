@@ -143,8 +143,37 @@ window.SelectStore = (() => {
             url: SECURE_CHECKOUT_ORIGIN + "/p/?code=" + encodeURIComponent(item.publicCode),
             purchasable: item.purchasable === true,
           }));
-        const categories = ["الكل", ...(products.some(p => p.isNew) ? ["الجديد"] : []), ...visibleCategories];
-        return { ...empty(), categories, products };
+        // Presentation-only model grouping until WOMEN admin supports persisted
+        // model/color relations. Each colour remains its existing live product
+        // with its own SKU, stock, price and checkout validation.
+        // Only group when at least two child products are publicly available.
+        const modelGroups = [
+          { id: "leather-jacket", title: "Leather jacket", url: "/lp/ss-1008/",
+            codes: ["SS-1008", "SS-1009"], sw: ["#5A3B2C", "#1F1B1E"] },
+          { id: "ballon-suit", title: "Ballon suit", url: "/lp/ballon-suit/",
+            codes: ["SS-1037", "SS-1035", "SS-1036", "SS-1038", "SS-1039", "SS-1040"],
+            sw: ["#6B2737", "#6E4B3A", "#7E8186", "#1F1B1E", "#B0262F", "#B8B4B0"] },
+        ];
+        const byCode = new Map(products.map(p => [p.id, p]));
+        const groupOf = new Map(modelGroups.flatMap(g => g.codes.map(code => [code, g])));
+        const seenGroups = new Set();
+        const shownProducts = products.flatMap(p => {
+          const g = groupOf.get(p.id);
+          if (!g) return [p];
+          if (seenGroups.has(g.id)) return [];
+          const members = g.codes.map(code => byCode.get(code)).filter(Boolean);
+          if (members.length < 2) return [p];
+          seenGroups.add(g.id);
+          const lead = members[0];
+          const minPrice = Math.min(...members.map(m => m.price));
+          return [{ ...lead, name: g.title, url: SECURE_CHECKOUT_ORIGIN + g.url,
+            sw: g.codes.flatMap((code, i) => byCode.has(code) ? [g.sw[i]] : []),
+            price: minPrice, priceFrom: members.some(m => m.price !== minPrice),
+            badge: members.length + " ألوان", isNew: members.some(m => m.isNew),
+            purchasable: members.some(m => m.purchasable) }];
+        });
+        const categories = ["الكل", ...(shownProducts.some(p => p.isNew) ? ["الجديد"] : []), ...visibleCategories];
+        return { ...empty(), categories, products: shownProducts };
       } catch (error) {
         // Never fall back to fabricated demo products on a public storefront.
         window.SELECT_CONFIG.loadError = true;

@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
 
 // One model page, several colours: each colour is its own real product (SS-1035…SS-1040). No product data is merged.
@@ -10,11 +11,22 @@ test.beforeEach(async ({ page }) => {
   page.on("request", r => { const u = new URL(r.url()); if (u.hostname !== "127.0.0.1") page.external.push(r.method() + " " + u.host + u.pathname); });
 });
 
-test("default colour is in the HTML; choosing a colour swaps photo, name and verified product", async ({ page, request }) => {
+test("default colour is in the HTML; choosing a colour swaps photo, name and verified product", async ({ page, request }, info) => {
   const viewsBefore = (await mockLog(request)).views;
   await page.goto(MODEL);
   await expect(page.locator("h1")).toHaveText("Ballon suit");
   await expect(page.locator("#lpColorName")).toHaveText("نبيتي");
+  // Owner requested photo-based selection for every physical colour.
+  await expect(page.locator("#lpColors .chip img")).toHaveCount(6);
+  await expect(page.locator('#lpColors [data-code="SS-1038"] img')).toHaveAttribute("src", /^data:image\/webp;base64,/);
+  await expect(page.locator('#lpColors [data-code="SS-1035"] img')).toHaveAttribute("src", /^data:image\/webp;base64,/);
+  await expect(page.locator("#lpColors .chip")).toHaveCount(6);
+  // Never put colour choices before the product identity and price on mobile.
+  const positions = await page.evaluate(() => ({
+    head: document.querySelector(".head").getBoundingClientRect().bottom,
+    colors: document.querySelector("#lpColors").getBoundingClientRect().top
+  }));
+  expect(positions.head).toBeLessThanOrEqual(positions.colors + 1);
   expect(await heroSrc(page)).toMatch(/img\/SS-1037\/0-\d+\.(avif|webp)$/);
   await expect(page.locator("#lpOrder")).toBeEnabled();
   await page.getByRole("button", { name: "أسود" }).click();
@@ -26,6 +38,8 @@ test("default colour is in the HTML; choosing a colour swaps photo, name and ver
   await expect(page.locator("#lpOrder")).toBeEnabled();
   await expect.poll(async () => (await mockLog(request)).views - viewsBefore).toBe(2); // one anonymous view per colour seen
   expect(page.external).toEqual([]);
+  await mkdir("preview-output", { recursive: true });
+  await page.screenshot({ path: `preview-output/${info.project.name}-model-colors.png`, fullPage: true, animations: "disabled" });
 });
 
 test("the cart and the order carry the chosen colour's own product code", async ({ page, request }) => {

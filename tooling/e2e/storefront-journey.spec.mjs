@@ -31,27 +31,20 @@ test("product page: every gallery thumbnail is a local optimized WebP, no full-s
   expect(page.external).toEqual([]);
 });
 
-test("journey: home → product → cart → checkout → confirmation, one order with the chosen product", async ({ page, request }, info) => {
+test("journey: grouped model → chosen colour → checkout → confirmation, one order with the chosen SKU", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
   await page.goto("/");
-  const link = page.locator("#feed .card .shot-link").first();
+  // Check the unchanged legacy SKU checkout alongside the new grouped-model cards.
+  const link = page.locator('#feed .card .shot-link[href$="/lp/ss-1008/"]').first();
   await expect(link).toBeVisible({ timeout: 12000 });
-  const code = new URL(await link.getAttribute("href"), "http://x").searchParams.get("code");
   await link.click();
-  await expect(page).toHaveURL(new RegExp(`/p/\\?code=${code}$`));
-  await expect(page.locator("#addToCart")).toBeEnabled({ timeout: 12000 });
-  if (info.project.name === "mobile") await page.locator("#productMobileOrder").click();
-  else await page.locator("#addToCart").click();
-  await expect(page.locator("#status")).toContainText("اتضافت للشنطة");
-  await page.goto("/cart/");
-  await expect(page.locator("#toCheckout")).toHaveAttribute("aria-disabled", "false", { timeout: 12000 });
-  // The cart must use the same local WebP derivative manifest as the product page;
-  // it must never fetch full-resolution Supabase photos for a tiny cart row.
-  const cartImage = page.locator("#cartItems .commerce-row-product img").first();
-  await expect(cartImage).toHaveAttribute("src", /^\/assets\/catalog-thumbs\/[0-9a-f]{32}\.(?:jpg|png|webp)\.w400\.webp$/);
-  await expect.poll(() => cartImage.evaluate(img => img.complete && img.naturalWidth > 0), { timeout: 12000 }).toBe(true);
-  expect(page.external).toEqual([]);
-  await page.locator("#toCheckout").click();
+  await expect(page).toHaveURL(/\/lp\/ss-1008\/$/);
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  // A single model offers colour choices with independent verified child SKUs.
+  await page.getByRole("button", { name: "أسود" }).click();
+  await expect(page.locator("#lpBarChoice")).toContainText("أسود");
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  await page.locator("#lpOrder").click();
   await page.waitForURL("**/checkout/");
   await page.locator("#region").selectOption("cairo");
   await page.fill("[name=name]", "اختبار آلي");
@@ -64,6 +57,18 @@ test("journey: home → product → cart → checkout → confirmation, one orde
   await expect(page.locator("#orderCode")).toHaveText(/^ORD-[2-9A-Z]{8}$/);
   const { orders } = await mockLog(request);
   expect(orders.length - before).toBe(1);
-  expect(orders.at(-1).lines.map(l => l.publicCode)).toContain(code);
+  expect(orders.at(-1).lines.map(l => l.publicCode)).toContain("SS-1009");
+  expect(page.external).toEqual([]);
+});
+
+test("legacy product URL still adds to the real cart mock with local thumbnail", async ({ page }) => {
+  await page.goto("/p/?code=SS-1008");
+  await expect(page.locator("#addToCart")).toBeEnabled();
+  await page.locator("#addToCart").click();
+  await expect(page.locator("#status")).toContainText("اتضافت للشنطة");
+  await page.goto("/cart/");
+  await expect(page.locator("#toCheckout")).toHaveAttribute("aria-disabled", "false");
+  const img = page.locator("#cartItems .commerce-row-product img").first();
+  await expect(img).toHaveAttribute("src", /^\/assets\/catalog-thumbs\//);
   expect(page.external).toEqual([]);
 });

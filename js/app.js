@@ -390,7 +390,7 @@
         </div>
         <h3><a href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}">${esc(p.name)}</a></h3>
         <div class="card-row">
-          <span class="pr ${p.was ? 'off' : ''}">${fmt(p.price)} ${CUR}${p.was ? `<s>${fmt(p.was)}</s>` : ''}</span>
+          <span class="pr ${p.was ? 'off' : ''}">${p.priceFrom ? "من " : ""}${fmt(p.price)} ${CUR}${p.was ? `<s>${fmt(p.was)}</s>` : ''}</span>
           <span class="swatches">${(p.sw || []).map(s => `<i style="--s:${cssColor(s)}"></i>`).join('')}</span>
         </div>
       </article>`).join('') : `<p class="empty">مفيش قطع في القسم ده دلوقتي. اسحبي الشريط لقسم تاني.</p>`;
