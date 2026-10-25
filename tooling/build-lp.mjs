@@ -69,7 +69,7 @@ export function render(page, products, fontFaces = "") {
     `<button type="button" class="chip" data-code="${esc(c.code)}" aria-pressed="${i === 0}"><img src="${esc(c.swatch || `img/${c.code}/0-480.webp`)}" alt="" width="64" height="80" loading="lazy" decoding="async"><span class="chip-name"><i style="background:${esc(c.hex)}"></i>${esc(c.name)}</span></button>`).join("")}</div><p class="color-help">اضغطي على صورة اللون علشان تشوفي الموديل بيه</p></fieldset>` : "";
   const gallery = first.gallery.map(src => `<img src="${src}" alt="${esc(first.alt)}" width="320" height="400" loading="lazy" decoding="async">`).join("");
   const video = page.video ? `<button type="button" class="video" data-lp-video="${esc(page.video.src)}">▶ شغّلي الفيديو</button>` : "";
-  const data = JSON.stringify({ id: page.id, code: first.code, colors: colors.map(({ swatch, ...c }) => c) }).replace(/</g, "\\u003c");
+  const data = JSON.stringify({ id: page.id, code: first.code, colors: colors.map(c => ({ code: c.code, name: c.name, hex: c.hex, alt: c.alt, hero: c.hero, gallery: c.gallery })) }).replace(/</g, "\\u003c");
   const choice = (first.name ? first.name + " · " : "") + (oneSize ? "مقاس واحد" : "اختاري المقاس");
   return `<!doctype html>
 <html lang="ar" dir="rtl">
