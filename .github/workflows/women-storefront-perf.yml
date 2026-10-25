@@ -4,6 +4,8 @@ on:
     branches:
       - 'feature/lp-premium-storefront-*'
     paths:
+      - 'index.html'
+      - 'js/app.js'
       - '.github/workflows/women-storefront-perf.yml'
       - 'tooling/lighthouserc.storefront.json'
   workflow_dispatch:
