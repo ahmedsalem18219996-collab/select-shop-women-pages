@@ -17,11 +17,6 @@
 <header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="/cart/">تعديل الشنطة</a></header>
 <main class="wrap">
 <h1>إتمام الطلب</h1>
-<section class="card" aria-label="ملخص الطلب">
-  <div id="checkoutItems"></div>
-  <div class="row" style="margin-top:6px"><span>المنتجات</span><b id="subtotal">—</b></div>
-</section>
-
 <form id="orderForm" novalidate>
   <label>المحافظة<select name="region" id="region" required autocomplete="address-level1"><option value="">اختاري المحافظة</option></select></label>
   <label>الاسم بالكامل<input name="name" maxlength="100" autocomplete="name" enterkeyhint="next" required></label>
@@ -32,8 +27,12 @@
   </div>
   <details><summary>إضافة ملاحظة للمندوب (اختياري)</summary><label>ملاحظات<textarea name="notes" maxlength="500"></textarea></label></details>
 
-  <div class="totals">
+  <section class="card" aria-label="ملخص الطلب">
+    <div id="checkoutItems"></div>
+    <div class="row" style="margin-top:6px"><span>المنتجات</span><b id="subtotal">—</b></div>
     <div class="row"><span>الشحن</span><b id="shipping">—</b></div>
+  </section>
+  <div class="totals">
     <p class="note">الدفع كاش عند الاستلام، والمعاينة متاحة عند الاستلام. الإجمالي بيتحسب من السيرفر قبل التأكيد.</p>
   </div>
   <p id="status" role="status"></p>

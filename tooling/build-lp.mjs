@@ -97,11 +97,12 @@ a{color:var(--ink)}
 .mark{display:inline-flex;flex-direction:column;gap:3px;text-decoration:none;font-weight:600;font-size:16px;letter-spacing:.36em}
 .mark::after{content:"";width:26px;height:1px;background:var(--gold)}
 .top>a:last-child{font-size:14px;padding:12px 0}
-.page{max-width:1200px;margin:0 auto;padding:0 0 calc(96px + env(safe-area-inset-bottom,0px))}
-.media{min-width:0}
+.page{max-width:1200px;margin:0 auto;padding:0 0 calc(96px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column}
+/* Mobile: photo, then title/price/colours, then the extra photos; desktop keeps them under the photo. */
+.media{display:contents}
 .hero{display:block;aspect-ratio:4/5;background:var(--surface)}
 .hero img{width:100%;height:100%;object-fit:cover;display:block}
-.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px 20px 0}
+.gallery{order:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:20px 20px 0}
 .gallery:empty{display:none}
 .gallery img{width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:10px;background:var(--surface)}
 .info{padding:18px 20px 0;display:flex;flex-direction:column;gap:18px;min-width:0}
@@ -142,6 +143,7 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 html[data-v="b"] .pick,html[data-v="b"] #lpOptions{order:-1}
 @media (min-width:900px){
 .page{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:48px;padding:8px 20px 56px;align-items:start}
+.media{display:block;min-width:0}
 .hero{border-radius:16px;overflow:hidden}.gallery{padding:12px 0 0}.info{padding:8px 0 0}
 h1{font-size:34px}.price{font-size:26px}
 .bar{position:static;padding:0;background:none;border:0}.bar>div{max-width:none}.bar .sum{display:none}#lpOrder{height:56px}
