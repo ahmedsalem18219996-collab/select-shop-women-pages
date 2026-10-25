@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkSourceImage, imageDimensions, IMAGE_PRESETS, MAX_UPLOAD_BYTES, MAX_SOURCE_BYTES, optimizeUploadImage, optimizationSummary } from '../admin/js/image-optimize.mjs';
+import { checkSourceImage, imageDimensions, IMAGE_PRESETS, MAX_UPLOAD_BYTES, MAX_SOURCE_BYTES, optimizeUploadImage, optimizationSummary } from '../admin/js/image-optimize.js';
 const sample = (size, type = 'image/jpeg', name = 'photo.jpg') => ({ size, type, name, lastModified: 1 });
 test('preserves quality with per-use budgets', () => {
   assert.equal(IMAGE_PRESETS.product.quality, 0.86);
