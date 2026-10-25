@@ -59,6 +59,10 @@ test("multi-size product: a size must be chosen and sold-out sizes are disabled"
     options: [{ name: "المقاس", values: [{ position: 0, value: "S" }, { position: 1, value: "M" }, { position: 2, value: "L" }] }],
     variants: [0, 1, 2].map(p => ({ selection: [{ optionPosition: 0, valuePosition: p }], purchasable: p !== 2, unitPrice: { currency: "EGP", amountMinor: 120000 } })),
   } } }));
+  // The mock backend validates /cart/add against the real one-size fixture, so this test's multi-size
+  // product needs a matching cart check; we record what the page sent instead.
+  const added = [];
+  await page.route("**/__mock/functions/v1/women-checkout/cart/add", route => { added.push(route.request().postDataJSON()); route.fulfill({ json: { ok: true } }); });
   await page.goto(LP);
   await expect(page.getByRole("radio", { name: "L" })).toBeDisabled();
   await page.locator("#lpOrder").click();
@@ -77,6 +81,7 @@ test("multi-size product: a size must be chosen and sold-out sizes are disabled"
   expect(worst).toBeLessThan(200);
   await page.locator("#lpOrder").click();
   await page.waitForURL("**/checkout/");
+  expect(added.at(-1).selection).toEqual([{ optionPosition: 0, valuePosition: 1 }]);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("women.cart.v1")).at(-1).selection)).toEqual([{ optionPosition: 0, valuePosition: 1 }]);
 });
 

@@ -55,7 +55,6 @@ export function render(page, product, fontFaces = "") {
 <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 <link rel="preload" as="image" type="image/avif" imagesrcset="${set(0, "avif")}" imagesizes="${sizes}" fetchpriority="high">
 <link rel="preconnect" href="https://byluoipdunralsurwebt.supabase.co" crossorigin>
-<link rel="preload" href="/assets/fonts/readex-pro-arabic.woff2" as="font" type="font/woff2" crossorigin>
 <script id="lp-ab">${AB_SNIPPET}</script>
 <style>
 ${fontFaces}
@@ -66,7 +65,7 @@ body{margin:0;background:var(--mirror);color:var(--ink);font-family:var(--f-body
 .wrap{max-width:560px;margin-inline:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom,0px))}
 header{padding:calc(12px + env(safe-area-inset-top,0px)) 0 10px;display:flex;justify-content:space-between;align-items:center;min-height:52px}
 .logo{font-family:var(--f-display);font-size:26px;line-height:1;color:var(--ink);text-decoration:none}
-.logo small{font:500 10px var(--f-num);letter-spacing:.14em;text-transform:uppercase;margin-inline-start:6px;color:var(--dust)}
+.logo small{font:500 10px var(--f-body);letter-spacing:.14em;text-transform:uppercase;margin-inline-start:6px;color:var(--dust)}
 .all{font-size:14px;color:var(--ink);text-decoration:underline;text-underline-offset:3px;padding:10px 0}
 main{display:flex;flex-direction:column}
 .hero{position:relative;aspect-ratio:4/5;border-radius:22px;overflow:hidden;background:#dfe2ea}
@@ -75,7 +74,7 @@ main{display:flex;flex-direction:column}
 .gallery{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;margin-top:8px;padding-bottom:4px}
 .gallery img{flex:none;width:30%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:12px;scroll-snap-align:start;background:#dfe2ea}
 h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,8vw,38px);line-height:1.15;margin:16px 0 4px;overflow-wrap:anywhere}
-.price{font:500 26px var(--f-num);margin:0}
+.price{font:600 26px var(--f-body);font-variant-numeric:tabular-nums;margin:0}
 .price small{font:400 14px var(--f-body);color:var(--dust);margin-inline-start:4px}
 .desc{margin:10px 0 0;color:var(--ink)}
 .desc p{margin:0}
@@ -98,7 +97,7 @@ li b{display:grid;place-items:center;flex:none;width:26px;height:26px;border-rad
 .lp-video{margin-top:16px;width:100%;border-radius:18px}
 .bar{position:fixed;inset-inline:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:rgba(236,238,242,.96);border-top:1px solid var(--hair)}
 .bar>div{max-width:560px;margin-inline:auto;display:flex;gap:10px;align-items:center}
-.bar .p{font:500 18px var(--f-num);white-space:nowrap}
+.bar .p{font:600 18px var(--f-body);font-variant-numeric:tabular-nums;white-space:nowrap}
 #lpOrder{flex:1;height:54px;border:0;border-radius:999px;background:var(--ink);color:#fff;font:600 17px var(--f-body);cursor:pointer}
 #lpOrder:disabled{background:#8B8FA0;cursor:default}
 /* Variant B: price + size choice sit right under the photo, details follow. */
