@@ -54,6 +54,22 @@ async function mockApi(req, url, body) {
     log.cartAdds.push(body);
     return v?.purchasable ? [200, { ok: true }] : [409, { error: "unavailable" }];
   }
+  if (c === "/cart/resolve" && req.method === "POST") {
+    // Cart page contract (js/commerce.js showCart/cartRow): per-line address, title, prices, status, image.
+    let subtotal = 0, ready = true; const out = [];
+    for (const l of (body?.lines || []).slice(0, 50)) {
+      const p = (await product(l.publicCode))?.product, v = variantOf(p, l);
+      const ok = !!(p && v?.purchasable && l.structureVersion === p.structureVersion);
+      ready &&= ok;
+      const unit = ok ? v.unitPrice.amountMinor : 0;
+      subtotal += unit * l.quantity;
+      const photo = p?.media?.find(m => m.isPrimary) || p?.media?.[0];
+      out.push({ address: { publicCode: l.publicCode, structureVersion: l.structureVersion, selection: l.selection }, title: p?.title || l.publicCode,
+        quantity: l.quantity, unitPrice: money(unit), lineTotal: money(unit * l.quantity), status: ok ? "ok" : "unavailable",
+        options: [], ...(photo ? { image: { url: photo.url, altText: p.title } } : {}) });
+    }
+    return [200, { lines: out, subtotal: money(subtotal), checkoutReady: ready && out.length > 0 }];
+  }
   if (c === "/checkout/quote" && req.method === "POST") {
     const q = await quote(body?.lines || []);
     return q ? [200, q] : [409, { error: "checkout_not_purchasable" }];
