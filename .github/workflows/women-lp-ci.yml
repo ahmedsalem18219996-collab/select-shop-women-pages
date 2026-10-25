@@ -88,6 +88,7 @@ jobs:
           path: |
             tooling/playwright-report
             tooling/test-results
+          include-hidden-files: true
           retention-days: 5
 
   lighthouse:
@@ -104,7 +105,10 @@ jobs:
         run: npx lhci autorun --config=lighthouserc.json
       - name: Summary
         if: always()
-        run: node lh-summary.mjs .lighthouseci/reports >> "$GITHUB_STEP_SUMMARY" || true
+        run: |
+          node lh-summary.mjs .lighthouseci/reports > lh.md || true
+          cat lh.md >> "$GITHUB_STEP_SUMMARY"
+          grep '^| /' lh.md | sed 's/^/::notice title=Lighthouse median::/' || true
       - name: Old vs new comparison (manual only)
         if: github.event_name == 'workflow_dispatch' && inputs.compare
         run: |
@@ -115,4 +119,5 @@ jobs:
         with:
           name: lighthouse-reports
           path: tooling/.lighthouseci
+          include-hidden-files: true
           retention-days: 7
