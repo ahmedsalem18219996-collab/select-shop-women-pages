@@ -36,6 +36,16 @@ async function recordAnonymousProductView(code) {
 const CART_KEY = "women.cart.v1";
 const ORDER_KEY = "women.order.idempotency.v1";
 const GA_PURCHASE_KEY = "women.ga4.purchase.pending.v1";
+// Set by lp/runtime.js after a confirmed landing-page cart add; tags the GA4 purchase with the same "<page>:<a|b>" value.
+const LP_ATTRIBUTION_KEY = "women.lp.attribution.v1";
+function lpAttribution(lines) {
+  try {
+    const a = JSON.parse(sessionStorage.getItem(LP_ATTRIBUTION_KEY) || "null");
+    if (a && /^[a-z0-9-]{3,40}$/.test(a.id) && (a.variant === a.id + ":a" || a.variant === a.id + ":b")
+      && lines.some(l => l.publicCode === a.code)) return { lp_id: a.id, lp_variant: a.variant };
+  } catch { /* attribution is optional */ }
+  return {};
+}
 function gaEvent(name, fields) {
   // Analytics is optional: blockers must never affect checkout.
   try { if (typeof window.gtag === "function") window.gtag("event", name, fields); }
@@ -109,13 +119,25 @@ async function api(path, method="GET", body=null, timeoutMs=15000) {
   }
   return data;
 }
+let leavingPage=false;
+addEventListener("pagehide",()=>{leavingPage=true;});
+addEventListener("pageshow",()=>{leavingPage=false;});
 function picture(src,alt,klass) {
   const img=make("img",undefined,klass);
   img.alt=alt||"";
   img.loading="lazy";
   img.decoding="async";
   img.fetchPriority="low";
-  if (typeof src === "string" && PHOTO.test(src)) img.src=displayPhotoUrl(src,true);
+  if (typeof src === "string" && PHOTO.test(src)) {
+    // Some catalog derivatives can be absent during image-sync. Fall back
+    // once to the approved public original rather than showing an empty box.
+    const preview = displayPhotoUrl(src,true);
+    img.src = preview;
+    // A navigation away cancels in-flight images and fires "error"; never start a full-size download then.
+    if (preview !== src) img.addEventListener("error", () => {
+      if (!leavingPage && img.src !== src) img.src = src;
+    });
+  }
   return img;
 }
 const addressKey = x => x.publicCode + "@" + x.structureVersion + ":" +
@@ -161,6 +183,8 @@ async function getProductWithRetry(code) {
   }
 }
 async function showProduct() {
+  const mobileBar=$("#productMobileBuyBar");
+  if (mobileBar) mobileBar.hidden=true; // never show a stale price during retry
   const code=new URLSearchParams(location.search).get("code");
   if (!validCode(code)){status("رابط المنتج مش صحيح.",true);$("#productTitle").textContent="المنتج غير موجود";$("#product").setAttribute("aria-busy","false");return;}
   try {
@@ -220,6 +244,11 @@ async function showProduct() {
       });
     }
     const fields=[],holder=$("#optionFields");
+    // One-size products have no option selection; don't ask for a size that doesn't exist.
+    const sizeHeading=document.querySelector(".commerce-size-heading > b");
+    const sizeHelp=document.querySelector(".commerce-size-heading > span");
+    if(sizeHeading) sizeHeading.textContent=p.options.length ? "اختاري المقاس" : "مقاس واحد";
+    if(sizeHelp) sizeHelp.textContent=p.options.length ? "القطع المتاحة فقط" : "جاهز للطلب";
     p.options.forEach((o,i)=>{
       const label=make("label",undefined,"commerce-field");label.append(make("span",o.name||"المقاس"));
       const s=make("select");s.setAttribute("aria-label",o.name||"المقاس");
@@ -227,19 +256,28 @@ async function showProduct() {
       label.append(s);holder.append(label);fields.push(s);
     });
     const btn=$("#addToCart");
+    const mobileButton=$("#productMobileOrder");
+    const mobilePrice=$("#productMobilePrice");
     const refresh=(resetMessage=true)=>{
       const selected=selectedVariant(p,fields);
-      $("#productPrice").textContent=money(selected?.unitPrice);
+      const verifiedPrice=money(selected?.unitPrice);
+      $("#productPrice").textContent=verifiedPrice;
+      if(mobilePrice) mobilePrice.textContent=verifiedPrice;
       btn.disabled=!selected?.purchasable;
-      if(!selected?.purchasable) status("المقاس ده مش متاح حاليًا.",true);
+      if(mobileButton) mobileButton.disabled=btn.disabled;
+      if(!selected?.purchasable) status(p.options.length ? "المقاس ده مش متاح حاليًا." : "المنتج مش متاح حاليًا.",true);
       else if(resetMessage) status("");
     };
     fields.forEach(f=>f.addEventListener("change",refresh));refresh();
+    if(mobileBar) mobileBar.hidden=false;
+    // Delegate to the existing /cart/add handler, never create a parallel order flow.
+    mobileButton?.addEventListener("click",()=>{if(!btn.disabled) btn.click();});
     btn.addEventListener("click",async()=>{
       const v=selectedVariant(p,fields),quantity=Number($("#quantity").value);
       if(!v||!v.purchasable||!Number.isInteger(quantity)||quantity<1||quantity>99){status("اختاري المقاس والكمية الصح.",true);return;}
       const line={publicCode:p.publicCode,structureVersion:p.structureVersion,selection:v.selection,quantity};
-      btn.disabled=true;status("بنضيف القطعة للشنطة…");
+      btn.disabled=true;if(mobileButton) mobileButton.disabled=true;
+      status("بنضيف القطعة للشنطة…");
       try {
         await api("/cart/add","POST",line);
         const lines=cart(),pos=lines.findIndex(x=>addressKey(x)===addressKey(line));
@@ -428,9 +466,11 @@ async function showCheckout(){
           currency:"EGP",
           value:priceNumber(quote.merchandiseSubtotal)/100,
           shipping:priceNumber(quote.shippingTotal)/100,
-          items:lines.map(l=>({item_id:l.publicCode,quantity:l.quantity}))
+          items:lines.map(l=>({item_id:l.publicCode,quantity:l.quantity})),
+          ...lpAttribution(lines)
         }));
       } catch { /* Tracking is best-effort only. */ }
+      try { sessionStorage.removeItem(LP_ATTRIBUTION_KEY); } catch { /* one landing page credit per confirmed order */ }
       sessionStorage.removeItem(ORDER_KEY);
       saveCart([]);
       location.href="/order-success/?order="+encodeURIComponent(reply.publicOrderCode);

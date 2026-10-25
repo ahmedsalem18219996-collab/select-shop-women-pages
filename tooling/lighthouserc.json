@@ -1,0 +1,45 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "node serve.mjs",
+      "startServerReadyPattern": "QA server",
+      "url": [
+        "http://127.0.0.1:4173/lp/ss-1008/?lpv=a",
+        "http://127.0.0.1:4173/lp/ss-1008/?lpv=b",
+        "http://127.0.0.1:4173/lp/ballon-suit/?lpv=a",
+        "http://127.0.0.1:4173/checkout/"
+      ],
+      "numberOfRuns": 3,
+      "settings": { "onlyCategories": ["performance", "accessibility", "best-practices"], "chromeFlags": "--no-sandbox --headless=new" }
+    },
+    "assert": {
+      "assertMatrix": [
+        {
+          "matchingUrlPattern": ".*/lp/.*",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.95, "aggregationMethod": "median-run" }],
+            "largest-contentful-paint": ["error", { "maxNumericValue": 2500, "aggregationMethod": "median-run" }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1, "aggregationMethod": "median-run" }],
+            "total-blocking-time": ["error", { "maxNumericValue": 200, "aggregationMethod": "median-run" }],
+            "resource-summary:total:size": ["error", { "maxNumericValue": 256000 }],
+            "resource-summary:image:size": ["error", { "maxNumericValue": 153600 }],
+            "resource-summary:script:size": ["error", { "maxNumericValue": 30720 }],
+            "resource-summary:third-party:count": ["error", { "maxNumericValue": 0 }],
+            "redirects": ["error", { "minScore": 1 }],
+            "categories:accessibility": ["warn", { "minScore": 0.95 }]
+          }
+        },
+        {
+          "matchingUrlPattern": ".*/checkout/.*",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.9, "aggregationMethod": "median-run" }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1, "aggregationMethod": "median-run" }],
+            "total-blocking-time": ["error", { "maxNumericValue": 200, "aggregationMethod": "median-run" }],
+            "categories:accessibility": ["warn", { "minScore": 0.95 }]
+          }
+        }
+      ]
+    },
+    "upload": { "target": "filesystem", "outputDir": ".lighthouseci/reports" }
+  }
+}

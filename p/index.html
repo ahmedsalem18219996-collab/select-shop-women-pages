@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,follow">
-<meta name="theme-color" content="#ECEEF2">
+<meta name="theme-color" content="#F8F5F4">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://byluoipdunralsurwebt.supabase.co" crossorigin>
 <title>تفاصيل المنتج | SELECT SHOP WOMEN</title>
@@ -12,8 +12,122 @@
 <link rel="stylesheet" href="../css/fonts.css">
 <link rel="stylesheet" href="../css/styles.css">
 <link rel="stylesheet" href="../css/commerce.css?v=product-perf-20261022">
+<style id="women-premium-minimal">
+/* SELECT SHOP WOMEN — premium minimal v3. Small critical overlay: no extra stylesheet, font or JS request. */
+:root{
+  --mirror:#F8F5F4;--chalk:#fff;--ink:#2A2129;--tape:#F1EAEE;--pin:#7A5C71;
+  --dust:#665963;--hair:#E7DCE2;--f-display:"Readex Pro","Segoe UI",Tahoma,sans-serif;
+  --f-body:"Readex Pro","Segoe UI",Tahoma,sans-serif;
+  --f-num:"Readex Pro",ui-sans-serif,system-ui,sans-serif;
+}
+body{background:var(--mirror)}
+.hdr{background:#fff;border-bottom:1px solid var(--hair);backdrop-filter:none;-webkit-backdrop-filter:none}
+.logo b{font:600 27px/1.2 var(--f-body);letter-spacing:-.045em;color:var(--ink)}
+.logo b::after{content:"";display:inline-block;width:17px;height:2px;margin-inline:4px;background:#A8894E;vertical-align:middle}
+.logo small{font:500 10px/1.3 var(--f-body);letter-spacing:.06em;color:var(--dust)}
+.hdr-links a:hover{color:var(--pin)}
+.ibtn{min-width:44px;min-height:44px}
+.dot{background:var(--pin)}
+.hero{padding-block:26px 12px}
+.hero h1{font:600 clamp(32px,7vw,61px)/1.34 var(--f-body);letter-spacing:-.025em}
+.hl{padding-inline:.08em;color:var(--pin)}
+.hl::before{height:.13em;bottom:0;background:#A8894E;opacity:.9;animation:none;transform:none}
+.hero p{font-weight:400;color:var(--dust);line-height:1.9;font-size:14px;max-width:58ch}
+.stories{gap:11px}.story .ring{background:#E7DCE2;padding:2px}
+.story .ring span{border-color:#fff}.story.seen .ring{background:#DDD2DA}
+.looks{gap:18px;padding-block:14px}
+.look{position:relative;top:auto;will-change:auto;box-shadow:0 6px 24px rgba(42,33,41,.055);border:1px solid var(--hair);border-radius:19px;transform:none}
+.look-tag{background:var(--pin);color:#fff;font:600 11px/1.5 var(--f-body)}
+.piece::before,.shot::before{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(42,33,41,.04))}
+.piece{border-radius:12px}.flat{gap:4px;padding:4px}
+.cta{background:var(--ink);color:white;font-weight:600;transition:background .15s ease}
+.cta:active{transform:none;background:var(--pin)}
+.cta:disabled{background:#BCB0BA}
+.shop{padding-top:34px}
+.shop-head h2{font:600 clamp(25px,6vw,38px)/1.4 var(--f-body)}
+.tape-dock{padding-block:10px;top:calc(var(--hdr) + env(safe-area-inset-top,0px));background:var(--mirror)}
+.tape-box{padding-inline:var(--gl) var(--gr)}
+.tape{border-radius:999px;box-shadow:none;background:#fff;border:1px solid var(--hair);scroll-snap-type:x proximity}
+.tape-in{height:51px;background:#fff}
+.tape-in::after,.cm,.needle,.fade-l,.fade-r{display:none}
+.seg{height:45px;width:auto;min-width:105px;padding:6px 16px;place-items:center;align-self:center;border-radius:999px;color:var(--dust);font-size:13px;font-weight:500;transform:none;transition:background .15s}
+.seg.on{background:var(--pin);color:#fff;transform:none;font-weight:600}
+.feed{gap:22px 13px}
+.card{animation:none;gap:8px;min-width:0}
+.shot{border-radius:15px;background:#F1EAEE}
+.card h3{font-size:13px;font-weight:500;color:var(--ink)}
+.card .pr{font-size:14px;font-weight:600}
+.badge{color:var(--pin)}
+.add{box-shadow:0 2px 12px rgba(42,33,41,.08)}
+.heart[aria-pressed="true"] svg{fill:var(--pin);stroke:var(--pin)}
+.promises{gap:12px;margin-top:36px}
+.promise{border:1px solid var(--hair);border-radius:14px;box-shadow:none}
+.promise .ic{background:var(--tape)}
+.tabbar{background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none}
+.tabbar .on::before{background:#A8894E}
+.size[aria-checked="true"]{background:var(--pin);color:#fff}
+.size.rec::after{background:var(--tape);color:var(--ink)}
+/* Product: preserve checkout/IDs/data flow; let the image and selection lead. */
+.commerce-tape{height:0;border:0;overflow:hidden}
+.commerce-tape-inner{display:none}
+.commerce-head{margin-bottom:18px}
+.commerce-kicker,.commerce-head-link{color:var(--pin)}
+.commerce-card{background:#fff;border:1px solid var(--hair);box-shadow:none;border-radius:17px}
+.commerce-card h1{font:600 clamp(25px,4vw,42px)/1.4 var(--f-body)}
+.commerce-price{font:600 clamp(23px,3vw,30px)/1.4 var(--f-num)}
+.commerce-photo-frame{border-radius:17px;background:var(--tape)}
+.commerce-photo-label{display:none}
+.commerce-quick-links a{border-color:var(--hair);background:#fff}
+.commerce .commerce-btn{background:var(--ink);border-color:var(--ink);color:white!important;border-radius:12px!important;min-height:52px;transition:background .15s ease}
+.commerce .commerce-btn:active{transform:none;background:var(--pin)}
+.commerce .commerce-btn--ghost{background:#fff;color:var(--ink)!important;border-color:var(--hair)}
+.commerce-thumbs button[aria-pressed="true"]{border-color:var(--pin)}
+.commerce-field select:focus,.commerce-field input:focus{outline:2px solid var(--pin)}
+.commerce-promises{border-color:var(--hair)}
+@media(min-width:700px){
+ .hero{padding-top:42px}
+ .looks{max-width:1050px;margin:auto}
+ .look{position:relative;top:auto}
+}
+@media(max-width:699px){
+ .hero{padding-block:22px 12px}
+ .hero h1{font-size:clamp(30px,8.5vw,42px)}
+ .commerce-head-link{display:none}
+ .commerce-card{padding:16px}
+ .commerce-actions{display:grid;grid-template-columns:1fr auto;gap:9px}
+ .commerce .commerce-btn{min-height:52px;padding-inline:18px}
+}
+
+/* Quick-buy appears above existing bottom navigation on small screens only.
+   All prices and disabled states are mirrored from the verified server selection. */
+.commerce-mobile-buybar{display:none}
+@media(max-width:760px){
+  .commerce-head{margin-bottom:10px}
+  .commerce-kicker{display:none}
+  .commerce-crumb{font-size:11px}
+  .commerce-photo-frame{border-radius:14px}
+  /* The bottom tab bar already links home and to the bag; the photo comes first. */
+  .commerce-quick-links{display:none}
+  .commerce{padding-bottom:calc(var(--tab) + env(safe-area-inset-bottom,0px) + 155px)}
+  .commerce-mobile-buybar:not([hidden]){
+    position:fixed;inset-inline:0;bottom:calc(var(--tab) + env(safe-area-inset-bottom,0px));
+    z-index:42;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;
+    align-items:center;padding:9px 15px;background:#fff;border-top:1px solid var(--hair);
+    box-shadow:0 -7px 28px rgba(42,33,41,.09);min-height:66px;
+  }
+  .commerce-mobile-buybar .commerce-mobile-price{min-width:0;font:600 19px/1.3 var(--f-num);color:var(--ink)}
+  .commerce-mobile-buybar .commerce-mobile-label{display:block;font:500 10px/1.5 var(--f-body);color:var(--dust)}
+  .commerce-mobile-buybar button{
+    min-height:48px;min-width:133px;border:0;border-radius:12px;padding:10px 17px;
+    background:var(--ink);color:white;font:600 14px/1.4 var(--f-body);
+    touch-action:manipulation;
+  }
+  .commerce-mobile-buybar button:disabled{background:#B9ABB7;color:#fff}
+  .commerce-mobile-buybar[hidden]{display:none}
+}
+</style>
 <script src="../js/analytics.js?v=meta-20261021-2" defer></script>
-<script src="../js/catalog-thumbs.js?v=gallery-webp-20261022" defer></script>
+<script src="../js/catalog-thumbs.js?v=gallery-webp-20261025" defer></script>
 <script type="module" src="../js/commerce.js?v=product-recovery-20261024-2"></script>
 </head>
 <body><div class="app">
@@ -60,7 +174,10 @@
   </div>
   <p class="commerce-lightbox-help">اسحبي الصورة يمين أو شمال للتنقل، واغلقيها للرجوع للتفاصيل.</p>
 </dialog>
-</main><nav class="tabbar commerce-nav" aria-label="التنقل">
+</main><div class="commerce-mobile-buybar" id="productMobileBuyBar" hidden>
+<div><span class="commerce-mobile-label">السعر الحالي</span><span class="commerce-mobile-price" id="productMobilePrice">—</span></div>
+<button type="button" id="productMobileOrder" disabled>أضيفي للشنطة</button></div>
+<nav class="tabbar commerce-nav" aria-label="التنقل">
   <div class="tabbar-in"><a href="/" ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>الرئيسية</a><a href="/?panel=saved" data-guest-panel-link="saved"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>المفضلة</a><a href="/cart/" ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>الشنطة<span class="dot" data-cart-count hidden>0</span></a><a href="/checkout/" ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="m9 12 2 2 4-4"/></svg>إتمام الطلب</a><a href="/?panel=account" data-guest-panel-link="account"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>حسابي</a></div>
 </nav>
 </div></body></html>
