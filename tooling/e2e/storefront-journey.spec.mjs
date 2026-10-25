@@ -34,7 +34,8 @@ test("product page: every gallery thumbnail is a local optimized WebP, no full-s
 test("journey: home → product → cart → checkout → confirmation, one order with the chosen product", async ({ page, request }, info) => {
   const before = (await mockLog(request)).orders.length;
   await page.goto("/");
-  const link = page.locator("#feed .card .shot-link").first();
+  // Check the unchanged legacy SKU checkout alongside the new grouped-model cards.
+  const link = page.locator('#feed .card .shot-link[href*="/p/?code=SS-"]').first();
   await expect(link).toBeVisible({ timeout: 12000 });
   const code = new URL(await link.getAttribute("href"), "http://x").searchParams.get("code");
   await link.click();
