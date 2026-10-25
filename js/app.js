@@ -54,7 +54,16 @@
       const colored = hero.querySelector('.hl');
       if (colored) colored.textContent = String(content.hero_highlight || 'بطريقتك.').slice(0, 70);
     }
-    if (lead) lead.textContent = String(content.hero_description || '').slice(0, 700);
+    if (lead) {
+      const description = String(content.hero_description || '').slice(0, 700);
+      // Old owner copy said "we are preparing products", even when the verified
+      // API returned purchasable items. Display a truthful storefront fallback
+      // without mutating owner settings or altering normal custom descriptions.
+      const staleComingSoon = /بنجهز|قيد التجهيز|بعد نشرها|عند نشرها|هتظهر هنا|ستظهر هنا|تظهر هنا بعد/.test(description);
+      lead.textContent = P.length > 0 && staleComingSoon
+        ? 'تصفحي الموديلات المتاحة بصورها وأسعارها الحقيقية، واختاري القطعة اللي تحبيها.'
+        : description;
+    }
     if (brand.storeName) {
       document.title = String(brand.storeName).slice(0, 100);
       const copyright = $('.foot > span');
