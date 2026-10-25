@@ -1,7 +1,8 @@
 // Build a static product landing page: node build-lp.mjs <page-id> [--refresh] [--images] [--check]
-//   --refresh  re-read the product from the PUBLIC catalog API (GET only) into fixtures/<CODE>.product.json
-//   --images   download the product photos and encode AVIF/WebP derivatives into lp/<id>/img/
-//   --check    render from the committed fixture and fail if lp/<id>/index.html is stale (used by CI, no network)
+//   --refresh  re-read every colour's product from the PUBLIC catalog API (GET only) into fixtures/<CODE>.product.json
+//   --images   download the product photos and encode AVIF/WebP derivatives into lp/<id>/img/<CODE>/
+//   --check    render from the committed fixtures and fail if lp/<id>/index.html is stale (used by CI, no network)
+// A page is one model: each colour is its own real product (public code), so no product data is merged.
 import { readFile, writeFile, mkdir, access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -11,8 +12,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
 const MEDIA = /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[0-9a-f]{32}\.(jpg|png|webp)$/;
 const HERO_WIDTHS = [480, 800];
-const GALLERY_WIDTH = 480;
-const MAX_GALLERY = 5;
+const GALLERY_WIDTH = 320;
+const MAX_GALLERY = 3;
+const HEX = /^#[0-9A-Fa-f]{6}$/;
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -25,146 +27,198 @@ export function photos(product) {
   return media.slice(0, 1 + MAX_GALLERY);
 }
 
-export function render(page, product, fontFaces = "") {
-  const pics = photos(product);
-  if (!pics.length) throw new Error(`${page.code}: no public photo`);
+/** Older configs name one product (`code`); newer ones list colours. Either way: [{code, name, hex}], first = default. */
+export function colorsOf(page) {
+  const colors = Array.isArray(page.colors) && page.colors.length ? page.colors : [{ code: page.code, name: "", hex: "" }];
+  for (const c of colors) {
+    if (!/^SS-\d{4,19}$/.test(c.code)) throw new Error(`${page.id}: bad colour code ${c.code}`);
+    if (colors.length > 1 && (!c.name || !HEX.test(c.hex))) throw new Error(`${page.id}: colour ${c.code} needs a name and #RRGGBB`);
+  }
+  if (new Set(colors.map(c => c.code)).size !== colors.length) throw new Error(`${page.id}: duplicate colour code`);
+  return colors;
+}
+
+const imgSet = (code, i, ext) => HERO_WIDTHS.map(w => `img/${code}/${i}-${w}.${ext} ${w}w`).join(", ");
+
+/** Per-colour data the runtime needs to swap photos without another request for page markup. */
+export function colorData(page, products) {
+  return colorsOf(page).map(c => {
+    const p = products[c.code];
+    if (!p) throw new Error(`${page.id}: no fixture for ${c.code}`);
+    const pics = photos(p);
+    if (!pics.length) throw new Error(`${c.code}: no public photo`);
+    const alt = String(p.title || "").trim().slice(0, 200) + (c.name ? " باللون " + c.name : "");
+    return { code: c.code, name: c.name, hex: c.hex, alt,
+      hero: { avif: imgSet(c.code, 0, "avif"), webp: imgSet(c.code, 0, "webp"), src: `img/${c.code}/0-800.webp` },
+      gallery: pics.slice(1).map((_, i) => `img/${c.code}/${i + 1}-${GALLERY_WIDTH}.webp`) };
+  });
+}
+
+export function render(page, products, fontFaces = "") {
+  const colors = colorData(page, products);
+  const first = colors[0], product = products[first.code];
   const price = priceLabel(product, null); // same text the runtime shows, so the live re-check never flips it
-  if (price === "—") throw new Error(`${page.code}: no real price`);
-  const title = String(product.title || "").trim().slice(0, 200);
-  const alt = (m) => esc(m.altText || title);
-  const src = (i, w, ext) => `img/${i}-${w}.${ext}`;
-  const set = (i, ext) => HERO_WIDTHS.map(w => `${src(i, w, ext)} ${w}w`).join(", ");
-  const sizes = "(min-width: 600px) 560px, 100vw";
-  const desc = String(product.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 8);
-  const gallery = pics.slice(1).map((m, i) =>
-    `<img src="${src(i + 1, GALLERY_WIDTH, "webp")}" alt="${alt(m)}" width="480" height="600" loading="lazy" decoding="async">`).join("");
-  const video = page.video ? `<button type="button" class="lp-video-btn" data-lp-video="${esc(page.video.src)}"${page.video.poster ? ` style="background-image:url('${esc(page.video.poster)}')"` : ""}><span>▶ شغّلي الفيديو</span></button>` : "";
-  const data = JSON.stringify({ id: page.id, code: product.publicCode }).replace(/</g, "\\u003c");
+  if (price === "—") throw new Error(`${first.code}: no real price`);
+  const title = String(page.title || product.title || "").trim().slice(0, 200);
+  const sizes = "(min-width: 900px) 560px, 100vw";
+  const lines = String(product.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
+  const oneSize = Array.isArray(product.options) && product.options.length === 0;
+  const picker = colors.length > 1 ? `<fieldset class="pick" id="lpColors"><legend>اللون: <span id="lpColorName">${esc(first.name)}</span></legend><div class="row">${colors.map((c, i) =>
+    `<button type="button" class="chip" data-code="${esc(c.code)}" aria-pressed="${i === 0}"><i style="background:${esc(c.hex)}"></i>${esc(c.name)}</button>`).join("")}</div></fieldset>` : "";
+  const gallery = first.gallery.map(src => `<img src="${src}" alt="${esc(first.alt)}" width="320" height="400" loading="lazy" decoding="async">`).join("");
+  const video = page.video ? `<button type="button" class="video" data-lp-video="${esc(page.video.src)}">▶ شغّلي الفيديو</button>` : "";
+  const data = JSON.stringify({ id: page.id, code: first.code, colors }).replace(/</g, "\\u003c");
+  const choice = (first.name ? first.name + " · " : "") + (oneSize ? "مقاس واحد" : "اختاري المقاس");
   return `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, follow">
-<meta name="theme-color" content="#ECEEF2">
+<meta name="theme-color" content="#F8F5F4">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Generated by tooling/build-lp.mjs from tooling/pages/${esc(page.id)}.json. Do not edit by hand. -->
 <title>${esc(title)} · SELECT SHOP WOMEN</title>
 <meta name="description" content="${esc(title)}. الدفع عند الاستلام والشحن لكل المحافظات.">
 <link rel="canonical" href="https://selectshopeg.com/lp/${esc(page.id)}/">
 <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
-<link rel="preload" as="image" type="image/avif" imagesrcset="${set(0, "avif")}" imagesizes="${sizes}" fetchpriority="high">
+<link rel="preload" as="image" type="image/avif" imagesrcset="${first.hero.avif}" imagesizes="${sizes}" fetchpriority="high">
 <link rel="preconnect" href="https://byluoipdunralsurwebt.supabase.co" crossorigin>
 <script id="lp-ab">${AB_SNIPPET}</script>
 <style>
 ${fontFaces}
-:root{--mirror:#ECEEF2;--chalk:#fff;--ink:#16192B;--tape:#F1CB47;--pin:#B3253D;--dust:#5E6376;--hair:rgba(22,25,43,.1);--f-display:"Rakkas","Lalezar","Noto Kufi Arabic",serif;--f-body:"Readex Pro","Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif;--f-num:"DM Mono",ui-monospace,Consolas,monospace;color-scheme:light}
+:root{--bg:#F8F5F4;--surface:#F1EAEE;--line:#E7DCE2;--mauve:#7A5C71;--ink:#2A2129;--muted:#5F5560;--gold:#A8894E;--f:"Readex Pro","Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif;color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{background:var(--mirror)}
-body{margin:0;background:var(--mirror);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;overflow-x:clip}
-.wrap{max-width:560px;margin-inline:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom,0px))}
-header{padding:calc(12px + env(safe-area-inset-top,0px)) 0 10px;display:flex;justify-content:space-between;align-items:center;min-height:52px}
-.logo{font-family:var(--f-display);font-size:26px;line-height:1;color:var(--ink);text-decoration:none}
-.logo small{font:500 10px var(--f-body);letter-spacing:.14em;text-transform:uppercase;margin-inline-start:6px;color:var(--dust)}
-.all{font-size:14px;color:var(--ink);text-decoration:underline;text-underline-offset:3px;padding:10px 0}
-main{display:flex;flex-direction:column}
-.hero{position:relative;aspect-ratio:4/5;border-radius:22px;overflow:hidden;background:#dfe2ea}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.6 var(--f);overflow-x:clip}
+a{color:var(--ink)}
+:focus-visible{outline:2px solid var(--mauve);outline-offset:2px}
+.top{display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;padding:8px 20px;min-height:52px}
+.mark{display:inline-flex;flex-direction:column;gap:3px;text-decoration:none;font-weight:600;font-size:16px;letter-spacing:.36em}
+.mark::after{content:"";width:26px;height:1px;background:var(--gold)}
+.top>a:last-child{font-size:14px;padding:12px 0}
+.page{max-width:1200px;margin:0 auto;padding:0 0 calc(96px + env(safe-area-inset-bottom,0px))}
+.media{min-width:0}
+.hero{display:block;aspect-ratio:4/5;background:var(--surface)}
 .hero img{width:100%;height:100%;object-fit:cover;display:block}
-.tape{position:absolute;inset-inline:0;bottom:0;height:10px;background:repeating-linear-gradient(90deg,var(--tape) 0 2px,transparent 2px 12px)}
-.gallery{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;margin-top:8px;padding-bottom:4px}
-.gallery img{flex:none;width:30%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:12px;scroll-snap-align:start;background:#dfe2ea}
-h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,8vw,38px);line-height:1.15;margin:16px 0 4px;overflow-wrap:anywhere}
-.price{font:600 26px var(--f-body);font-variant-numeric:tabular-nums;margin:0}
-.price small{font:400 14px var(--f-body);color:var(--dust);margin-inline-start:4px}
-.desc{margin:10px 0 0;color:var(--ink)}
-.desc p{margin:0}
-.buy{margin-top:16px;min-height:24px}
-.lp-opt{border:0;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:8px}
-.lp-opt legend{font-weight:600;margin-bottom:6px;padding:0}
+.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px 20px 0}
+.gallery:empty{display:none}
+.gallery img{width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:10px;background:var(--surface)}
+.info{padding:18px 20px 0;display:flex;flex-direction:column;gap:18px;min-width:0}
+.head{display:flex;flex-direction:column;gap:2px}
+.head .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.price{margin:0;font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.price small{font-size:13px;font-weight:400;color:var(--muted);margin-inline-start:3px}
+.pick{border:0;margin:0;padding:0;min-width:0}
+.pick legend{padding:0;margin-bottom:10px;font-weight:600;font-size:14px}
+.pick legend span{font-weight:400;color:var(--muted)}
+.pick .row{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 15px 0 12px;border:1px solid var(--line);border-radius:22px;background:#fff;color:var(--ink);font:400 14px var(--f);cursor:pointer}
+.chip i{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 1px rgba(42,33,41,.15)}
+.chip[aria-pressed="true"],.lp-opt input:checked+span{border-color:var(--ink);box-shadow:0 0 0 .5px var(--ink),inset 0 -2px 0 var(--gold)}
+#lpOptions{min-height:44px}
+.lp-opt{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.lp-opt legend{padding:0;margin-bottom:10px;font-weight:600;font-size:14px}
 .lp-opt label{display:inline-flex;cursor:pointer}
 .lp-opt input{position:absolute;width:1px;height:1px;margin:-1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
-.lp-opt span{display:inline-grid;place-items:center;min-width:48px;min-height:44px;padding:0 14px;border:1px solid var(--hair);border-radius:12px;background:var(--chalk)}
-.lp-opt input:checked+span{background:var(--ink);color:#fff;border-color:var(--ink)}
-.lp-opt input:focus-visible+span{outline:2px solid var(--pin);outline-offset:2px}
-.lp-opt input:disabled+span{opacity:.4;text-decoration:line-through;cursor:not-allowed}
-#lpStatus{margin:4px 0 0;font-size:14px;min-height:22px}
-#lpStatus[data-error="true"]{color:var(--pin)}
-ul{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:8px}
-li{display:flex;gap:10px;align-items:center;background:var(--chalk);border:1px solid var(--hair);border-radius:14px;padding:11px 14px;font-size:14px}
-li b{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--tape);font-weight:700}
-.lp-video-btn{margin-top:16px;width:100%;aspect-ratio:16/9;border:0;border-radius:18px;background:#16192B center/cover;color:#fff;font:600 16px var(--f-body);cursor:pointer}
-.lp-video-btn span{background:rgba(0,0,0,.55);padding:10px 18px;border-radius:999px}
-.lp-video{margin-top:16px;width:100%;border-radius:18px}
-.bar{position:fixed;inset-inline:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:rgba(236,238,242,.96);border-top:1px solid var(--hair)}
-.bar>div{max-width:560px;margin-inline:auto;display:flex;gap:10px;align-items:center}
-.bar .p{font:600 18px var(--f-body);font-variant-numeric:tabular-nums;white-space:nowrap}
-#lpOrder{flex:1;height:54px;border:0;border-radius:999px;background:var(--ink);color:#fff;font:600 17px var(--f-body);cursor:pointer}
-#lpOrder:disabled{background:#8B8FA0;cursor:default}
-/* Variant B: price + size choice sit right under the photo, details follow. */
-html[data-v="b"] .buy{order:-1;margin-top:12px}
-html[data-v="b"] .hero{order:-3}
-html[data-v="b"] .gallery{order:-2}
-html[data-v="b"] .head{order:-2}
+.lp-opt span{display:inline-grid;place-items:center;min-width:54px;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:22px;background:#fff}
+.lp-opt input:focus-visible+span{outline:2px solid var(--mauve);outline-offset:2px}
+.lp-opt input:disabled+span{border-style:dashed;color:#9A8E97;text-decoration:line-through;cursor:not-allowed}
+.one{display:inline-grid;place-items:center;min-height:44px;padding:0 18px;border:1px solid var(--ink);border-radius:22px;background:#fff;box-shadow:inset 0 -2px 0 var(--gold);font-size:14px}
+#lpStatus{margin:-8px 0 0;font-size:14px;min-height:22px}
+#lpStatus[data-error="true"]{color:#9B2C3F}
+.notes{margin:0;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;gap:6px;font-size:14px;color:#4A3F49;list-style:none}
+.desc{margin:0;font-size:14px;color:#4A3F49}
+.video{width:100%;aspect-ratio:16/9;border:0;border-radius:14px;background:var(--ink);color:#fff;font:600 16px var(--f);cursor:pointer}
+.lp-video{width:100%;border-radius:14px}
+.bar{position:fixed;inset-inline:0;bottom:0;z-index:5;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));background:rgba(248,245,244,.97);border-top:1px solid var(--line)}
+.bar>div{max-width:560px;margin-inline:auto;display:flex;gap:12px;align-items:center}
+.bar .sum{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.bar .sum b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bar .sum span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#lpOrder{flex:1;height:52px;border:0;border-radius:14px;background:var(--ink);color:var(--bg);font:600 16px var(--f);cursor:pointer}
+#lpOrder:disabled{background:#D9CCD4;color:#4A3F49;cursor:default}
+html[data-v="b"] .pick,html[data-v="b"] #lpOptions{order:-1}
+@media (min-width:900px){
+.page{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:48px;padding:8px 20px 56px;align-items:start}
+.hero{border-radius:16px;overflow:hidden}.gallery{padding:12px 0 0}.info{padding:8px 0 0}
+h1{font-size:34px}.price{font-size:26px}
+.bar{position:static;padding:0;background:none;border:0}.bar>div{max-width:none}.bar .sum{display:none}#lpOrder{height:56px}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-<header><a class="logo" href="/" aria-label="SELECT SHOP WOMEN الرئيسية"><b style="font-weight:400">select</b><small>shop woman</small></a><a class="all" href="/">كل المنتجات</a></header>
-<main>
-<div class="hero"><picture><source type="image/avif" srcset="${set(0, "avif")}" sizes="${sizes}"><source type="image/webp" srcset="${set(0, "webp")}" sizes="${sizes}"><img src="${src(0, 800, "webp")}" alt="${alt(pics[0])}" width="800" height="1000" fetchpriority="high" decoding="async"></picture><i class="tape"></i></div>
-${gallery ? `<div class="gallery" aria-label="صور تانية للقطعة">${gallery}</div>` : ""}
-<div class="head"><h1>${esc(title)}</h1><p class="price"><span id="lpPrice">${price}</span><small>جنيه</small></p></div>
-<section class="buy" aria-label="اختيار المقاس"><div id="lpOptions"></div><p id="lpStatus" role="status" aria-live="polite"></p></section>
-${desc.length ? `<div class="desc">${desc.map(l => `<p>${esc(l)}</p>`).join("")}</div>` : ""}
-<ul>${page.benefits.map(t => `<li><b aria-hidden="true">✓</b><span>${esc(t)}</span></li>`).join("")}</ul>
-${video}
-</main>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="/">كل القطع</a></header>
+<main class="page">
+<div class="media">
+<picture class="hero" id="lpHero"><source type="image/avif" srcset="${first.hero.avif}" sizes="${sizes}"><source type="image/webp" srcset="${first.hero.webp}" sizes="${sizes}"><img src="${first.hero.src}" alt="${esc(first.alt)}" width="800" height="1000" fetchpriority="high" decoding="async"></picture>
+<div class="gallery" id="lpGallery">${gallery}</div>
 </div>
-<div class="bar"><div><span class="p" id="lpBarPrice" aria-hidden="true">${price} ج</span><button type="button" id="lpOrder" disabled>اطلبي دلوقتي</button></div></div>
-<noscript><p style="text-align:center"><a href="/p/?code=${esc(product.publicCode)}">افتحي صفحة المنتج للطلب</a></p></noscript>
+<div class="info">
+<div class="head"><div class="row"><h1>${esc(title)}</h1><p class="price"><span id="lpPrice">${price}</span><small>جنيه</small></p></div>${lines[0] ? `<p class="desc">${esc(lines[0])}</p>` : ""}</div>
+${picker}
+<div id="lpOptions">${oneSize ? `<div class="lp-opt"><span class="one">مقاس واحد</span></div>` : ""}</div>
+<p id="lpStatus" role="status" aria-live="polite"></p>
+<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${price} ج</b><span id="lpBarChoice">${esc(choice)}</span></span><button type="button" id="lpOrder" disabled>اطلبي دلوقتي</button></div></div>
+<ul class="notes">${page.benefits.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+${lines.length > 1 ? `<div class="desc">${lines.slice(1).map(l => `<p style="margin:0">${esc(l)}</p>`).join("")}</div>` : ""}
+${video}
+</div>
+</main>
+<noscript><p style="text-align:center"><a href="/p/?code=${esc(first.code)}">افتحي صفحة المنتج للطلب</a></p></noscript>
 <script type="application/json" id="lp-data">${data}</script>
-<script type="module" src="/lp/runtime.js?v=20261025"></script>
+<script type="module" src="/lp/runtime.js?v=20261025-2"></script>
 </body>
 </html>
 `;
 }
 
-async function encodeImages(page, product) {
+async function encodeImages(page, products) {
   const sharp = (await import("sharp")).default;
-  const dir = path.join(ROOT, "lp", page.id, "img");
-  await mkdir(dir, { recursive: true });
-  for (const [i, m] of photos(product).entries()) {
-    const r = await fetch(m.url);
-    if (!r.ok) throw new Error(`photo ${i}: HTTP ${r.status}`);
-    const buf = Buffer.from(await r.arrayBuffer());
-    const widths = i === 0 ? HERO_WIDTHS : [GALLERY_WIDTH];
-    for (const w of widths) {
-      const base = sharp(buf).rotate().resize({ width: w, height: Math.round(w * 1.25), fit: "cover" });
-      await base.clone().webp({ quality: 72 }).toFile(path.join(dir, `${i}-${w}.webp`));
-      if (i === 0) await base.clone().avif({ quality: 50 }).toFile(path.join(dir, `${i}-${w}.avif`));
+  for (const c of colorsOf(page)) {
+    const dir = path.join(ROOT, "lp", page.id, "img", c.code);
+    await mkdir(dir, { recursive: true });
+    for (const [i, m] of photos(products[c.code]).entries()) {
+      const r = await fetch(m.url);
+      if (!r.ok) throw new Error(`${c.code} photo ${i}: HTTP ${r.status}`);
+      const buf = Buffer.from(await r.arrayBuffer());
+      for (const w of i === 0 ? HERO_WIDTHS : [GALLERY_WIDTH]) {
+        const base = sharp(buf).rotate().resize({ width: w, height: Math.round(w * 1.25), fit: "cover" });
+        await base.clone().webp({ quality: 65 }).toFile(path.join(dir, `${i}-${w}.webp`));
+        if (i === 0) await base.clone().avif({ quality: 40, effort: 6 }).toFile(path.join(dir, `${i}-${w}.avif`));
+      }
     }
   }
 }
+
+// Only the Readex Pro faces are inlined: one variable font file per script, nothing else competes with the photo.
+export const readexFaces = (css) => (css.match(/@font-face\s*{[^}]*}/g) || [])
+  .filter(f => /font-family:\s*'Readex Pro'/.test(f))
+  .map(f => f.replace(/\s*\n\s*/g, "").replaceAll("../assets/fonts/", "/assets/fonts/")).join("");
 
 async function main() {
   const [id, ...flags] = process.argv.slice(2);
   if (!/^[a-z0-9-]{3,40}$/.test(id || "")) throw new Error("usage: node build-lp.mjs <page-id> [--refresh] [--images] [--check]");
   const page = JSON.parse(await readFile(path.join(ROOT, "tooling", "pages", id + ".json"), "utf8"));
-  if (page.id !== id || !/^SS-\d{4,19}$/.test(page.code)) throw new Error("page config id/code invalid");
-  const fixture = path.join(ROOT, "tooling", "fixtures", page.code + ".product.json");
-  if (flags.includes("--refresh")) {
-    const r = await fetch(`${API}/product/${page.code}`, { headers: { Accept: "application/json", Origin: "https://selectshopeg.com" } });
-    if (!r.ok) throw new Error(`product read HTTP ${r.status}`);
-    await writeFile(fixture, JSON.stringify(await r.json()));
+  if (page.id !== id) throw new Error("page config id invalid");
+  const products = {};
+  for (const c of colorsOf(page)) {
+    const fixture = path.join(ROOT, "tooling", "fixtures", c.code + ".product.json");
+    if (flags.includes("--refresh")) {
+      const r = await fetch(`${API}/product/${c.code}`, { headers: { Accept: "application/json", Origin: "https://selectshopeg.com" } });
+      if (!r.ok) throw new Error(`${c.code} product read HTTP ${r.status}`);
+      await writeFile(fixture, JSON.stringify(await r.json()));
+    }
+    const { product } = JSON.parse(await readFile(fixture, "utf8"));
+    if (product?.publicCode !== c.code) throw new Error(`fixture does not match ${c.code}`);
+    products[c.code] = product;
   }
-  const { product } = JSON.parse(await readFile(fixture, "utf8"));
-  if (product?.publicCode !== page.code) throw new Error("fixture does not match page code");
-  if (flags.includes("--images")) await encodeImages(page, product);
-  // @font-face rules are inlined so the first paint never waits for a stylesheet request.
-  const fontFaces = (await readFile(path.join(ROOT, "css", "fonts.css"), "utf8"))
-    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s*\n\s*/g, "").replaceAll("../assets/fonts/", "/assets/fonts/");
-  const html = render(page, product, fontFaces);
-  for (const [m] of html.matchAll(/\bimg\/\d+-\d+\.(?:webp|avif)/g)) await access(path.join(ROOT, "lp", id, m)); // every referenced image is committed
+  if (flags.includes("--images")) await encodeImages(page, products);
+  const fontFaces = readexFaces(await readFile(path.join(ROOT, "css", "fonts.css"), "utf8"));
+  const html = render(page, products, fontFaces);
+  for (const c of colorData(page, products)) for (const f of [c.hero.src, ...c.gallery, ...c.hero.avif.split(", ").map(s => s.split(" ")[0])])
+    await access(path.join(ROOT, "lp", id, f)); // every referenced image is committed
   const out = path.join(ROOT, "lp", id, "index.html");
   if (flags.includes("--check")) {
     const current = await readFile(out, "utf8").catch(() => "");

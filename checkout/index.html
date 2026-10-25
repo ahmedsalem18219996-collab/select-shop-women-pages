@@ -4,58 +4,44 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,follow">
-<meta name="theme-color" content="#ECEEF2">
+<meta name="theme-color" content="#F8F5F4">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>إتمام الطلب | SELECT SHOP WOMEN</title>
 <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../css/fonts.css">
-<link rel="stylesheet" href="../css/styles.css">
-<link rel="stylesheet" href="../css/commerce.css">
+<link rel="stylesheet" href="../css/checkout-v2.css?v=20261025">
 <script src="../js/analytics.js?v=meta-20261021-2" defer></script>
 <script type="module" src="../js/commerce.js?v=lp-attr-20261025"></script>
 </head>
-<body><div class="app">
-<header class="hdr">
-  <div class="wrap hdr-in">
-    <a href="/" class="logo" aria-label="Select Shop Woman — الرئيسية"><b>select</b><small>shop woman</small></a>
-    <nav class="hdr-links" aria-label="الأقسام">
-      <a href="/#shop">وصل جديد</a><a href="/#shop">فساتين</a><a href="/#shop">أطقم</a><a href="/#shop">عبايات</a><a href="/#shop" style="color:var(--pin)">تخفيضات</a>
-    </nav>
-    <div class="hdr-tools">
-      <a class="ibtn" href="/?panel=saved" data-guest-panel-link="saved" aria-label="المفضلة" title="المفضلة"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></a>
-      <a class="ibtn" href="/?panel=account" data-guest-panel-link="account" aria-label="حسابي" title="حسابي"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></a>
-      <a class="ibtn" href="/#shop" aria-label="تصفحي المنتجات"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></a>
-      <a class="ibtn" href="/cart/" aria-label="الشنطة"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg><span class="dot" data-cart-count hidden>0</span></a>
-    </div>
-  </div>
-</header>
-<div class="commerce-tape" aria-hidden="true"><div class="commerce-tape-inner"><span>SELECT SHOP WOMAN</span><span class="commerce-tape-ticks"></span><span>اختاري اللي على مقاسك</span></div></div>
-<main class="commerce wrap">
-<nav class="commerce-quick-links" aria-label="تنقل سريع"><a href="/cart/">← تعديل الشنطة</a><a href="/#shop">كل المنتجات</a></nav>
-
-<div class="commerce-head"><div><span class="commerce-kicker">ALMOST THERE · آخر خطوة</span><h1>إتمام <span class="commerce-yellow-mark">الطلب</span></h1><p class="commerce-note">دقائق صغيرة وطلبك يكون جاهز</p></div><a class="commerce-head-link" href="/cart/"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg> تعديل الشنطة</a></div>
-<section class="commerce-grid">
-<form id="orderForm" class="commerce-card" novalidate>
-<h2>بيانات التوصيل</h2>
-<label class="commerce-field">الاسم بالكامل<input name="name" maxlength="100" autocomplete="name" required></label>
-<label class="commerce-field">رقم الموبايل<input name="phone" inputmode="tel" autocomplete="tel" maxlength="18" required></label>
-<label class="commerce-field">المحافظة<select name="region" id="region" required><option value="">اختاري المحافظة</option></select></label>
-<label class="commerce-field">المنطقة<input name="area" maxlength="100" required></label>
-<label class="commerce-field">العنوان بالتفصيل<textarea name="address" maxlength="350" required></textarea></label>
-<label class="commerce-field">ملاحظات (اختياري)<textarea name="notes" maxlength="500"></textarea></label>
-<p class="commerce-note">الدفع كاش عند الاستلام — السعر والشحن بيتحسبوا من السيرفر.</p>
-<button id="placeOrder" class="commerce-btn" type="submit" disabled>تأكيد الطلب</button>
-<p class="commerce-status" id="status" role="status"></p>
-</form>
-<aside><div class="commerce-card commerce-summary-card"><span class="commerce-kicker">ORDER SUMMARY</span><h2>ملخص الطلب</h2>
-<div id="checkoutItems"></div>
-<div class="commerce-summary"><span>المنتجات</span><b id="subtotal">—</b></div>
-<div class="commerce-summary"><span>الشحن</span><b id="shipping">—</b></div>
-<div class="commerce-summary total"><span>الإجمالي</span><b id="grandTotal">—</b></div>
-<p class="commerce-note">لا يمكن إرسال الطلب بدون عرض إجمالي مؤكد من Supabase.</p>
-</div></aside>
+<body>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="/cart/">تعديل الشنطة</a></header>
+<main class="wrap">
+<h1>إتمام الطلب</h1>
+<section class="card" aria-label="ملخص الطلب">
+  <div id="checkoutItems"></div>
+  <div class="row" style="margin-top:6px"><span>المنتجات</span><b id="subtotal">—</b></div>
 </section>
-</main><nav class="tabbar commerce-nav" aria-label="التنقل">
-  <div class="tabbar-in"><a href="/" ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>الرئيسية</a><a href="/?panel=saved" data-guest-panel-link="saved"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>المفضلة</a><a href="/cart/" ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>الشنطة<span class="dot" data-cart-count hidden>0</span></a><a href="/checkout/" class="on" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="m9 12 2 2 4-4"/></svg>إتمام الطلب</a><a href="/?panel=account" data-guest-panel-link="account"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>حسابي</a></div>
-</nav>
-</div></body></html>
+
+<form id="orderForm" novalidate>
+  <label>المحافظة<select name="region" id="region" required autocomplete="address-level1"><option value="">اختاري المحافظة</option></select></label>
+  <label>الاسم بالكامل<input name="name" maxlength="100" autocomplete="name" enterkeyhint="next" required></label>
+  <label>رقم الموبايل<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="18" placeholder="01xxxxxxxxx" enterkeyhint="next" required></label>
+  <div class="pair">
+    <label>المنطقة<input name="area" maxlength="100" autocomplete="address-level2" enterkeyhint="next" required></label>
+    <label>العنوان بالتفصيل<input name="address" maxlength="350" autocomplete="street-address" enterkeyhint="done" required></label>
+  </div>
+  <details><summary>إضافة ملاحظة للمندوب (اختياري)</summary><label>ملاحظات<textarea name="notes" maxlength="500"></textarea></label></details>
+
+  <div class="totals">
+    <div class="row"><span>الشحن</span><b id="shipping">—</b></div>
+    <p class="note">الدفع كاش عند الاستلام، والمعاينة متاحة عند الاستلام. الإجمالي بيتحسب من السيرفر قبل التأكيد.</p>
+  </div>
+  <p id="status" role="status"></p>
+  <div class="confirm">
+    <div class="row"><span>الإجمالي</span><b id="grandTotal">—</b></div>
+    <button id="placeOrder" type="submit" disabled>تأكيد الطلب</button>
+  </div>
+</form>
+</main>
+</body>
+</html>

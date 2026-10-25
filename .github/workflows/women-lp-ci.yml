@@ -4,7 +4,7 @@ name: WOMEN landing pages CI
 # production: tooling/serve.mjs serves this checkout and mocks the WOMEN Edge Function API in memory.
 on:
   push:
-    branches: ["feature/lp-**"]
+    branches: ["feature/lp-**", "design/**"]
     paths:
       - lp/**
       - js/**
@@ -81,6 +81,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
         env: { CI: "true" }
+      - name: Cold-load numbers
+        if: always()
+        run: |
+          node -e 'const r=require("./pw-results.json");const walk=s=>[...(s.suites||[]).flatMap(walk),...(s.specs||[]).flatMap(sp=>sp.tests.flatMap(t=>t.results.flatMap(x=>x.annotations||[]).concat(t.annotations||[])))];for(const a of new Set(r.suites.flatMap(walk).filter(a=>a.type==="cold-load").map(a=>a.description)))console.log("::notice title=Cold load::"+a)' || true
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

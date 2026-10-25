@@ -23,7 +23,7 @@ test("pilot LP paints real product data, re-checks it live and stays on the loca
   await expect(page.locator("#lpOrder")).toBeInViewport(); // sticky CTA visible without scrolling
   const hero = page.locator(".hero img");
   await expect(hero).toHaveJSProperty("complete", true);
-  expect(await hero.evaluate(i => i.currentSrc)).toMatch(/\/lp\/ss-1008\/img\/0-\d+\.(avif|webp)$/);
+  expect(await hero.evaluate(i => i.currentSrc)).toMatch(/\/lp\/ss-1008\/img\/SS-1008\/0-\d+\.(avif|webp)$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(page.external).toEqual([]);
 });
@@ -117,7 +117,7 @@ for (const [name, reply] of [
 
 test("product links: storefront link, legacy /lp/?p= page and product page still work", async ({ page }) => {
   await page.goto(LP);
-  await expect(page.getByRole("link", { name: "كل المنتجات" })).toHaveAttribute("href", "/");
+  await expect(page.getByRole("link", { name: "كل القطع" })).toHaveAttribute("href", "/");
   await page.goto("/lp/?p=SS-1008");
   await expect(page.locator("#cta")).toHaveAttribute("href", /\/p\/\?code=SS-1008$/);
   await page.goto("/p/?code=SS-1008");

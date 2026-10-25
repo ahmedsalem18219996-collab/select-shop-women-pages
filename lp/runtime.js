@@ -155,53 +155,115 @@ async function init() {
   lazyVideo();
   void recordView(page.code);
 
-  let product;
-  try { ({ product } = await api("/product/" + encodeURIComponent(page.code))); }
-  catch (e) {
-    // A missing product is unavailable; a network failure leaves no verified price either, so neither is shown.
-    return unavailable(/** @type {any} */ (e)?.status === 404 ? "القطعة دي مش متاحة دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. جرّبي تاني بعد شوية.");
-  }
-  if (!product || product.publicCode !== page.code || !Array.isArray(product.variants) || !Array.isArray(product.options)) return unavailable("القطعة دي مش متاحة دلوقتي.");
-  if (product.purchasable !== true || priceLabel(product, null) === "—") return unavailable("القطعة دي خلصت حاليًا.");
-  funnel("view_item", { currency: "EGP", items: [{ item_id: product.publicCode, item_name: String(product.title || "").slice(0, 100) }] });
-
+  // One page = one model. Each colour is its own real product (public code); the default colour is pre-rendered.
+  /** @type {{code:string,name:string,alt?:string,hero?:{avif:string,webp:string,src:string},gallery?:string[]}[]} */
+  const colors = Array.isArray(page.colors) && page.colors.length ? page.colors.filter((/** @type {any} */ c) => validCode(c?.code)) : [{ code: page.code, name: "" }];
   const holder = $("#lpOptions");
+  const choiceEl = document.getElementById("lpBarChoice");
+  /** @type {Map<string, Promise<any>>} */
+  const cache = new Map();
+  const load = (/** @type {string} */ code) => {
+    if (!cache.has(code)) cache.set(code, api("/product/" + encodeURIComponent(code)).then(d => d.product).catch(e => { cache.delete(code); throw e; }));
+    return /** @type {Promise<any>} */ (cache.get(code));
+  };
+  /** @type {any} */
+  let product = null;
   /** @type {number[]} */
-  const chosen = product.options.map(() => -1);
+  let chosen = [];
+  let current = colors[0];
+  let ticket = 0; // a newer colour tap always wins over a slower earlier response
+
+  const sizeText = (/** @type {any} */ v) => {
+    if (!product.options.length) return "مقاس واحد";
+    if (!v) return "اختاري المقاس";
+    return product.options.map((/** @type {any} */ o, /** @type {number} */ i) => o.values.find((/** @type {any} */ x) => x.position === chosen[i])?.value || "").join(" · ");
+  };
   const refresh = () => {
+    if (!product) return null;
     const v = chosen.every(x => x >= 0) ? findVariant(product, chosen) : null;
     setPrice(priceLabel(product, v)); // live, verified price: always the same text in the page and the sticky bar
+    if (choiceEl) choiceEl.textContent = (current.name ? current.name + " · " : "") + sizeText(v);
     cta.disabled = false;
     cta.textContent = "اطلبي دلوقتي";
     return v;
   };
-  product.options.forEach((/** @type {any} */ o, /** @type {number} */ i) => {
-    const ok = sellableValues(product, i);
-    const box = document.createElement("fieldset");
-    box.className = "lp-opt";
-    const legend = document.createElement("legend"); legend.textContent = o.name || "المقاس"; box.append(legend);
-    for (const val of o.values) {
-      const label = document.createElement("label");
-      const input = document.createElement("input");
-      Object.assign(input, { type: "radio", name: "opt" + i, value: String(val.position), disabled: !ok.has(val.position) });
-      input.addEventListener("change", () => { chosen[i] = val.position; say(""); refresh(); });
-      const span = document.createElement("span"); span.textContent = val.value;
-      label.append(input, span); box.append(label);
+  const renderOptions = () => {
+    holder.replaceChildren();
+    chosen = product.options.map(() => -1);
+    if (!product.options.length) {
+      const box = document.createElement("div"); box.className = "lp-opt";
+      const one = document.createElement("span"); one.className = "one"; one.textContent = "مقاس واحد";
+      box.append(one); holder.append(box);
+      return;
     }
-    holder.append(box);
-  });
-  // A single sellable value per option is pre-selected so one-size pieces need one tap.
-  product.options.forEach((/** @type {any} */ _, /** @type {number} */ i) => {
-    const ok = [...sellableValues(product, i)];
-    if (ok.length === 1) { chosen[i] = ok[0]; const r = /** @type {HTMLInputElement|null} */ (holder.querySelector(`input[name="opt${i}"][value="${ok[0]}"]`)); if (r) r.checked = true; }
-  });
-  refresh();
+    product.options.forEach((/** @type {any} */ o, /** @type {number} */ i) => {
+      const ok = sellableValues(product, i);
+      const box = document.createElement("fieldset");
+      box.className = "lp-opt";
+      const legend = document.createElement("legend"); legend.textContent = o.name || "المقاس"; box.append(legend);
+      for (const val of o.values) {
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        Object.assign(input, { type: "radio", name: "opt" + i, value: String(val.position), disabled: !ok.has(val.position) });
+        input.addEventListener("change", () => { chosen[i] = val.position; say(""); refresh(); });
+        const span = document.createElement("span"); span.textContent = val.value;
+        label.append(input, span); box.append(label);
+      }
+      holder.append(box);
+    });
+    // A single sellable value per option is pre-selected so one-size pieces need one tap.
+    product.options.forEach((/** @type {any} */ _, /** @type {number} */ i) => {
+      const ok = [...sellableValues(product, i)];
+      if (ok.length === 1) { chosen[i] = ok[0]; const r = /** @type {HTMLInputElement|null} */ (holder.querySelector(`input[name="opt${i}"][value="${ok[0]}"]`)); if (r) r.checked = true; }
+    });
+  };
+  const show = async (/** @type {typeof colors[number]} */ c) => {
+    const mine = ++ticket;
+    current = c; product = null; cta.disabled = true; say("");
+    let p;
+    try { p = await load(c.code); }
+    catch (e) {
+      // A missing product is unavailable; a network failure leaves no verified price either, so neither is shown.
+      if (mine === ticket) unavailable(/** @type {any} */ (e)?.status === 404 ? "القطعة دي مش متاحة دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. جرّبي تاني بعد شوية.");
+      return false;
+    }
+    if (mine !== ticket) return false;
+    if (!p || p.publicCode !== c.code || !Array.isArray(p.variants) || !Array.isArray(p.options)) { unavailable("القطعة دي مش متاحة دلوقتي."); return false; }
+    if (p.purchasable !== true || priceLabel(p, null) === "—") { unavailable(colors.length > 1 ? "اللون ده خلص حاليًا، اختاري لون تاني." : "القطعة دي خلصت حاليًا."); return false; }
+    product = p; renderOptions(); refresh();
+    return true;
+  };
+
+  // Colour pills are pre-rendered in the HTML; choosing one swaps the photos and verifies that colour's own product.
+  const viewed = new Set([page.code]);
+  document.querySelectorAll("#lpColors .chip").forEach(btn => btn.addEventListener("click", () => {
+    const c = colors.find(x => x.code === btn.getAttribute("data-code"));
+    if (!c || c === current) return;
+    document.querySelectorAll("#lpColors .chip").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+    const nameEl = document.getElementById("lpColorName"); if (nameEl) nameEl.textContent = c.name;
+    const pic = document.getElementById("lpHero");
+    if (pic && c.hero) {
+      const [avif, webp] = pic.querySelectorAll("source");
+      if (avif) avif.setAttribute("srcset", c.hero.avif);
+      if (webp) webp.setAttribute("srcset", c.hero.webp);
+      const img = pic.querySelector("img"); if (img) { img.src = c.hero.src; img.alt = c.alt || ""; }
+    }
+    const gallery = document.getElementById("lpGallery");
+    if (gallery) gallery.replaceChildren(...(c.gallery || []).map(src => Object.assign(document.createElement("img"), { src, alt: c.alt || "", width: 480, height: 600, loading: "lazy", decoding: "async" })));
+    if (!viewed.has(c.code)) { viewed.add(c.code); void recordView(c.code); }
+    void show(c);
+  }));
+
+  if (!(await show(colors[0]))) return;
+  funnel("view_item", { currency: "EGP", items: [{ item_id: product.publicCode, item_name: String(product.title || "").slice(0, 100) }] });
 
   cta.addEventListener("click", async () => {
+    if (!product) return;
     const v = refresh();
     if (!v || v.purchasable !== true) { say("اختاري المقاس الأول.", true); holder.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    const p = product;
     /** @type {Line} */
-    const line = { publicCode: product.publicCode, structureVersion: product.structureVersion, selection: v.selection, quantity: 1 };
+    const line = { publicCode: p.publicCode, structureVersion: p.structureVersion, selection: v.selection, quantity: 1 };
     cta.disabled = true; say("بنجهز طلبك…");
     try {
       await api("/cart/add", "POST", line); // server re-validates the variant address; nothing is ordered here
@@ -213,10 +275,10 @@ async function init() {
     let lines = [];
     try { lines = JSON.parse(localStorage.getItem(CART_KEY) || "[]"); } catch { /* corrupt cart = empty */ }
     localStorage.setItem(CART_KEY, JSON.stringify(mergeLine(Array.isArray(lines) ? lines : [], line)));
-    try { sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify({ id: page.id, variant: variantId, code: product.publicCode })); } catch { /* optional */ }
-    funnel("lp_order_click", { lp_id: page.id, lp_variant: variantId, item_id: product.publicCode });
+    try { sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify({ id: page.id, variant: variantId, code: p.publicCode })); } catch { /* optional */ }
+    funnel("lp_order_click", { lp_id: page.id, lp_variant: variantId, item_id: p.publicCode });
     funnel("add_to_cart", { currency: "EGP", ...(okMinor(v.unitPrice?.amountMinor) ? { value: v.unitPrice.amountMinor / 100 } : {}),
-      items: [{ item_id: product.publicCode, quantity: 1 }] });
+      items: [{ item_id: p.publicCode, quantity: 1 }] });
     // An early tap may come before the idle analytics load: start it now and wait briefly so queued events go out once.
     await Promise.race([loadAnalytics(), new Promise(r => setTimeout(r, EARLY_CLICK_WAIT_MS))]);
     location.href = "/checkout/";
