@@ -9,6 +9,8 @@ test("premium storefront renders verified catalog and retains product navigation
   await page.goto("/");
   // Homepage copy is owner-managed; respect what the catalog returns instead of pinning an invented heading.
   await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty();
+  await expect(page.locator("#womenOwnerAnnouncement")).toHaveCount(1);
+  await expect(page.locator("#womenOwnerAnnouncement")).not.toBeEmpty();
   await expect(page.locator("#feed .card").first()).toBeVisible({ timeout: 12000 });
   await expect(page.locator("#countOut")).not.toHaveText("جارٍ التحميل…");
   const color = await page.locator(".hdr").evaluate(el => getComputedStyle(el).backgroundColor);
