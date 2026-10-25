@@ -21,7 +21,7 @@ motion or effects. v1's pinking-shears masks, stitch dividers, Ruqaa display fon
 | Quiet line | `#E7DCE2` | borders and dividers |
 | Mauve | `#7A5C71` | identity colour, "choose size" state (white text 4.7:1) |
 | Aubergine | `#2A2129` | text and the order button |
-| Gold thread | `#A88346` | a 1–2 px line only: under the SELECT wordmark and under the selected colour/size; gold text `#7A6236` |
+| Gold thread | `#A8894E` | a 1–2 px line only: under the SELECT wordmark and under the selected colour/size; gold text `#7A6236` |
 
 Type: **IBM Plex Sans Arabic only, weights 400 and 600** (tabular numbers for prices). The SELECT wordmark uses the same
 font with wide tracking, so it needs no extra font file.
