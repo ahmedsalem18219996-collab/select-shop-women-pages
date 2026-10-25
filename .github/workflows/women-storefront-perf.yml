@@ -1,0 +1,45 @@
+name: WOMEN home and product pre-release Lighthouse (diagnostic)
+on:
+  push:
+    branches:
+      - 'feature/lp-premium-storefront-*'
+    paths:
+      - '.github/workflows/women-storefront-perf.yml'
+      - 'tooling/lighthouserc.storefront.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: women-storefront-perf-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lighthouse-storefront:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tooling
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tooling/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Measure home and product on isolated mock, 3 passes per page
+        run: npx lhci autorun --config=lighthouserc.storefront.json
+      - name: Summarize medians (diagnostic only)
+        if: always()
+        run: |
+          node lh-summary.mjs .lighthouseci/storefront > storefront-lh.md || true
+          cat storefront-lh.md >> "$GITHUB_STEP_SUMMARY"
+          grep '^| /' storefront-lh.md | sed 's/^/::notice title=Storefront Lighthouse::/' || true
+      - name: Store report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storefront-lighthouse-report
+          path: tooling/.lighthouseci
+          include-hidden-files: true
+          retention-days: 7
