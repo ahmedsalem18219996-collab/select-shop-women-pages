@@ -541,6 +541,25 @@ body{background:var(--mirror)}
  .commerce-actions{display:grid;grid-template-columns:1fr auto;gap:9px}
  .commerce .commerce-btn{min-height:52px;padding-inline:18px}
 }
+/* Sharper, lighter first viewport: do not change checkout/catalog behavior. */
+.hero{padding-block:12px 4px}
+.hero h1{font-size:clamp(29px,6vw,49px);line-height:1.27;letter-spacing:-.015em}
+.hero p{margin-top:7px;font-size:13px;line-height:1.65;max-width:58ch}
+.shop{padding-top:19px}
+.shop-head h2{font-size:clamp(24px,5vw,34px)}
+.tape-dock{margin-top:6px;padding-block:6px 9px}
+.looks{padding-block:9px 4px}
+.stories{padding-block:5px 3px}
+@media(max-width:699px){
+  .hero{padding-top:11px;padding-bottom:2px}
+  .hero h1{font-size:clamp(27px,7.2vw,36px);line-height:1.27}
+  .hero p{margin-top:6px;font-size:12px;line-height:1.6}
+  .shop{padding-top:14px}
+  .shop-head h2{font-size:27px}
+  .tape-dock{margin-top:5px}
+  .tape-in{height:47px}
+  .seg{height:41px}
+}
 </style>
 <script>
 /* Begin the public catalog request during HTML parsing instead of waiting for the UI bundle. */
