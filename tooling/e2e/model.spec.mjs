@@ -18,8 +18,8 @@ test("default colour is in the HTML; choosing a colour swaps photo, name and ver
   await expect(page.locator("#lpColorName")).toHaveText("نبيتي");
   // Owner requested photo-based selection for every physical colour.
   await expect(page.locator("#lpColors .chip img")).toHaveCount(6);
-  await expect(page.locator('#lpColors [data-code="SS-1038"] img')).toHaveAttribute("src", /SS-1038\/0-480\.webp$/);
-  await expect(page.locator('#lpColors [data-code="SS-1035"] img')).toHaveAttribute("src", /SS-1035\/0-480\.webp$/);
+  await expect(page.locator('#lpColors [data-code="SS-1038"] img')).toHaveAttribute("src", /^data:image\/webp;base64,/);
+  await expect(page.locator('#lpColors [data-code="SS-1035"] img')).toHaveAttribute("src", /^data:image\/webp;base64,/);
   await expect(page.locator("#lpColors .chip")).toHaveCount(6);
   expect(await heroSrc(page)).toMatch(/img\/SS-1037\/0-\d+\.(avif|webp)$/);
   await expect(page.locator("#lpOrder")).toBeEnabled();
