@@ -63,8 +63,8 @@ export function render(page, products, fontFaces = "") {
   const sizes = "(min-width: 900px) 560px, 100vw";
   const lines = String(product.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
   const oneSize = Array.isArray(product.options) && product.options.length === 0;
-  const picker = colors.length > 1 ? `<fieldset class="pick" id="lpColors"><legend>اللون: <span id="lpColorName">${esc(first.name)}</span></legend><div class="row">${colors.map((c, i) =>
-    `<button type="button" class="chip" data-code="${esc(c.code)}" aria-pressed="${i === 0}"><i style="background:${esc(c.hex)}"></i>${esc(c.name)}</button>`).join("")}</div></fieldset>` : "";
+  const picker = colors.length > 1 ? `<fieldset class="pick" id="lpColors"><legend>اختاري اللون: <strong id="lpColorName">${esc(first.name)}</strong> <span class="color-count">· ${colors.length} ألوان</span></legend><div class="row">${colors.map((c, i) =>
+    `<button type="button" class="chip" data-code="${esc(c.code)}" aria-pressed="${i === 0}"><img src="img/${esc(c.code)}/0-480.webp" alt="" width="120" height="150" loading="lazy" decoding="async"><span class="chip-name"><i style="background:${esc(c.hex)}"></i>${esc(c.name)}</span></button>`).join("")}</div><p class="color-help">اضغطي على صورة اللون علشان تشوفي الموديل بيه</p></fieldset>` : "";
   const gallery = first.gallery.map(src => `<img src="${src}" alt="${esc(first.alt)}" width="320" height="400" loading="lazy" decoding="async">`).join("");
   const video = page.video ? `<button type="button" class="video" data-lp-video="${esc(page.video.src)}">▶ شغّلي الفيديو</button>` : "";
   const data = JSON.stringify({ id: page.id, code: first.code, colors }).replace(/</g, "\\u003c");
@@ -106,7 +106,14 @@ a{color:var(--ink)}
 .gallery:empty{display:none}
 .gallery img{width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:10px;background:var(--surface)}
 .info{padding:18px 20px 0;display:flex;flex-direction:column;gap:18px;min-width:0}
-.head{display:flex;flex-direction:column;gap:2px}
+.head{display:flex;flex-direction:column;gap:5px}
+.eyebrow{margin:0 0 2px;font-size:10px;letter-spacing:.18em;font-weight:600;color:var(--mauve);text-transform:uppercase}
+.head .desc{line-height:1.8}
+.notes{border:1px solid var(--line);background:#fff;border-radius:16px;padding:12px 14px}
+.notes li{position:relative;padding-inline-start:23px}
+.notes li::before{content:"✓";position:absolute;inset-inline-start:1px;top:0;color:var(--mauve);font-weight:700}
+.headline-note{color:var(--muted);font-size:12px;margin:0;line-height:1.7}
+@media(min-width:900px){.pick .row{grid-auto-columns:minmax(95px,110px);grid-auto-flow:column;max-width:100%}}
 .head .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
 .price{margin:0;font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -114,10 +121,19 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 .pick{border:0;margin:0;padding:0;min-width:0}
 .pick legend{padding:0;margin-bottom:10px;font-weight:600;font-size:14px}
 .pick legend span{font-weight:400;color:var(--muted)}
-.pick .row{display:flex;flex-wrap:wrap;gap:8px}
-.chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 15px 0 12px;border:1px solid var(--line);border-radius:22px;background:#fff;color:var(--ink);font:400 14px var(--f);cursor:pointer}
-.chip i{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 1px rgba(42,33,41,.15)}
-.chip[aria-pressed="true"],.lp-opt input:checked+span{border-color:var(--ink);box-shadow:0 0 0 .5px var(--ink),inset 0 -2px 0 var(--gold)}
+.pick{padding:16px 14px;border:1px solid var(--line);background:#fff;border-radius:18px}
+.pick legend{padding:0 6px;font-size:14px;color:var(--ink)}
+.pick legend strong{font-weight:600;color:var(--mauve)}
+.pick .row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(94px,112px);gap:9px;overflow-x:auto;scroll-snap-type:x mandatory;padding:3px 1px 7px;scrollbar-width:thin;overscroll-behavior-x:contain}
+.chip{display:flex;flex-direction:column;gap:5px;min-width:0;min-height:112px;padding:5px;border:1.5px solid var(--line);border-radius:13px;background:var(--bg);color:var(--ink);font:500 12px var(--f);cursor:pointer;scroll-snap-align:start;text-align:center;transition:border-color .15s,box-shadow .15s}
+.chip img{width:100%;height:84px;display:block;object-fit:contain;border-radius:9px;background:var(--surface)}
+.chip-name{display:flex;justify-content:center;gap:6px;align-items:center;min-height:22px;line-height:1.4}
+.chip i{flex:none;width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 1px rgba(42,33,41,.15)}
+.chip[aria-pressed="true"],.lp-opt input:checked+span{border-color:var(--mauve);box-shadow:0 0 0 1px var(--mauve),inset 0 -3px 0 var(--gold)}
+.chip[aria-pressed="true"]{background:#fff}
+.chip:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.color-help{font-size:11px;color:var(--muted);margin:5px 0 0}
+.color-count{font-size:12px;font-weight:400;color:var(--muted)}
 #lpOptions{min-height:44px}
 .lp-opt{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
 .lp-opt legend{padding:0;margin-bottom:10px;font-weight:600;font-size:14px}
@@ -158,10 +174,11 @@ h1{font-size:34px}.price{font-size:26px}
 <div class="gallery" id="lpGallery">${gallery}</div>
 </div>
 <div class="info">
-<div class="head"><div class="row"><h1>${esc(title)}</h1><p class="price"><span id="lpPrice">${price}</span><small>جنيه</small></p></div>${lines[0] ? `<p class="desc">${esc(lines[0])}</p>` : ""}</div>
+<div class="head"><p class="eyebrow">SELECT SHOP WOMEN · اختاري إطلالتك</p><div class="row"><h1>${esc(title)}</h1><p class="price"><span id="lpPrice">${price}</span><small>جنيه</small></p></div>${lines[0] ? `<p class="desc">${esc(lines[0])}</p>` : ""}</div>
 ${picker}
 <div id="lpOptions">${oneSize ? `<div class="lp-opt"><span class="one">مقاس واحد</span></div>` : ""}</div>
 <p id="lpStatus" role="status" aria-live="polite"></p>
+<p class="headline-note">السعر والتوفر بيتأكدوا من المتجر قبل إضافة القطعة، والشحن بيتحسب قبل تأكيد الطلب.</p>
 <div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${price} ج</b><span id="lpBarChoice">${esc(choice)}</span></span><button type="button" id="lpOrder" disabled>اطلبي دلوقتي</button></div></div>
 <ul class="notes">${page.benefits.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
 ${lines.length > 1 ? `<div class="desc">${lines.slice(1).map(l => `<p style="margin:0">${esc(l)}</p>`).join("")}</div>` : ""}
