@@ -1,7 +1,7 @@
 import { t } from '../i18n.js';
 import { html, render, $, $$, icon, skRows, sheet, closeLayer, confirmDialog, withBusy, done, fail, sortable, segmented } from '../ui.js';
 import { call, uploadStorefrontImage, mediaUrl } from '../api.js';
-import { checkSourceImage, optimizeUploadImage } from '../image-optimize.mjs';
+import { checkSourceImage, optimizeUploadImage } from '../image-optimize.js';
 
 const img = (x) => mediaUrl(x?.image || null);
 
