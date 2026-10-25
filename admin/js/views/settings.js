@@ -1,7 +1,7 @@
 import { t } from '../i18n.js';
 import { html, render, $, icon, skRows, withBusy, done, fail } from '../ui.js';
 import { call, uploadStoreAsset, mediaUrl } from '../api.js';
-import { optimizeUploadImage } from '../image-optimize.mjs';
+import { optimizeUploadImage } from '../image-optimize.js';
 
 export default {
   title: () => t('nav.settings'),
