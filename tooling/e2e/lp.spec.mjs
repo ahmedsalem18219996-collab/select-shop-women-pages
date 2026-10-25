@@ -141,7 +141,8 @@ test("A/B attribution: one scoped variant value from LP view to the purchase eve
   await page.goto(LP + "?lpv=b");
   await expect.poll(async () => gaEvents(await captured(page), "view_item").length, { timeout: 8000 }).toBe(1); // idle load
   let cap = await captured(page);
-  expect(cap.find(c => c[0] === "gtag" && c[1] === "set")[2]).toEqual({ user_properties: { lp_variant: "ss-1008:b" } });
+  // gtag.js signature: gtag("set", "user_properties", { ... })
+  expect(cap.filter(c => c[0] === "gtag" && c[1] === "set")).toEqual([["gtag", "set", "user_properties", { lp_variant: "ss-1008:b" }]]);
   expect(gaEvents(cap, "lp_view")[0][3]).toMatchObject({ lp_id: "ss-1008", lp_variant: "ss-1008:b", item_id: "SS-1008" });
   expect(metaEvents(cap, "ViewContent")).toHaveLength(1);
   await page.locator("#lpOrder").click();
