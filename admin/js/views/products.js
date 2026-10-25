@@ -1,7 +1,7 @@
 import { t } from '../i18n.js';
 import { html, render, toString, $, $$, icon, money, toMinor, fmtNum, ago, date, statusBadge, skRows, sheet, closeLayer, confirmDialog, withBusy, island, done, fail, debounce, segmented, idempotencyKey, spotlight, esc } from '../ui.js';
 import { call, uploadProductImage, deleteProductImage, mediaUrl } from '../api.js';
-import { checkSourceImage, optimizeUploadImage, optimizationSummary } from '../image-optimize.mjs';
+import { checkSourceImage, optimizeUploadImage, optimizationSummary } from '../image-optimize.js';
 import { activityLine } from './dashboard.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
