@@ -1,0 +1,123 @@
+name: WOMEN landing pages CI
+
+# Runs on pull requests into release (the GitHub Pages branch). It never deploys, never pushes and never calls
+# production: tooling/serve.mjs serves this checkout and mocks the WOMEN Edge Function API in memory.
+on:
+  push:
+    branches: ["feature/lp-**"]
+    paths:
+      - lp/**
+      - js/**
+      - css/**
+      - p/**
+      - cart/**
+      - checkout/**
+      - order-success/**
+      - tooling/**
+      - .github/workflows/women-lp-ci.yml
+  pull_request:
+    branches: [release]
+    paths:
+      - lp/**
+      - js/**
+      - css/**
+      - p/**
+      - cart/**
+      - checkout/**
+      - order-success/**
+      - tooling/**
+      - .github/workflows/women-lp-ci.yml
+  workflow_dispatch:
+    inputs:
+      compare:
+        description: "Heavy: also run Lighthouse on the old /lp/?p= and /p/ pages for an old-vs-new comparison"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: women-lp-ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: tooling
+
+jobs:
+  checks:
+    name: syntax, lint, typecheck, unit, build check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: tooling/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - name: Syntax check every site script
+        working-directory: .
+        run: for f in js/*.js lp/*.js admin/js/*.js admin/js/views/*.js; do node --check "$f"; done
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - name: Generated landing pages are up to date
+        run: for f in pages/*.json; do node build-lp.mjs "$(basename "$f" .json)" --check; done
+
+  e2e:
+    name: Playwright mobile + desktop (mock API)
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: tooling/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('tooling/package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+        env: { CI: "true" }
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            tooling/playwright-report
+            tooling/test-results
+          include-hidden-files: true
+          retention-days: 5
+
+  lighthouse:
+    name: Lighthouse CI budgets (local build)
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: tooling/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - name: Lighthouse with performance budgets
+        run: npx lhci autorun --config=lighthouserc.json
+      - name: Summary
+        if: always()
+        run: |
+          node lh-summary.mjs .lighthouseci/reports > lh.md || true
+          cat lh.md >> "$GITHUB_STEP_SUMMARY"
+          grep '^| /' lh.md | sed 's/^/::notice title=Lighthouse median::/' || true
+      - name: Old vs new comparison (manual only)
+        if: github.event_name == 'workflow_dispatch' && inputs.compare
+        run: |
+          npx lhci collect --config=lighthouserc.compare.json && npx lhci upload --config=lighthouserc.compare.json
+          { echo "### Old vs new (same runner, same mock API)"; node lh-summary.mjs .lighthouseci/compare; } >> "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: tooling/.lighthouseci
+          include-hidden-files: true
+          retention-days: 7

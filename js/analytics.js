@@ -10,7 +10,7 @@
   if (new URLSearchParams(location.search).get("design-preview") === "1") return;
 
   const cleanUrl = new URL(location.href);
-  const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "code", "gclid", "fbclid"]);
+  const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "code", "gclid", "fbclid", "lpv"]);
   for (const key of [...cleanUrl.searchParams.keys()]) {
     if (!allowed.has(key)) cleanUrl.searchParams.delete(key);
   }
@@ -34,9 +34,9 @@
   "use strict";
   if (!["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase())) return;
   if (new URLSearchParams(location.search).get("design-preview") === "1") return;
-  if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname)) return;
+  if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname) && !location.pathname.startsWith("/lp/")) return;
   // Do not expose arbitrary URL parameters to Meta's automatic page context.
-  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","code","fbclid"]);
+  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","code","fbclid","lpv"]);
   if ([...new URLSearchParams(location.search).keys()].some(k => !permitted.has(k))) return;
   const pixelId = "992616030526349";
   const fbq = window.fbq = window.fbq || function () {

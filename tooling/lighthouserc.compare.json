@@ -1,0 +1,12 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "node serve.mjs",
+      "startServerReadyPattern": "QA server",
+      "url": ["http://127.0.0.1:4173/lp/ss-1008/?lpv=a", "http://127.0.0.1:4173/lp/?p=SS-1008", "http://127.0.0.1:4173/p/?code=SS-1008"],
+      "numberOfRuns": 3,
+      "settings": { "onlyCategories": ["performance"], "chromeFlags": "--no-sandbox --headless=new" }
+    },
+    "upload": { "target": "filesystem", "outputDir": ".lighthouseci/compare" }
+  }
+}
