@@ -11,11 +11,10 @@
 <!-- WOMEN public release: official verified domain. -->
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://selectshopeg.com/">
-<meta name="theme-color" content="#ECEEF2">
+<meta name="theme-color" content="#F8F5F4">
 <title>Select Shop Woman</title>
 <meta name="description" content="متجر SELECT SHOP WOMEN، موديلات حريمي بصور وتفاصيل مؤكدة.">
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-<link rel="preload" href="assets/fonts/rakkas-400-arabic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/readex-pro-arabic.woff2" as="font" type="font/woff2" crossorigin>
 <style id="women-inline-fonts-css">
 /* Self-hosted Google Fonts (SIL Open Font License 1.1). Subsets: arabic, latin, latin-ext. */
@@ -457,6 +456,92 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .feed .card { animation: none; }
 }
 </style>
+<style id="women-premium-minimal">
+/* SELECT SHOP WOMEN — premium minimal v3. Small critical overlay: no extra stylesheet, font or JS request. */
+:root{
+  --mirror:#F8F5F4;--chalk:#fff;--ink:#2A2129;--tape:#F1EAEE;--pin:#7A5C71;
+  --dust:#665963;--hair:#E7DCE2;--f-display:"Readex Pro","Segoe UI",Tahoma,sans-serif;
+  --f-body:"Readex Pro","Segoe UI",Tahoma,sans-serif;
+  --f-num:"Readex Pro",ui-sans-serif,system-ui,sans-serif;
+}
+body{background:var(--mirror)}
+.hdr{background:#fff;border-bottom:1px solid var(--hair);backdrop-filter:none;-webkit-backdrop-filter:none}
+.logo b{font:600 27px/1.2 var(--f-body);letter-spacing:-.045em;color:var(--ink)}
+.logo b::after{content:"";display:inline-block;width:17px;height:2px;margin-inline:4px;background:#A8894E;vertical-align:middle}
+.logo small{font:500 10px/1.3 var(--f-body);letter-spacing:.06em;color:var(--dust)}
+.hdr-links a:hover{color:var(--pin)}
+.ibtn{min-width:44px;min-height:44px}
+.dot{background:var(--pin)}
+.hero{padding-block:26px 12px}
+.hero h1{font:600 clamp(32px,7vw,61px)/1.34 var(--f-body);letter-spacing:-.025em}
+.hl{padding-inline:.08em;color:var(--pin)}
+.hl::before{height:.13em;bottom:0;background:#A8894E;opacity:.9;animation:none;transform:none}
+.hero p{font-weight:400;color:var(--dust);line-height:1.9;font-size:14px;max-width:58ch}
+.stories{gap:11px}.story .ring{background:#E7DCE2;padding:2px}
+.story .ring span{border-color:#fff}.story.seen .ring{background:#DDD2DA}
+.looks{gap:18px;padding-block:14px}
+.look{position:relative;top:auto;will-change:auto;box-shadow:0 6px 24px rgba(42,33,41,.055);border:1px solid var(--hair);border-radius:19px;transform:none}
+.look-tag{background:var(--pin);color:#fff;font:600 11px/1.5 var(--f-body)}
+.piece::before,.shot::before{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(42,33,41,.04))}
+.piece{border-radius:12px}.flat{gap:4px;padding:4px}
+.cta{background:var(--ink);color:white;font-weight:600;transition:background .15s ease}
+.cta:active{transform:none;background:var(--pin)}
+.cta:disabled{background:#BCB0BA}
+.shop{padding-top:34px}
+.shop-head h2{font:600 clamp(25px,6vw,38px)/1.4 var(--f-body)}
+.tape-dock{padding-block:10px;top:calc(var(--hdr) + env(safe-area-inset-top,0px));background:var(--mirror)}
+.tape-box{padding-inline:var(--gl) var(--gr)}
+.tape{border-radius:999px;box-shadow:none;background:#fff;border:1px solid var(--hair);scroll-snap-type:x proximity}
+.tape-in{height:51px;background:#fff}
+.tape-in::after,.cm,.needle,.fade-l,.fade-r{display:none}
+.seg{height:45px;width:auto;min-width:105px;padding:6px 16px;place-items:center;align-self:center;border-radius:999px;color:var(--dust);font-size:13px;font-weight:500;transform:none;transition:background .15s}
+.seg.on{background:var(--pin);color:#fff;transform:none;font-weight:600}
+.feed{gap:22px 13px}
+.card{animation:none;gap:8px;min-width:0}
+.shot{border-radius:15px;background:#F1EAEE}
+.card h3{font-size:13px;font-weight:500;color:var(--ink)}
+.card .pr{font-size:14px;font-weight:600}
+.badge{color:var(--pin)}
+.add{box-shadow:0 2px 12px rgba(42,33,41,.08)}
+.heart[aria-pressed="true"] svg{fill:var(--pin);stroke:var(--pin)}
+.promises{gap:12px;margin-top:36px}
+.promise{border:1px solid var(--hair);border-radius:14px;box-shadow:none}
+.promise .ic{background:var(--tape)}
+.tabbar{background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none}
+.tabbar .on::before{background:#A8894E}
+.size[aria-checked="true"]{background:var(--pin);color:#fff}
+.size.rec::after{background:var(--tape);color:var(--ink)}
+/* Product: preserve checkout/IDs/data flow; let the image and selection lead. */
+.commerce-tape{height:0;border:0;overflow:hidden}
+.commerce-tape-inner{display:none}
+.commerce-head{margin-bottom:18px}
+.commerce-kicker,.commerce-head-link{color:var(--pin)}
+.commerce-card{background:#fff;border:1px solid var(--hair);box-shadow:none;border-radius:17px}
+.commerce-card h1{font:600 clamp(25px,4vw,42px)/1.4 var(--f-body)}
+.commerce-price{font:600 clamp(23px,3vw,30px)/1.4 var(--f-num)}
+.commerce-photo-frame{border-radius:17px;background:var(--tape)}
+.commerce-photo-label{background:rgba(255,255,255,.94);color:var(--ink)}
+.commerce-quick-links a{border-color:var(--hair);background:#fff}
+.commerce .commerce-btn{background:var(--ink);border-color:var(--ink);color:white!important;border-radius:12px!important;min-height:52px;transition:background .15s ease}
+.commerce .commerce-btn:active{transform:none;background:var(--pin)}
+.commerce .commerce-btn--ghost{background:#fff;color:var(--ink)!important;border-color:var(--hair)}
+.commerce-thumbs button[aria-pressed="true"]{border-color:var(--pin)}
+.commerce-field select:focus,.commerce-field input:focus{outline:2px solid var(--pin)}
+.commerce-promises{border-color:var(--hair)}
+@media(min-width:700px){
+ .hero{padding-top:42px}
+ .looks{max-width:1050px;margin:auto}
+ .look{position:relative;top:auto}
+}
+@media(max-width:699px){
+ .hero{padding-block:22px 12px}
+ .hero h1{font-size:clamp(30px,8.5vw,42px)}
+ .commerce-head-link{display:none}
+ .commerce-card{padding:16px}
+ .commerce-actions{display:grid;grid-template-columns:1fr auto;gap:9px}
+ .commerce .commerce-btn{min-height:52px;padding-inline:18px}
+}
+</style>
 <script>
 /* Begin the public catalog request during HTML parsing instead of waiting for the UI bundle. */
 if (["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase()) &&
@@ -499,8 +584,8 @@ if (["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLo
     </div>
 
     <section class="wrap hero">
-      <h1>لوكات الأسبوع <span class="hl">جاهزة</span></h1>
-      <p>اكتشفي الموديلات اللي بنجهزها، وشوفي الصور والأسعار والمقاسات المؤكدة لما ننشرها.</p>
+      <h1>ستايل يليق <span class="hl">بيكي.</span></h1>
+      <p>اختاري موديلك المفضل، شوفي الصور والتفاصيل الحقيقية، واطلبي بكل سهولة.</p>
     </section>
 
     <section class="wrap looks" id="looks" aria-label="لوكات الأسبوع"></section>
@@ -509,9 +594,9 @@ if (["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLo
       <div class="wrap shop-head">
         <div>
           <h2>كل القطع</h2>
-          <p class="hint">اسحبي الشريط واختاري القسم</p>
+          <p class="hint">اختاري القسم اللي تحبيه</p>
         </div>
-        <span class="num" id="countOut">14 قطعة</span>
+        <span class="num" id="countOut" aria-live="polite">جارٍ التحميل…</span>
       </div>
       <div class="tape-dock">
         <div class="tape-box">
