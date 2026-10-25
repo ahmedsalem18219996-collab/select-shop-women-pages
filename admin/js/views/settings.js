@@ -1,6 +1,7 @@
 import { t } from '../i18n.js';
 import { html, render, $, icon, skRows, withBusy, done, fail } from '../ui.js';
 import { call, uploadStoreAsset, mediaUrl } from '../api.js';
+import { optimizeUploadImage } from '../image-optimize.js';
 
 export default {
   title: () => t('nav.settings'),
@@ -43,7 +44,10 @@ export default {
       };
       $('#logo', el)?.addEventListener('change', async (e) => {
         const f = e.target.files[0]; if (!f) return;
-        const fd = new FormData(); fd.append('kind', 'logo'); fd.append('image', f); fd.append('version', String(s.version));
+        let prepared;
+        try { prepared = await optimizeUploadImage(f, 'logo'); }
+        catch (err) { fail({ outcome: 'invalid', field: 'image' }); return; }
+        const fd = new FormData(); fd.append('kind', 'logo'); fd.append('image', prepared.file); fd.append('version', String(s.version));
         after(await uploadStoreAsset(fd));
       });
     };

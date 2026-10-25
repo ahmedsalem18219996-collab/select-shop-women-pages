@@ -1,6 +1,7 @@
 import { t } from '../i18n.js';
 import { html, render, toString, $, $$, icon, money, toMinor, fmtNum, ago, date, statusBadge, skRows, sheet, closeLayer, confirmDialog, withBusy, island, done, fail, debounce, segmented, idempotencyKey, spotlight, esc } from '../ui.js';
 import { call, uploadProductImage, deleteProductImage, mediaUrl } from '../api.js';
+import { checkSourceImage, optimizeUploadImage, optimizationSummary } from '../image-optimize.js';
 import { activityLine } from './dashboard.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
@@ -312,12 +313,16 @@ const TABS = {
       </div>${!media.length && !canEdit ? html`<p class="muted">${t('editor.noMedia')}</p>` : ''}</section>`);
     if (!canEdit) return;
     const upload = async (files) => {
-      const list = [...files].filter((f) => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= 5 * 1024 * 1024);
+      const list = [...files].filter((f) => checkSourceImage(f) === null);
       if (list.length !== files.length) island('error', t('err.image'));
       let version = d.media?.structure_version ?? d.product.structure_version, ok = 0;
       for (const [i, f] of list.entries()) {
         island('busy', `${t('editor.upload')} ${i + 1}/${list.length}`);
-        const fd = new FormData(); fd.append('code', code); fd.append('image', f); fd.append('version', String(version)); fd.append('alt', d.product.title);
+        let prepared;
+        try { prepared = await optimizeUploadImage(f, 'product'); }
+        catch (err) { island('error', err?.message || t('err.image')); break; }
+        if (prepared.optimized) island('busy', optimizationSummary(prepared));
+        const fd = new FormData(); fd.append('code', code); fd.append('image', prepared.file); fd.append('version', String(version)); fd.append('alt', d.product.title);
         const res = await uploadProductImage(fd);
         if (res.outcome === 'saved') ok++; else { fail(res); break; }
       }
