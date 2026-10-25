@@ -1,0 +1,38 @@
+name: WOMEN auto-image-optimization CI
+on:
+  push:
+    branches:
+      - 'feature/women-auto-optimize-upload-*'
+    paths:
+      - 'admin/js/**'
+      - 'tests/image-optimize.test.mjs'
+      - '.github/workflows/women-image-upload-ci.yml'
+  pull_request:
+    branches: [release]
+    paths:
+      - 'admin/js/**'
+      - 'tests/image-optimize.test.mjs'
+      - '.github/workflows/women-image-upload-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: women-image-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  image-uploads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/js/image-optimize.mjs
+          node --check admin/js/views/products.js
+          node --check admin/js/views/storefront.js
+          node --check admin/js/views/settings.js
+      - name: Test image optimizer (no API, no hosted data)
+        run: node --test tests/image-optimize.test.mjs
