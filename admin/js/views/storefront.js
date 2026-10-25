@@ -1,6 +1,7 @@
 import { t } from '../i18n.js';
 import { html, render, $, $$, icon, skRows, sheet, closeLayer, confirmDialog, withBusy, done, fail, sortable, segmented } from '../ui.js';
 import { call, uploadStorefrontImage, mediaUrl } from '../api.js';
+import { checkSourceImage, optimizeUploadImage } from '../image-optimize.js';
 
 const img = (x) => mediaUrl(x?.image || null);
 
@@ -9,8 +10,11 @@ async function pickImage() {
     const inp = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
     inp.onchange = async () => {
       const f = inp.files[0]; if (!f) return resolve(null);
-      if (f.size > 5 * 1024 * 1024) { fail({ outcome: 'invalid', field: 'image' }); return resolve(null); }
-      const fd = new FormData(); fd.append('image', f);
+      if (checkSourceImage(f)) { fail({ outcome: 'invalid', field: 'image' }); return resolve(null); }
+      let prepared;
+      try { prepared = await optimizeUploadImage(f, 'storefront'); }
+      catch { fail({ outcome: 'invalid', field: 'image' }); return resolve(null); }
+      const fd = new FormData(); fd.append('image', prepared.file);
       const r = await uploadStorefrontImage(fd);
       if (r.outcome !== 'saved') { fail(r); return resolve(null); }
       resolve({ path: r.path, url: r.url });
