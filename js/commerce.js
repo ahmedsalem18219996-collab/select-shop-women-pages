@@ -119,6 +119,9 @@ async function api(path, method="GET", body=null, timeoutMs=15000) {
   }
   return data;
 }
+let leavingPage=false;
+addEventListener("pagehide",()=>{leavingPage=true;});
+addEventListener("pageshow",()=>{leavingPage=false;});
 function picture(src,alt,klass) {
   const img=make("img",undefined,klass);
   img.alt=alt||"";
@@ -130,8 +133,9 @@ function picture(src,alt,klass) {
     // once to the approved public original rather than showing an empty box.
     const preview = displayPhotoUrl(src,true);
     img.src = preview;
+    // A navigation away cancels in-flight images and fires "error"; never start a full-size download then.
     if (preview !== src) img.addEventListener("error", () => {
-      if (img.src !== src) img.src = src;
+      if (!leavingPage && img.src !== src) img.src = src;
     });
   }
   return img;

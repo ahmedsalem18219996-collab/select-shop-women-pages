@@ -5,7 +5,7 @@ const mockLog = async (request) => (await request.get("/__mock/log")).json();
 
 test.beforeEach(async ({ page }) => {
   page.external = [];
-  page.on("request", r => { const u = new URL(r.url()); if (u.hostname !== "127.0.0.1") page.external.push(r.method() + " " + u.host + u.pathname); });
+  page.on("request", r => { const u = new URL(r.url()); if (u.hostname !== "127.0.0.1") page.external.push(r.method() + " " + u.host + u.pathname + " (from " + new URL(page.url()).pathname + ")"); });
 });
 
 test("home: the category tape sits between the heading and the feed, never over the first products", async ({ page }) => {
