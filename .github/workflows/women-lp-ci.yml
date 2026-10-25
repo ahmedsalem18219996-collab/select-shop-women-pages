@@ -3,6 +3,18 @@ name: WOMEN landing pages CI
 # Runs on pull requests into release (the GitHub Pages branch). It never deploys, never pushes and never calls
 # production: tooling/serve.mjs serves this checkout and mocks the WOMEN Edge Function API in memory.
 on:
+  push:
+    branches: ["feature/lp-**"]
+    paths:
+      - lp/**
+      - js/**
+      - css/**
+      - p/**
+      - cart/**
+      - checkout/**
+      - order-success/**
+      - tooling/**
+      - .github/workflows/women-lp-ci.yml
   pull_request:
     branches: [release]
     paths:
@@ -26,7 +38,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: women-lp-ci-${{ github.event.pull_request.number || github.ref }}
+  group: women-lp-ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 defaults:
