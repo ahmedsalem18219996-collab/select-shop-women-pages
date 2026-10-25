@@ -1,0 +1,46 @@
+name: WOMEN site availability diagnostic (read-only)
+on:
+  push:
+    branches:
+      - 'diagnostics/women-domain-*'
+    paths:
+      - '.github/workflows/women-site-availability.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect DNS and HTTP without changing the live site
+        shell: bash
+        run: |
+          set +e
+          echo '=== DNS: default / Google / Cloudflare ==='
+          for domain in selectshopeg.com www.selectshopeg.com; do
+            echo "--- $domain ---"
+            for dns in 1.1.1.1 8.8.8.8; do
+              dig @"$dns" "$domain" A +time=3 +tries=1 +noall +answer
+              dig @"$dns" "$domain" CNAME +time=3 +tries=1 +noall +answer
+            done
+          done
+          echo '=== HTTPS request, browser-like user agent, no POST ==='
+          for u in "https://selectshopeg.com/" "https://selectshopeg.com/admin/" "https://selectshopeg.com/admin/js/image-optimize.js" "https://selectshopeg.com/admin/js/app.js?v=10" "https://www.selectshopeg.com/admin/" "https://ahmedsalem18219996-collab.github.io/select-shop-women-pages/admin/"; do
+            echo "--- $u ---"
+            curl -sS -L --retry 0 --connect-timeout 8 --max-time 16 \
+              -A 'Mozilla/5.0 (compatible; SiteMonitor/1.0)' -H 'Cache-Control: no-cache' \
+              -o /tmp/women-diagnostic-response \
+              -w 'HTTP %{http_code}; final=%{url_effective}; redirects=%{num_redirects}; time=%{time_total}s; IP=%{remote_ip}; TLSverify=%{ssl_verify_result}; bytes=%{size_download}; mime=%{content_type}\n' "$u"
+            echo "curl exit code: $?"
+          done
+          echo '=== Force GitHub Pages IPs for apex SSL/HTTP (bypass DNS; no writes) ==='
+          for ip in 185.199.108.153 185.199.109.153 185.199.110.153 185.199.111.153; do
+            echo "--- $ip ---"
+            curl -sS -L --connect-timeout 5 --max-time 10 \
+              --resolve "selectshopeg.com:443:$ip" \
+              -o /tmp/women-diagnostic-response \
+              -w "HTTP %{http_code}; IP=%{remote_ip}; TLSverify=%{ssl_verify_result}; seconds=%{time_total}\n" \
+              'https://selectshopeg.com/admin/'
+            echo "curl exit code: $?"
+          done
