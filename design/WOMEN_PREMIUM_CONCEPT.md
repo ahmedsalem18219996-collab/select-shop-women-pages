@@ -1,7 +1,10 @@
 # SELECT SHOP WOMEN — premium mobile-first concept (review stage)
 
 Status: **concept for owner review — not implemented, not deployed.** Independent of PR #18.
-Visual preview (private canvas, four artboards): https://claude.ai/artifact/6YqyPJP4ed6uK1cUjQRHYY
+Visual preview (private canvas): https://claude.ai/artifact/6YqyPJP4ed6uK1cUjQRHYY
+Row 1, mobile (390 px): Home, Product, Landing, identity + components. Row 2, desktop (1280 px): Home, Product, Landing.
+Both Product artboards have a "multiSizePreview" tweak that previews the future multi-size model (S/M/L/XL, a sold-out size,
+and the "اختاري المقاس" order-button state); it is a design preview only, real products stay ONE SIZE.
 
 Scope of this stage: the look and the buying flow for Home, Product page and the ad Landing Page,
 designed so one model can later carry several colours and sizes. No database, product or checkout change.
