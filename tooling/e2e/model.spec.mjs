@@ -21,6 +21,12 @@ test("default colour is in the HTML; choosing a colour swaps photo, name and ver
   await expect(page.locator('#lpColors [data-code="SS-1038"] img')).toHaveAttribute("src", /^data:image\/webp;base64,/);
   await expect(page.locator('#lpColors [data-code="SS-1035"] img')).toHaveAttribute("src", /^data:image\/webp;base64,/);
   await expect(page.locator("#lpColors .chip")).toHaveCount(6);
+  // Never put colour choices before the product identity and price on mobile.
+  const positions = await page.evaluate(() => ({
+    head: document.querySelector(".head").getBoundingClientRect().bottom,
+    colors: document.querySelector("#lpColors").getBoundingClientRect().top
+  }));
+  expect(positions.head).toBeLessThanOrEqual(positions.colors + 1);
   expect(await heroSrc(page)).toMatch(/img\/SS-1037\/0-\d+\.(avif|webp)$/);
   await expect(page.locator("#lpOrder")).toBeEnabled();
   await page.getByRole("button", { name: "أسود" }).click();
