@@ -85,7 +85,8 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 .bar .sum span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #lpOrder{flex:1;height:52px;border:0;border-radius:14px;background:var(--ink);color:var(--bg);font:600 16px var(--f);cursor:pointer}
 #lpOrder:disabled{background:#D9CCD4;color:#4A3F49;cursor:default}
-html[data-v="b"] .pick,html[data-v="b"] #lpOptions{order:-1}
+/* Variant B keeps the same semantic purchase order; only CTA emphasis varies. */
+html[data-v="b"] #lpOrder{box-shadow:0 3px 14px rgba(42,33,41,.13)}
 @media (min-width:900px){
 .page{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:48px;padding:8px 20px 56px;align-items:start}
 .media{display:block;min-width:0}
