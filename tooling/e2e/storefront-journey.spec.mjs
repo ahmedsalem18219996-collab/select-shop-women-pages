@@ -31,7 +31,7 @@ test("product page: every gallery thumbnail is a local optimized WebP, no full-s
   expect(page.external).toEqual([]);
 });
 
-test("journey: grouped model → chosen colour → checkout → confirmation, one order with the chosen SKU", async ({ page, request }, info) => {
+test("journey: grouped model → chosen colour → checkout → confirmation, one order with the chosen SKU", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
   await page.goto("/");
   // Check the unchanged legacy SKU checkout alongside the new grouped-model cards.
