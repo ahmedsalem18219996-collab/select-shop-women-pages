@@ -25,7 +25,7 @@ export function photos(product) {
   return media.slice(0, 1 + MAX_GALLERY);
 }
 
-export function render(page, product) {
+export function render(page, product, fontFaces = "") {
   const pics = photos(product);
   if (!pics.length) throw new Error(`${page.code}: no public photo`);
   const minor = product.price?.minAmountMinor;
@@ -56,9 +56,9 @@ export function render(page, product) {
 <link rel="preload" as="image" type="image/avif" imagesrcset="${set(0, "avif")}" imagesizes="${sizes}" fetchpriority="high">
 <link rel="preconnect" href="https://byluoipdunralsurwebt.supabase.co" crossorigin>
 <link rel="preload" href="/assets/fonts/readex-pro-arabic.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/css/fonts.css">
 <script id="lp-ab">${AB_SNIPPET}</script>
 <style>
+${fontFaces}
 :root{--mirror:#ECEEF2;--chalk:#fff;--ink:#16192B;--tape:#F1CB47;--pin:#B3253D;--dust:#5E6376;--hair:rgba(22,25,43,.1);--f-display:"Rakkas","Lalezar","Noto Kufi Arabic",serif;--f-body:"Readex Pro","Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif;--f-num:"DM Mono",ui-monospace,Consolas,monospace;color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{background:var(--mirror)}
@@ -82,12 +82,12 @@ h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,8vw,38px);l
 .buy{margin-top:16px;min-height:24px}
 .lp-opt{border:0;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:8px}
 .lp-opt legend{font-weight:600;margin-bottom:6px;padding:0}
-.lp-opt label{position:relative}
-.lp-opt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.lp-opt label{display:inline-flex;cursor:pointer}
+.lp-opt input{position:absolute;width:1px;height:1px;margin:-1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
 .lp-opt span{display:inline-grid;place-items:center;min-width:48px;min-height:44px;padding:0 14px;border:1px solid var(--hair);border-radius:12px;background:var(--chalk)}
 .lp-opt input:checked+span{background:var(--ink);color:#fff;border-color:var(--ink)}
 .lp-opt input:focus-visible+span{outline:2px solid var(--pin);outline-offset:2px}
-.lp-opt input:disabled+span{opacity:.4;text-decoration:line-through}
+.lp-opt input:disabled+span{opacity:.4;text-decoration:line-through;cursor:not-allowed}
 #lpStatus{margin:4px 0 0;font-size:14px;min-height:22px}
 #lpStatus[data-error="true"]{color:var(--pin)}
 ul{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:8px}
@@ -161,7 +161,10 @@ async function main() {
   const { product } = JSON.parse(await readFile(fixture, "utf8"));
   if (product?.publicCode !== page.code) throw new Error("fixture does not match page code");
   if (flags.includes("--images")) await encodeImages(page, product);
-  const html = render(page, product);
+  // @font-face rules are inlined so the first paint never waits for a stylesheet request.
+  const fontFaces = (await readFile(path.join(ROOT, "css", "fonts.css"), "utf8"))
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s*\n\s*/g, "").replaceAll("../assets/fonts/", "/assets/fonts/");
+  const html = render(page, product, fontFaces);
   for (const [m] of html.matchAll(/\bimg\/\d+-\d+\.(?:webp|avif)/g)) await access(path.join(ROOT, "lp", id, m)); // every referenced image is committed
   const out = path.join(ROOT, "lp", id, "index.html");
   if (flags.includes("--check")) {

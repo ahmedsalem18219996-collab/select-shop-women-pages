@@ -63,7 +63,11 @@ test("multi-size product: a size must be chosen and sold-out sizes are disabled"
   await expect(page.getByRole("radio", { name: "L" })).toBeDisabled();
   await page.locator("#lpOrder").click();
   await expect(page.locator("#lpStatus")).toHaveText("اختاري المقاس الأول.");
-  await page.getByText("M", { exact: true }).click();
+  const chip = page.getByText("M", { exact: true });
+  expect((await chip.boundingBox()).height).toBeGreaterThanOrEqual(44); // comfortable tap target
+  await expect(page.locator("#lpOrder")).toBeInViewport(); // sticky CTA stays reachable
+  await chip.click(); // tap the visible chip itself, exactly like a customer
+  await expect(page.getByRole("radio", { name: "M" })).toBeChecked();
   // Interaction latency (INP proxy) on the size tap, measured by the browser's Event Timing API.
   const worst = await page.evaluate(() => new Promise(res => {
     let max = 0; new PerformanceObserver(l => l.getEntries().forEach(e => { max = Math.max(max, e.duration); })).observe({ type: "event", buffered: true, durationThreshold: 16 });
