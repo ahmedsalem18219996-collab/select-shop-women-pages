@@ -17,7 +17,10 @@ test("premium storefront renders verified catalog and retains product navigation
   await expect(page.locator("#countOut")).not.toHaveText("جارٍ التحميل…");
   const color = await page.locator(".hdr").evaluate(el => getComputedStyle(el).backgroundColor);
   expect(color).toBe("rgb(255, 255, 255)");
-  const productLink = page.locator("#feed .card .shot-link").first();
+  // Model colours are one public card; legacy SKU product URLs remain tested independently.
+  await expect(page.locator('#feed .card .shot-link[href$="/lp/ballon-suit/"]')).toHaveCount(1);
+  await expect(page.locator('#feed .card .shot-link[href$="/lp/ss-1008/"]')).toHaveCount(1);
+  const productLink = page.locator('#feed .card .shot-link[href*="/p/?code=SS-"]').first();
   await expect(productLink).toHaveAttribute("href", /\/p\/\?code=SS-\d+/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await mkdir("preview-output", { recursive: true });
