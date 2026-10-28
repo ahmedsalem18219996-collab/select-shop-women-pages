@@ -3,6 +3,12 @@ import { test, expect } from "@playwright/test";
 // One model page, several colours: each colour is its own real product (SS-1035…SS-1040). No product data is merged.
 const MODEL = "/lp/ballon-suit/";
 const mockLog = async (request) => (await request.get("/__mock/log")).json();
+const fillBuyer = async (page, region = "cairo") => {
+  await page.fill("[name=name]", "اختبار آلي");
+  await page.fill("[name=phone]", "01000000000");
+  await page.locator("[name=region]").selectOption(region);
+  await page.fill("[name=address]", "عنوان اختبار فقط");
+};
 const heroSrc = (page) => page.locator("#lpHero img").evaluate(i => i.currentSrc || i.src);
 
 test.beforeEach(async ({ page }) => {
@@ -28,27 +34,19 @@ test("default colour is in the HTML; choosing a colour swaps photo, name and ver
   expect(page.external).toEqual([]);
 });
 
-test("the cart and the order carry the chosen colour's own product code", async ({ page, request }) => {
+test("the order carries the chosen colour's own product code", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
   await page.goto(MODEL);
   await page.getByRole("button", { name: "رصاصي" }).click();
   await expect(page.locator("#lpBarChoice")).toHaveText("رصاصي · مقاس واحد");
-  await expect(page.locator("#lpOrder")).toBeEnabled();
+  await fillBuyer(page, "giza");
+  await expect(page.locator("#lpTotal")).toHaveText("١٬٠٨٠ ج");
   await page.locator("#lpOrder").click();
-  await page.waitForURL("**/checkout/");
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("women.cart.v1")).at(-1).publicCode)).toBe("SS-1036");
-  expect(JSON.parse(await page.evaluate(() => sessionStorage.getItem("women.lp.attribution.v1")))).toMatchObject({ id: "ballon-suit", code: "SS-1036" });
-  await page.locator("#region").selectOption("giza");
-  await page.fill("[name=name]", "اختبار آلي");
-  await page.fill("[name=phone]", "01000000000");
-  await page.fill("[name=area]", "الدقي");
-  await page.fill("[name=address]", "عنوان اختبار فقط");
-  await expect(page.locator("#placeOrder")).toBeEnabled();
-  await page.locator("#placeOrder").click();
-  await page.waitForURL(/\/order-success\/\?order=ORD-/);
+  await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-/);
   const { orders } = await mockLog(request);
   expect(orders.length - before).toBe(1);
   expect(orders.at(-1).lines.at(-1).publicCode).toBe("SS-1036");
+  expect(page.external).toEqual([]);
 });
 
 test("a sold-out colour disables ordering without a stale price; another colour re-enables it", async ({ page }) => {
@@ -66,7 +64,7 @@ test("a sold-out colour disables ordering without a stale price; another colour 
   await expect(page.locator("#lpPrice")).toHaveText("١٬٠٠٠");
 });
 
-test("two quick colour taps: the last one wins even if the first answer arrives later", async ({ page }) => {
+test("two quick colour taps: the last one wins even if the first answer arrives later", async ({ page, request }) => {
   await page.route("**/women-checkout/product/SS-1036", async route => { await new Promise(r => setTimeout(r, 900)); await route.continue(); });
   await page.goto(MODEL);
   await expect(page.locator("#lpOrder")).toBeEnabled();
@@ -76,23 +74,20 @@ test("two quick colour taps: the last one wins even if the first answer arrives 
   await expect(page.locator("#lpColorName")).toHaveText("أحمر");
   await expect(page.locator("#lpBarChoice")).toHaveText("أحمر · مقاس واحد");
   await expect(page.locator("#lpOrder")).toBeEnabled();
+  await fillBuyer(page);
+  await expect(page.locator("#lpTotal")).toHaveText("١٬٠٧٠ ج");
   await page.locator("#lpOrder").click();
-  await page.waitForURL("**/checkout/");
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("women.cart.v1")).at(-1).publicCode)).toBe("SS-1039");
+  await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-/);
+  expect((await mockLog(request)).orders.at(-1).lines[0].publicCode).toBe("SS-1039");
 });
 
-test("simplified checkout: governorate first, notes folded, required delivery fields kept", async ({ page }) => {
+test("short form: exactly name, mobile, governorate, address (+ quantity), changing colour re-quotes the total", async ({ page }) => {
   await page.goto(MODEL);
-  await page.locator("#lpOrder").click();
-  await page.waitForURL("**/checkout/");
-  const fields = await page.locator("#orderForm :is(input,select,textarea)").evaluateAll(els => els.map(e => [e.name, e.required]));
-  expect(fields).toEqual([["region", true], ["name", true], ["phone", true], ["area", true], ["address", true], ["notes", false]]);
-  await expect(page.locator("[name=notes]")).toBeHidden(); // folded until the shopper asks for it
-  await expect(page.locator("#placeOrder")).toBeDisabled();
-  await page.locator("#region").selectOption("cairo");
-  await expect(page.locator("#grandTotal")).toContainText("١٬٠٧٠");
-  await page.fill("[name=name]", "اختبار آلي");
-  await page.locator("#placeOrder").click(); // missing phone/area/address: the browser blocks it, nothing is sent
-  await expect(page).toHaveURL(/\/checkout\/$/);
+  const fields = await page.locator("#lpForm :is(input,select,textarea)").evaluateAll(els => els.map(e => [e.name, e.required]));
+  expect(fields).toEqual([["name", true], ["phone", true], ["region", true], ["address", true]]);
+  await fillBuyer(page, "cairo");
+  await expect(page.locator("#lpTotal")).toHaveText("١٬٠٧٠ ج");
+  await page.getByRole("button", { name: "أسود" }).click();
+  await expect(page.locator("#lpTotal")).toHaveText("١٬٠٧٠ ج"); // fresh server quote for the new colour
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

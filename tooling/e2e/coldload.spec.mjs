@@ -33,7 +33,7 @@ test.describe("cold ad-link open", () => {
 
   for (const [app, ua] of Object.entries(IN_APP)) {
     for (const [name, net] of Object.entries(NETWORKS)) {
-      for (const path of ["/lp/ballon-suit/", "/lp/ss-1008/"]) {
+      for (const path of ["/lp/ballon-suit/", "/lp/ss-1008/", "/lp/?p=SS-1008"]) {
         test(`${app} in-app · ${name} · ${path}`, async ({ browser }) => {
           const { viewport, deviceScaleFactor, isMobile, hasTouch } = devices["Pixel 7"];
           const context = await browser.newContext({ viewport, deviceScaleFactor, isMobile, hasTouch, userAgent: ua, baseURL: "http://127.0.0.1:4173" });
@@ -45,7 +45,8 @@ test.describe("cold ad-link open", () => {
           expect(response.request().redirectedFrom()).toBeNull(); // the exact ad URL never redirects
           expect(metrics.el).toBe("IMG#hero"); // the product photo is the largest paint, straight from the HTML
           expect(metrics.cls).toBeLessThanOrEqual(0.1);
-          if (net.lcpMax) expect(metrics.lcp).toBeLessThanOrEqual(net.lcpMax);
+          // The automatic page learns its photo from one API read, so it gets +500 ms; ads should prefer /lp/<id>/ pages.
+          if (net.lcpMax) expect(metrics.lcp).toBeLessThanOrEqual(net.lcpMax + (path.includes("?p=") ? 500 : 0));
           await expect(page.locator("h1")).not.toBeEmpty();
           await expect(page.locator("#lpOrder")).toBeEnabled({ timeout: 15000 }); // verified with the server, then orderable
           await context.close();
