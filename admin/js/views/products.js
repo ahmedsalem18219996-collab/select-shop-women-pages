@@ -4,6 +4,7 @@ import { call, uploadProductImage, deleteProductImage, mediaUrl } from '../api.j
 import { checkSourceImage, optimizeUploadImage, optimizationSummary } from '../image-optimize.js';
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
+import { saveFamilyCategory } from '../model-category.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
 let categories = [];
@@ -96,21 +97,40 @@ async function renderList(ctx) {
   };
   results.addEventListener('change', async (e) => {
     const s = e.target.closest('[data-cat]'); if (!s) return;
-    const code = s.closest('tr').dataset.code;
-    const isNew = !!s.closest('tr').querySelector('.badge.info');
-    const r = await call('products.set_display', { code, category: s.value, is_new: isNew });
-    r.outcome === 'saved' ? done() : fail(r);
+    const code = s.closest('tr[data-code]')?.dataset.code;
+    const original = listedGroups.flatMap(g => g.members).find(m => m.product.public_code === code)?.product;
+    if (!original) { island('error', 'المنتج اتغير، حدّثي الصفحة وجربي تاني.'); await load(); return; }
+    if (s.value === original.category) return;
+    s.disabled = true;
+    const r = await call('products.set_display', { code, category: s.value, is_new: original.is_new === true });
+    s.disabled = false;
+    if (r.outcome === 'saved') { done('تم تغيير قسم المنتج'); await load(); }
+    else { fail(r); s.value = original.category; }
   });
   results.addEventListener('click', async (e) => {
     const manage = e.target.closest('[data-manage-model]');
     if (manage) {
       const g = listedGroups.find(g => g.family && g.key === manage.dataset.manageModel);
       if (!g) return;
+      if (!categories.length) await loadCategories();
+      const categoryNames = [...new Set(g.members.map(m => m.product.category))];
+      const currentCategory = categoryNames.length === 1 ? categoryNames[0] : '';
       const box = sheet({
         title: g.name + ' · إدارة الألوان',
         wide: true,
         body: html`<div class="stack">
-          <p class="muted">اختاري اللون اللي عايزة تعدليه، واضغطي «تعديل اللون». كل لون له مخزون مستقل والطلبات القديمة محفوظة.</p>
+          <p class="muted">كل موديل له قسم واحد. تغيير القسم هنا بيحدّث كل ألوانه الموجودة، مع الحفاظ على مخزون وأوردرات كل لون.</p>
+          ${can('products.edit') ? html`<div class="model-category-editor">
+            <label class="field"><span>القسم الخاص بالموديل (${g.members.length} ألوان)</span>
+              <select class="select" id="model-category" aria-label="اختاري قسم الموديل">
+                ${categoryNames.length !== 1 ? html`<option value="" selected disabled>أقسام مختلفة — اختاري قسم موحّد</option>` : ''}
+                ${categories.map(c => html`<option value="${c.name}" ${c.name === currentCategory ? 'selected' : ''}>${c.name}${c.visible === false ? ' (مخفي)' : ''}</option>`)}
+              </select>
+            </label>
+            <button class="btn btn-primary" type="button" data-save-model-category>حفظ القسم لكل الألوان</button>
+            <p class="muted" id="model-category-feedback" role="status" aria-live="polite"></p>
+          </div>` : html`<p class="muted">تعديل القسم يحتاج صلاحية تعديل المنتجات.</p>`}
+          <p class="muted">للصور والسعر والمخزون: افتحي اللون المطلوب. إضافة لون جديد للموديل وتغيير أسماء الألوان الظاهرة في المتجر تحتاج ربطًا ديناميكيًا بالخادم، ومش متاحة بأمان في النسخة الحالية.</p>
           ${g.members.map(m => html`<div class="model-color-line">
             <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="model-dot" style="background:${m.color.hex}"></span>
@@ -125,6 +145,29 @@ async function renderList(ctx) {
         foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>`
       });
       box.querySelector('[data-close]')?.addEventListener('click', closeLayer);
+      box.querySelector('[data-save-model-category]')?.addEventListener('click', async e => {
+        const button = e.currentTarget;
+        const select = $('#model-category', box);
+        const feedback = $('#model-category-feedback', box);
+        const category = select?.value;
+        if (!category || !categories.some(c => c.name === category)) { feedback.textContent = 'اختاري قسم صحيح الأول.'; return; }
+        if (g.members.every(m => m.product.category === category)) { feedback.textContent = 'الموديل بالفعل في القسم ده.'; return; }
+        select.disabled = true;
+        await withBusy(button, async () => {
+          const summary = await saveFamilyCategory(g.members, category, call, n => {
+            feedback.textContent = 'تحديث ' + n + ' من ' + g.members.length + ' لون…';
+          });
+          if (summary.failed.length) {
+            feedback.textContent = 'اتحدث ' + summary.updated.length + ' لون، وفشل ' + summary.failed.length + '. الألوان اللي فشلت: ' + summary.failed.map(x => x.code).join('، ') + '.';
+            island('error', 'تحديث قسم الموديل اكتمل جزئيًا — لازم نراجع الألوان اللي فشلت قبل إعادة المحاولة.');
+          } else {
+            closeLayer();
+            done('تم تغيير القسم لكل الألوان (' + g.members.length + ')');
+          }
+          await load();
+        });
+        if (document.contains(select)) select.disabled = false;
+      });
       box.querySelectorAll('[data-open-sku]').forEach(a => a.addEventListener('click', () => {
         sessionStorage.setItem('wa.ptab', a.dataset.editTab || 'details');
         closeLayer();
