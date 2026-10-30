@@ -46,10 +46,18 @@ test("missing sibling stays standalone; never display an unavailable colour", ()
   assert.equal(out[0].sw.length, 0);
 });
 
-test("prefer purchasable sibling for card image while retaining real SKU", () => {
+test("sold-out default keeps sibling SKUs separate to avoid broken group LP", () => {
   const out = group([item("SS-1008", 1200, "جاكيت", false),
     item("SS-1009", 1200, "جاكيت", true)]);
-  assert.equal(out.length, 1);
-  assert.equal(out[0].id, "SS-1009");
-  assert.equal(out[0].purchasable, true);
+  assert.equal(out.length, 2);
+  assert.equal(out[0].id, "SS-1008");
+  assert.equal(out[1].id, "SS-1009");
+  assert.equal(out[1].purchasable, true);
+});
+
+test("hidden default SKU also keeps remaining colours separate", () => {
+  const out = group([item("SS-1035", 1000, "أطقم"),
+    item("SS-1036", 1000, "أطقم"), item("SS-1038", 1000, "أطقم")]);
+  assert.equal(out.length, 3);
+  assert.equal(out[0].url, "/lp/?p=SS-1035");
 });
