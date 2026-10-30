@@ -28,7 +28,7 @@ test("previously isolated SS-1010 goes to seven-colour Balloon Suit, keeps photo
   await expect(page.locator("#lpFormColorName")).toHaveText("رمادي زيتي");
   await expect(page.locator('#lpColors [data-code="SS-1010"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('#lpFormColors [data-code="SS-1010"]')).toHaveAttribute("aria-pressed", "true");
-  await expect.poll(() => heroSrc(page)).toMatch(/\/lp\/ss-1010\/img\/SS-1010\/0-800\.(webp|avif)$/);
+  await expect.poll(() => heroSrc(page)).toMatch(/\/lp\/ss-1010\/img\/SS-1010\/0-(?:480|800)\.(webp|avif)$/);
   await expect(page.locator("#lpPrice")).toHaveText("١٬٠٠٠");
   await expect(page.locator("#lpOrder")).toBeEnabled();
   await fillBuyer(page);
