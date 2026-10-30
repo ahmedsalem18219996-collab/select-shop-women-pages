@@ -654,20 +654,29 @@ async function init() {
   form.addEventListener("focusin", () => {
     if (started || !product) return;
     started = true;
-    funnel("begin_checkout", { currency: "EGP", lp_id: page.id, lp_variant: variantId, items: [{ item_id: product.publicCode, quantity: qty }] });
+    funnel("begin_checkout", { currency: "EGP", lp_id: page.id, lp_variant: variantId,
+      items: currentLines().map(l => ({ item_id: l.publicCode,
+        item_variant: mixMode ? "one_size" : variantLabel(), quantity: l.quantity })) });
   });
 
-  const done = (/** @type {string} */ code, /** @type {any} */ q, /** @type {Line} */ line) => {
+  const done = (/** @type {string} */ code, /** @type {any} */ q, /** @type {Line[]} */ lines) => {
     forgetOrderKey();
     if (firstReport(code)) {
       const value = (minorOf(q.merchandiseSubtotal) ?? 0) / 100;
       funnel("purchase", { currency: "EGP", value, shipping: (minorOf(q.shippingTotal) ?? 0) / 100, transaction_id: hex(16),
-        lp_id: page.id, lp_variant: variantId, items: [{ item_id: line.publicCode, item_variant: variantLabel(), quantity: line.quantity }] }, hex(16));
+        lp_id: page.id, lp_variant: variantId,
+        items: lines.map(l => ({ item_id: l.publicCode,
+          item_variant: lines.length > 1 ? "one_size" : variantLabel(), quantity: l.quantity })) }, hex(16));
       void loadAnalytics(); // the conversion goes out even if the customer leaves right away
     }
     $("#lpDoneCode").textContent = code;
     const total = minorOf(q.grandTotal);
-    $("#lpDoneText").textContent = (total !== null ? "هتدفعي " + egp(total) + " ج عند الاستلام. " : "") + "طلبك قيد المراجعة، والتوافر وميعاد الشحن بيتأكدوا قبل التأكيد النهائي..";
+    const summary = lines.map(l =>
+      (colors.find(c => c.code === l.publicCode)?.name || l.publicCode) + " × " +
+      new Intl.NumberFormat("ar-EG").format(l.quantity)).join("، ");
+    $("#lpDoneText").textContent = (total !== null ? "هتدفعي " + egp(total) + " ج عند الاستلام. " : "") +
+      (summary ? "الألوان المطلوبة: " + summary + ". " : "") +
+      "طلبك قيد المراجعة، والتوافر وميعاد الشحن بيتأكدوا قبل التأكيد النهائي.";
     form.hidden = true;
     /** @type {HTMLElement} */ (cta.closest(".bar")).hidden = true;
     say("");
@@ -680,19 +689,28 @@ async function init() {
   form.addEventListener("submit", async e => {
     e.preventDefault();
     if (busy || !product) return;
-    const line = lineNow();
-    if (!line || !lineOk(line)) { say("اختاري المقاس الأول.", true); holder.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    const lines = currentLines();
+    if (!lines.length || !lines.every(lineOk) || mixBusy) {
+      say(mixMode ? "اختاري لون واحد على الأقل وحددي عدد القطع." : "اختاري المقاس الأول.", true);
+      (mixMode ? mixBox : holder).scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    const intent = JSON.stringify(lines);
     const values = { name: fieldEl("name").value, phone: fieldEl("phone").value, region: region.value, address: fieldEl("address").value };
     const errors = checkBuyer(values);
     for (const n of fieldNames) markField(n, errors[n] || "");
     const firstBad = fieldNames.find(n => errors[n]);
     if (firstBad) { say(FIELD_HELP, true); fieldEl(firstBad).focus(); return; }
     if (!quote) { await requote(); if (!quote) return; }
+    if (JSON.stringify(currentLines()) !== intent) {
+      say("الكميات اتغيرت. راجعي الألوان وأكّدي تاني.", true);
+      return;
+    }
     const q = quote;
     busy = true; cta.disabled = true; cartBtn.disabled = true; cta.textContent = "بنسجل طلبك…"; say("بنسجل طلبك…");
     const label = region.selectedOptions[0]?.textContent || "";
     const payload = {
-      idempotencyKey: orderKey(), lines: [line], deliveryRegionKey: region.value, paymentMethod: "cod",
+      idempotencyKey: orderKey(), lines, deliveryRegionKey: region.value, paymentMethod: "cod",
       // The governorate is the "area" line of the delivery address; the free text is the street address.
       buyer: { name: values.name.trim(), phone: /** @type {string} */ (egMobile(values.phone)), area: label, address: values.address.trim(), notes: "" },
       confirmedMerchandiseSubtotalPiastres: minorOf(q.merchandiseSubtotal),
@@ -702,11 +720,11 @@ async function init() {
     try {
       const reply = await api("/orders", "POST", payload, 20000);
       if (!ORDER_CODE.test(reply.publicOrderCode)) throw Object.assign(new Error("write_unconfirmed"), { status: 503 });
-      done(reply.publicOrderCode, q, line);
+      done(reply.publicOrderCode, q, lines);
       return;
     } catch (err) {
       const error = /** @type {any} */ (err), data = error?.data || {};
-      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, line); return; }
+      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines); return; }
       if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب السابق اتلغى من المتجر. تقدري تأكدي طلب جديد.", true); }
       else if (error?.message === "checkout_changed") {
         say("السعر أو الشحن اتغير. راجعي الإجمالي الجديد وأكّدي تاني.", true);
@@ -727,7 +745,9 @@ async function init() {
       // Unknown outcome (timeout, network, 5xx): the SAME key is reused on retry, so the server returns the same order.
       else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. اضغطي «تأكيد الطلب» تاني، مش هيتكرر.", true);
     } finally { busy = false; }
-    cta.disabled = !product; cartBtn.disabled = !lineNow() || cartBusy; cta.textContent = product ? ctaText : "غير متاح حاليًا";
+    cta.disabled = !product || (mixMode && !currentLines().length);
+    cartBtn.disabled = mixMode || !lineNow() || cartBusy;
+    cta.textContent = product ? ctaText : "غير متاح حاليًا";
   });
 
   const requestedColour = new URLSearchParams(location.search).get("color");
