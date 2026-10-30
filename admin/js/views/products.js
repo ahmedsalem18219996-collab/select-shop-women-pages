@@ -4,6 +4,7 @@ import { call, uploadProductImage, deleteProductImage, mediaUrl } from '../api.j
 import { checkSourceImage, optimizeUploadImage, optimizationSummary } from '../image-optimize.js';
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
+import { mountModelControls } from '../model-controls.js';
 import { saveFamilyCategory } from '../model-category.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
@@ -164,7 +165,8 @@ async function renderList(ctx) {
             <button class="btn btn-primary" type="button" data-save-model-category>حفظ القسم لكل الألوان</button>
             <p class="muted" id="model-category-feedback" role="status" aria-live="polite"></p>
           </div>` : html`<p class="muted">تعديل القسم يحتاج صلاحية تعديل المنتجات.</p>`}
-          <p class="muted">للصور والسعر والمخزون: افتحي اللون المطلوب. إضافة لون جديد للموديل وتغيير أسماء الألوان الظاهرة في المتجر تحتاج ربطًا ديناميكيًا بالخادم، ومش متاحة بأمان في النسخة الحالية.</p>
+          <p class="muted">للصور والسعر والمخزون افتحي اللون. ${g.family.persisted ? "الألوان هنا مرتبطة بقاعدة البيانات وممكن تعديلها." : "إضافة لون أو تغيير اسمه هتتفعل بعد ربط قاعدة بيانات الموديلات."}</p>
+          <div id="model-live-controls"></div>
           ${allMembers.map(m => html`<div class="model-color-line">
             <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="model-dot" style="background:${m.color.hex}"></span>
@@ -178,6 +180,12 @@ async function renderList(ctx) {
         </div>`,
         foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>`
       });
+      if (g.family.persisted && can('products.edit')) {
+        mountModelControls($('#model-live-controls', box), g.family, call, async (message,code) => {
+          closeLayer();done(message);await load();
+          if (code) location.hash='#/products/'+code;
+        });
+      }
       box.querySelector('[data-close]')?.addEventListener('click', closeLayer);
       box.querySelector('[data-save-model-category]')?.addEventListener('click', async e => {
         const button = e.currentTarget;
@@ -185,7 +193,19 @@ async function renderList(ctx) {
         const feedback = $('#model-category-feedback', box);
         const category = select?.value;
         if (!category || !categories.some(c => c.name === category)) { feedback.textContent = 'اختاري قسم صحيح الأول.'; return; }
-        if (allMembers.every(m => m.product.category === category)) { feedback.textContent = 'الموديل بالفعل في القسم ده.'; return; }
+        if (allMembers.every(m => m.product.category === category) &&
+          (!g.family.persisted || g.family.category === category)) {
+          feedback.textContent = 'الموديل بالفعل في القسم ده.'; return;
+        }
+        if (g.family.persisted) {
+          const r=await withBusy(button,()=>call('models.update',{
+            modelId:g.family.id,version:g.family.version,name:g.name,category
+          }));
+          if(r.outcome==='saved'){closeLayer();done('تم نقل الموديل وكل ألوانه للقسم الجديد');await load();}
+          else if(r.outcome==='stale')island('error','الموديل اتغير. حدّثي الصفحة وجربي تاني.');
+          else fail(r);
+          return;
+        }
         select.disabled = true;
         await withBusy(button, async () => {
           const summary = await saveFamilyCategory(allMembers, category, call, n => {
