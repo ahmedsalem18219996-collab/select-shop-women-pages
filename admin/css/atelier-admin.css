@@ -25,3 +25,15 @@
 :root:not([data-theme="dark"]) .auth-art{background:#eeece5}
 :root:not([data-theme="dark"]) .nav .on,
 :root:not([data-theme="dark"]) .tab.on{color:#303c2d}
+
+/* Same model, many original SKUs: keep the admin list short but editable per colour. */
+.model-dots{display:inline-flex;vertical-align:middle;align-items:center;gap:4px;flex-wrap:wrap;max-width:180px}
+.model-dots i,.model-dot{display:inline-block;width:14px;height:14px;border:1px solid var(--line-2);border-radius:50%;flex:none}
+.model-summary{align-items:center;gap:10px;flex-wrap:wrap}
+.model-summary .row-main{flex:1;min-width:100px}
+.model-summary [data-manage-model]{min-height:40px}
+.model-color-line{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--surface);padding:10px;border-radius:var(--r-m)}
+.model-color-line .row-main{min-width:0;flex:1}
+.model-color-line .row-meta{display:block;white-space:normal}
+.model-color-line .thumb{flex:none}
+@media(max-width:430px){.model-color-line{gap:7px}.model-color-line .thumb{width:42px;height:52px}.model-color-line .btn{padding-inline:9px}}

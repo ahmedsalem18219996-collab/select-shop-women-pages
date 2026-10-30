@@ -3,6 +3,7 @@ import { html, render, toString, $, $$, icon, money, toMinor, fmtNum, ago, date,
 import { call, uploadProductImage, deleteProductImage, mediaUrl } from '../api.js';
 import { checkSourceImage, optimizeUploadImage, optimizationSummary } from '../image-optimize.js';
 import { activityLine } from './dashboard.js';
+import { groupAdminProducts } from '../model-families.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
 let categories = [];
@@ -30,10 +31,12 @@ async function renderList(ctx) {
   // The list may arrive after the user has moved to another screen: only fill the select if it is still on the page.
   loadCategories().then((cs) => { const s = $('#cat', el); if (!s) return; cs.forEach((c) => { const o = new Option(c.name, c.name); o.selected = c.name === state.category; s.add(o); }); });
   const results = $('#results', el);
+  let listedGroups = [];
   const load = async () => {
     const r = await call('products.list', { q: state.q || null, status: state.status || null, category: state.category || null });
     if (r.outcome !== 'ok') { fail(r); return; }
     const items = r.data.filter(p => state.status === 'archived' ? p.status === 'archived' : p.status !== 'archived');
+    listedGroups = groupAdminProducts(items);
     if (!items.length) {
       render(results, html`<div class="empty">${icon('box')}<b>${state.q || state.status || state.category ? t('products.empty') : t('products.emptyAll')}</b>
         ${can('products.edit') && !state.q ? html`<button class="btn btn-primary" data-new>${icon('plus')}${t('products.new')}</button>` : ''}</div>`);
@@ -41,14 +44,42 @@ async function renderList(ctx) {
       return;
     }
     render(results, html`
-      <div class="list mobile-only">${items.map((p, k) => html`<a class="row-card" style="--k:${k}" href="#/products/${p.public_code}">
-        <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-        <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
+      <div class="list mobile-only">${listedGroups.map((g, k) => {
+        const p = g.members[0].product;
+        return g.family ? html`<div class="row-card model-summary" style="--k:${k}">
+          <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
+          <span class="row-main"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span></span>
+          <button class="btn btn-soft btn-sm" type="button" data-manage-model="${g.key}">إدارة الألوان</button>
+        </div>` : html`<a class="row-card" style="--k:${k}" href="#/products/${p.public_code}">
+          <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
+          <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
           ${p.stock_low ? html`<span class="badge warn">${t('products.lowStock')}</span>` : ''}</span></span>
-        <span class="row-end"><b class="num">${priceText(p)}</b>${statusBadge(p.status)}</span></a>`)}</div>
+          <span class="row-end"><b class="num">${priceText(p)}</b>${statusBadge(p.status)}</span></a>`;
+      })}</div>
       <div class="table-wrap desk-only"><table class="t">
         <thead><tr><th>${t('products.title')}</th><th>${t('products.category')}</th><th>${t('products.price')}</th><th>${t('products.stock')}</th><th>${t('products.views')}</th><th>${t('products.status')}</th><th></th></tr></thead>
-        <tbody>${items.map((p) => html`<tr data-code="${p.public_code}">
+        <tbody>${listedGroups.map(g => {
+          const p = g.members[0].product;
+          if (g.family) {
+            const prices = g.members.flatMap(m => Number.isInteger(m.product.price_min_minor) ? [m.product.price_min_minor] : []);
+            const maxPrices = g.members.flatMap(m => Number.isInteger(m.product.price_max_minor) ? [m.product.price_max_minor] : []);
+            const low = prices.length ? Math.min(...prices) : null;
+            const high = maxPrices.length ? Math.max(...maxPrices) : null;
+            const stockKnown = g.members.every(m => Number.isInteger(m.product.stock_total));
+            const stock = stockKnown ? g.members.reduce((n,m)=>n+m.product.stock_total,0) : null;
+            const views = g.members.reduce((n,m)=>n+(Number(m.product.views_30d)||0),0);
+            return html`<tr data-family="${g.key}" class="model-group-row">
+              <td><div class="cell-main"><span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
+                <div class="row-main"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m=>html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span></div></div></td>
+              <td>${p.category}</td>
+              <td class="num">${low === null || high === null ? '—' : low === high ? money(low) : html`${money(low)} – ${money(high)}`}</td>
+              <td class="num">${stock === null ? '—' : fmtNum(stock)}</td>
+              <td class="num muted">${fmtNum(views)}</td>
+              <td><span class="muted">حسب كل لون</span></td>
+              <td><button type="button" class="btn btn-primary btn-sm" data-manage-model="${g.key}">إدارة الألوان</button></td>
+            </tr>`;
+          }
+          return html`<tr data-code="${p.public_code}">
           <td><div class="cell-main"><span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <div class="row-main"><a class="rowlink" href="#/products/${p.public_code}">${p.title}</a><span class="row-meta"><span class="code">${p.public_code}</span>${p.is_new ? html`<span class="badge info plain">${t('products.isNew')}</span>` : ''}</span></div></div></td>
           <td>${can('products.edit') ? html`<select class="select" data-cat style="min-width:140px;min-height:36px" aria-label="${t('products.category')}">${categories.map((c) => html`<option ${c.name === p.category ? 'selected' : ''}>${c.name}</option>`)}</select>` : p.category}</td>
@@ -59,8 +90,8 @@ async function renderList(ctx) {
           <td><div class="row">
             ${can('products.publish') && p.status !== 'archived' ? html`<button class="btn btn-soft btn-sm" data-toggle>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button>` : ''}
             ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<button type="button" class="btn btn-danger btn-sm" data-archive>حذف المنتج</button>` : ''}
-          </div></td>
-        </tr>`)}</tbody></table></div>`);
+          </div></td></tr>`;
+        })}</tbody></table></div>`);
     // categories list may arrive after the first paint
     if (can('products.edit') && !categories.length) await loadCategories().then(load);
   };
@@ -72,6 +103,27 @@ async function renderList(ctx) {
     r.outcome === 'saved' ? done() : fail(r);
   });
   results.addEventListener('click', async (e) => {
+    const manage = e.target.closest('[data-manage-model]');
+    if (manage) {
+      const g = listedGroups.find(g => g.family && g.key === manage.dataset.manageModel);
+      if (!g) return;
+      const box = sheet({
+        title: g.name + ' · إدارة الألوان',
+        body: html`<div class="stack">
+          <p class="muted">كل لون له كود ومخزون وصور مستقلة. افتحي اللون لتعدّلي السعر والكمية والصور والتوافر من غير حذف أو دمج البيانات.</p>
+          ${g.members.map(m => html`<div class="model-color-line">
+            <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
+            <span class="model-dot" style="background:${m.color.hex}"></span>
+            <div class="row-main"><b>${m.color.name}</b><span class="row-meta">${m.product.public_code} · ${priceText(m.product)} · مخزون ${m.product.stock_total === null ? '—' : fmtNum(m.product.stock_total)}</span>${statusBadge(m.product.status)}</div>
+            <a class="btn btn-soft btn-sm" href="#/products/${m.product.public_code}" data-open-sku>تعديل</a>
+          </div>`)}
+        </div>`,
+        foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>`
+      });
+      box.querySelector('[data-close]')?.addEventListener('click', closeLayer);
+      box.querySelectorAll('[data-open-sku]').forEach(a => a.addEventListener('click', () => closeLayer()));
+      return;
+    }
     const tr = e.target.closest('tr[data-code]');
     if (e.target.closest('[data-toggle]') && tr) {
       const btn = e.target.closest('[data-toggle]');
