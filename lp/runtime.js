@@ -431,25 +431,32 @@ async function init() {
     /** @type {HTMLButtonElement} */ ($("#lpQtyDown")).disabled = qty <= 1;
     /** @type {HTMLButtonElement} */ ($("#lpQtyUp")).disabled = qty >= MAX_QTY;
     const unitMinor = variant && okMinor(variant.unitPrice?.amountMinor) ? variant.unitPrice.amountMinor : null;
-    const sub = minorOf(quote?.merchandiseSubtotal) ?? (unitMinor === null ? null : unitMinor * qty);
+    const mixedSubtotal = [...mixEntries.values()].reduce((sum, e) =>
+      sum + e.variant.unitPrice.amountMinor * e.quantity, 0);
+    const sub = minorOf(quote?.merchandiseSubtotal) ??
+      (mixMode ? (currentLines().length ? mixedSubtotal : null) : (unitMinor === null ? null : unitMinor * qty));
     const ship = minorOf(quote?.shippingTotal), total = minorOf(quote?.grandTotal);
     $("#lpSub").textContent = sub === null ? "—" : egp(sub) + " ج";
     $("#lpShip").textContent = ship !== null ? (ship === 0 ? "مجاني" : egp(ship) + " ج") : !region.value ? "اختاري المحافظة" : quoting ? "بنحسب…" : "—";
     $("#lpTotal").textContent = total === null ? "—" : egp(total) + " ج";
     $("#lpBarPrice").textContent = total !== null ? egp(total) + " ج" : unit === "—" ? "—" : unit + " ج";
-    if (choiceEl && product) choiceEl.textContent = total !== null ? "الإجمالي شامل الشحن" : (current.name ? current.name + " · " : "") + sizeText();
+    if (choiceEl && product) choiceEl.textContent = mixMode
+      ? (currentLines().length ? currentLines().map(l =>
+          (colors.find(c => c.code === l.publicCode)?.name || l.publicCode) + " × " + l.quantity).join("، ") : "حددي عدد كل لون")
+      : total !== null ? "الإجمالي شامل الشحن" : (current.name ? current.name + " · " : "") + sizeText();
+    repaintMix();
   };
 
   /** Server quote for the current line and governorate; a newer change always wins over a slower answer. */
   const requote = async () => {
     const mine = ++quoteTicket;
     quote = null;
-    const line = lineNow();
-    quoting = !!(line && region.value);
+    const lines = currentLines();
+    quoting = !!(lines.length && region.value);
     paint();
     if (!quoting) return;
     try {
-      const q = await api("/checkout/quote", "POST", { lines: [line], deliveryRegionKey: region.value });
+      const q = await api("/checkout/quote", "POST", { lines, deliveryRegionKey: region.value });
       if (mine !== quoteTicket) return;
       if (q.purchasable !== true || minorOf(q.grandTotal) === null) { quoteError = true; say("مش متاح التوصيل للمحافظة دي أو الكمية دي حاليًا.", true); return; }
       quote = q;
@@ -464,8 +471,9 @@ async function init() {
   const unavailable = (/** @type {string} */ text) => { product = null; variant = null; quote = null; paint(); cta.disabled = true; cartBtn.disabled = true; cta.textContent = "غير متاح حاليًا"; say(text, true); };
   const choose = () => {
     variant = chosen.every(x => x >= 0) ? findVariant(product, chosen) : null;
-    cta.disabled = false; cta.textContent = ctaText;
-    cartBtn.disabled = !lineNow() || cartBusy;
+    cta.disabled = mixMode ? currentLines().length === 0 : false;
+    cta.textContent = ctaText;
+    cartBtn.disabled = mixMode || !lineNow() || cartBusy;
     void requote();
   };
   const renderOptions = () => {
