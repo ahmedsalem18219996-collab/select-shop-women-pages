@@ -47,3 +47,7 @@
 .model-group-row:hover{background:var(--surface-2)}
 .model-color-line .btn{white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
 @media(max-width:640px){.model-color-line{flex-wrap:wrap}.model-color-line .btn{margin-inline-start:auto}}
+
+.model-color-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.model-color-actions .btn{min-height:42px;padding-inline:12px}
+@media(max-width:640px){.model-color-actions{width:100%;justify-content:flex-start;gap:8px}.model-color-actions .btn{flex:1 0 auto;text-align:center}}

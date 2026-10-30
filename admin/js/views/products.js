@@ -115,13 +115,20 @@ async function renderList(ctx) {
             <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="model-dot" style="background:${m.color.hex}"></span>
             <div class="row-main"><b>${m.color.name}</b><span class="row-meta">${m.product.public_code} · ${priceText(m.product)} · مخزون ${m.product.stock_total === null ? '—' : fmtNum(m.product.stock_total)}</span>${statusBadge(m.product.status)}</div>
-            <a class="btn btn-primary btn-sm" href="#/products/${m.product.public_code}" data-open-sku aria-label="تعديل ${m.color.name} ${m.product.public_code}">تعديل اللون</a>
+            <span class="model-color-actions">
+              <a class="btn btn-primary btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="variants">السعر والمخزون</a>
+              <a class="btn btn-soft btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="media">الصور</a>
+              <a class="btn btn-ghost btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="details">البيانات</a>
+            </span>
           </div>`)}
         </div>`,
         foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>`
       });
       box.querySelector('[data-close]')?.addEventListener('click', closeLayer);
-      box.querySelectorAll('[data-open-sku]').forEach(a => a.addEventListener('click', () => closeLayer()));
+      box.querySelectorAll('[data-open-sku]').forEach(a => a.addEventListener('click', () => {
+        sessionStorage.setItem('wa.ptab', a.dataset.editTab || 'details');
+        closeLayer();
+      }));
       return;
     }
     const tr = e.target.closest('tr[data-code]');
