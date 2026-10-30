@@ -51,6 +51,40 @@ for (const id of ["ss-1012", "ss-1046"]) {
   });
 }
 
+test("cart path: choose two products on Atelier pages, add to bag, checkout them as ONE COD order", async ({ page, request }) => {
+  const before = await (await request.get("/__mock/log")).json();
+  const ordered = before.orders.length;
+  const added = before.cartAdds.length;
+  for (const code of ["SS-1012", "SS-1041"]) {
+    await page.goto("/lp/?p=" + code);
+    await expect(page.locator("#lpForm")).toBeVisible();
+    await expect(page.locator("#lpOrder")).toBeEnabled();
+    await expect(page.locator("#lpAddCart")).toBeEnabled();
+    await page.locator("#lpAddCart").dblclick();
+    await expect(page.locator("#lpStatus")).toContainText("اتضافت للشنطة");
+    await expect(page.locator("#lpCartCount")).toHaveText(code === "SS-1012" ? "1" : "2");
+  }
+  const afterAdding = await (await request.get("/__mock/log")).json();
+  expect(afterAdding.orders.length).toBe(ordered); // adding to cart must never create orders
+  expect(afterAdding.cartAdds.length - added).toBe(2); // double taps are blocked
+  await page.locator("#lpCartLink").click();
+  await expect(page).toHaveURL(/\/cart\//);
+  await expect(page.locator("#cartItems .commerce-row")).toHaveCount(2);
+  await page.locator("#toCheckout").click();
+  await page.waitForURL("**/checkout/");
+  await page.locator("#region").selectOption("cairo");
+  await page.fill("[name=name]", "اختبار آلي");
+  await page.fill("[name=phone]", "01000000000");
+  await page.fill("[name=area]", "مدينة نصر");
+  await page.fill("[name=address]", "عنوان اختبار فقط");
+  await expect(page.locator("#placeOrder")).toBeEnabled();
+  await page.locator("#placeOrder").click();
+  await page.waitForURL(/\/order-success\/\?order=ORD-/);
+  const final = await (await request.get("/__mock/log")).json();
+  expect(final.orders.length - ordered).toBe(1);
+  expect(final.orders.at(-1).lines.map(l => l.publicCode).sort()).toEqual(["SS-1012","SS-1041"]);
+});
+
 test("old ad links /lp/?p=CODE go to the product's own page with marketing parameters kept; other colours stay", async ({ page }) => {
   await page.goto("/lp/?p=SS-1012&utm_source=facebook&utm_id=9&fbclid=abc&lpv=b");
   await page.waitForURL(u => u.pathname === "/lp/ss-1012/");

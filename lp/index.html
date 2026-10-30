@@ -73,6 +73,12 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 #lpOrder{flex:1;height:52px;border:0;border-radius:14px;background:var(--mauve);color:#fff;font:600 16px var(--f);cursor:pointer;transition:background .15s}
 #lpOrder:active{background:#5E4357}
 #lpOrder:disabled{background:#D9CCD4;color:#4A3F49;cursor:default}
+#lpAddCart{flex:0 1 43%;min-width:0;height:52px;padding:0 8px;border:1.5px solid var(--accent);border-radius:11px;background:transparent;color:var(--accent);font:600 14px var(--f);cursor:pointer}
+#lpAddCart:disabled{opacity:.48;cursor:default}
+#lpCartLink{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.bar>div{gap:8px}#lpOrder{min-width:0}
+@media(max-width:899px){.bar button{min-width:0!important}#lpAddCart{font-size:12px}}
+
 /* Direct order form: part of the page, no extra step. 16px inputs stop iOS from zooming. */
 .order{display:flex;flex-direction:column;gap:14px;margin:0;padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff}
 .order[hidden],.bar[hidden],.done[hidden]{display:none}
@@ -129,7 +135,7 @@ h1{font-size:34px}.price{font-size:26px}
 </style>
 </head>
 <body>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a></header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
 <main class="page">
 <div class="media">
 <picture class="hero" id="lpHero"><img alt="" width="800" height="1000" decoding="async"></picture>
@@ -152,7 +158,7 @@ h1{font-size:34px}.price{font-size:26px}
 </form>
 <section class="done" id="lpDone" tabindex="-1" hidden><span class="tick" aria-hidden="true">✓</span><h2>تم تسجيل طلبك</h2><p>رقم الطلب</p><strong id="lpDoneCode" dir="ltr"></strong><p id="lpDoneText"></p><a href="/">شوفي قطع تانية</a></section>
 <p id="lpStatus" role="status" aria-live="polite"></p>
-<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">—</b><span id="lpBarChoice">اختاري المقاس</span></span><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
+<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">—</b><span id="lpBarChoice">اختاري المقاس</span></span><button type="button" id="lpAddCart" disabled>أضيفي للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
 <h2 class="reassurance">طلبك واضح من البداية</h2>
 <ul class="notes"><li>الدفع عند الاستلام، من غير دفع مقدم</li><li>اختاري المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد</li><li>الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل</li></ul>
 <div class="desc" id="lpMore"></div>
@@ -164,6 +170,6 @@ h1{font-size:34px}.price{font-size:26px}
 <script type="application/json" id="lp-data">{"auto":true}</script>
 <script src="/js/catalog-thumbs.js"></script>
 <script id="lp-hero">(()=>{const w=window,l=w.__lp;if(!l||!l.product)return;l.product.then(r=>r.ok?r.clone().json():null).then(d=>{const m=((d&&d.product&&d.product.media)||[]).filter(x=>/^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[0-9a-f]{32}\.(jpg|png|webp)$/.test(x.url||"")).sort((a,b)=>(b.isPrimary===true)-(a.isPrimary===true)||a.position-b.position)[0],img=document.querySelector("#lpHero img");if(!m||!img||img.src)return;const f=m.url.split("/").pop(),b="/assets/catalog-thumbs/"+f;img.fetchPriority="high";if(new Set(w.SELECT_THUMBNAILS||[]).has(f)){img.sizes="(min-width: 900px) 560px, 100vw";img.srcset=b+".w400.webp 400w, "+b+".webp 559w";img.src=b+".webp"}else img.src=m.url}).catch(()=>{})})()</script>
-<script type="module" src="/lp/runtime.js?v=20261030-3"></script>
+<script type="module" src="/lp/runtime.js?v=20261030-4"></script>
 </body>
 </html>

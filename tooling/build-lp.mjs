@@ -112,6 +112,12 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 #lpOrder{flex:1;height:52px;border:0;border-radius:14px;background:var(--mauve);color:#fff;font:600 16px var(--f);cursor:pointer;transition:background .15s}
 #lpOrder:active{background:#5E4357}
 #lpOrder:disabled{background:#D9CCD4;color:#4A3F49;cursor:default}
+#lpAddCart{flex:0 1 43%;min-width:0;height:52px;padding:0 8px;border:1.5px solid var(--accent);border-radius:11px;background:transparent;color:var(--accent);font:600 14px var(--f);cursor:pointer}
+#lpAddCart:disabled{opacity:.48;cursor:default}
+#lpCartLink{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.bar>div{gap:8px}#lpOrder{min-width:0}
+@media(max-width:899px){.bar button{min-width:0!important}#lpAddCart{font-size:12px}}
+
 /* Direct order form: part of the page, no extra step. 16px inputs stop iOS from zooming. */
 .order{display:flex;flex-direction:column;gap:14px;margin:0;padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff}
 .order[hidden],.bar[hidden],.done[hidden]{display:none}
@@ -207,7 +213,7 @@ ${o.fontFaces}
 ${CSS}</style>
 </head>
 <body>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a></header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
 <main class="page">
 <div class="media">
 <picture class="hero" id="lpHero">${o.hero}</picture>
@@ -220,7 +226,7 @@ ${o.picker}
 <div id="lpOptions">${o.options}</div>
 ${ORDER_FORM}
 <p id="lpStatus" role="status" aria-live="polite"></p>
-<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
+<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="button" id="lpAddCart" disabled>أضيفي للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
 <h2 class="reassurance">طلبك واضح من البداية</h2>
 <ul class="notes">${o.benefits.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
 <div class="desc" id="lpMore">${o.more}</div>
@@ -230,7 +236,7 @@ ${o.video}
 <footer><strong dir="ltr">SELECT SHOP WOMEN</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
-${o.scripts}<script type="module" src="/lp/runtime.js?v=20261030-3"></script>
+${o.scripts}<script type="module" src="/lp/runtime.js?v=20261030-4"></script>
 </body>
 </html>
 `;

@@ -121,6 +121,7 @@ function quickPrice(code, after) {
 // ======================================================================= create
 function createSheet(ctx) {
   const sizes = [];
+  const colors = [];
   const box = sheet({ title: t('create.title'), body: html`
     <label class="field"><span>${t('create.name')}</span><input class="input" id="c-title" maxlength="200" placeholder="${t('create.namePh')}"></label>
     <label class="field"><span>${t('create.description')}</span><textarea class="textarea" id="c-desc" maxlength="10000"></textarea></label>
@@ -132,6 +133,7 @@ function createSheet(ctx) {
       <button class="chip" type="button" id="c-one-size" aria-pressed="false">${t('create.oneSize')}</button>
       <div class="chips" id="c-sizes" style="flex-wrap:wrap"></div>
       <input class="input" id="c-size" placeholder="${t('create.sizesPh')}" maxlength="18"><small>${t('create.sizesHint')}</small></div>
+    <div class="field"><span>ألوان الموديل (اختياري)</span><div class="chips" id="c-colors" style="flex-wrap:wrap"></div><input class="input" id="c-color" placeholder="مثال: بني، بيبي بلو، أسود" maxlength="40"><small>اكتبي اللون واضغطي Enter أو فاصلة. كل الألوان تحت نفس المنتج وكوده.</small></div>
     <label class="switch"><input type="checkbox" id="c-new" checked><i></i>${t('create.isNew')}</label>
     <ol class="blockers" id="c-steps" hidden></ol>`,
     foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>${t('create.submit')}</button>` });
@@ -166,8 +168,20 @@ function createSheet(ctx) {
     e.target.value = ''; paintSizes();
   });
   $('#c-sizes', box).addEventListener('click', (e) => { const b = e.target.closest('[data-rm]'); if (b) { sizes.splice(+b.dataset.rm, 1); paintSizes(); } });
+  const colorInput = $('#c-color', box);
+  const paintColors = () => render($('#c-colors', box), html`${colors.map((s,i)=>html`<button type="button" class="chip" data-rm-color="${i}" aria-label="حذف لون ${s}">${s} ${icon('x')}</button>`)}`);
+  const addColor = () => {
+    const v = colorInput.value.trim();
+    if (v && !colors.some(x => x.toLowerCase() === v.toLowerCase()) && colors.length < 12) colors.push(v);
+    colorInput.value = ''; paintColors();
+  };
+  colorInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ',' || e.key === '،') { e.preventDefault(); addColor(); } });
+  colorInput.addEventListener('blur', addColor);
+  $('#c-colors', box).addEventListener('click', (e) => { const b=e.target.closest('[data-rm-color]'); if (b) { colors.splice(+b.dataset.rmColor, 1); paintColors(); } });
   const key = idempotencyKey();
   $('[data-create]', box).onclick = async (e) => {
+    addColor();
+    if (colors.length * Math.max(1, sizes.length) > 200) { island('error', 'الحد الأقصى ٢٠٠ تركيبة ألوان ومقاسات. قلّلي عدد الاختيارات قبل إنشاء المنتج.'); return; }
     const title = $('#c-title', box).value.trim();
     if (!title) { $('#c-title', box).setAttribute('aria-invalid', 'true'); $('#c-title', box).focus(); return; }
     const priceIn = $('#c-price', box)?.value.trim();
@@ -182,13 +196,25 @@ function createSheet(ctx) {
       li.textContent = '✓ ' + t('create.steps.create');
       const code = r.code; let version = r.structure_version;
       if (price) { li = step(t('create.steps.price')); const pr = await call('products.set_price', { code, amount_minor: price }); li.textContent = (pr.outcome === 'saved' ? '✓ ' : '✗ ') + t('create.steps.price'); }
-      if (sizes.length && r.outcome === 'created') {
-        li = step(t('create.steps.sizes'));
-        const a = await call('products.structure', { code, version, change: { op: 'add_option', name: 'المقاس', values: sizes } });
-        if (a.outcome === 'applied') { version = a.structure_version; const v = await call('products.structure', { code, version, change: { op: 'create_variants', selections: sizes.map((_, i) => [i]) } }); li.textContent = (v.outcome === 'applied' ? '✓ ' : '✗ ') + t('create.steps.sizes'); }
-        else li.textContent = '✗ ' + t('create.steps.sizes');
-      } else if (!sizes.length && r.outcome === 'created') {
-        await call('products.structure', { code, version, change: { op: 'create_variants', selections: [[]] } });
+      if (r.outcome === 'created') {
+        // Add every option dimension BEFORE creating the variants (database requirement).
+        const dimensions = [
+          ...(colors.length ? [{ name: 'اللون', values: [...colors] }] : []),
+          ...(sizes.length ? [{ name: 'المقاس', values: [...sizes] }] : []),
+        ];
+        for (const dim of dimensions) {
+          li = step('اختيارات ' + dim.name);
+          const result = await call('products.structure', { code, version, change: { op: 'add_option', name: dim.name, values: dim.values } });
+          if (result.outcome !== 'applied') { li.textContent = '✗ اختيارات ' + dim.name; fail(result); ctx.go('products/' + code); return; }
+          version = result.structure_version; li.textContent = '✓ اختيارات ' + dim.name;
+        }
+        const selections = dimensions.reduce((acc, dim) => acc.flatMap(combo => dim.values.map((_, i) => [...combo, i])), [[]]);
+        li = step('تجهيز الألوان والمقاسات');
+        const result = await call('products.structure', { code, version, change: { op: 'create_variants', selections } });
+        if (result.outcome !== 'applied') {
+          li.textContent = '✗ تجهيز الألوان والمقاسات'; fail(result); ctx.go('products/' + code); return;
+        }
+        version = result.structure_version; li.textContent = '✓ تجهيز الألوان والمقاسات';
       }
       // Shipping is a separate explicit product assignment. Without it, an Owner-created
       // product may be visible but cannot be quoted correctly at checkout.
@@ -296,11 +322,16 @@ const TABS = {
   media(body, { ctx, d, code, reload }) {
     const media = [...(d.media?.media || [])].filter((m) => !m.delete_pending).sort((a, b) => a.position - b.position);
     const canEdit = ctx.can('media.manage');
+    const variants = d.product?.variants || [];
+    const options = d.product?.options || [];
+    const variantName = (v) => (v.selections || []).map(s => options.find(o=>o.option_id===s.option_id)?.values.find(x=>x.value_id===s.value_id)?.value || '?').join(' / ') || 'مقاس واحد';
     render(body, html`<section class="card stack"><div class="card-head"><h3>${t('editor.media')}</h3><span class="muted">${fmtNum(media.length)}</span></div>
       <p class="muted" style="margin:0;font-size:12.5px">${t('editor.uploadHint')}</p>
+      ${canEdit && variants.length ? html`<label class="field"><span>الصور تخص أنهي لون ومقاس؟</span><select class="select" id="m-variant"><option value="">صور عامة للمنتج</option>${variants.map(v=>html`<option value="${v.position}">${variantName(v)}</option>`)}</select><small>اختاري اللون/المقاس قبل رفع الصور. الصور العامة لكل الاختيارات.</small></label>` : ""}
       <div class="media-grid">
         ${media.map((m, i) => html`<figure class="media ${m.hidden ? 'hidden' : ''}" data-id="${m.media_id}" style="margin:0">
           <img src="${imgUrl(m.storage_path)}" alt="${m.alt_text || ''}" loading="lazy">
+          <small class="muted" style="display:block;max-width:120px;overflow-wrap:anywhere">${m.scope === "variant" ? (m.variant?.values || []).join(" / ") : m.scope === "option_value" ? m.option_value?.value : "كل الألوان"}</small>
           ${i === 0 ? html`<span class="badge ok cover">${t('editor.cover')}</span>` : ''}
           ${canEdit ? html`<div class="tools">
             ${i > 0 ? html`<button class="icon-btn" data-act="primary" title="${t('editor.makeCover')}" aria-label="${t('editor.makeCover')}">${icon('star')}</button>` : ''}
@@ -323,6 +354,8 @@ const TABS = {
         catch (err) { island('error', err?.message || t('err.image')); break; }
         if (prepared.optimized) island('busy', optimizationSummary(prepared));
         const fd = new FormData(); fd.append('code', code); fd.append('image', prepared.file); fd.append('version', String(version)); fd.append('alt', d.product.title);
+        const variantPos = $('#m-variant', body)?.value;
+        if (variantPos !== undefined && variantPos !== '') fd.append('variant_position', variantPos);
         const res = await uploadProductImage(fd);
         if (res.outcome === 'saved') ok++; else { fail(res); break; }
       }

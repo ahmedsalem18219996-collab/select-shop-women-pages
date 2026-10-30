@@ -130,6 +130,34 @@ for (const [id, code] of PAGES) {
   });
 }
 
+test("every generated direct-order page now also offers the optional multi-product cart", async () => {
+  const html = renderShell("");
+  assert.match(html, /id="lpAddCart"/);
+  assert.match(html, /id="lpCartLink"/);
+  assert.match(html, /id="lpCartCount"/);
+  assert.match(html, /id="lpOrder"/);
+  assert.match(html, /\/lp\/runtime\.js\?v=20261030-4/);
+  const generated = await readdir(new URL("../../lp/", import.meta.url), { withFileTypes:true });
+  const dirs = generated.filter(d => d.isDirectory() && (d.name.startsWith("ss-") || d.name === "ballon-suit"));
+  assert.equal(dirs.length, 39);
+  for (const d of dirs) {
+    const page = await readFile(new URL("../../lp/" + d.name + "/index.html", import.meta.url), "utf8");
+    assert.match(page, /id="lpAddCart"/, d.name);
+    assert.match(page, /id="lpOrder"/, d.name);
+    assert.match(page, /id="lpCartLink"/, d.name);
+  }
+});
+
+test("admin creates one multi-colour product and allows variant-specific media uploads", async () => {
+ const admin = await readFile(new URL("../../admin/js/views/products.js", import.meta.url), "utf8");
+ assert.match(admin, /id="c-color"/);
+ assert.match(admin, /const dimensions = \[/);
+ assert.match(admin, /name: 'اللون'/);
+ assert.match(admin, /name: 'المقاس'/);
+ assert.match(admin, /const selections = dimensions\.reduce/);
+ assert.match(admin, /fd\.append\('variant_position', variantPos\)/);
+});
+
 test("automatic shell: same form and runtime, no product data baked in, committed file is current", async () => {
   const html = renderShell("");
   assert.ok(html.includes('id="lpForm"') && html.includes('"auto":true') && html.includes("/js/catalog-thumbs.js"));
