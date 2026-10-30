@@ -8,6 +8,7 @@
  * Text is always set with textContent.
  */
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
+const MODEL_API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge/catalog";
 const VIEWS_API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-product-views";
 const VIEW_KEY = "women.anonymous-product-views.v1";
 const BAG_KEY = "women.cart.v1"; // same first-party cart as js/commerce.js
@@ -259,22 +260,98 @@ function fillFromProduct(/** @type {any} */ p) {
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
 }
 
+
+/** Optional canonical model registry. Existing pre-rendered pages are safe
+ *  fallbacks while Backend and frontend are rolled out separately. */
+export async function readLiveModel(page, query, loader) {
+  const slug = page.auto ? String(query.get("model") || "") :
+    page.id === "ss-1008" ? "leather-jacket" :
+    page.id === "ballon-suit" ? "balloon-suit" : String(page.id || "");
+  if (!/^[a-z][a-z0-9-]{2,63}$/.test(slug) || (!page.auto && !Array.isArray(page.colors))) return null;
+  try {
+    // Bound the live-registry call so it cannot add seconds to mobile LCP.
+    const data = await loader(page.auto ? 1400 : 1400);
+    const visible = new Set((data.items || []).map(x => x.publicCode));
+    const model = (Array.isArray(data.models) ? data.models : []).find(m => m.slug === slug);
+    if (!model || !Array.isArray(model.colors) || typeof model.name !== "string") return null;
+    const colors = model.colors.filter(c => c && validCode(c.code) && visible.has(c.code) &&
+      typeof c.name === "string" && /^#[0-9A-Fa-f]{6}$/.test(c.hex || ""));
+    // Several colour option values under one SKU use the native Variant picker,
+    // not a deceptive selector with several buttons all pointing to one SKU.
+    const unique = new Set(colors.map(c => c.code));
+    if (!colors.length) return null;
+    return { colors: colors.length === unique.size ? colors : [colors[0]],
+      code: colors[0].code, id: page.auto ? "model-" + slug : page.id,
+      title: model.name.trim().slice(0,160) };
+  } catch { return null; } // fail closed, no fabricated product data
+}
+
+/** Only DOM text/attributes, not HTML strings from the backend. */
+function reconcileModelChips(colors) {
+  if (!Array.isArray(colors) || colors.length < 2) return;
+  const options = document.getElementById("lpOptions");
+  const form = document.getElementById("lpForm");
+  for (const {id, labelId, anchor} of [
+    {id:"lpColors",labelId:"lpColorName",anchor:options},
+    {id:"lpFormColors",labelId:"lpFormColorName",anchor:form?.querySelector("h2")}
+  ]) {
+    let fieldset = document.getElementById(id);
+    if (!fieldset) {
+      fieldset = document.createElement("fieldset");
+      fieldset.id = id; fieldset.className = "pick";
+      const legend = document.createElement("legend");
+      legend.append("اللون: ");
+      const n = document.createElement("span");n.id = labelId;legend.append(n);
+      fieldset.append(legend, document.createElement("div"));
+      anchor?.before(fieldset);
+    }
+    let row = fieldset.querySelector(".row");
+    if (!row) {row=document.createElement("div");row.className="row";fieldset.append(row);}
+    row.replaceChildren(...colors.map(c=>{
+      const button=document.createElement("button");
+      button.type="button";button.className="chip";button.dataset.code=c.code;
+      button.setAttribute("aria-pressed","false");
+      const swatch=document.createElement("i");
+      swatch.style.backgroundColor=c.hex;
+      button.append(swatch,document.createTextNode(c.name));
+      return button;
+    }));
+    const chosen = document.getElementById(labelId);
+    if (chosen) chosen.textContent=colors[0].name;
+  }
+}
+
 async function init() {
   const dataEl = document.getElementById("lp-data");
   if (!dataEl) return;
   const page = JSON.parse(dataEl.textContent || "{}");
-  if (page.auto) {
-    // /lp/?p=SS-1008 (and the older ?code=) open the automatic page; anything else goes to the storefront.
-    const q = new URLSearchParams(location.search);
+  const q = new URLSearchParams(location.search);
+  const requestedModel = page.auto && /^[a-z][a-z0-9-]{2,63}$/.test(q.get("model") || "");
+  if (page.auto && !requestedModel) {
+    // Legacy ?p= and ?code= remain valid direct SKU order links.
     page.code = String(q.get("p") || q.get("code") || "").trim().toUpperCase();
     page.id = "p-" + page.code.toLowerCase();
     if (!validCode(page.code)) { location.replace("/"); return; }
   }
-  if (!validCode(page.code) || !/^[a-z0-9-]{3,40}$/.test(page.id || "")) return;
+  const live = await readLiveModel(page,q,async ms => {
+    const res = await fetch(MODEL_API, {cache:"no-store",headers:{Accept:"application/json"},signal:timeout(ms)});
+    if (!res.ok) throw Error("model_catalog_unavailable");
+    return res.json();
+  });
+  if (live) {
+    Object.assign(page,{id:live.id,code:live.code,colors:live.colors,
+      modelTitle:live.title,modelRegistry:true});
+    // Names/new colours now come from the authenticated Admin's persisted registry.
+    reconcileModelChips(live.colors);
+  } else if (requestedModel) {
+    // Never invent a missing model or guess which SKU to charge.
+    location.replace("/");return;
+  }
+  if (!validCode(page.code) || !/^[a-z0-9-]{3,80}$/.test(page.id || "")) return;
   // An old /lp/ss-1009/ (or /lp/?p=SS-1009) is a single-colour page.
   // Redirect it to the shared model without losing the chosen SKU or ad attribution.
   if (!Array.isArray(page.colors) || page.colors.length < 2) {
-    const modelUrl = SHARED_MODEL_URLS.get(page.code);
+    const modelUrl = page.modelRegistry ? null : SHARED_MODEL_URLS.get(page.code);
     if (modelUrl && location.pathname !== modelUrl) {
       const params = new URLSearchParams(location.search);
       params.delete("p"); params.delete("code");
@@ -560,7 +637,14 @@ async function init() {
     }
     if (mine !== ticket) return false;
     if (!p || p.publicCode !== c.code || !Array.isArray(p.variants) || !Array.isArray(p.options)) { unavailable("القطعة دي مش متاحة دلوقتي."); return false; }
-    if (page.auto) fillFromProduct(p);
+    if (page.auto || page.modelRegistry) {
+      fillFromProduct(p); // Live media and description override pre-rendered stale snapshots.
+      if (page.modelTitle) {
+        document.title = page.modelTitle + " · SELECT SHOP WOMEN";
+        const title = document.getElementById("lpTitle");
+        if (title) title.textContent = page.modelTitle;
+      }
+    }
     if (p.purchasable !== true || priceLabel(p, null) === "—") { unavailable(colors.length > 1 ? "اللون ده خلص حاليًا، اختاري لون تاني." : "القطعة دي خلصت حاليًا."); return false; }
     product = p; renderOptions(); choose();
     return true;
@@ -576,6 +660,12 @@ async function init() {
       if (label) label.textContent = c.name;
     }
     const pic = document.getElementById("lpHero");
+    if (pic && page.modelRegistry && !c.hero) {
+      const image = pic.querySelector("img");
+      if (image) { image.removeAttribute("src"); image.removeAttribute("srcset"); image.alt = "بنحمّل صورة " + c.name; }
+      pic.querySelectorAll("source").forEach(src => src.removeAttribute("srcset"));
+      document.getElementById("lpGallery")?.replaceChildren();
+    }
     if (pic && c.hero) {
       const [avif, webp] = pic.querySelectorAll("source");
       if (avif) avif.setAttribute("srcset", c.hero.avif);

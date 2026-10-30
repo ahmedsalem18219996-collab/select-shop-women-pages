@@ -200,16 +200,36 @@ export const MODEL_FAMILIES = [
     ]
   }
 ];
-const FAMILY_BY_CODE = new Map(MODEL_FAMILIES.flatMap(f => f.colors.map(c => [c.code,f])));
+/** The protected Admin models.list response becomes authoritative when installed. */
+export function adminFamiliesFromApi(models) {
+  if (!Array.isArray(models)) return null;
+  return models.filter(m => m && m.active === true && typeof m.id === "string" &&
+    typeof m.name === "string" && Array.isArray(m.colors))
+    .map(m => ({
+      id: m.id, name: m.name.trim().slice(0,160),
+      category: m.category, version: m.version, persisted: true,
+      colors: m.colors.filter(c => c && c.active === true &&
+        /^SS-[0-9]{4,19}$/.test(c.code || "") && typeof c.name === "string" &&
+        /^#[0-9a-fA-F]{6}$/.test(c.hex || "")).map(c => ({
+          id: c.id, code: c.code, name: c.name.trim().slice(0,80), hex: c.hex,
+          optionValueId: c.optionValueId || null,
+        })),
+    })).filter(m => m.colors.length > 0);
+}
 
-/** Group visible admin list entries without losing any SKU, including partial search/status results. */
-export function groupAdminProducts(products) {
+/** Group filtered list entries without losing any SKU. */
+export function groupAdminProducts(products, apiModels = null) {
+  const families = adminFamiliesFromApi(apiModels) || MODEL_FAMILIES;
+  const byCode = new Map(families.flatMap(f => f.colors.map(c => [c.code,f])));
   const lookup = new Map(products.map(p => [p.public_code,p]));
   const emitted = new Set();
   const output = [];
   for (const product of products) {
-    const family = FAMILY_BY_CODE.get(product.public_code);
-    if (!family) {
+    const family = byCode.get(product.public_code);
+    // One SKU with multiple colour option values belongs in its native product
+    // variant editor; never fabricate multiple independent stock/SKU rows.
+    const repeatedSku = family && new Set(family.colors.map(c => c.code)).size !== family.colors.length;
+    if (!family || repeatedSku) {
       output.push({ key: product.public_code, family: null, name: product.title, members: [{ product, color: null }] });
       continue;
     }

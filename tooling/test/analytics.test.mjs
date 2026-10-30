@@ -44,3 +44,22 @@ test("GA4 page location keeps marketing parameters and drops everything else", (
   assert.equal(r.ga, true);
   assert.equal(r.gaLocation, "https://selectshopeg.com/lp/?p=SS-1008&utm_id=9");
 });
+
+test("real grouped-colour deep link keeps Pixel and GA4 attribution",()=>{
+  const url="https://selectshopeg.com/lp/striped-knit/?color=SS-1043&utm_source=facebook&fbclid=abc";
+  const r=run(url);
+  assert.equal(r.pixel,true);
+  assert.equal(r.ga,true);
+  assert.equal(r.gaLocation,url);
+});
+test("invalid colour parameter can neither leak to GA4 nor enable Pixel",()=>{
+  const r=run("https://selectshopeg.com/lp/striped-knit/?color=01012345678&utm_source=facebook");
+  assert.equal(r.pixel,false);
+  assert.equal(r.ga,true);
+  assert.equal(r.gaLocation,"https://selectshopeg.com/lp/striped-knit/?utm_source=facebook");
+});
+test("valid dynamic model entry-point emits PageView and GA4 without PII",()=>{
+  const r=run("https://selectshopeg.com/lp/?model=striped-knit&utm_source=facebook");
+  assert.equal(r.pixel,true);
+  assert.equal(r.ga,true);
+});
