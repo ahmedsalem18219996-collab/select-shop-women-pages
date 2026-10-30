@@ -9,9 +9,9 @@ const src = readFileSync(new URL("../../js/store-adapter.js", import.meta.url), 
 const start = src.indexOf("  const VERIFIED_MODEL_FAMILIES = [");
 const end = src.indexOf("  const safeText", start);
 assert.ok(start > 0 && end > start, "verified model grouping block must exist");
-const factory = new Script("(function(origin, products) {\nconst SECURE_CHECKOUT_ORIGIN = origin;\n" +
-  src.slice(start, end) + "\nreturn groupVerifiedModels(products);\n})").runInNewContext();
-const group = products => factory("https://www.selectshopeg.com", products);
+const factory = new Script("(function(origin, products, models) {\nconst SECURE_CHECKOUT_ORIGIN = origin;\n" +
+  src.slice(start, end) + "\nreturn groupVerifiedModels(products, models);\n})").runInNewContext();
+const group = (products, models = null) => factory("https://www.selectshopeg.com", products, models);
 const item = (id, price, cat, purchasable = true) => ({
   id, name: id, cat, price, c: "#EFEFEF", sw: [], out: [], isNew: false,
   image: "/image.jpg", purchasable, url: "/lp/?p=" + id
@@ -80,4 +80,31 @@ test("every verified colour family is a single storefront card with its own live
     assert.equal(output[0].sw.length, codes.length, "must show all colours, group " + i);
     assert.ok(output[0].url.endsWith(expected[i]));
   });
+});
+
+// Persisted model metadata is the only authority after the model DB registry
+// has been installed. A new SKU colour becomes one model card without a JS edit.
+test("server models can add and rename colours, including differing prices", () => {
+ const products=[item("SS-1042",650,"بلوفر"),item("SS-1043",700,"بلوفر"),item("SS-1050",800,"بلوفر")];
+ const models=[{slug:"striped-knit",name:"بلوفر مطور",category:"بلوفر",colors:[
+   {code:"SS-1042",name:"أحمر",hex:"#AA1133"},
+   {code:"SS-1043",name:"وردي",hex:"#DDBBCC"},
+   {code:"SS-1050",name:"زيتي",hex:"#556633"}
+ ]}];
+ const out=group(products,models);
+ assert.equal(out.length,1);
+ assert.equal(out[0].name,"بلوفر مطور");
+ assert.equal(out[0].sw.length,3);
+ assert.equal(out[0].price,650);
+ assert.equal(out[0].url,"https://www.selectshopeg.com/lp/striped-knit/");
+});
+test("single-SKU variant products stay as one native product card", () => {
+ const products=[item("SS-1111",850,"بلوفر")];
+ const models=[{slug:"new-model",name:"New",category:"بلوفر",colors:[
+  {code:"SS-1111",name:"وردي",hex:"#DDBBCC"},
+  {code:"SS-1111",name:"بني",hex:"#665544"}
+ ]}];
+ const out=group(products,models);
+ assert.equal(out.length,1);
+ assert.equal(out[0].id,"SS-1111");
 });
