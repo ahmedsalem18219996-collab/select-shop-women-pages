@@ -36,3 +36,28 @@ test("search filters and hidden status never fabricate or suppress products", ()
   assert.equal(mixed[0].members.length,2);
   assert.equal(mixed[1].members[0].product.public_code,"SS-1011");
 });
+
+test("server registry renames and attaches colours without changing real SKUs", () => {
+ const models=[{id:"abcd",active:true,name:"بلوفر مقلم جديد",category:"بلوفر",version:3,colors:[
+  {id:"col1",active:true,code:"SS-1042",name:"نبيتي",hex:"#772233"},
+  {id:"col2",active:true,code:"SS-1043",name:"لبني",hex:"#AABBDD"},
+  {id:"col3",active:true,code:"SS-1050",name:"زيتي",hex:"#556633"}
+ ]}];
+ const input=[p("SS-1042"),p("SS-1043"),p("SS-1050"),p("SS-1041")];
+ const result=groupAdminProducts(input,models);
+ assert.equal(result.length,2);
+ assert.equal(result[0].family.persisted,true);
+ assert.equal(result[0].name,"بلوفر مقلم جديد");
+ assert.equal(result[0].members.length,3);
+ assert.equal(result[0].members[2].product.public_code,"SS-1050");
+ assert.equal(result[1].members[0].product.public_code,"SS-1041");
+});
+test("invalid live model metadata cannot suppress unrelated items", () => {
+ const input=[p("SS-1042"),p("SS-1043"),p("SS-1041")];
+ const out=groupAdminProducts(input,[{id:"a",active:true,name:"bad",colors:[
+  {active:true,code:"INVALID",name:"a",hex:"#ffffff"}
+ ]}]);
+ assert.equal(out.length,3);
+ assert.deepEqual(new Set(out.flatMap(g=>g.members.map(m=>m.product.public_code))),
+   new Set(input.map(x=>x.public_code)));
+});
