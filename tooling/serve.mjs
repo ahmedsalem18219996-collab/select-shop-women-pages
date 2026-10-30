@@ -24,6 +24,7 @@ export const log = { orders: [], cartAdds: [], views: 0 };
 const keys = new Map(); // idempotencyKey -> { code, body, total }
 // Units left per product code (all variants), set by tests via POST /__mock/stock { code, units } ; absent = unlimited.
 const stock = new Map();
+let modelOverride = null; // isolated QA only; reset after each test, no production API.
 
 const product = async (code) => /^SS-\d{4,19}$/.test(code)
   ? JSON.parse(await readFile(path.join(FIX, code + ".product.json"), "utf8").catch(() => "null")) : null;
@@ -46,7 +47,15 @@ async function quote(lines, regionKey = "cairo") {
 
 async function mockApi(req, url, body) {
   const p = url.pathname.replace(/^\/__mock\/functions\/v1/, "");
-  if (p === "/women-store-bridge/catalog") return [200, JSON.parse(await readFile(path.join(FIX, "catalog.json"), "utf8"))];
+  if (p === "/women-store-bridge/catalog") {
+    const data = JSON.parse(await readFile(path.join(FIX, "catalog.json"), "utf8"));
+    if (modelOverride) {
+      data.models = modelOverride.models;
+      const patches = modelOverride.items || {};
+      data.items = data.items.map(item => ({...item,...(patches[item.publicCode] || {})}));
+    }
+    return [200, data];
+  }
   if (p === "/women-product-views" && req.method === "POST") { log.views++; return [204, null]; }
   const c = p.replace(/^\/women-checkout/, "");
   if (req.method === "GET" && c.startsWith("/product/")) {
@@ -142,6 +151,12 @@ export function start(port = PORT) {
       if (url.pathname.startsWith("/__mock/")) {
         let raw = ""; for await (const chunk of req) raw += chunk;
         let body = null; try { body = raw ? JSON.parse(raw) : null; } catch { body = null; }
+        if (url.pathname === "/__mock/models" && req.method === "POST") {
+          // Test-only in-memory simulation of an authorized Admin edit. Never
+          // touches the Supabase Edge Function or the hosted production database.
+          modelOverride = Array.isArray(body?.models) ? {models:body.models,items:body.items || {}} : null;
+          res.writeHead(204).end();return;
+        }
         if (DELAY) await new Promise(r => setTimeout(r, DELAY));
         const [code, payload] = url.pathname.startsWith("/__mock/functions/v1/") ? await mockApi(req, url, body) : [404, { error: "not_found" }];
         res.writeHead(code, { "Content-Type": "application/json", "Cache-Control": "no-store" }).end(payload === null ? "" : JSON.stringify(payload));
