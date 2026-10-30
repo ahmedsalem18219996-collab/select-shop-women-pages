@@ -24,6 +24,7 @@ const SHARED_MODEL_URLS = new Map([
   ["SS-1037", "/lp/ballon-suit/"], ["SS-1035", "/lp/ballon-suit/"],
   ["SS-1036", "/lp/ballon-suit/"], ["SS-1038", "/lp/ballon-suit/"],
   ["SS-1039", "/lp/ballon-suit/"], ["SS-1040", "/lp/ballon-suit/"],
+  ["SS-1010", "/lp/ballon-suit/"],
 ]);
 const ORDER_CODE = /^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
 const MEDIA = /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/([0-9a-f]{32}\.(?:jpg|png|webp))$/;
