@@ -11,6 +11,8 @@
  color-scheme:light;
 }
 html,body{background:#f7f6f2;color:#22251f}
+/* Owner-managed announcement: remove the legacy purple stripe across all breakpoints. */
+.storefront-owner-announcement{border-bottom:2px solid #b8a06c;background:#f7f6f2;color:#303c2d}
 .app{background:var(--mirror)}
 .app :focus-visible,:is(.atelier-checkout,.atelier-success) :focus-visible{
  outline:2px solid #303c2d;outline-offset:3px;
