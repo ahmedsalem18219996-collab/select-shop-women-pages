@@ -24,6 +24,7 @@ const SHARED_MODEL_URLS = new Map([
   ["SS-1037", "/lp/ballon-suit/"], ["SS-1035", "/lp/ballon-suit/"],
   ["SS-1036", "/lp/ballon-suit/"], ["SS-1038", "/lp/ballon-suit/"],
   ["SS-1039", "/lp/ballon-suit/"], ["SS-1040", "/lp/ballon-suit/"],
+  ["SS-1010", "/lp/ballon-suit/"],
 ]);
 const ORDER_CODE = /^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
 const MEDIA = /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/([0-9a-f]{32}\.(?:jpg|png|webp))$/;
@@ -279,7 +280,7 @@ async function init() {
   void recordView(page.code);
 
   // One page = one model. Each colour is its own real product (public code); the default colour is pre-rendered.
-  /** @type {{code:string,name:string,alt?:string,hero?:{avif:string,webp:string,src:string},gallery?:string[]}[]} */
+  /** @type {{code:string,name:string,hex?:string,alt?:string,hero?:{avif:string,webp:string,src:string},gallery?:string[]}[]} */
   const colors = Array.isArray(page.colors) && page.colors.length ? page.colors.filter((/** @type {any} */ c) => validCode(c?.code)) : [{ code: page.code, name: "" }];
   const holder = $("#lpOptions");
   const choiceEl = document.getElementById("lpBarChoice");
@@ -316,6 +317,90 @@ async function init() {
   const variantLabel = () => (!product?.options.length ? "one_size" : variant ? sizeText().replace(/ · /g, "/").slice(0, 100) : undefined);
   const lineNow = () => (product && variant?.purchasable === true
     ? { publicCode: product.publicCode, structureVersion: product.structureVersion, selection: variant.selection, quantity: qty } : null);
+  // Buyers ordering several colours must send one verified line per REAL SKU, not
+  // "quantity 2" against one ambiguous colour. Single-colour checkout is unchanged.
+  let mixMode = false;
+  let mixBusy = false;
+  /** @type {Map<string,{product:any,variant:any,quantity:number}>} */
+  const mixEntries = new Map();
+  const mixBox = document.createElement("section");
+  mixBox.id = "lpMix";
+  mixBox.className = "lp-mix";
+  mixBox.hidden = colors.length < 2;
+  const mixToggle = document.createElement("button");
+  mixToggle.type = "button"; mixToggle.id = "lpMixToggle";
+  mixToggle.textContent = "عايزة أكتر من لون؟ حددي كمية كل لون";
+  mixToggle.setAttribute("aria-expanded", "false");
+  const mixRows = document.createElement("div");
+  mixRows.id = "lpMixRows"; mixRows.hidden = true;
+  mixRows.setAttribute("aria-label", "عدد القطع من كل لون");
+  const mixHint = document.createElement("p");
+  mixHint.id = "lpMixHint";
+  mixHint.textContent = "كل لون هيتسجل في نفس الأوردر بالعدد اللي تختاريه.";
+  mixHint.hidden = true;
+  mixBox.append(mixToggle, mixHint, mixRows);
+  // Lightweight CSS is attached only on model pages with multiple colours.
+  if (colors.length > 1) {
+    const style = document.createElement("style");
+    style.id = "lpMixStyle";
+    style.textContent = `
+      #lpMix{border:1px solid var(--line);padding:14px;background:var(--bg);margin:6px 0}
+      #lpMix [hidden]{display:none!important}
+      #lpMixToggle{background:var(--accent,#303c2d);color:#fff;border:0;min-height:44px;padding:10px 12px;width:100%;font:600 14px var(--f);cursor:pointer}
+      #lpMixHint{font-size:13px;margin:10px 0;color:var(--muted)}
+      #lpMixRows{display:grid;gap:10px;margin-top:12px}
+      #lpMixRows .lp-mix-row{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:5px 0 10px}
+      #lpMixRows .lp-mix-color{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;min-width:0}
+      #lpMixRows .lp-mix-color i{display:block;width:18px;height:18px;flex:none;border:1px solid #777}
+      #lpMixRows .lp-mix-step{display:flex;align-items:center;gap:6px;flex:none}
+      #lpMixRows button{min-width:44px;min-height:44px;border:1px solid var(--line);background:var(--paper,#eeece5);font:600 20px var(--f);color:var(--ink)}
+      #lpMixRows button:disabled{opacity:.35}
+      #lpMixRows output{min-width:27px;text-align:center;font-weight:600}
+    `;
+    document.head.append(style);
+  }
+  if (colors.length > 1) form.querySelector(".qty")?.before(mixBox);
+  const singleQtyBox = /** @type {HTMLElement|null} */ (form.querySelector(".qty"));
+  const itemLine = (/** @type {{product:any,variant:any,quantity:number}} */ e) => ({
+    publicCode: e.product.publicCode, structureVersion: e.product.structureVersion,
+    selection: e.variant.selection, quantity: e.quantity,
+  });
+  const currentLines = () => mixMode
+    ? [...mixEntries.values()].filter(e => e.quantity > 0).map(itemLine).filter(lineOk)
+    : (lineNow() ? [/** @type {Line} */ (lineNow())] : []);
+  const mixCount = () => [...mixEntries.values()].reduce((sum, e) => sum + e.quantity, 0);
+  const repaintMix = () => {
+    if (!mixMode) return;
+    mixRows.replaceChildren();
+    for (const color of colors) {
+      const entry = mixEntries.get(color.code);
+      const count = entry?.quantity || 0;
+      const row = document.createElement("div"); row.className = "lp-mix-row";
+      const name = document.createElement("span"); name.className = "lp-mix-color";
+      const swatch = document.createElement("i"); swatch.style.backgroundColor = color.hex || "#aaa";
+      name.append(swatch, document.createTextNode(color.name || color.code));
+      const controls = document.createElement("span"); controls.className = "lp-mix-step";
+      for (const delta of [-1, 1]) {
+        const btn = document.createElement("button");
+        btn.type = "button"; btn.textContent = delta > 0 ? "+" : "−";
+        btn.dataset.mixCode = color.code; btn.dataset.delta = String(delta);
+        btn.setAttribute("aria-label", (delta > 0 ? "زوّدي " : "قلّلي ") + (color.name || color.code));
+        btn.disabled = mixBusy || busy || (delta < 0 && count === 0) ||
+          (delta > 0 && (mixCount() >= MAX_QTY || count >= MAX_QTY));
+        controls.append(btn);
+        if (delta < 0) {
+          const amount = document.createElement("output");
+          amount.dataset.mixCount = color.code;
+          amount.textContent = new Intl.NumberFormat("ar-EG").format(count);
+          controls.append(amount);
+        }
+      }
+      row.append(name, controls);
+      mixRows.append(row);
+    }
+    mixToggle.textContent = "الرجوع لطلب لون واحد";
+    cta.disabled = busy || mixBusy || currentLines().length === 0;
+  };
 
   // Only public/versioned selectors go into the same first-party cart as js/commerce.js.
   const cartKey = (/** @type {Line} */ line) => line.publicCode + '@' + line.structureVersion + ':' +
@@ -367,25 +452,32 @@ async function init() {
     /** @type {HTMLButtonElement} */ ($("#lpQtyDown")).disabled = qty <= 1;
     /** @type {HTMLButtonElement} */ ($("#lpQtyUp")).disabled = qty >= MAX_QTY;
     const unitMinor = variant && okMinor(variant.unitPrice?.amountMinor) ? variant.unitPrice.amountMinor : null;
-    const sub = minorOf(quote?.merchandiseSubtotal) ?? (unitMinor === null ? null : unitMinor * qty);
+    const mixedSubtotal = [...mixEntries.values()].reduce((sum, e) =>
+      sum + e.variant.unitPrice.amountMinor * e.quantity, 0);
+    const sub = minorOf(quote?.merchandiseSubtotal) ??
+      (mixMode ? (currentLines().length ? mixedSubtotal : null) : (unitMinor === null ? null : unitMinor * qty));
     const ship = minorOf(quote?.shippingTotal), total = minorOf(quote?.grandTotal);
     $("#lpSub").textContent = sub === null ? "—" : egp(sub) + " ج";
     $("#lpShip").textContent = ship !== null ? (ship === 0 ? "مجاني" : egp(ship) + " ج") : !region.value ? "اختاري المحافظة" : quoting ? "بنحسب…" : "—";
     $("#lpTotal").textContent = total === null ? "—" : egp(total) + " ج";
     $("#lpBarPrice").textContent = total !== null ? egp(total) + " ج" : unit === "—" ? "—" : unit + " ج";
-    if (choiceEl && product) choiceEl.textContent = total !== null ? "الإجمالي شامل الشحن" : (current.name ? current.name + " · " : "") + sizeText();
+    if (choiceEl && product) choiceEl.textContent = mixMode
+      ? (currentLines().length ? currentLines().map(l =>
+          (colors.find(c => c.code === l.publicCode)?.name || l.publicCode) + " × " + l.quantity).join("، ") : "حددي عدد كل لون")
+      : total !== null ? "الإجمالي شامل الشحن" : (current.name ? current.name + " · " : "") + sizeText();
+    repaintMix();
   };
 
   /** Server quote for the current line and governorate; a newer change always wins over a slower answer. */
   const requote = async () => {
     const mine = ++quoteTicket;
     quote = null;
-    const line = lineNow();
-    quoting = !!(line && region.value);
+    const lines = currentLines();
+    quoting = !!(lines.length && region.value);
     paint();
     if (!quoting) return;
     try {
-      const q = await api("/checkout/quote", "POST", { lines: [line], deliveryRegionKey: region.value });
+      const q = await api("/checkout/quote", "POST", { lines, deliveryRegionKey: region.value });
       if (mine !== quoteTicket) return;
       if (q.purchasable !== true || minorOf(q.grandTotal) === null) { quoteError = true; say("مش متاح التوصيل للمحافظة دي أو الكمية دي حاليًا.", true); return; }
       quote = q;
@@ -400,8 +492,9 @@ async function init() {
   const unavailable = (/** @type {string} */ text) => { product = null; variant = null; quote = null; paint(); cta.disabled = true; cartBtn.disabled = true; cta.textContent = "غير متاح حاليًا"; say(text, true); };
   const choose = () => {
     variant = chosen.every(x => x >= 0) ? findVariant(product, chosen) : null;
-    cta.disabled = false; cta.textContent = ctaText;
-    cartBtn.disabled = !lineNow() || cartBusy;
+    cta.disabled = mixMode ? currentLines().length === 0 : false;
+    cta.textContent = ctaText;
+    cartBtn.disabled = mixMode || !lineNow() || cartBusy;
     void requote();
   };
   const renderOptions = () => {
@@ -482,6 +575,75 @@ async function init() {
     void show(c);
   }));
 
+  // The normal +/- remains a single-colour quantity. Explicit mixed-colour
+  // mode gives every colour its own count (zero means not ordered).
+  mixToggle.addEventListener("click", () => {
+    if (busy || mixBusy || !product) return;
+    if (!mixMode) {
+      if (!variant || product.options.length) {
+        say("اختاري مقاس القطعة الأول، أو استخدمي الشنطة للمنتجات بمقاسات مختلفة.", true);
+        return;
+      }
+      mixEntries.clear();
+      mixEntries.set(product.publicCode, { product, variant, quantity: qty });
+      mixMode = true;
+      mixRows.hidden = false; mixHint.hidden = false;
+      mixToggle.setAttribute("aria-expanded", "true");
+    } else {
+      mixMode = false;
+      mixRows.hidden = true; mixHint.hidden = true;
+      mixToggle.textContent = "عايزة أكتر من لون؟ حددي كمية كل لون";
+      mixToggle.setAttribute("aria-expanded", "false");
+    }
+    if (singleQtyBox) singleQtyBox.style.display = mixMode ? "none" : "";
+    cartBtn.hidden = mixMode; // the direct COD form handles all selected colours
+    say("");
+    void requote();
+  });
+  mixRows.addEventListener("click", async event => {
+    const btn = /** @type {HTMLElement|null} */ (event.target instanceof Element ?
+      event.target.closest("button[data-mix-code]") : null);
+    if (!btn || !mixMode || mixBusy || busy) return;
+    const code = btn.dataset.mixCode || "";
+    const delta = Number(btn.dataset.delta);
+    const currentCount = mixEntries.get(code)?.quantity || 0;
+    if (delta !== 1 && delta !== -1) return;
+    if (delta < 0 && currentCount < 1) return;
+    if (delta > 0 && mixCount() >= MAX_QTY) {
+      say("أقصى كمية في الطلب الواحد ١٠ قطع من كل الألوان مع بعض.", true);
+      return;
+    }
+    if (delta > 0 && !mixEntries.has(code)) {
+      mixBusy = true;
+      repaintMix();
+      try {
+        // Each extra colour has an independent real SKU; accept only a
+        // verified purchasable one-size variant before including it in quote.
+        const p = await load(code);
+        const v = p?.options?.length === 0 ? findVariant(p, []) : null;
+        if (!p || p.publicCode !== code || p.purchasable !== true ||
+            v?.purchasable !== true || !okMinor(v.unitPrice?.amountMinor)) {
+          say("اللون ده مش متاح حاليًا أو ليه مقاسات مختلفة. اختاري لون تاني.", true);
+          return;
+        }
+        mixEntries.set(code, { product: p, variant: v, quantity: 0 });
+      } catch {
+        say("مش قادرين نتأكد من توفر اللون ده دلوقتي. جرّبي تاني.", true);
+        return;
+      } finally {
+        mixBusy = false;
+        repaintMix();
+      }
+    }
+    if (!mixMode || busy) return;
+    const entry = mixEntries.get(code);
+    if (!entry) return;
+    entry.quantity = Math.max(0, Math.min(MAX_QTY, entry.quantity + delta));
+    if (entry.quantity === 0) mixEntries.delete(code);
+    say("");
+    void requote();
+  });
+
   // Governorates load next to the product; the form works as soon as both are in.
   const regionsReady = read("regions", "/regions").then(d => {
     for (const r of Array.isArray(d.regions) ? d.regions : []) {
@@ -513,20 +675,29 @@ async function init() {
   form.addEventListener("focusin", () => {
     if (started || !product) return;
     started = true;
-    funnel("begin_checkout", { currency: "EGP", lp_id: page.id, lp_variant: variantId, items: [{ item_id: product.publicCode, quantity: qty }] });
+    funnel("begin_checkout", { currency: "EGP", lp_id: page.id, lp_variant: variantId,
+      items: currentLines().map(l => ({ item_id: l.publicCode,
+        item_variant: mixMode ? "one_size" : variantLabel(), quantity: l.quantity })) });
   });
 
-  const done = (/** @type {string} */ code, /** @type {any} */ q, /** @type {Line} */ line) => {
+  const done = (/** @type {string} */ code, /** @type {any} */ q, /** @type {Line[]} */ lines) => {
     forgetOrderKey();
     if (firstReport(code)) {
       const value = (minorOf(q.merchandiseSubtotal) ?? 0) / 100;
       funnel("purchase", { currency: "EGP", value, shipping: (minorOf(q.shippingTotal) ?? 0) / 100, transaction_id: hex(16),
-        lp_id: page.id, lp_variant: variantId, items: [{ item_id: line.publicCode, item_variant: variantLabel(), quantity: line.quantity }] }, hex(16));
+        lp_id: page.id, lp_variant: variantId,
+        items: lines.map(l => ({ item_id: l.publicCode,
+          item_variant: lines.length > 1 ? "one_size" : variantLabel(), quantity: l.quantity })) }, hex(16));
       void loadAnalytics(); // the conversion goes out even if the customer leaves right away
     }
     $("#lpDoneCode").textContent = code;
     const total = minorOf(q.grandTotal);
-    $("#lpDoneText").textContent = (total !== null ? "هتدفعي " + egp(total) + " ج عند الاستلام. " : "") + "طلبك قيد المراجعة، والتوافر وميعاد الشحن بيتأكدوا قبل التأكيد النهائي..";
+    const summary = lines.map(l =>
+      (colors.find(c => c.code === l.publicCode)?.name || l.publicCode) + " × " +
+      new Intl.NumberFormat("ar-EG").format(l.quantity)).join("، ");
+    $("#lpDoneText").textContent = (total !== null ? "هتدفعي " + egp(total) + " ج عند الاستلام. " : "") +
+      (summary ? "الألوان المطلوبة: " + summary + ". " : "") +
+      "طلبك قيد المراجعة، والتوافر وميعاد الشحن بيتأكدوا قبل التأكيد النهائي.";
     form.hidden = true;
     /** @type {HTMLElement} */ (cta.closest(".bar")).hidden = true;
     say("");
@@ -539,19 +710,28 @@ async function init() {
   form.addEventListener("submit", async e => {
     e.preventDefault();
     if (busy || !product) return;
-    const line = lineNow();
-    if (!line || !lineOk(line)) { say("اختاري المقاس الأول.", true); holder.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    const lines = currentLines();
+    if (!lines.length || !lines.every(lineOk) || mixBusy) {
+      say(mixMode ? "اختاري لون واحد على الأقل وحددي عدد القطع." : "اختاري المقاس الأول.", true);
+      (mixMode ? mixBox : holder).scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    const intent = JSON.stringify(lines);
     const values = { name: fieldEl("name").value, phone: fieldEl("phone").value, region: region.value, address: fieldEl("address").value };
     const errors = checkBuyer(values);
     for (const n of fieldNames) markField(n, errors[n] || "");
     const firstBad = fieldNames.find(n => errors[n]);
     if (firstBad) { say(FIELD_HELP, true); fieldEl(firstBad).focus(); return; }
     if (!quote) { await requote(); if (!quote) return; }
+    if (JSON.stringify(currentLines()) !== intent) {
+      say("الكميات اتغيرت. راجعي الألوان وأكّدي تاني.", true);
+      return;
+    }
     const q = quote;
     busy = true; cta.disabled = true; cartBtn.disabled = true; cta.textContent = "بنسجل طلبك…"; say("بنسجل طلبك…");
     const label = region.selectedOptions[0]?.textContent || "";
     const payload = {
-      idempotencyKey: orderKey(), lines: [line], deliveryRegionKey: region.value, paymentMethod: "cod",
+      idempotencyKey: orderKey(), lines, deliveryRegionKey: region.value, paymentMethod: "cod",
       // The governorate is the "area" line of the delivery address; the free text is the street address.
       buyer: { name: values.name.trim(), phone: /** @type {string} */ (egMobile(values.phone)), area: label, address: values.address.trim(), notes: "" },
       confirmedMerchandiseSubtotalPiastres: minorOf(q.merchandiseSubtotal),
@@ -561,11 +741,11 @@ async function init() {
     try {
       const reply = await api("/orders", "POST", payload, 20000);
       if (!ORDER_CODE.test(reply.publicOrderCode)) throw Object.assign(new Error("write_unconfirmed"), { status: 503 });
-      done(reply.publicOrderCode, q, line);
+      done(reply.publicOrderCode, q, lines);
       return;
     } catch (err) {
       const error = /** @type {any} */ (err), data = error?.data || {};
-      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, line); return; }
+      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines); return; }
       if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب السابق اتلغى من المتجر. تقدري تأكدي طلب جديد.", true); }
       else if (error?.message === "checkout_changed") {
         say("السعر أو الشحن اتغير. راجعي الإجمالي الجديد وأكّدي تاني.", true);
@@ -586,7 +766,9 @@ async function init() {
       // Unknown outcome (timeout, network, 5xx): the SAME key is reused on retry, so the server returns the same order.
       else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. اضغطي «تأكيد الطلب» تاني، مش هيتكرر.", true);
     } finally { busy = false; }
-    cta.disabled = !product; cartBtn.disabled = !lineNow() || cartBusy; cta.textContent = product ? ctaText : "غير متاح حاليًا";
+    cta.disabled = !product || (mixMode && !currentLines().length);
+    cartBtn.disabled = mixMode || !lineNow() || cartBusy;
+    cta.textContent = product ? ctaText : "غير متاح حاليًا";
   });
 
   const requestedColour = new URLSearchParams(location.search).get("color");

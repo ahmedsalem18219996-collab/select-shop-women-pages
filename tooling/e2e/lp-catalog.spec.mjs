@@ -9,6 +9,7 @@ const fixture = (code) => JSON.parse(readFileSync(new URL(`../fixtures/${code}.p
 const mockLog = async (request) => (await request.get("/__mock/log")).json();
 // Older per-colour LP URLs now open the verified model while preserving the SKU.
 const GROUP_ALIAS = new Map([
+  ["ss-1010", { page: "ballon-suit", title: "Ballon suit" }],
   ["ss-1009", { page: "ss-1008", title: "Leather jacket" }],
   ...["ss-1035", "ss-1036", "ss-1038", "ss-1039", "ss-1040"].map(id =>
     [id, { page: "ballon-suit", title: "Ballon suit" }]),

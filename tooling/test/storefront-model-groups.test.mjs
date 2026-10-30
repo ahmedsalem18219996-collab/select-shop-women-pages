@@ -16,7 +16,7 @@ const item = (id, price, cat, purchasable = true) => ({
   id, name: id, cat, price, c: "#EFEFEF", sw: [], out: [], isNew: false,
   image: "/image.jpg", purchasable, url: "/lp/?p=" + id
 });
-const balloon = ["SS-1035", "SS-1036", "SS-1037", "SS-1038", "SS-1039", "SS-1040"]
+const balloon = ["SS-1035", "SS-1036", "SS-1037", "SS-1038", "SS-1039", "SS-1040", "SS-1010"]
   .map(id => item(id, 1000, "أطقم"));
 
 test("one card for each verified colour family, unrelated SKU unchanged", () => {
@@ -27,7 +27,7 @@ test("one card for each verified colour family, unrelated SKU unchanged", () => 
   assert.equal(out[0].sw.length, 2);
   assert.equal(out[0].url, "https://www.selectshopeg.com/lp/ss-1008/");
   assert.equal(out[1].name, "طقم بالون");
-  assert.equal(out[1].sw.length, 6);
+  assert.equal(out[1].sw.length, 7);
   assert.equal(out[1].url, "https://www.selectshopeg.com/lp/ballon-suit/");
   assert.equal(out[2].id, "SS-1041");
 });

@@ -76,13 +76,13 @@ test("old direct black jacket link redirects to two-colour model preserving chos
   await expect(page.locator("#lpOrder")).toBeEnabled();
 });
 
-test("old Balloon Suit colour link redirects to full six-colour chooser without losing original colour", async ({ page }) => {
+test("old Balloon Suit colour link redirects to full seven-colour chooser without losing original colour", async ({ page }) => {
   await page.goto("/lp/ss-1035/?utm_source=facebook");
   await expect(page).toHaveURL(u =>
     u.pathname === "/lp/ballon-suit/" && u.searchParams.get("color") === "SS-1035" &&
     u.searchParams.get("utm_source") === "facebook");
-  await expect(page.locator("#lpColors .chip")).toHaveCount(6);
-  await expect(page.locator("#lpFormColors .chip")).toHaveCount(6);
+  await expect(page.locator("#lpColors .chip")).toHaveCount(7);
+  await expect(page.locator("#lpFormColors .chip")).toHaveCount(7);
   await expect(page.locator("#lpFormColorName")).toHaveText("بني");
   await expect(page.locator("#lpHero img")).toHaveAttribute("src", /SS-1035/);
   await expect(page.locator("#lpOrder")).toBeEnabled();
