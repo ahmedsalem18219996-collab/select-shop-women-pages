@@ -317,6 +317,69 @@ async function init() {
   const variantLabel = () => (!product?.options.length ? "one_size" : variant ? sizeText().replace(/ · /g, "/").slice(0, 100) : undefined);
   const lineNow = () => (product && variant?.purchasable === true
     ? { publicCode: product.publicCode, structureVersion: product.structureVersion, selection: variant.selection, quantity: qty } : null);
+  // Buyers ordering several colours must send one verified line per REAL SKU, not
+  // "quantity 2" against one ambiguous colour. Single-colour checkout is unchanged.
+  let mixMode = false;
+  let mixBusy = false;
+  /** @type {Map<string,{product:any,variant:any,quantity:number}>} */
+  const mixEntries = new Map();
+  const mixBox = document.createElement("section");
+  mixBox.id = "lpMix";
+  mixBox.className = "lp-mix";
+  mixBox.hidden = colors.length < 2;
+  const mixToggle = document.createElement("button");
+  mixToggle.type = "button"; mixToggle.id = "lpMixToggle";
+  mixToggle.textContent = "عايزة أكتر من لون؟ حددي كمية كل لون";
+  mixToggle.setAttribute("aria-expanded", "false");
+  const mixRows = document.createElement("div");
+  mixRows.id = "lpMixRows"; mixRows.hidden = true;
+  mixRows.setAttribute("aria-label", "عدد القطع من كل لون");
+  const mixHint = document.createElement("p");
+  mixHint.id = "lpMixHint";
+  mixHint.textContent = "كل لون هيتسجل في نفس الأوردر بالعدد اللي تختاريه.";
+  mixHint.hidden = true;
+  mixBox.append(mixToggle, mixHint, mixRows);
+  if (colors.length > 1) form.querySelector(".qty")?.before(mixBox);
+  const singleQtyBox = form.querySelector(".qty");
+  const itemLine = (/** @type {{product:any,variant:any,quantity:number}} */ e) => ({
+    publicCode: e.product.publicCode, structureVersion: e.product.structureVersion,
+    selection: e.variant.selection, quantity: e.quantity,
+  });
+  const currentLines = () => mixMode
+    ? [...mixEntries.values()].filter(e => e.quantity > 0).map(itemLine).filter(lineOk)
+    : (lineNow() ? [/** @type {Line} */ (lineNow())] : []);
+  const mixCount = () => [...mixEntries.values()].reduce((sum, e) => sum + e.quantity, 0);
+  const repaintMix = () => {
+    if (!mixMode) return;
+    mixRows.replaceChildren();
+    for (const color of colors) {
+      const entry = mixEntries.get(color.code);
+      const count = entry?.quantity || 0;
+      const row = document.createElement("div"); row.className = "lp-mix-row";
+      const name = document.createElement("span"); name.className = "lp-mix-color";
+      const swatch = document.createElement("i"); swatch.style.backgroundColor = color.hex || "#aaa";
+      name.append(swatch, document.createTextNode(color.name || color.code));
+      const controls = document.createElement("span"); controls.className = "lp-mix-step";
+      for (const delta of [-1, 1]) {
+        const btn = document.createElement("button");
+        btn.type = "button"; btn.textContent = delta > 0 ? "+" : "−";
+        btn.dataset.mixCode = color.code; btn.dataset.delta = String(delta);
+        btn.setAttribute("aria-label", (delta > 0 ? "زوّدي " : "قلّلي ") + (color.name || color.code));
+        btn.disabled = mixBusy || busy || (delta < 0 && count === 0) ||
+          (delta > 0 && (mixCount() >= MAX_QTY || count >= MAX_QTY));
+        controls.append(btn);
+        if (delta < 0) {
+          const amount = document.createElement("output");
+          amount.dataset.mixCount = color.code;
+          amount.textContent = new Intl.NumberFormat("ar-EG").format(count);
+          controls.append(amount);
+        }
+      }
+      row.append(name, controls);
+      mixRows.append(row);
+    }
+    mixToggle.textContent = "الرجوع لطلب لون واحد";
+  };
 
   // Only public/versioned selectors go into the same first-party cart as js/commerce.js.
   const cartKey = (/** @type {Line} */ line) => line.publicCode + '@' + line.structureVersion + ':' +
