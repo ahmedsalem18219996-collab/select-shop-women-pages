@@ -76,9 +76,14 @@ window.SelectStore = (() => {
         .filter(color => color.product);
       // No grouping when price/category drift, or fewer than two colours are live.
       // This prevents a misleading price or a model with no real choice.
-      if (members.length < 2 || !members.every(color =>
-        color.product.price === members[0].product.price &&
-        color.product.cat === members[0].product.cat)) continue;
+      // The pre-rendered LP always boots its FIRST configured colour. If that
+      // default SKU is hidden or sold out, leave the real SKUs separate: a
+      // different available colour must not route into an unavailable first one.
+      if (members.length < 2 || members[0].code !== family.colors[0].code ||
+        members[0].product.purchasable !== true ||
+        !members.every(color =>
+          color.product.price === members[0].product.price &&
+          color.product.cat === members[0].product.cat)) continue;
       eligible.set(family, members);
     }
     const shown = new Set();
@@ -88,7 +93,7 @@ window.SelectStore = (() => {
       if (!members) return [product];
       if (shown.has(family)) return [];
       shown.add(family);
-      const primary = members.find(color => color.product.purchasable) || members[0];
+      const primary = members[0];
       return [{
         ...primary.product,
         name: family.name,
