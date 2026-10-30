@@ -61,3 +61,23 @@ test("hidden default SKU also keeps remaining colours separate", () => {
   assert.equal(out.length, 3);
   assert.equal(out[0].url, "/lp/?p=SS-1035");
 });
+
+test("every verified colour family is a single storefront card with its own live landing page", () => {
+  const fixture = [
+    ["SS-1042", "SS-1043", "SS-1044"],
+    ["SS-1015", "SS-1027", "SS-1028"],
+    ["SS-1014", "SS-1023", "SS-1024", "SS-1025", "SS-1026"],
+    ["SS-1019", "SS-1021", "SS-1022"],
+    ["SS-1012", "SS-1029", "SS-1030"],
+    ["SS-1031", "SS-1032", "SS-1033", "SS-1034"],
+  ];
+  const categories = ["بلوفر", "سويت شيرت", "جاكيت", "بلوفر", "بلوفر", "جاكيت"];
+  const prices = [650, 750, 750, 650, 550, 1000];
+  const expected = ["/lp/striped-knit/", "/lp/pra-sweatshirt/", "/lp/chinese-jacket/", "/lp/button-knit/", "/lp/zebra-knit/", "/lp/checked-jacket/"];
+  fixture.forEach((codes, i) => {
+    const output = group(codes.map(code => item(code, prices[i], categories[i])));
+    assert.equal(output.length, 1, "must show one card, group " + i);
+    assert.equal(output[0].sw.length, codes.length, "must show all colours, group " + i);
+    assert.ok(output[0].url.endsWith(expected[i]));
+  });
+});

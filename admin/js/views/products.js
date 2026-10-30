@@ -48,8 +48,7 @@ async function renderList(ctx) {
         const p = g.members[0].product;
         return g.family ? html`<div class="row-card model-summary" style="--k:${k}">
           <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-          <span class="row-main"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span></span>
-          <button class="btn btn-soft btn-sm" type="button" data-manage-model="${g.key}">إدارة الألوان</button>
+          <span class="row-main"><button class="model-open" type="button" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اضغطي لتعديل الألوان والسعر والمخزون</span></button></span>
         </div>` : html`<a class="row-card" style="--k:${k}" href="#/products/${p.public_code}">
           <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
           <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
@@ -70,7 +69,7 @@ async function renderList(ctx) {
             const views = g.members.reduce((n,m)=>n+(Number(m.product.views_30d)||0),0);
             return html`<tr data-family="${g.key}" class="model-group-row">
               <td><div class="cell-main"><span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-                <div class="row-main"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m=>html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span></div></div></td>
+                <div class="row-main"><button type="button" class="model-open" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m=>html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اضغطي لإدارة الألوان والتعديل</span></button></div></div></td>
               <td>${p.category}</td>
               <td class="num">${low === null || high === null ? '—' : low === high ? money(low) : html`${money(low)} – ${money(high)}`}</td>
               <td class="num">${stock === null ? '—' : fmtNum(stock)}</td>
@@ -109,19 +108,27 @@ async function renderList(ctx) {
       if (!g) return;
       const box = sheet({
         title: g.name + ' · إدارة الألوان',
+        wide: true,
         body: html`<div class="stack">
-          <p class="muted">كل لون له كود ومخزون وصور مستقلة. افتحي اللون لتعدّلي السعر والكمية والصور والتوافر من غير حذف أو دمج البيانات.</p>
+          <p class="muted">اختاري اللون اللي عايزة تعدليه، واضغطي «تعديل اللون». كل لون له مخزون مستقل والطلبات القديمة محفوظة.</p>
           ${g.members.map(m => html`<div class="model-color-line">
             <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="model-dot" style="background:${m.color.hex}"></span>
             <div class="row-main"><b>${m.color.name}</b><span class="row-meta">${m.product.public_code} · ${priceText(m.product)} · مخزون ${m.product.stock_total === null ? '—' : fmtNum(m.product.stock_total)}</span>${statusBadge(m.product.status)}</div>
-            <a class="btn btn-soft btn-sm" href="#/products/${m.product.public_code}" data-open-sku>تعديل</a>
+            <span class="model-color-actions">
+              <a class="btn btn-primary btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="variants">السعر والمخزون</a>
+              <a class="btn btn-soft btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="media">الصور</a>
+              <a class="btn btn-ghost btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="details">البيانات</a>
+            </span>
           </div>`)}
         </div>`,
         foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>`
       });
       box.querySelector('[data-close]')?.addEventListener('click', closeLayer);
-      box.querySelectorAll('[data-open-sku]').forEach(a => a.addEventListener('click', () => closeLayer()));
+      box.querySelectorAll('[data-open-sku]').forEach(a => a.addEventListener('click', () => {
+        sessionStorage.setItem('wa.ptab', a.dataset.editTab || 'details');
+        closeLayer();
+      }));
       return;
     }
     const tr = e.target.closest('tr[data-code]');
