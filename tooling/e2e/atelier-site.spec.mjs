@@ -15,7 +15,7 @@ test("Atelier storefront + admin route styles are served", async ({ request }) =
     const response = await request.get(url);
     expect(response.ok(), url + " status").toBe(true);
     const html = await response.text();
-    expect(html, url + " stylesheet").toContain(stylesheet.replace(/^\//, ""));
+    expect(html, url + " stylesheet").toContain(url === "/admin/" ? stylesheet.replace(/^\/admin\//, "") : stylesheet.replace(/^\//, ""));
     const css = await request.get(stylesheet);
     expect(css.ok(), stylesheet + " status").toBe(true);
     expect(await css.text()).toContain("#303c2d");

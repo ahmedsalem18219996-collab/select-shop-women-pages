@@ -16,7 +16,7 @@ test("premium storefront renders verified catalog and retains product navigation
   await expect(page.locator(".hero p")).not.toContainText("بنجهز");
   await expect(page.locator("#countOut")).not.toHaveText("جارٍ التحميل…");
   const color = await page.locator(".hdr").evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(color).toBe("rgb(255, 255, 255)");
+  expect(color).toBe("rgba(247, 246, 242, 0.98)"); // Atelier warm-paper header
   const productLink = page.locator("#feed .card .shot-link").first();
   await expect(productLink).toHaveAttribute("href", /\/p\/\?code=SS-\d+/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
