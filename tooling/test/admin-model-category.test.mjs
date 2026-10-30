@@ -18,7 +18,7 @@ test('partial failure is visible and never claimed successful',async()=>{
  assert.deepEqual(out.failed,[{code:'SS-1038',outcome:'forbidden'}]);
 });
 test('skip unchanged category without a write',async()=>{
- let calls=0;let progress=0;
+ let calls=0;
  const out=await saveFamilyCategory([color(1037,true,'أطقم')],'أطقم',async()=>{calls++;},()=>{});
  assert.equal(calls,0);assert.equal(out.failed.length,0);assert.equal(out.updated.length,1);
 });
