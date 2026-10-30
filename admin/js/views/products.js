@@ -37,7 +37,7 @@ async function renderList(ctx) {
   const load = async () => {
     const [r, modelResponse] = await Promise.all([
       call('products.list', { q: state.q || null, status: state.status || null, category: state.category || null }),
-      call('models.list', {}),
+      call('models.list', {}).catch(() => ({outcome:'unavailable'})),
     ]);
     if (r.outcome !== 'ok') { fail(r); return; }
     const items = r.data.filter(p => state.status === 'archived' ? p.status === 'archived' : p.status !== 'archived');

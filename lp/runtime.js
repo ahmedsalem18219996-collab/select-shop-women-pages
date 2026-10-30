@@ -269,7 +269,8 @@ export async function readLiveModel(page, query, loader) {
     page.id === "ballon-suit" ? "balloon-suit" : String(page.id || "");
   if (!/^[a-z][a-z0-9-]{2,63}$/.test(slug) || (!page.auto && !Array.isArray(page.colors))) return null;
   try {
-    const data = await loader(page.auto ? 10000 : 2800);
+    // Bound the live-registry call so it cannot add seconds to mobile LCP.
+    const data = await loader(page.auto ? 1400 : 1400);
     const visible = new Set((data.items || []).map(x => x.publicCode));
     const model = (Array.isArray(data.models) ? data.models : []).find(m => m.slug === slug);
     if (!model || !Array.isArray(model.colors) || typeof model.name !== "string") return null;
@@ -350,7 +351,7 @@ async function init() {
   // An old /lp/ss-1009/ (or /lp/?p=SS-1009) is a single-colour page.
   // Redirect it to the shared model without losing the chosen SKU or ad attribution.
   if (!Array.isArray(page.colors) || page.colors.length < 2) {
-    const modelUrl = SHARED_MODEL_URLS.get(page.code);
+    const modelUrl = page.modelRegistry ? null : SHARED_MODEL_URLS.get(page.code);
     if (modelUrl && location.pathname !== modelUrl) {
       const params = new URLSearchParams(location.search);
       params.delete("p"); params.delete("code");
@@ -659,6 +660,12 @@ async function init() {
       if (label) label.textContent = c.name;
     }
     const pic = document.getElementById("lpHero");
+    if (pic && page.modelRegistry && !c.hero) {
+      const image = pic.querySelector("img");
+      if (image) { image.removeAttribute("src"); image.removeAttribute("srcset"); image.alt = "بنحمّل صورة " + c.name; }
+      pic.querySelectorAll("source").forEach(src => src.removeAttribute("srcset"));
+      document.getElementById("lpGallery")?.replaceChildren();
+    }
     if (pic && c.hero) {
       const [avif, webp] = pic.querySelectorAll("source");
       if (avif) avif.setAttribute("srcset", c.hero.avif);
