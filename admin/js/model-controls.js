@@ -79,7 +79,11 @@ export function mountModelControls(host, model, api, saved) {
   code.input.dir="ltr";code.input.maxLength=20;
   const add=create("button","btn btn-primary","إضافة اللون");
   add.type="button";
+  // A lost response must replay the same create attempt, never make another SKU.
+  let creationKey=null;
+  let createdCode=null;
   add.onclick=async () => {
+    if(add.disabled)return;
     const n=name.input.value.trim(),h=hex.input.value;
     let sku=code.input.value.trim().toUpperCase();
     if (!n || n.length>80 || !/^#[0-9a-fA-F]{6}$/.test(h) ||
@@ -90,28 +94,33 @@ export function mountModelControls(host, model, api, saved) {
     add.disabled=true;
     try {
       if (!sku) {
-        const bytes=crypto.getRandomValues(new Uint8Array(16));
-        const key=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+        if(!creationKey) {
+          const bytes=crypto.getRandomValues(new Uint8Array(16));
+          creationKey=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+        }
         const created=await api("products.create",{
-          idempotency_key:key,title:model.name+" "+n,description:"",
+          idempotency_key:creationKey,title:model.name+" "+n,description:"",
           category:model.category,is_new:false
         });
-        if (created?.outcome!=="created" || !/^SS-[0-9]{4,19}$/.test(created.code||"")) {
+        if (!["created","existing"].includes(created?.outcome) || !/^SS-[0-9]{4,19}$/.test(created.code||"")) {
           status.textContent="تعذّر إنشاء منتج Draft جديد. لم نربط أي لون.";
           return;
         }
         sku=created.code;
+        createdCode=sku;
+        code.input.value=sku;
       }
       const attached=await api("models.attach",{
         modelId:model.id,version:model.version,code:sku,name:n,hex:h
       });
       if (attached?.outcome==="saved") {
         status.textContent="اتضاف اللون. اضبطي السعر والصور والمخزون قبل نشر المنتج.";
-        await saved("اتضاف اللون كمنتج Draft، كمّلي السعر والصور والمخزون.",sku);
+        await saved(createdCode===sku ? "اتضاف اللون كمنتج Draft، كمّلي السعر والصور والمخزون." : "اتربط اللون بالمنتج "+sku+". راجعي بياناته قبل النشر.",sku);
       } else {
         // No auto-delete: newly created Draft is preserved for safe reconciliation.
         status.textContent="ربط اللون فشل. كود المنتج "+sku+
-          " محفوظ كـDraft للمراجعة. ما تعيديش الضغط قبل التأكد من حالته.";
+          (createdCode===sku ? " محفوظ كـDraft للمراجعة." : " لم نغيّر حالة نشره.")+
+          " راجعي حالة الربط قبل إعادة المحاولة.";
       }
     } catch {status.textContent="فشل الاتصال. راجعي المنتج قبل إعادة المحاولة."; }
     finally {add.disabled=false;}
