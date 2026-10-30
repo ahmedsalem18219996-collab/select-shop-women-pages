@@ -310,6 +310,9 @@ export async function shellRoutes() {
   const dir = path.join(ROOT, "tooling", "pages"), routes = {};
   for (const f of (await readdir(dir)).filter(f => f.endsWith(".json")).sort()) {
     const page = JSON.parse(await readFile(path.join(dir, f), "utf8"));
+    // These new model LPs reuse the original colour pages, which remain the stable
+    // legacy shell destinations; lp/runtime.js preserves the selected SKU on redirect.
+    if (page.reuse_images === true) continue;
     routes[colorsOf(page)[0].code] = `/lp/${page.id}/`;
   }
   return routes;
