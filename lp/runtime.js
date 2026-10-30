@@ -339,6 +339,26 @@ async function init() {
   mixHint.textContent = "كل لون هيتسجل في نفس الأوردر بالعدد اللي تختاريه.";
   mixHint.hidden = true;
   mixBox.append(mixToggle, mixHint, mixRows);
+  // Lightweight CSS is attached only on model pages with multiple colours.
+  if (colors.length > 1) {
+    const style = document.createElement("style");
+    style.id = "lpMixStyle";
+    style.textContent = `
+      #lpMix{border:1px solid var(--line);padding:14px;background:var(--bg);margin:6px 0}
+      #lpMix [hidden]{display:none!important}
+      #lpMixToggle{background:var(--accent,#303c2d);color:#fff;border:0;min-height:44px;padding:10px 12px;width:100%;font:600 14px var(--f);cursor:pointer}
+      #lpMixHint{font-size:13px;margin:10px 0;color:var(--muted)}
+      #lpMixRows{display:grid;gap:10px;margin-top:12px}
+      #lpMixRows .lp-mix-row{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:5px 0 10px}
+      #lpMixRows .lp-mix-color{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;min-width:0}
+      #lpMixRows .lp-mix-color i{display:block;width:18px;height:18px;flex:none;border:1px solid #777}
+      #lpMixRows .lp-mix-step{display:flex;align-items:center;gap:6px;flex:none}
+      #lpMixRows button{min-width:44px;min-height:44px;border:1px solid var(--line);background:var(--paper,#eeece5);font:600 20px var(--f);color:var(--ink)}
+      #lpMixRows button:disabled{opacity:.35}
+      #lpMixRows output{min-width:27px;text-align:center;font-weight:600}
+    `;
+    document.head.append(style);
+  }
   if (colors.length > 1) form.querySelector(".qty")?.before(mixBox);
   const singleQtyBox = form.querySelector(".qty");
   const itemLine = (/** @type {{product:any,variant:any,quantity:number}} */ e) => ({
