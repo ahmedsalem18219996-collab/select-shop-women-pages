@@ -42,8 +42,8 @@
     const banner = $('#womenOwnerAnnouncement');
     if (banner) {
       banner.textContent = String(content.announcement || brand.storeName || 'SELECT SHOP WOMEN').slice(0, 160);
-      if (/^#[0-9a-f]{6}$/i.test(brand.primaryColor || ''))
-        banner.style.borderColor = brand.primaryColor;
+      // The owner-selected brand colour is not the Atelier announcement trim:
+      // keep the storefront's olive/brass design consistent (no inline override).
     }
     const hero = $('.hero h1');
     const lead = $('.hero p');
