@@ -148,6 +148,16 @@ test("every generated direct-order page now also offers the optional multi-produ
   }
 });
 
+test("Admin collects text entered without Enter and never marks a failed price as complete", async () => {
+  const admin = await readFile(new URL("../../admin/js/views/products.js", import.meta.url), "utf8");
+  assert.match(admin, /sizeInput\.addEventListener\('blur', addSize\)/);
+  assert.match(admin, /addSize\(\); addColor\(\);/);
+  assert.match(admin, /colorInput\.value\.split\(\/\[,،\]\//);
+  assert.match(admin, /sizeInput\.value\.split\(\/\[,،\]\//);
+  assert.match(admin, /if \(pr\.outcome !== 'saved'\)/);
+  assert.match(admin, /A created product remains a draft/);
+});
+
 test("admin creates one multi-colour product and allows variant-specific media uploads", async () => {
  const admin = await readFile(new URL("../../admin/js/views/products.js", import.meta.url), "utf8");
  assert.match(admin, /id="c-color"/);

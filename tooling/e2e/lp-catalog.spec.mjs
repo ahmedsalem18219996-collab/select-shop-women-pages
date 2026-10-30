@@ -51,6 +51,25 @@ for (const id of ["ss-1012", "ss-1046"]) {
   });
 }
 
+test("320px shopping: bag link and both order actions fit without sideways scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  for (const route of ["/lp/ss-1041/", "/lp/?p=SS-1099"]) {
+    await page.goto(route);
+    await expect(page.locator("#lpCartLink")).toBeVisible();
+    await expect(page.locator("#lpAddCart")).toBeEnabled();
+    await expect(page.locator("#lpOrder")).toBeEnabled();
+    const metrics=await page.evaluate(() => {
+      const a=document.querySelector("#lpAddCart").getBoundingClientRect();
+      const c=document.querySelector("#lpOrder").getBoundingClientRect();
+      return {overflow: document.documentElement.scrollWidth - innerWidth,
+        addWidth:a.width,orderWidth:c.width};
+    });
+    expect(metrics.overflow, route).toBe(0);
+    expect(metrics.addWidth, route).toBeGreaterThanOrEqual(44);
+    expect(metrics.orderWidth, route).toBeGreaterThanOrEqual(44);
+  }
+});
+
 test("cart path: choose two products on Atelier pages, add to bag, checkout them as ONE COD order", async ({ page, request }) => {
   const before = await (await request.get("/__mock/log")).json();
   const ordered = before.orders.length;

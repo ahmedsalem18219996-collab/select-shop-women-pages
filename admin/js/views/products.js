@@ -162,17 +162,26 @@ function createSheet(ctx) {
     sizeInput.value = '';
     paintSizes();
   });
+  const addSize = () => {
+    if (sizeInput.disabled) return;
+    for (const item of sizeInput.value.split(/[,،]/)) {
+      const v = item.trim();
+      if (v && !sizes.some(x => x.toLowerCase() === v.toLowerCase()) && sizes.length < 20) sizes.push(v);
+    }
+    sizeInput.value = ''; paintSizes();
+  };
   sizeInput.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ',') return; e.preventDefault();
-    const v = e.target.value.trim(); if (v && !sizes.some((x) => x.toLowerCase() === v.toLowerCase()) && sizes.length < 20) sizes.push(v);
-    e.target.value = ''; paintSizes();
+    if (e.key === 'Enter' || e.key === ',' || e.key === '،') { e.preventDefault(); addSize(); }
   });
+  sizeInput.addEventListener('blur', addSize);
   $('#c-sizes', box).addEventListener('click', (e) => { const b = e.target.closest('[data-rm]'); if (b) { sizes.splice(+b.dataset.rm, 1); paintSizes(); } });
   const colorInput = $('#c-color', box);
   const paintColors = () => render($('#c-colors', box), html`${colors.map((s,i)=>html`<button type="button" class="chip" data-rm-color="${i}" aria-label="حذف لون ${s}">${s} ${icon('x')}</button>`)}`);
   const addColor = () => {
-    const v = colorInput.value.trim();
-    if (v && !colors.some(x => x.toLowerCase() === v.toLowerCase()) && colors.length < 12) colors.push(v);
+    for (const item of colorInput.value.split(/[,،]/)) {
+      const v = item.trim();
+      if (v && !colors.some(x => x.toLowerCase() === v.toLowerCase()) && colors.length < 12) colors.push(v);
+    }
     colorInput.value = ''; paintColors();
   };
   colorInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ',' || e.key === '،') { e.preventDefault(); addColor(); } });
@@ -180,7 +189,7 @@ function createSheet(ctx) {
   $('#c-colors', box).addEventListener('click', (e) => { const b=e.target.closest('[data-rm-color]'); if (b) { colors.splice(+b.dataset.rmColor, 1); paintColors(); } });
   const key = idempotencyKey();
   $('[data-create]', box).onclick = async (e) => {
-    addColor();
+    addSize(); addColor();
     if (colors.length * Math.max(1, sizes.length) > 200) { island('error', 'الحد الأقصى ٢٠٠ تركيبة ألوان ومقاسات. قلّلي عدد الاختيارات قبل إنشاء المنتج.'); return; }
     const title = $('#c-title', box).value.trim();
     if (!title) { $('#c-title', box).setAttribute('aria-invalid', 'true'); $('#c-title', box).focus(); return; }
@@ -195,7 +204,19 @@ function createSheet(ctx) {
       if (!['created', 'existing'].includes(r.outcome)) { fail(r); li.remove(); return; }
       li.textContent = '✓ ' + t('create.steps.create');
       const code = r.code; let version = r.structure_version;
-      if (price) { li = step(t('create.steps.price')); const pr = await call('products.set_price', { code, amount_minor: price }); li.textContent = (pr.outcome === 'saved' ? '✓ ' : '✗ ') + t('create.steps.price'); }
+      if (price) {
+        li = step(t('create.steps.price'));
+        const pr = await call('products.set_price', { code, amount_minor: price });
+        if (pr.outcome !== 'saved') {
+          li.textContent = '✗ ' + t('create.steps.price');
+          fail(pr);
+          // A created product remains a draft: do not claim successful setup if its price failed.
+          closeLayer();
+          ctx.go('products/' + code);
+          return;
+        }
+        li.textContent = '✓ ' + t('create.steps.price');
+      }
       if (r.outcome === 'created') {
         // Add every option dimension BEFORE creating the variants (database requirement).
         const dimensions = [
