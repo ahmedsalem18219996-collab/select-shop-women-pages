@@ -280,7 +280,7 @@ async function init() {
   void recordView(page.code);
 
   // One page = one model. Each colour is its own real product (public code); the default colour is pre-rendered.
-  /** @type {{code:string,name:string,alt?:string,hero?:{avif:string,webp:string,src:string},gallery?:string[]}[]} */
+  /** @type {{code:string,name:string,hex?:string,alt?:string,hero?:{avif:string,webp:string,src:string},gallery?:string[]}[]} */
   const colors = Array.isArray(page.colors) && page.colors.length ? page.colors.filter((/** @type {any} */ c) => validCode(c?.code)) : [{ code: page.code, name: "" }];
   const holder = $("#lpOptions");
   const choiceEl = document.getElementById("lpBarChoice");
@@ -360,7 +360,7 @@ async function init() {
     document.head.append(style);
   }
   if (colors.length > 1) form.querySelector(".qty")?.before(mixBox);
-  const singleQtyBox = form.querySelector(".qty");
+  const singleQtyBox = /** @type {HTMLElement|null} */ (form.querySelector(".qty"));
   const itemLine = (/** @type {{product:any,variant:any,quantity:number}} */ e) => ({
     publicCode: e.product.publicCode, structureVersion: e.product.structureVersion,
     selection: e.variant.selection, quantity: e.quantity,
