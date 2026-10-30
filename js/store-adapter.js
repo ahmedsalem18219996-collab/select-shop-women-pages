@@ -61,6 +61,7 @@ window.SelectStore = (() => {
         { code: "SS-1038", name: "أسود", hex: "#1F1B1E" },
         { code: "SS-1039", name: "أحمر", hex: "#B0262F" },
         { code: "SS-1040", name: "رمادي", hex: "#B8B4B0" },
+        { code: "SS-1010", name: "رمادي زيتي", hex: "#898B7D" },
       ],
     },
   ];
