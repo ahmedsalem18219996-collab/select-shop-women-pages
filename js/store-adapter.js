@@ -39,6 +39,72 @@ window.SelectStore = (() => {
     sizeChart: [], sizeChartMin: { bust: 0, waist: 0 },
   });
 
+  // Verified sibling SKUs share one storefront card and their existing multi-colour LP.
+  // Orders, stock, media, deep links and admin records stay tied to each REAL public code.
+  // A family is collapsed only when all visible members have the same selling price/category.
+  const VERIFIED_MODEL_FAMILIES = [
+    {
+      name: "جاكيت جلد",
+      path: "/lp/ss-1008/",
+      colors: [
+        { code: "SS-1008", name: "بني", hex: "#5A3B2C" },
+        { code: "SS-1009", name: "أسود", hex: "#1F1B1E" },
+      ],
+    },
+    {
+      name: "طقم بالون",
+      path: "/lp/ballon-suit/",
+      colors: [
+        { code: "SS-1037", name: "نبيتي", hex: "#6B2737" },
+        { code: "SS-1035", name: "بني", hex: "#6E4B3A" },
+        { code: "SS-1036", name: "رصاصي", hex: "#7E8186" },
+        { code: "SS-1038", name: "أسود", hex: "#1F1B1E" },
+        { code: "SS-1039", name: "أحمر", hex: "#B0262F" },
+        { code: "SS-1040", name: "رمادي", hex: "#B8B4B0" },
+      ],
+    },
+  ];
+  const modelForCode = new Map(VERIFIED_MODEL_FAMILIES.flatMap(
+    family => family.colors.map(color => [color.code, family])
+  ));
+  const groupVerifiedModels = products => {
+    const byCode = new Map(products.map(product => [product.id, product]));
+    const eligible = new Map();
+    for (const family of VERIFIED_MODEL_FAMILIES) {
+      const members = family.colors
+        .map(color => ({ ...color, product: byCode.get(color.code) }))
+        .filter(color => color.product);
+      // No grouping when price/category drift, or fewer than two colours are live.
+      // This prevents a misleading price or a model with no real choice.
+      // The pre-rendered LP always boots its FIRST configured colour. If that
+      // default SKU is hidden or sold out, leave the real SKUs separate: a
+      // different available colour must not route into an unavailable first one.
+      if (members.length < 2 || members[0].code !== family.colors[0].code ||
+        members[0].product.purchasable !== true ||
+        !members.every(color =>
+          color.product.price === members[0].product.price &&
+          color.product.cat === members[0].product.cat)) continue;
+      eligible.set(family, members);
+    }
+    const shown = new Set();
+    return products.flatMap(product => {
+      const family = modelForCode.get(product.id);
+      const members = family && eligible.get(family);
+      if (!members) return [product];
+      if (shown.has(family)) return [];
+      shown.add(family);
+      const primary = members[0];
+      return [{
+        ...primary.product,
+        name: family.name,
+        sw: members.map(color => color.hex),
+        isNew: members.some(color => color.product.isNew),
+        purchasable: members.some(color => color.product.purchasable),
+        url: SECURE_CHECKOUT_ORIGIN + family.path,
+      }];
+    });
+  };
+
   const safeText = (value, limit = 300) =>
     typeof value === "string" ? value.trim().slice(0, limit) : "";
   const safeColor = value =>
@@ -145,7 +211,7 @@ window.SelectStore = (() => {
             purchasable: item.purchasable === true,
           }));
         const categories = ["الكل", ...(products.some(p => p.isNew) ? ["الجديد"] : []), ...visibleCategories];
-        return { ...empty(), categories, products };
+        return { ...empty(), categories, products: groupVerifiedModels(products) };
       } catch (error) {
         // Never fall back to fabricated demo products on a public storefront.
         window.SELECT_CONFIG.loadError = true;
