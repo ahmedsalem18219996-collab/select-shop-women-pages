@@ -11,7 +11,7 @@ test("verified groups contain unique real SKUs and valid swatches", () => {
   for (const family of MODEL_FAMILIES) {
     assert.ok(family.colors.length >= 2);
     for (const c of family.colors) {
-      assert.match(c.code, /^SS-\\d{4,19}$/);
+      assert.match(c.code, /^SS-\d{4,19}$/);
       assert.match(c.hex, /^#[0-9A-Fa-f]{6}$/);
       assert.ok(c.name.trim());
     }
