@@ -226,7 +226,10 @@ export function groupAdminProducts(products, apiModels = null) {
   const output = [];
   for (const product of products) {
     const family = byCode.get(product.public_code);
-    if (!family) {
+    // One SKU with multiple colour option values belongs in its native product
+    // variant editor; never fabricate multiple independent stock/SKU rows.
+    const repeatedSku = family && new Set(family.colors.map(c => c.code)).size !== family.colors.length;
+    if (!family || repeatedSku) {
       output.push({ key: product.public_code, family: null, name: product.title, members: [{ product, color: null }] });
       continue;
     }

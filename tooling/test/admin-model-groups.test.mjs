@@ -61,3 +61,13 @@ test("invalid live model metadata cannot suppress unrelated items", () => {
  assert.deepEqual(new Set(out.flatMap(g=>g.members.map(m=>m.product.public_code))),
    new Set(input.map(x=>x.public_code)));
 });
+
+test("one SKU with native colour options stays one genuine Admin product",()=>{
+ const model=[{id:"abc",name:"بلوفر",active:true,version:1,category:"بلوفر",colors:[
+ {id:"a",active:true,code:"SS-1100",name:"أحمر",hex:"#AA0011"},
+ {id:"b",active:true,code:"SS-1100",name:"أسود",hex:"#111111"}]}];
+ const grouped=groupAdminProducts([p("SS-1100")],model);
+ assert.equal(grouped.length,1);
+ assert.equal(grouped[0].family,null);
+ assert.equal(grouped[0].members.length,1);
+});
