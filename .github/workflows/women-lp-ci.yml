@@ -64,7 +64,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:unit
       - name: Generated landing pages are up to date
-        run: for f in pages/*.json; do node build-lp.mjs "$(basename "$f" .json)" --check; done
+        run: for f in pages/*.json; do node build-lp.mjs "$(basename "$f" .json)" --check; done; node build-lp.mjs shell --check
 
   e2e:
     name: Playwright mobile + desktop (mock API)

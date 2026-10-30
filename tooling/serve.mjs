@@ -14,28 +14,34 @@ const PORT = Number(process.env.PORT || 4173);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const PROD = "https://byluoipdunralsurwebt.supabase.co";
 const DELAY = Number(process.env.MOCK_DELAY_MS || 0);
-const SHIPPING = 7000;
+// Shipping per governorate (piastres), like the Owner-managed shipping table.
+const REGIONS = [{ key: "cairo", label: "القاهرة", fee: 7000 }, { key: "giza", label: "الجيزة", fee: 8000 }, { key: "aswan", label: "أسوان", fee: 12000 }];
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".webp": "image/webp", ".avif": "image/avif",
   ".jpg": "image/jpeg", ".png": "image/png", ".woff2": "font/woff2", ".txt": "text/plain" };
 
 export const log = { orders: [], cartAdds: [], views: 0 };
-const keys = new Map(); // idempotencyKey -> public order code
+const keys = new Map(); // idempotencyKey -> { code, body, total }
+// Units left per product code (all variants), set by tests via POST /__mock/stock { code, units } ; absent = unlimited.
+const stock = new Map();
 
 const product = async (code) => /^SS-\d{4,19}$/.test(code)
   ? JSON.parse(await readFile(path.join(FIX, code + ".product.json"), "utf8").catch(() => "null")) : null;
 const variantOf = (p, line) => p?.variants.find(v => JSON.stringify(v.selection) === JSON.stringify(line.selection));
 const money = (amountMinor) => ({ currency: "EGP", amountMinor });
 
-async function quote(lines) {
+async function quote(lines, regionKey = "cairo") {
   let subtotal = 0; const out = [];
+  const region = REGIONS.find(r => r.key === regionKey);
+  if (!region) return null;
   for (const l of lines) {
     const p = (await product(l.publicCode))?.product, v = variantOf(p, l);
     if (!p || !v?.purchasable || l.structureVersion !== p.structureVersion) return null;
+    if (stock.has(l.publicCode) && l.quantity > stock.get(l.publicCode)) return null;
     subtotal += v.unitPrice.amountMinor * l.quantity;
     out.push({ title: p.title, quantity: l.quantity, address: { publicCode: l.publicCode } });
   }
-  return { lines: out, merchandiseSubtotal: money(subtotal), shippingTotal: money(SHIPPING), grandTotal: money(subtotal + SHIPPING), purchasable: true };
+  return { lines: out, merchandiseSubtotal: money(subtotal), shippingTotal: money(region.fee), grandTotal: money(subtotal + region.fee), purchasable: true };
 }
 
 async function mockApi(req, url, body) {
@@ -48,7 +54,7 @@ async function mockApi(req, url, body) {
     return data ? [200, data] : [404, { error: "not_found" }];
   }
   if (c === "/checkout-config") return [200, { enabled: true, mode: "internal" }];
-  if (c === "/regions") return [200, { regions: [{ key: "cairo", label: "القاهرة" }, { key: "giza", label: "الجيزة" }] }];
+  if (c === "/regions") return [200, { regions: REGIONS.map(({ key, label }) => ({ key, label })) }];
   if (c === "/cart/add" && req.method === "POST") {
     const v = variantOf((await product(body?.publicCode))?.product, body || {});
     log.cartAdds.push(body);
@@ -71,18 +77,31 @@ async function mockApi(req, url, body) {
     return [200, { lines: out, subtotal: money(subtotal), checkoutReady: ready && out.length > 0 }];
   }
   if (c === "/checkout/quote" && req.method === "POST") {
-    const q = await quote(body?.lines || []);
+    const q = await quote(body?.lines || [], body?.deliveryRegionKey);
     return q ? [200, q] : [409, { error: "checkout_not_purchasable" }];
   }
   if (c === "/orders" && req.method === "POST") {
-    const q = await quote(body?.lines || []);
-    if (!q || !/^[0-9a-f]{32}$/.test(body?.idempotencyKey || "") || !body?.buyer?.name || !/^01\d{9}$/.test(body?.buyer?.phone || "")) return [400, { error: "invalid_request" }];
-    if (body.confirmedGrandTotalPiastres !== q.grandTotal.amountMinor) return [409, { error: "checkout_changed" }];
-    if (!keys.has(body.idempotencyKey)) {
-      keys.set(body.idempotencyKey, "ORD-" + String(23456789 + keys.size).replace(/[01]/g, "2"));
-      log.orders.push({ lines: body.lines, region: body.deliveryRegionKey, total: q.grandTotal.amountMinor });
-    }
-    return [200, { publicOrderCode: keys.get(body.idempotencyKey) }];
+    // Same contract as the real endpoint: a replay of the same attempt returns the same order, never a second one.
+    const b = body || {};
+    if (!/^[A-Za-z0-9_-]{16,128}$/.test(b.idempotencyKey || "")) return [400, { error: "invalid_request" }];
+    const intent = JSON.stringify([b.lines, b.deliveryRegionKey, b.buyer]);
+    const seen = keys.get(b.idempotencyKey);
+    if (seen) return seen.intent === intent ? [200, { status: "existing", publicOrderCode: seen.code, grandTotal: money(seen.total) }]
+      : [409, { error: "idempotency_conflict", publicOrderCode: seen.code, grandTotal: money(seen.total) }];
+    const fields = {};
+    for (const f of ["name", "area", "address"]) if (!String(b.buyer?.[f] || "").trim()) fields[f] = "required";
+    if (!/^01[0125]\d{8}$/.test(b.buyer?.phone || "")) fields.phone = "invalid";
+    if (Object.keys(fields).length || b.paymentMethod !== "cod") return [400, { error: "invalid_request", fields }];
+    const q = await quote(b.lines || [], b.deliveryRegionKey);
+    if (!q) return [409, { error: "checkout_not_purchasable" }];
+    if (b.confirmedGrandTotalPiastres !== q.grandTotal.amountMinor || b.confirmedShippingTotalPiastres !== q.shippingTotal.amountMinor
+      || b.confirmedMerchandiseSubtotalPiastres !== q.merchandiseSubtotal.amountMinor) return [409, { error: "checkout_changed" }];
+    for (const l of b.lines) if (stock.has(l.publicCode)) stock.set(l.publicCode, stock.get(l.publicCode) - l.quantity);
+    const code = "ORD-" + String(23456789 + keys.size).replace(/[01]/g, "2");
+    keys.set(b.idempotencyKey, { code, intent, total: q.grandTotal.amountMinor });
+    log.orders.push({ lines: b.lines, region: b.deliveryRegionKey, buyer: b.buyer, total: q.grandTotal.amountMinor,
+      shipping: q.shippingTotal.amountMinor, key: b.idempotencyKey });
+    return [201, { status: "created", publicOrderCode: code, grandTotal: q.grandTotal }];
   }
   return [404, { error: "not_found" }];
 }
@@ -113,6 +132,12 @@ export function start(port = PORT) {
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, ORIGIN);
+      if (url.pathname === "/__mock/stock" && req.method === "POST") {
+        let raw = ""; for await (const chunk of req) raw += chunk;
+        const { code, units } = JSON.parse(raw || "{}");
+        if (units === null) stock.delete(code); else stock.set(code, units);
+        res.writeHead(204).end(); return;
+      }
       if (url.pathname === "/__mock/log") { res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(log)); return; }
       if (url.pathname.startsWith("/__mock/")) {
         let raw = ""; for await (const chunk of req) raw += chunk;

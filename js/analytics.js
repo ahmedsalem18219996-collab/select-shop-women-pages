@@ -10,7 +10,9 @@
   if (new URLSearchParams(location.search).get("design-preview") === "1") return;
 
   const cleanUrl = new URL(location.href);
-  const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "code", "gclid", "fbclid", "lpv"]);
+  // Marketing parameters only (never form values or order references). "p" is the product code of /lp/?p=SS-....
+  const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "code", "p", "gclid", "fbclid", "igshid", "lpv",
+    "campaign_id", "adset_id", "ad_id", "placement", "site_source_name"]);
   for (const key of [...cleanUrl.searchParams.keys()]) {
     if (!allowed.has(key)) cleanUrl.searchParams.delete(key);
   }
@@ -36,7 +38,9 @@
   if (new URLSearchParams(location.search).get("design-preview") === "1") return;
   if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname) && !location.pathname.startsWith("/lp/")) return;
   // Do not expose arbitrary URL parameters to Meta's automatic page context.
-  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","code","fbclid","lpv"]);
+  // Same marketing allowlist: before, /lp/?p=SS-... (p) and Meta's URL builder (utm_id) silently disabled the Pixel.
+  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","utm_id","code","p","fbclid","igshid","lpv",
+    "campaign_id","adset_id","ad_id","placement","site_source_name"]);
   if ([...new URLSearchParams(location.search).keys()].some(k => !permitted.has(k))) return;
   const pixelId = "992616030526349";
   const fbq = window.fbq = window.fbq || function () {

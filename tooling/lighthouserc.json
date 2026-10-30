@@ -7,6 +7,7 @@
         "http://127.0.0.1:4173/lp/ss-1008/?lpv=a",
         "http://127.0.0.1:4173/lp/ss-1008/?lpv=b",
         "http://127.0.0.1:4173/lp/ballon-suit/?lpv=a",
+        "http://127.0.0.1:4173/lp/?p=SS-1099&lpv=a",
         "http://127.0.0.1:4173/checkout/"
       ],
       "numberOfRuns": 3,
