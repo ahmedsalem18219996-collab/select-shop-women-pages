@@ -16,6 +16,45 @@ test.beforeEach(async ({ page }) => {
   page.on("request", r => { const u = new URL(r.url()); if (u.hostname !== "127.0.0.1") page.external.push(r.method() + " " + u.host + u.pathname); });
 });
 
+test("previously isolated SS-1010 goes to seven-colour Balloon Suit, keeps photo and true order SKU", async ({ page, request }) => {
+  const before = (await mockLog(request)).orders.length;
+  await page.goto("/lp/ss-1010/?utm_source=instagram&fbclid=legacy1010");
+  await expect(page).toHaveURL(url =>
+    url.pathname === MODEL && url.searchParams.get("color") === "SS-1010" &&
+    url.searchParams.get("utm_source") === "instagram" &&
+    url.searchParams.get("fbclid") === "legacy1010");
+  await expect(page.locator("#lpColors .chip")).toHaveCount(7);
+  await expect(page.locator("#lpFormColors .chip")).toHaveCount(7);
+  await expect(page.locator("#lpFormColorName")).toHaveText("رمادي زيتي");
+  await expect(page.locator('#lpColors [data-code="SS-1010"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('#lpFormColors [data-code="SS-1010"]')).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => heroSrc(page)).toMatch(/\/lp\/ss-1010\/img\/SS-1010\/0-800\.(webp|avif)$/);
+  await expect(page.locator("#lpPrice")).toHaveText("١٬٠٠٠");
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  await fillBuyer(page);
+  await page.locator("#lpOrder").click();
+  await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-/);
+  const orders = (await mockLog(request)).orders;
+  expect(orders.length - before).toBe(1);
+  expect(orders.at(-1).lines[0].publicCode).toBe("SS-1010");
+  expect(page.external).toEqual([]);
+});
+
+test("SS-1010 stays an independent real SKU after choosing a second Balloon colour and back", async ({ page }) => {
+  await page.goto(MODEL);
+  await expect(page.locator("#lpColors .chip")).toHaveCount(7);
+  await page.locator('#lpFormColors [data-code="SS-1010"]').click();
+  await expect(page.locator("#lpFormColorName")).toHaveText("رمادي زيتي");
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  await page.locator('#lpColors [data-code="SS-1036"]').click();
+  await expect(page.locator("#lpFormColorName")).toHaveText("رصاصي");
+  await expect.poll(() => heroSrc(page)).toMatch(/\/SS-1036\//);
+  await page.locator('#lpFormColors [data-code="SS-1010"]').click();
+  await expect(page.locator("#lpColorName")).toHaveText("رمادي زيتي");
+  await expect(page.locator('#lpColors [data-code="SS-1010"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+});
+
 test("default colour is in the HTML; choosing a colour swaps photo, name and verified product", async ({ page, request }) => {
   const viewsBefore = (await mockLog(request)).views;
   await page.goto(MODEL);
