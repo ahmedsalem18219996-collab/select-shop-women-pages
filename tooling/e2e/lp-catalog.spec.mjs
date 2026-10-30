@@ -13,6 +13,12 @@ const GROUP_ALIAS = new Map([
   ["ss-1009", { page: "ss-1008", title: "Leather jacket" }],
   ...["ss-1035", "ss-1036", "ss-1038", "ss-1039", "ss-1040"].map(id =>
     [id, { page: "ballon-suit", title: "Ballon suit" }]),
+  // Verified colour families now redirect legacy pages to ONE model page.
+  ...["striped-knit", "pra-sweatshirt", "chinese-jacket", "button-knit", "zebra-knit", "checked-jacket"]
+    .flatMap(id => {
+      const cfg = JSON.parse(readFileSync(new URL("../pages/" + id + ".json", import.meta.url), "utf8"));
+      return cfg.colors.map(c => ["ss-" + c.code.slice(3).toLowerCase(), { page: id, title: cfg.title }]);
+    }),
 ]);
 
 test.beforeEach(async ({ page }) => {
@@ -115,11 +121,11 @@ test("cart path: choose two products on Atelier pages, add to bag, checkout them
   expect(final.orders.at(-1).lines.map(l => l.publicCode).sort()).toEqual(["SS-1012","SS-1041"]);
 });
 
-test("old ad links /lp/?p=CODE go to the product's own page with marketing parameters kept; other colours stay", async ({ page }) => {
+test("old ad links /lp/?p=CODE go to the shared model with chosen colour and marketing parameters kept", async ({ page }) => {
   await page.goto("/lp/?p=SS-1012&utm_source=facebook&utm_id=9&fbclid=abc&lpv=b");
-  await page.waitForURL(u => u.pathname === "/lp/ss-1012/");
+  await page.waitForURL(u => u.pathname === "/lp/zebra-knit/" && u.searchParams.get("color") === "SS-1012");
   const url = new URL(page.url());
-  expect(Object.fromEntries(url.searchParams)).toEqual({ utm_source: "facebook", utm_id: "9", fbclid: "abc", lpv: "b" });
+  expect(Object.fromEntries(url.searchParams)).toEqual({ utm_source: "facebook", utm_id: "9", fbclid: "abc", lpv: "b", color: "SS-1012" });
   await expect(page.locator("#lpOrder")).toBeEnabled();
   await page.goto("/lp/?code=ss-1037");                       // a model page default colour (lowercase code accepted)
   await page.waitForURL(u => u.pathname === "/lp/ballon-suit/");
