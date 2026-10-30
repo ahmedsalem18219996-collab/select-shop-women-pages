@@ -10,6 +10,7 @@
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
 const VIEWS_API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-product-views";
 const VIEW_KEY = "women.anonymous-product-views.v1";
+const BAG_KEY = "women.cart.v1"; // same first-party cart as js/commerce.js
 const VARIANT_KEY = "women.lp.variant.v1"; // bucket is chosen before paint by the inline #lp-ab script
 const ORDER_KEY = "women.lp.order.key.v1"; // one attempt = one key, kept until the server confirms an order
 const PURCHASE_SEEN_KEY = "women.meta.purchase.sent.v1"; // same dedupe list as js/commerce.js
@@ -118,7 +119,7 @@ function funnel(/** @type {string} */ name, /** @type {Record<string, any>} */ f
   emit(() => {
     const w = /** @type {any} */ (window);
     if (typeof w.gtag === "function") w.gtag("event", name, fields);
-    const metaName = /** @type {Record<string,string>} */ ({ view_item: "ViewContent", begin_checkout: "InitiateCheckout", purchase: "Purchase" })[name];
+    const metaName = /** @type {Record<string,string>} */ ({ view_item: "ViewContent", add_to_cart: "AddToCart", begin_checkout: "InitiateCheckout", purchase: "Purchase" })[name];
     if (metaName && typeof w.womenMetaEvent === "function") w.womenMetaEvent(metaName, fields, eventId || undefined);
   });
 }
@@ -245,6 +246,7 @@ async function init() {
   const variantId = page.id + ":" + bucket; // the ONE value used for the user property and every event parameter
   const form = /** @type {HTMLFormElement} */ ($("#lpForm"));
   const cta = /** @type {HTMLButtonElement} */ ($("#lpOrder"));
+  const cartBtn = /** @type {HTMLButtonElement} */ ($("#lpAddCart"));
   const region = /** @type {HTMLSelectElement} */ (form.elements.namedItem("region"));
   const status = $("#lpStatus");
   const say = (/** @type {string} */ t, error = false) => { status.textContent = t; status.dataset.error = String(error); };
@@ -280,6 +282,7 @@ async function init() {
   let quote = null; // the last server quote the customer saw: its totals are what the order confirms
   let quoteTicket = 0;
   let busy = false;
+  let cartBusy = false;
   let quoting = false;
   let quoteError = false; // the status line shows a quote problem that the next good quote may clear
   let started = false;
@@ -293,6 +296,48 @@ async function init() {
   const variantLabel = () => (!product?.options.length ? "one_size" : variant ? sizeText().replace(/ · /g, "/").slice(0, 100) : undefined);
   const lineNow = () => (product && variant?.purchasable === true
     ? { publicCode: product.publicCode, structureVersion: product.structureVersion, selection: variant.selection, quantity: qty } : null);
+
+  // Only public/versioned selectors go into the same first-party cart as js/commerce.js.
+  const cartKey = (/** @type {Line} */ line) => line.publicCode + '@' + line.structureVersion + ':' +
+    line.selection.map(s => s.optionPosition + '.' + s.valuePosition).join(',');
+  const readBag = () => {
+    const raw = JSON.parse(localStorage.getItem(BAG_KEY) || '[]');
+    if (!Array.isArray(raw)) throw new Error('invalid_bag');
+    return raw.filter(lineOk).slice(0, 50);
+  };
+  const refreshCartCount = () => {
+    try { $("#lpCartCount").textContent = String(readBag().reduce((n,l)=>n+l.quantity,0)); }
+    catch { $("#lpCartCount").textContent = '0'; }
+  };
+  refreshCartCount();
+  cartBtn.addEventListener("click", async () => {
+    if (cartBusy || busy) return;
+    const line = lineNow();
+    if (!line || !lineOk(line)) { say('اختاري اللون والمقاس الأول.', true); return; }
+    cartBusy = true; cartBtn.disabled = true; cartBtn.textContent = 'بنضيف…';
+    try {
+      // Server validates options and availability. It does not create an order.
+      await api('/cart/add', 'POST', line);
+      const lines = readBag();
+      const index = lines.findIndex(x => cartKey(x) === cartKey(line));
+      if (index < 0 && lines.length >= 50) throw new Error('cart_full');
+      if (index >= 0) {
+        if (lines[index].quantity + line.quantity > 99) throw new Error('cart_full');
+        lines[index].quantity += line.quantity;
+      } else lines.push(line);
+      localStorage.setItem(BAG_KEY, JSON.stringify(lines));
+      refreshCartCount();
+      funnel('add_to_cart', { currency: 'EGP',
+        ...(okMinor(variant.unitPrice?.amountMinor) ? { value: variant.unitPrice.amountMinor * line.quantity / 100 } : {}),
+        items: [{ item_id: line.publicCode, item_variant: variantLabel(), quantity: line.quantity }] });
+      say('اتضافت للشنطة ✓ كمّلي تسوق أو افتحي الشنطة من فوق.');
+    } catch (e) {
+      say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة وصلت للحد الأقصى. افتحي الشنطة لتعديلها.' :
+        'مش قادرين نضيف للشنطة دلوقتي. تقدري تطلبي مباشرة من نفس الصفحة.', true);
+    } finally {
+      cartBusy = false; cartBtn.textContent = 'أضيفي للشنطة'; cartBtn.disabled = !lineNow() || busy;
+    }
+  });
 
   /** Paints price, quantity, totals and the sticky bar from the verified product and the last server quote only. */
   const paint = () => {
@@ -332,10 +377,11 @@ async function init() {
     } finally { if (mine === quoteTicket) { quoting = false; paint(); } }
   };
 
-  const unavailable = (/** @type {string} */ text) => { product = null; variant = null; quote = null; paint(); cta.disabled = true; cta.textContent = "غير متاح حاليًا"; say(text, true); };
+  const unavailable = (/** @type {string} */ text) => { product = null; variant = null; quote = null; paint(); cta.disabled = true; cartBtn.disabled = true; cta.textContent = "غير متاح حاليًا"; say(text, true); };
   const choose = () => {
     variant = chosen.every(x => x >= 0) ? findVariant(product, chosen) : null;
     cta.disabled = false; cta.textContent = ctaText;
+    cartBtn.disabled = !lineNow() || cartBusy;
     void requote();
   };
   const renderOptions = () => {
@@ -370,7 +416,7 @@ async function init() {
   };
   const show = async (/** @type {typeof colors[number]} */ c) => {
     const mine = ++ticket;
-    current = c; product = null; variant = null; quote = null; cta.disabled = true; say("");
+    current = c; product = null; variant = null; quote = null; cta.disabled = true; cartBtn.disabled = true; say("");
     let p;
     try { p = await load(c.code); }
     catch (e) {
@@ -472,7 +518,7 @@ async function init() {
     if (firstBad) { say(FIELD_HELP, true); fieldEl(firstBad).focus(); return; }
     if (!quote) { await requote(); if (!quote) return; }
     const q = quote;
-    busy = true; cta.disabled = true; cta.textContent = "بنسجل طلبك…"; say("بنسجل طلبك…");
+    busy = true; cta.disabled = true; cartBtn.disabled = true; cta.textContent = "بنسجل طلبك…"; say("بنسجل طلبك…");
     const label = region.selectedOptions[0]?.textContent || "";
     const payload = {
       idempotencyKey: orderKey(), lines: [line], deliveryRegionKey: region.value, paymentMethod: "cod",
@@ -510,7 +556,7 @@ async function init() {
       // Unknown outcome (timeout, network, 5xx): the SAME key is reused on retry, so the server returns the same order.
       else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. اضغطي «تأكيد الطلب» تاني، مش هيتكرر.", true);
     } finally { busy = false; }
-    cta.disabled = !product; cta.textContent = product ? ctaText : "غير متاح حاليًا";
+    cta.disabled = !product; cartBtn.disabled = !lineNow() || cartBusy; cta.textContent = product ? ctaText : "غير متاح حاليًا";
   });
 
   if (!(await show(colors[0]))) return;

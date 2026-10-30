@@ -74,6 +74,12 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 #lpOrder{flex:1;height:52px;border:0;border-radius:14px;background:var(--mauve);color:#fff;font:600 16px var(--f);cursor:pointer;transition:background .15s}
 #lpOrder:active{background:#5E4357}
 #lpOrder:disabled{background:#D9CCD4;color:#4A3F49;cursor:default}
+#lpAddCart{flex:0 1 43%;min-width:0;height:52px;padding:0 8px;border:1.5px solid var(--accent);border-radius:11px;background:transparent;color:var(--accent);font:600 14px var(--f);cursor:pointer}
+#lpAddCart:disabled{opacity:.48;cursor:default}
+#lpCartLink{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.bar>div{gap:8px}#lpOrder{min-width:0}
+@media(max-width:899px){.bar button{min-width:0!important}#lpAddCart{font-size:12px}}
+
 /* Direct order form: part of the page, no extra step. 16px inputs stop iOS from zooming. */
 .order{display:flex;flex-direction:column;gap:14px;margin:0;padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff}
 .order[hidden],.bar[hidden],.done[hidden]{display:none}
@@ -130,7 +136,7 @@ h1{font-size:34px}.price{font-size:26px}
 </style>
 </head>
 <body>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a></header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
 <main class="page">
 <div class="media">
 <picture class="hero" id="lpHero"><source type="image/avif" srcset="img/SS-1037/0-480.avif 480w, img/SS-1037/0-800.avif 800w" sizes="(min-width: 900px) 560px, 100vw"><source type="image/webp" srcset="img/SS-1037/0-480.webp 480w, img/SS-1037/0-800.webp 800w" sizes="(min-width: 900px) 560px, 100vw"><img src="img/SS-1037/0-800.webp" alt="Ballon suit نبيتي باللون نبيتي" width="800" height="1000" fetchpriority="high" decoding="async"></picture>
@@ -153,7 +159,7 @@ h1{font-size:34px}.price{font-size:26px}
 </form>
 <section class="done" id="lpDone" tabindex="-1" hidden><span class="tick" aria-hidden="true">✓</span><h2>تم تسجيل طلبك</h2><p>رقم الطلب</p><strong id="lpDoneCode" dir="ltr"></strong><p id="lpDoneText"></p><a href="/">شوفي قطع تانية</a></section>
 <p id="lpStatus" role="status" aria-live="polite"></p>
-<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">١٬٠٠٠ ج</b><span id="lpBarChoice">نبيتي · مقاس واحد</span></span><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
+<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">١٬٠٠٠ ج</b><span id="lpBarChoice">نبيتي · مقاس واحد</span></span><button type="button" id="lpAddCart" disabled>أضيفي للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
 <h2 class="reassurance">طلبك واضح من البداية</h2>
 <ul class="notes"><li>الدفع عند الاستلام، من غير دفع مقدم</li><li>اختاري المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد</li><li>الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل</li></ul>
 <div class="desc" id="lpMore"></div>
@@ -163,6 +169,6 @@ h1{font-size:34px}.price{font-size:26px}
 <footer><strong dir="ltr">SELECT SHOP WOMEN</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center"><a href="/p/?code=SS-1037">افتحي صفحة المنتج للطلب</a></p></noscript>
 <script type="application/json" id="lp-data">{"id":"ballon-suit","code":"SS-1037","colors":[{"code":"SS-1037","name":"نبيتي","hex":"#6B2737","alt":"Ballon suit نبيتي باللون نبيتي","hero":{"avif":"img/SS-1037/0-480.avif 480w, img/SS-1037/0-800.avif 800w","webp":"img/SS-1037/0-480.webp 480w, img/SS-1037/0-800.webp 800w","src":"img/SS-1037/0-800.webp"},"gallery":["img/SS-1037/1-320.webp","img/SS-1037/2-320.webp","img/SS-1037/3-320.webp"]},{"code":"SS-1035","name":"بني","hex":"#6E4B3A","alt":"Ballon suit بني باللون بني","hero":{"avif":"img/SS-1035/0-480.avif 480w, img/SS-1035/0-800.avif 800w","webp":"img/SS-1035/0-480.webp 480w, img/SS-1035/0-800.webp 800w","src":"img/SS-1035/0-800.webp"},"gallery":["img/SS-1035/1-320.webp","img/SS-1035/2-320.webp"]},{"code":"SS-1036","name":"رصاصي","hex":"#7E8186","alt":"Ballon suit رصاصي باللون رصاصي","hero":{"avif":"img/SS-1036/0-480.avif 480w, img/SS-1036/0-800.avif 800w","webp":"img/SS-1036/0-480.webp 480w, img/SS-1036/0-800.webp 800w","src":"img/SS-1036/0-800.webp"},"gallery":["img/SS-1036/1-320.webp","img/SS-1036/2-320.webp"]},{"code":"SS-1038","name":"أسود","hex":"#1F1B1E","alt":"Ballon suit اسود باللون أسود","hero":{"avif":"img/SS-1038/0-480.avif 480w, img/SS-1038/0-800.avif 800w","webp":"img/SS-1038/0-480.webp 480w, img/SS-1038/0-800.webp 800w","src":"img/SS-1038/0-800.webp"},"gallery":["img/SS-1038/1-320.webp","img/SS-1038/2-320.webp"]},{"code":"SS-1039","name":"أحمر","hex":"#B0262F","alt":"Ballon suit احمر باللون أحمر","hero":{"avif":"img/SS-1039/0-480.avif 480w, img/SS-1039/0-800.avif 800w","webp":"img/SS-1039/0-480.webp 480w, img/SS-1039/0-800.webp 800w","src":"img/SS-1039/0-800.webp"},"gallery":["img/SS-1039/1-320.webp"]},{"code":"SS-1040","name":"رمادي","hex":"#B8B4B0","alt":"Ballon suit رمادي باللون رمادي","hero":{"avif":"img/SS-1040/0-480.avif 480w, img/SS-1040/0-800.avif 800w","webp":"img/SS-1040/0-480.webp 480w, img/SS-1040/0-800.webp 800w","src":"img/SS-1040/0-800.webp"},"gallery":[]}]}</script>
-<script type="module" src="/lp/runtime.js?v=20261030-3"></script>
+<script type="module" src="/lp/runtime.js?v=20261030-4"></script>
 </body>
 </html>
