@@ -34,10 +34,13 @@ async function renderList(ctx) {
   const results = $('#results', el);
   let listedGroups = [];
   const load = async () => {
-    const r = await call('products.list', { q: state.q || null, status: state.status || null, category: state.category || null });
+    const [r, modelResponse] = await Promise.all([
+      call('products.list', { q: state.q || null, status: state.status || null, category: state.category || null }),
+      call('models.list', {}),
+    ]);
     if (r.outcome !== 'ok') { fail(r); return; }
     const items = r.data.filter(p => state.status === 'archived' ? p.status === 'archived' : p.status !== 'archived');
-    listedGroups = groupAdminProducts(items);
+    listedGroups = groupAdminProducts(items, modelResponse.outcome === 'ok' ? modelResponse.data : null);
     if (!items.length) {
       render(results, html`<div class="empty">${icon('box')}<b>${state.q || state.status || state.category ? t('products.empty') : t('products.emptyAll')}</b>
         ${can('products.edit') && !state.q ? html`<button class="btn btn-primary" data-new>${icon('plus')}${t('products.new')}</button>` : ''}</div>`);
