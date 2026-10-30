@@ -181,6 +181,7 @@ function createSheet(ctx) {
   const key = idempotencyKey();
   $('[data-create]', box).onclick = async (e) => {
     addColor();
+    if (colors.length * Math.max(1, sizes.length) > 200) { island('error', 'الحد الأقصى ٢٠٠ تركيبة ألوان ومقاسات. قلّلي عدد الاختيارات قبل إنشاء المنتج.'); return; }
     const title = $('#c-title', box).value.trim();
     if (!title) { $('#c-title', box).setAttribute('aria-invalid', 'true'); $('#c-title', box).focus(); return; }
     const priceIn = $('#c-price', box)?.value.trim();
