@@ -112,8 +112,39 @@ async function renderList(ctx) {
     if (manage) {
       const g = listedGroups.find(g => g.family && g.key === manage.dataset.manageModel);
       if (!g) return;
+      // A search/category/status filter may show only some sibling SKUs.
+      // Read each hidden sibling through the authenticated Admin API before
+      // promising to update the category of the ENTIRE model.
+      const byCode = new Map(g.members.map(m => [m.product.public_code, m]));
+      const missing = g.family.colors.filter(color => !byCode.has(color.code));
+      if (missing.length) {
+        const fetched = await Promise.all(missing.map(async color => {
+          try { return { color, result: await call('products.get', { code: color.code }) }; }
+          catch { return { color, result: { outcome: 'network' } }; }
+        }));
+        if (fetched.some(x => x.result.outcome !== 'ok')) {
+          island('error', 'مش قادرين نحمل كل ألوان الموديل. مفيش أي تغيير حصل — حدّثي القائمة وجربي تاني.');
+          return;
+        }
+        for (const {color, result} of fetched) {
+          const d = result.data, p = d.product;
+          const prices = [p.base_price?.amount_minor].filter(Number.isInteger);
+          const stockRows = Object.values(d.stock || {});
+          byCode.set(color.code, { color, product: {
+            ...p, category: d.card?.category || 'أخرى', is_new: d.card?.is_new === true,
+            image: d.card?.image || null, price_min_minor: prices[0] ?? null,
+            price_max_minor: prices[0] ?? null,
+            stock_total: stockRows.length ? stockRows.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0) : null,
+          }});
+        }
+      }
+      const allMembers = g.family.colors.map(color => byCode.get(color.code));
+      if (allMembers.some(m => !m) || allMembers.some(m => m.product.status === 'archived')) {
+        island('error', 'الموديل فيه لون مؤرشف أو غير متاح، راجعيه قبل تغيير القسم.');
+        return;
+      }
       if (!categories.length) await loadCategories();
-      const categoryNames = [...new Set(g.members.map(m => m.product.category))];
+      const categoryNames = [...new Set(allMembers.map(m => m.product.category))];
       const currentCategory = categoryNames.length === 1 ? categoryNames[0] : '';
       const box = sheet({
         title: g.name + ' · إدارة الألوان',
@@ -121,7 +152,7 @@ async function renderList(ctx) {
         body: html`<div class="stack">
           <p class="muted">كل موديل له قسم واحد. تغيير القسم هنا بيحدّث كل ألوانه الموجودة، مع الحفاظ على مخزون وأوردرات كل لون.</p>
           ${can('products.edit') ? html`<div class="model-category-editor">
-            <label class="field"><span>القسم الخاص بالموديل (${g.members.length} ألوان)</span>
+            <label class="field"><span>القسم الخاص بالموديل (${allMembers.length} ألوان)</span>
               <select class="select" id="model-category" aria-label="اختاري قسم الموديل">
                 ${categoryNames.length !== 1 ? html`<option value="" selected disabled>أقسام مختلفة — اختاري قسم موحّد</option>` : ''}
                 ${categories.map(c => html`<option value="${c.name}" ${c.name === currentCategory ? 'selected' : ''}>${c.name}${c.visible === false ? ' (مخفي)' : ''}</option>`)}
@@ -131,7 +162,7 @@ async function renderList(ctx) {
             <p class="muted" id="model-category-feedback" role="status" aria-live="polite"></p>
           </div>` : html`<p class="muted">تعديل القسم يحتاج صلاحية تعديل المنتجات.</p>`}
           <p class="muted">للصور والسعر والمخزون: افتحي اللون المطلوب. إضافة لون جديد للموديل وتغيير أسماء الألوان الظاهرة في المتجر تحتاج ربطًا ديناميكيًا بالخادم، ومش متاحة بأمان في النسخة الحالية.</p>
-          ${g.members.map(m => html`<div class="model-color-line">
+          ${allMembers.map(m => html`<div class="model-color-line">
             <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="model-dot" style="background:${m.color.hex}"></span>
             <div class="row-main"><b>${m.color.name}</b><span class="row-meta">${m.product.public_code} · ${priceText(m.product)} · مخزون ${m.product.stock_total === null ? '—' : fmtNum(m.product.stock_total)}</span>${statusBadge(m.product.status)}</div>
@@ -151,18 +182,18 @@ async function renderList(ctx) {
         const feedback = $('#model-category-feedback', box);
         const category = select?.value;
         if (!category || !categories.some(c => c.name === category)) { feedback.textContent = 'اختاري قسم صحيح الأول.'; return; }
-        if (g.members.every(m => m.product.category === category)) { feedback.textContent = 'الموديل بالفعل في القسم ده.'; return; }
+        if (allMembers.every(m => m.product.category === category)) { feedback.textContent = 'الموديل بالفعل في القسم ده.'; return; }
         select.disabled = true;
         await withBusy(button, async () => {
-          const summary = await saveFamilyCategory(g.members, category, call, n => {
-            feedback.textContent = 'تحديث ' + n + ' من ' + g.members.length + ' لون…';
+          const summary = await saveFamilyCategory(allMembers, category, call, n => {
+            feedback.textContent = 'تحديث ' + n + ' من ' + allMembers.length + ' لون…';
           });
           if (summary.failed.length) {
             feedback.textContent = 'اتحدث ' + summary.updated.length + ' لون، وفشل ' + summary.failed.length + '. الألوان اللي فشلت: ' + summary.failed.map(x => x.code).join('، ') + '.';
             island('error', 'تحديث قسم الموديل اكتمل جزئيًا — لازم نراجع الألوان اللي فشلت قبل إعادة المحاولة.');
           } else {
             closeLayer();
-            done('تم تغيير القسم لكل الألوان (' + g.members.length + ')');
+            done('تم تغيير القسم لكل الألوان (' + allMembers.length + ')');
           }
           await load();
         });
