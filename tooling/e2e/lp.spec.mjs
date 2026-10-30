@@ -41,6 +41,53 @@ test("one page: real product data, the order form is already open under it, stic
   expect(page.external).toEqual([]);
 });
 
+test("order jump keeps both real colour choices visible inside COD form and submits selected SKU", async ({ page, request }) => {
+  await page.goto(LP);
+  await page.locator('.top a[href="#lpForm"]').click();
+  await expect(page.locator("#lpFormColors")).toBeVisible();
+  await expect(page.locator("#lpFormColors .chip")).toHaveCount(2);
+  await expect(page.locator("#lpColors .chip")).toHaveCount(2);
+  await page.locator('#lpFormColors [data-code="SS-1009"]').click();
+  await expect(page.locator("#lpColorName")).toHaveText("أسود");
+  await expect(page.locator("#lpFormColorName")).toHaveText("أسود");
+  await expect(page.locator('#lpColors .chip[aria-pressed="true"]')).toHaveAttribute("data-code", "SS-1009");
+  await expect(page.locator('#lpFormColors .chip[aria-pressed="true"]')).toHaveAttribute("data-code", "SS-1009");
+  await expect(page.locator("#lpHero img")).toHaveAttribute("src", /SS-1009/);
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  const before = (await mockLog(request)).orders.length;
+  await fillBuyer(page);
+  await page.locator("#lpOrder").click();
+  await expect(page.locator("#lpDone")).toBeVisible();
+  const orders = (await mockLog(request)).orders;
+  expect(orders.length - before).toBe(1);
+  expect(orders.at(-1).lines[0].publicCode).toBe("SS-1009");
+  expect(page.external).toEqual([]);
+});
+
+test("old direct black jacket link redirects to two-colour model preserving chosen SKU and ad parameters", async ({ page }) => {
+  await page.goto("/lp/ss-1009/?utm_source=instagram&fbclid=old-link-1");
+  await expect(page).toHaveURL(u =>
+    u.pathname === "/lp/ss-1008/" && u.searchParams.get("color") === "SS-1009" &&
+    u.searchParams.get("utm_source") === "instagram" && u.searchParams.get("fbclid") === "old-link-1");
+  await expect(page.locator("#lpColors .chip")).toHaveCount(2);
+  await expect(page.locator("#lpFormColors .chip")).toHaveCount(2);
+  await expect(page.locator("#lpFormColorName")).toHaveText("أسود");
+  await expect(page.locator("#lpHero img")).toHaveAttribute("src", /SS-1009/);
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+});
+
+test("old Balloon Suit colour link redirects to full six-colour chooser without losing original colour", async ({ page }) => {
+  await page.goto("/lp/ss-1035/?utm_source=facebook");
+  await expect(page).toHaveURL(u =>
+    u.pathname === "/lp/ballon-suit/" && u.searchParams.get("color") === "SS-1035" &&
+    u.searchParams.get("utm_source") === "facebook");
+  await expect(page.locator("#lpColors .chip")).toHaveCount(6);
+  await expect(page.locator("#lpFormColors .chip")).toHaveCount(6);
+  await expect(page.locator("#lpFormColorName")).toHaveText("بني");
+  await expect(page.locator("#lpHero img")).toHaveAttribute("src", /SS-1035/);
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+});
+
 test("A/B: ?lpv pins the variant and the bucket is remembered", async ({ page }) => {
   await page.goto(LP + "?lpv=b");
   await expect(page.locator("html")).toHaveAttribute("data-v", "b");
