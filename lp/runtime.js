@@ -399,6 +399,7 @@ async function init() {
       mixRows.append(row);
     }
     mixToggle.textContent = "الرجوع لطلب لون واحد";
+    cta.disabled = busy || mixBusy || currentLines().length === 0;
   };
 
   // Only public/versioned selectors go into the same first-party cart as js/commerce.js.
