@@ -58,3 +58,13 @@
 .model-category-editor .btn{min-height:46px}
 .model-category-editor #model-category-feedback{flex-basis:100%;margin:0}
 @media(max-width:520px){.model-category-editor .field,.model-category-editor .btn{width:100%;min-width:0}}
+
+/* Server-managed model editor is shown only after models.list authorizes it. */
+.model-live-editor{display:grid;gap:12px;margin:16px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.model-live-editor h3{font-size:17px;margin:12px 0 0}
+.model-live-editor .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.model-live-editor input{min-height:44px}
+.model-live-editor .model-live-row{display:grid;grid-template-columns:minmax(130px,2fr) minmax(100px,1fr) auto;gap:8px;align-items:end;padding:9px 0;border-bottom:1px solid var(--line)}
+.model-live-editor input[type=color]{width:100%;height:44px;padding:2px;cursor:pointer}
+.model-live-editor button{min-height:44px}
+@media(max-width:520px){.model-live-editor{padding:12px}.model-live-editor .model-live-row{grid-template-columns:1fr 90px}.model-live-editor .model-live-row button{grid-column:1/-1}}
