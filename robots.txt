@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /cart/
+Disallow: /checkout/
+Disallow: /order-success/
+
+Sitemap: https://selectshopeg.com/sitemap.xml
