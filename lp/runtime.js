@@ -554,6 +554,75 @@ async function init() {
     void show(c);
   }));
 
+  // The normal +/- remains a single-colour quantity. Explicit mixed-colour
+  // mode gives every colour its own count (zero means not ordered).
+  mixToggle.addEventListener("click", () => {
+    if (busy || mixBusy || !product) return;
+    if (!mixMode) {
+      if (!variant || product.options.length) {
+        say("اختاري مقاس القطعة الأول، أو استخدمي الشنطة للمنتجات بمقاسات مختلفة.", true);
+        return;
+      }
+      mixEntries.clear();
+      mixEntries.set(product.publicCode, { product, variant, quantity: qty });
+      mixMode = true;
+      mixRows.hidden = false; mixHint.hidden = false;
+      mixToggle.setAttribute("aria-expanded", "true");
+    } else {
+      mixMode = false;
+      mixRows.hidden = true; mixHint.hidden = true;
+      mixToggle.textContent = "عايزة أكتر من لون؟ حددي كمية كل لون";
+      mixToggle.setAttribute("aria-expanded", "false");
+    }
+    if (singleQtyBox) singleQtyBox.style.display = mixMode ? "none" : "";
+    cartBtn.hidden = mixMode; // the direct COD form handles all selected colours
+    say("");
+    void requote();
+  });
+  mixRows.addEventListener("click", async event => {
+    const btn = /** @type {HTMLElement|null} */ (event.target instanceof Element ?
+      event.target.closest("button[data-mix-code]") : null);
+    if (!btn || !mixMode || mixBusy || busy) return;
+    const code = btn.dataset.mixCode || "";
+    const delta = Number(btn.dataset.delta);
+    const currentCount = mixEntries.get(code)?.quantity || 0;
+    if (delta !== 1 && delta !== -1) return;
+    if (delta < 0 && currentCount < 1) return;
+    if (delta > 0 && mixCount() >= MAX_QTY) {
+      say("أقصى كمية في الطلب الواحد ١٠ قطع من كل الألوان مع بعض.", true);
+      return;
+    }
+    if (delta > 0 && !mixEntries.has(code)) {
+      mixBusy = true;
+      repaintMix();
+      try {
+        // Each extra colour has an independent real SKU; accept only a
+        // verified purchasable one-size variant before including it in quote.
+        const p = await load(code);
+        const v = p?.options?.length === 0 ? findVariant(p, []) : null;
+        if (!p || p.publicCode !== code || p.purchasable !== true ||
+            v?.purchasable !== true || !okMinor(v.unitPrice?.amountMinor)) {
+          say("اللون ده مش متاح حاليًا أو ليه مقاسات مختلفة. اختاري لون تاني.", true);
+          return;
+        }
+        mixEntries.set(code, { product: p, variant: v, quantity: 0 });
+      } catch {
+        say("مش قادرين نتأكد من توفر اللون ده دلوقتي. جرّبي تاني.", true);
+        return;
+      } finally {
+        mixBusy = false;
+        repaintMix();
+      }
+    }
+    if (!mixMode || busy) return;
+    const entry = mixEntries.get(code);
+    if (!entry) return;
+    entry.quantity = Math.max(0, Math.min(MAX_QTY, entry.quantity + delta));
+    if (entry.quantity === 0) mixEntries.delete(code);
+    say("");
+    void requote();
+  });
+
   // Governorates load next to the product; the form works as soon as both are in.
   const regionsReady = read("regions", "/regions").then(d => {
     for (const r of Array.isArray(d.regions) ? d.regions : []) {
