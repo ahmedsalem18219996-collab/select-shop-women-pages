@@ -290,9 +290,9 @@ function reconcileModelChips(colors) {
   if (!Array.isArray(colors) || colors.length < 2) return;
   const options = document.getElementById("lpOptions");
   const form = document.getElementById("lpForm");
-  for (const [id, labelId, anchor] of [
-    ["lpColors","lpColorName",options],
-    ["lpFormColors","lpFormColorName",form?.querySelector("h2")]
+  for (const {id, labelId, anchor} of [
+    {id:"lpColors",labelId:"lpColorName",anchor:options},
+    {id:"lpFormColors",labelId:"lpFormColorName",anchor:form?.querySelector("h2")}
   ]) {
     let fieldset = document.getElementById(id);
     if (!fieldset) {
