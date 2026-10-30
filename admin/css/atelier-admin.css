@@ -1,0 +1,27 @@
+/* Atelier Admin • visual tokens only. No permission, stock, orders, or routing changes. */
+:root:not([data-theme="dark"]){
+ --bg:#f7f6f2;--surface:#fff;--surface-2:#eeece5;--surface-3:#e4e5db;
+ --ink:#22251f;--ink-2:#3d4439;--muted:#5b6358;
+ --line:rgba(34,37,31,.1);--line-2:rgba(34,37,31,.16);
+ --tape:#c5b78d;--tape-ink:#22251f;--primary:#303c2d;--on-primary:#fff;
+ --shadow-1:0 1px 2px rgba(34,37,31,.04);
+ --shadow-2:0 10px 28px -14px rgba(34,37,31,.18);
+ --shadow-3:0 24px 56px -22px rgba(34,37,31,.28);
+ --spot:rgba(197,183,141,.15);
+}
+:root[data-theme="dark"]{
+ --bg:#161c18;--surface:#202822;--surface-2:#29332c;--surface-3:#344037;
+ --ink:#f4f4ee;--ink-2:#d8e0d5;--muted:#bbc6b8;
+ --line:rgba(240,246,234,.10);--line-2:rgba(240,246,234,.17);
+ --tape:#c5b78d;--tape-ink:#22251f;--primary:#c5b78d;--on-primary:#202822;
+ --spot:rgba(197,183,141,.12);
+}
+:root{--r-s:9px;--r-m:12px;--r-l:16px;--r-xl:20px}
+.boot-mark b,.brand{font-family:"Readex Pro","Segoe UI",Tahoma,sans-serif}
+:focus-visible{outline-color:var(--primary);outline-offset:3px}
+.btn-primary{box-shadow:none}
+.card,.auth-panel,.sidebar{border-color:var(--line)}
+.topbar,.tabbar{border-color:var(--line)}
+:root:not([data-theme="dark"]) .auth-art{background:#eeece5}
+:root:not([data-theme="dark"]) .nav .on,
+:root:not([data-theme="dark"]) .tab.on{color:#303c2d}
