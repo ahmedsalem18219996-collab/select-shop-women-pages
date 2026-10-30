@@ -20,12 +20,18 @@ test("premium storefront renders verified catalog and retains product navigation
   const color = await page.locator(".hdr").evaluate(el => getComputedStyle(el).backgroundColor);
   expect(color).toBe("rgba(247, 246, 242, 0.98)"); // Atelier warm-paper header
   const productLink = page.locator("#feed .card .shot-link").first();
-  await expect(productLink).toHaveAttribute("href", /\/lp\/\?p=SS-\d+/);
+  // SS-1008 + SS-1009 are one verified model; the card must open the
+  // canonical pre-rendered page rather than the legacy per-colour URL.
+  await expect(productLink).toHaveAttribute("href", /\/lp\/ss-1008\/$/);
+  await expect(page.locator("#feed .card").first().locator(".swatches i")).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await mkdir("preview-output", { recursive: true });
   await page.screenshot({ path: `preview-output/${info.project.name}-home.png`, animations: "disabled" });
   await productLink.click();
   await page.waitForURL(u=>u.pathname.startsWith("/lp/"), { timeout:12000 });
+  // Verify direct COD model landing offers both real legacy SKU choices.
+  await expect(page.locator("#lpColors [data-code='SS-1008']")).toBeVisible();
+  await expect(page.locator("#lpColors [data-code='SS-1009']")).toBeVisible();
   await expect(page.locator("#lpTitle")).not.toBeEmpty();
   await expect(page.locator("#lpPrice")).not.toBeEmpty();
   await expect(page.locator("#lpHero img")).toBeVisible();
