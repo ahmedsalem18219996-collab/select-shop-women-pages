@@ -49,6 +49,17 @@ test("Atelier preserves storefront controls, legacy checkout and the isolated ad
   assert.match(home, /التوافر بيتأكد بعد تسجيل الطلب/);
 });
 
+test("public product cards link to direct COD, old product links redirect without losing ad tags", async () => {
+ const adapter=await source("js/store-adapter.js");
+ const html=await source("p/index.html");
+ const home=await source("index.html");
+ assert.match(adapter,/url: SECURE_CHECKOUT_ORIGIN \+ "\/lp\/\?p="/);
+ assert.match(html,/id="women-direct-order-redirect"/);
+ assert.match(html,/location\.replace\("\/lp\/\?p="/);
+ assert.match(html,/q\.delete\("code"\)/);
+ assert.match(home,/store-adapter\.js\?v=direct-order-20261030/);
+});
+
 test("Landing-page Atelier remains independently generated", async () => {
   const page = await source("lp/ss-1041/index.html");
   assert.match(page, /id="lpForm"/);

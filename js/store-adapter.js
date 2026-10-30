@@ -139,8 +139,9 @@ window.SelectStore = (() => {
             smallImage: smallThumbnailFor(item.image),
             // Last-resort fallback if a deployed thumbnail URL fails to load.
             originalImage: validPhoto(item.image),
-            // Opening a published product sends customers to the trusted, same-origin checkout stack.
-            url: SECURE_CHECKOUT_ORIGIN + "/p/?code=" + encodeURIComponent(item.publicCode),
+            // All public product links open the direct COD form (pre-rendered where available).
+            // /lp/ resolves known colors instantly and is the automatic fallback for new codes.
+            url: SECURE_CHECKOUT_ORIGIN + "/lp/?p=" + encodeURIComponent(item.publicCode),
             purchasable: item.purchasable === true,
           }));
         const categories = ["الكل", ...(products.some(p => p.isNew) ? ["الجديد"] : []), ...visibleCategories];

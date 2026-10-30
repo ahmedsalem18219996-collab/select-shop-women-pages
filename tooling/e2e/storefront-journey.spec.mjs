@@ -21,7 +21,7 @@ test("home: the category tape sits between the heading and the feed, never over 
 });
 
 test("product page: every gallery thumbnail is a local optimized WebP, no full-size original is downloaded", async ({ page }) => {
-  await page.goto("/p/?code=SS-1008");
+  await page.goto("/p/?code=SS-1008&legacy=1");
   const thumbs = page.locator("#productThumbs img");
   await expect(thumbs).toHaveCount(4);
   await expect.poll(() => thumbs.evaluateAll(images => images.every(img => img.complete && img.naturalWidth > 0)), { timeout: 15000 }).toBe(true);
@@ -31,14 +31,10 @@ test("product page: every gallery thumbnail is a local optimized WebP, no full-s
   expect(page.external).toEqual([]);
 });
 
-test("journey: home → product → cart → checkout → confirmation, one order with the chosen product", async ({ page, request }, info) => {
+test("legacy checkout: product → cart → checkout → confirmation remains functional", async ({ page, request }, info) => {
   const before = (await mockLog(request)).orders.length;
-  await page.goto("/");
-  const link = page.locator("#feed .card .shot-link").first();
-  await expect(link).toBeVisible({ timeout: 12000 });
-  const code = new URL(await link.getAttribute("href"), "http://x").searchParams.get("code");
-  await link.click();
-  await expect(page).toHaveURL(new RegExp(`/p/\\?code=${code}$`));
+  const code = "SS-1008";
+  await page.goto("/p/?code=SS-1008&legacy=1");
   await expect(page.locator("#addToCart")).toBeEnabled({ timeout: 12000 });
   if (info.project.name === "mobile") await page.locator("#productMobileOrder").click();
   else await page.locator("#addToCart").click();

@@ -299,7 +299,7 @@
   addEventListener('pointerup', () => viewer.classList.remove('paused'));
   addEventListener('pointercancel', () => viewer.classList.remove('paused'));
   /* story → size sheet keeps the same history entry, so Back closes the sheet */
-  $('#vShop').onclick = () => { const p = byId(STORIES[sI].ids[slI]); closeStory(false, true); openSheet({ item: p }); };
+  $('#vShop').onclick = () => { const p = byId(STORIES[sI].ids[slI]); closeStory(false, true); if (!CFG.demo) { if (p?.url) location.assign(p.url); else say('القطعة دي غير متاحة للطلب دلوقتي.'); } else openSheet({ item: p }); };
 
   /* ---------- looks (sticky stack) ---------- */
   $('#looks').innerHTML = LOOKS.map((l, i) => {
@@ -386,7 +386,7 @@
           </a>
           ${p.was ? `<span class="badge">خصم ${Math.round((1 - p.price / p.was) * 100)}%</span>` : p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
           <button class="heart" data-save="${esc(p.id)}" aria-pressed="${window.SelectStore.isSaved(p.id)}" aria-label="احفظي ${esc(p.name)}"><svg class="i" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
-          <button class="add" data-add="${esc(p.id)}" aria-label="ضيفي ${esc(p.name)} للشنطة"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button class="add" data-add="${esc(p.id)}" aria-label="اطلبي ${esc(p.name)} مباشرة"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
         <h3><a href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}">${esc(p.name)}</a></h3>
         <div class="card-row">
@@ -423,7 +423,7 @@
         else say("المنتج غير متاح للطلب دلوقتي.");
       } else openSheet({ item });
     }
-    // The product PDP on the protected full-stack origin owns options, pricing and order writes.
+    // The direct COD landing page owns options, server pricing and the order write.
     if (n && !byId(n.dataset.name).url) { e.preventDefault();
       if (!CFG.demo) say("المنتج غير متاح دلوقتي.");
       else openSheet({ item: byId(n.dataset.name) });
