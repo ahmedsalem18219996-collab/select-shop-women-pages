@@ -167,14 +167,14 @@ h1{font-size:34px}.price{font-size:26px}
 @media(min-width:560px) and (max-width:899px){.hero,.hero img{height:auto;aspect-ratio:4/5}.hero{width:min(100%,520px);align-self:center}}
 `;
 
-const DEFAULT_BENEFITS = ["الدفع عند الاستلام، والمعاينة متاحة عند الاستلام", "اختاري المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد", "هنكلمك على رقمك لتأكيد الطلب قبل الشحن"];
+const DEFAULT_BENEFITS = ["الدفع عند الاستلام، من غير دفع مقدم", "اختاري المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد", "الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل"];
 
 // Starts the product and governorate reads while the runtime module downloads; lp/runtime.js picks them up once.
 export const PREFETCH = (codeExpr) => `(()=>{try{if(window.__lpGo)return;const A="${API}",c=${codeExpr};if(!/^SS-\\d{4,19}$/.test(c)){location.replace("/");return}const g=p=>fetch(A+p,{cache:"no-store",headers:{Accept:"application/json"}});window.__lp={code:c,product:g("/product/"+c),regions:g("/regions")}}catch(e){}})()`;
 
 const field = (name, label, control) => `<label class="f"><span>${label}</span>${control}<small id="lpErr-${name}" aria-live="polite"></small></label>`;
 const ORDER_FORM = `<form class="order" id="lpForm" novalidate>
-<h2>اطلبي دلوقتي<small>الدفع عند الاستلام، املي بياناتك وأكّدي.</small></h2>
+<h2>اطلبي دلوقتي<small>سيبي بياناتك، والتوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب.</small></h2>
 <div class="qty"><span id="lpQtyLabel">الكمية</span><div class="step" role="group" aria-labelledby="lpQtyLabel"><button type="button" id="lpQtyUp" data-q="1" aria-label="زوّدي واحدة">+</button><output id="lpQty" aria-live="polite">١</output><button type="button" id="lpQtyDown" data-q="-1" aria-label="قلّلي واحدة" disabled>−</button></div></div>
 ${field("name", "الاسم", `<input name="name" autocomplete="name" maxlength="200" enterkeyhint="next" required>`)}
 ${field("phone", "رقم الموبايل", `<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="01xxxxxxxxx" dir="ltr" enterkeyhint="next" required>`)}
@@ -230,7 +230,7 @@ ${o.video}
 <footer><strong dir="ltr">SELECT SHOP WOMEN</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
-${o.scripts}<script type="module" src="/lp/runtime.js?v=20261030-2"></script>
+${o.scripts}<script type="module" src="/lp/runtime.js?v=20261030-3"></script>
 </body>
 </html>
 `;

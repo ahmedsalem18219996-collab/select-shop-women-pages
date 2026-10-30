@@ -69,6 +69,7 @@ test("direct COD order: server shipping per governorate, quantity, one order on 
   await expect(page.locator("#lpDone")).toBeVisible();
   await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-[2-9A-Z]{8}$/);
   await expect(page.locator("#lpDoneText")).toContainText("٢٬٥٢٠");
+  await expect(page.locator("#lpDoneText")).toContainText("التوافر وميعاد الشحن بيتأكدوا");
   await expect(page.locator("#lpForm")).toBeHidden();
   expect(new URL(page.url()).pathname).toBe(LP); // no cart, no checkout, no redirect
   const { orders } = await mockLog(request);

@@ -4,6 +4,13 @@ import { readFile, readdir } from "node:fs/promises";
 import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet } from "../../lp/runtime.js";
 import { render, renderShell, shellRoutes, photos, esc, AB_SNIPPET, PREFETCH, colorsOf, colorData, readexFaces } from "../build-lp.mjs";
 
+test("landing copy states availability is pending and makes no inspection promise", () => {
+  const html = renderShell("", {});
+  assert.match(html, /الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل/);
+  assert.doesNotMatch(html, /المعاينة متاحة عند الاستلام/);
+  assert.doesNotMatch(html, /هنكلمك على رقمك لتأكيد الطلب قبل الشحن/);
+});
+
 const line = (q = 1, sel = []) => ({ publicCode: "SS-1008", structureVersion: 2, quantity: q, selection: sel });
 const sized = {
   publicCode: "SS-9001", structureVersion: 3, purchasable: true, title: "Test", price: { currency: "EGP", minAmountMinor: 50000, maxAmountMinor: 55000 },

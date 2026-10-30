@@ -450,7 +450,7 @@ async function init() {
     }
     $("#lpDoneCode").textContent = code;
     const total = minorOf(q.grandTotal);
-    $("#lpDoneText").textContent = (total !== null ? "هتدفعي " + egp(total) + " ج عند الاستلام. " : "") + "هنكلمك على رقمك لتأكيد الطلب قبل الشحن.";
+    $("#lpDoneText").textContent = (total !== null ? "هتدفعي " + egp(total) + " ج عند الاستلام. " : "") + "طلبك قيد المراجعة، والتوافر وميعاد الشحن بيتأكدوا قبل التأكيد النهائي..";
     form.hidden = true;
     /** @type {HTMLElement} */ (cta.closest(".bar")).hidden = true;
     say("");
