@@ -38,7 +38,7 @@ export function colorsOf(page) {
   return colors;
 }
 
-const imgSet = (code, i, ext) => HERO_WIDTHS.map(w => `img/${code}/${i}-${w}.${ext} ${w}w`).join(", ");
+const imgSet = (code, i, ext, prefix = "") => HERO_WIDTHS.map(w => `${prefix}img/${code}/${i}-${w}.${ext} ${w}w`).join(", ");
 
 /** Per-colour data the runtime needs to swap photos without another request for page markup. */
 export function colorData(page, products) {
@@ -48,9 +48,13 @@ export function colorData(page, products) {
     const pics = photos(p);
     if (!pics.length) throw new Error(`${c.code}: no public photo`);
     const alt = String(p.title || "").trim().slice(0, 200) + (c.name ? " باللون " + c.name : "");
+    // Reuse the existing optimized SS-1010 photos instead of re-encoding
+    // another copy on the grouped Balloon Suit page. The relative sibling
+    // path resolves under /lp/ and is checked against committed assets.
+    const prefix = page.id === "ballon-suit" && c.code === "SS-1010" ? "../ss-1010/" : "";
     return { code: c.code, name: c.name, hex: c.hex, alt,
-      hero: { avif: imgSet(c.code, 0, "avif"), webp: imgSet(c.code, 0, "webp"), src: `img/${c.code}/0-800.webp` },
-      gallery: pics.slice(1).map((_, i) => `img/${c.code}/${i + 1}-${GALLERY_WIDTH}.webp`) };
+      hero: { avif: imgSet(c.code, 0, "avif", prefix), webp: imgSet(c.code, 0, "webp", prefix), src: `${prefix}img/${c.code}/0-800.webp` },
+      gallery: pics.slice(1).map((_, i) => `${prefix}img/${c.code}/${i + 1}-${GALLERY_WIDTH}.webp`) };
   });
 }
 
@@ -205,9 +209,10 @@ function layout(o) {
     : ORDER_FORM;
   // Refresh the browser-cached runtime only on affected grouped and legacy
   // product pages. Unrelated generated LPs retain their exact original HTML.
-  const choiceVersion = checkoutPicker ||
-    /tooling\/pages\/ss-(?:1009|1035|1036|1038|1039|1040)\.json/.test(o.source || "")
-    ? "20261030-5" : "20261030-4";
+  const choiceVersion = /tooling\/pages\/(?:ballon-suit|ss-1010)\.json/.test(o.source || "")
+    ? "20261030-6"
+    : checkoutPicker || /tooling\/pages\/ss-(?:1009|1035|1036|1038|1039|1040)\.json/.test(o.source || "")
+      ? "20261030-5" : "20261030-4";
   return `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
