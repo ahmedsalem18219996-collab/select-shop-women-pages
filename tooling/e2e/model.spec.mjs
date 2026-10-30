@@ -23,8 +23,8 @@ test("default colour is in the HTML; choosing a colour swaps photo, name and ver
   await expect(page.locator("#lpColorName")).toHaveText("نبيتي");
   expect(await heroSrc(page)).toMatch(/img\/SS-1037\/0-\d+\.(avif|webp)$/);
   await expect(page.locator("#lpOrder")).toBeEnabled();
-  await page.getByRole("button", { name: "أسود" }).click();
-  await expect(page.getByRole("button", { name: "أسود" })).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#lpColors").getByRole("button", { name: "أسود" }).click();
+  await expect(page.locator("#lpColors").getByRole("button", { name: "أسود" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#lpColorName")).toHaveText("أسود");
   await expect.poll(() => heroSrc(page)).toMatch(/img\/SS-1038\/0-\d+\.(avif|webp)$/);
   await expect(page.locator("#lpBarChoice")).toHaveText("أسود · مقاس واحد");
@@ -37,7 +37,7 @@ test("default colour is in the HTML; choosing a colour swaps photo, name and ver
 test("the order carries the chosen colour's own product code", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
   await page.goto(MODEL);
-  await page.getByRole("button", { name: "رصاصي" }).click();
+  await page.locator("#lpColors").getByRole("button", { name: "رصاصي" }).click();
   await expect(page.locator("#lpBarChoice")).toHaveText("رصاصي · مقاس واحد");
   await fillBuyer(page, "giza");
   await expect(page.locator("#lpTotal")).toHaveText("١٬٠٨٠ ج");
@@ -55,11 +55,11 @@ test("a sold-out colour disables ordering without a stale price; another colour 
     price: { currency: "EGP", minAmountMinor: 100000, maxAmountMinor: 100000 }, options: [], variants: [] } } }));
   await page.goto(MODEL);
   await expect(page.locator("#lpOrder")).toBeEnabled();
-  await page.getByRole("button", { name: "بني" }).click();
+  await page.locator("#lpColors").getByRole("button", { name: "بني" }).click();
   await expect(page.locator("#lpStatus")).toHaveText("اللون ده خلص حاليًا، اختاري لون تاني.");
   await expect(page.locator("#lpOrder")).toBeDisabled();
   await expect(page.locator("#lpPrice")).toHaveText("—");
-  await page.getByRole("button", { name: "نبيتي" }).click();
+  await page.locator("#lpColors").getByRole("button", { name: "نبيتي" }).click();
   await expect(page.locator("#lpOrder")).toBeEnabled();
   await expect(page.locator("#lpPrice")).toHaveText("١٬٠٠٠");
 });
@@ -68,8 +68,8 @@ test("two quick colour taps: the last one wins even if the first answer arrives 
   await page.route("**/women-checkout/product/SS-1036", async route => { await new Promise(r => setTimeout(r, 900)); await route.continue(); });
   await page.goto(MODEL);
   await expect(page.locator("#lpOrder")).toBeEnabled();
-  await page.getByRole("button", { name: "رصاصي" }).click();
-  await page.getByRole("button", { name: "أحمر" }).click();
+  await page.locator("#lpColors").getByRole("button", { name: "رصاصي" }).click();
+  await page.locator("#lpColors").getByRole("button", { name: "أحمر" }).click();
   await page.waitForTimeout(1200);
   await expect(page.locator("#lpColorName")).toHaveText("أحمر");
   await expect(page.locator("#lpBarChoice")).toHaveText("أحمر · مقاس واحد");
@@ -87,7 +87,7 @@ test("short form: exactly name, mobile, governorate, address (+ quantity), chang
   expect(fields).toEqual([["name", true], ["phone", true], ["region", true], ["address", true]]);
   await fillBuyer(page, "cairo");
   await expect(page.locator("#lpTotal")).toHaveText("١٬٠٧٠ ج");
-  await page.getByRole("button", { name: "أسود" }).click();
+  await page.locator("#lpColors").getByRole("button", { name: "أسود" }).click();
   await expect(page.locator("#lpTotal")).toHaveText("١٬٠٧٠ ج"); // fresh server quote for the new colour
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
