@@ -74,8 +74,8 @@ test("one COD order can contain different colours with separate quantities", asy
   const orders = (await mockLog(request)).orders;
   expect(orders.length - before).toBe(1);
   expect(orders.at(-1).lines).toEqual([
-    { publicCode: "SS-1037", structureVersion: 1, selection: [], quantity: 1 },
-    { publicCode: "SS-1010", structureVersion: 1, selection: [], quantity: 1 },
+    { publicCode: "SS-1037", structureVersion: 2, selection: [], quantity: 1 },
+    { publicCode: "SS-1010", structureVersion: 2, selection: [], quantity: 1 },
   ]);
   expect(orders.at(-1).shipping).toBe(7000);
   expect(page.external).toEqual([]);
