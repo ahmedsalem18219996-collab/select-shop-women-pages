@@ -17,6 +17,14 @@ const PURCHASE_SEEN_KEY = "women.meta.purchase.sent.v1"; // same dedupe list as 
 const ANALYTICS_SRC = "/js/analytics.js?v=lp-20261030";
 const THUMBS = "/assets/catalog-thumbs/";
 const MAX_QTY = 10;
+// Legacy single-colour LP URLs must resolve to the verified shared-model chooser.
+// Keep the original SKU as ?color= to honour old ad links without altering orders or stock.
+const SHARED_MODEL_URLS = new Map([
+  ["SS-1008", "/lp/ss-1008/"], ["SS-1009", "/lp/ss-1008/"],
+  ["SS-1037", "/lp/ballon-suit/"], ["SS-1035", "/lp/ballon-suit/"],
+  ["SS-1036", "/lp/ballon-suit/"], ["SS-1038", "/lp/ballon-suit/"],
+  ["SS-1039", "/lp/ballon-suit/"], ["SS-1040", "/lp/ballon-suit/"],
+]);
 const ORDER_CODE = /^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
 const MEDIA = /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/([0-9a-f]{32}\.(?:jpg|png|webp))$/;
 
@@ -241,6 +249,18 @@ async function init() {
     if (!validCode(page.code)) { location.replace("/"); return; }
   }
   if (!validCode(page.code) || !/^[a-z0-9-]{3,40}$/.test(page.id || "")) return;
+  // An old /lp/ss-1009/ (or /lp/?p=SS-1009) is a single-colour page.
+  // Redirect it to the shared model without losing the chosen SKU or ad attribution.
+  if (!Array.isArray(page.colors) || page.colors.length < 2) {
+    const modelUrl = SHARED_MODEL_URLS.get(page.code);
+    if (modelUrl && location.pathname !== modelUrl) {
+      const params = new URLSearchParams(location.search);
+      params.delete("p"); params.delete("code");
+      params.set("color", page.code);
+      location.replace(modelUrl + "?" + params.toString());
+      return;
+    }
+  }
   const $ = (/** @type {string} */ s) => /** @type {HTMLElement} */ (document.querySelector(s));
   const bucket = document.documentElement.dataset.v === "b" ? "b" : "a";
   const variantId = page.id + ":" + bucket; // the ONE value used for the user property and every event parameter
@@ -432,22 +452,32 @@ async function init() {
     return true;
   };
 
-  // Colour pills are pre-rendered in the HTML; choosing one swaps the photos and verifies that colour's own product.
-  const viewed = new Set([page.code]);
-  document.querySelectorAll("#lpColors .chip").forEach(btn => btn.addEventListener("click", () => {
-    const c = colors.find(x => x.code === btn.getAttribute("data-code"));
-    if (!c || c === current || busy) return;
-    document.querySelectorAll("#lpColors .chip").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
-    const nameEl = document.getElementById("lpColorName"); if (nameEl) nameEl.textContent = c.name;
+  // Same real colour picker appears beside the photo AND at the start of the
+  // direct order form. Either set of pills updates both selections and media.
+  const applyColour = (/** @type {typeof colors[number]} */ c) => {
+    document.querySelectorAll("#lpColors .chip, #lpFormColors .chip")
+      .forEach(btn => btn.setAttribute("aria-pressed", String(btn.getAttribute("data-code") === c.code)));
+    for (const id of ["lpColorName", "lpFormColorName"]) {
+      const label = document.getElementById(id);
+      if (label) label.textContent = c.name;
+    }
     const pic = document.getElementById("lpHero");
     if (pic && c.hero) {
       const [avif, webp] = pic.querySelectorAll("source");
       if (avif) avif.setAttribute("srcset", c.hero.avif);
       if (webp) webp.setAttribute("srcset", c.hero.webp);
-      const img = pic.querySelector("img"); if (img) { img.src = c.hero.src; img.alt = c.alt || ""; }
+      const img = pic.querySelector("img");
+      if (img) { img.src = c.hero.src; img.alt = c.alt || ""; }
     }
     const gallery = document.getElementById("lpGallery");
-    if (gallery) gallery.replaceChildren(...(c.gallery || []).map(src => Object.assign(document.createElement("img"), { src, alt: c.alt || "", width: 480, height: 600, loading: "lazy", decoding: "async" })));
+    if (gallery && c.hero) gallery.replaceChildren(...(c.gallery || []).map(src =>
+      Object.assign(document.createElement("img"), { src, alt: c.alt || "", width: 480, height: 600, loading: "lazy", decoding: "async" })));
+  };
+  const viewed = new Set([page.code]);
+  document.querySelectorAll("#lpColors .chip, #lpFormColors .chip").forEach(btn => btn.addEventListener("click", () => {
+    const c = colors.find(x => x.code === btn.getAttribute("data-code"));
+    if (!c || c === current || busy) return;
+    applyColour(c);
     if (!viewed.has(c.code)) { viewed.add(c.code); void recordView(c.code); }
     void show(c);
   }));
@@ -559,7 +589,10 @@ async function init() {
     cta.disabled = !product; cartBtn.disabled = !lineNow() || cartBusy; cta.textContent = product ? ctaText : "غير متاح حاليًا";
   });
 
-  if (!(await show(colors[0]))) return;
+  const requestedColour = new URLSearchParams(location.search).get("color");
+  const initialColour = colors.find(c => c.code === requestedColour) || colors[0];
+  if (initialColour !== colors[0]) applyColour(initialColour);
+  if (!(await show(initialColour))) return;
   funnel("view_item", { currency: "EGP", items: [{ item_id: product.publicCode, item_name: String(product.title || "").slice(0, 100) }] });
   await regionsReady;
 }

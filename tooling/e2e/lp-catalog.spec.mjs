@@ -7,6 +7,12 @@ const PAGES = readdirSync(dir).filter(f => f.endsWith(".json")).map(f => JSON.pa
   .map(c => ({ id: c.id, code: c.colors?.[0]?.code || c.code, title: c.title }));
 const fixture = (code) => JSON.parse(readFileSync(new URL(`../fixtures/${code}.product.json`, import.meta.url), "utf8")).product;
 const mockLog = async (request) => (await request.get("/__mock/log")).json();
+// Older per-colour LP URLs now open the verified model while preserving the SKU.
+const GROUP_ALIAS = new Map([
+  ["ss-1009", { page: "ss-1008", title: "Leather jacket" }],
+  ...["ss-1035", "ss-1036", "ss-1038", "ss-1039", "ss-1040"].map(id =>
+    [id, { page: "ballon-suit", title: "Ballon suit" }]),
+]);
 
 test.beforeEach(async ({ page }) => {
   page.external = [];
@@ -19,7 +25,11 @@ test("every pre-rendered page: real title and price, form open, orderable, no ov
   for (const p of PAGES) {
     const product = fixture(p.code);
     await page.goto(`/lp/${p.id}/`);
-    await expect(page.locator("h1"), p.id).toHaveText(String(p.title || product.title).trim());
+    const alias = GROUP_ALIAS.get(p.id);
+    if (alias) await page.waitForURL(u =>
+      u.pathname === `/lp/${alias.page}/` && u.searchParams.get("color") === p.code);
+    await expect(page.locator("h1"), p.id)
+      .toHaveText(alias ? alias.title : String(p.title || product.title).trim());
     await expect(page.locator("#lpPrice"), p.id).toHaveText(new Intl.NumberFormat("ar-EG").format(product.price.minAmountMinor / 100));
     await expect(page.locator("#lpForm"), p.id).toBeVisible();
     await expect(page.locator("#lpOrder"), p.id).toBeEnabled();

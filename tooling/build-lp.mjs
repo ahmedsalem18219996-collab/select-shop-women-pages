@@ -193,6 +193,21 @@ ${field("address", "العنوان بالتفصيل", `<textarea name="address" 
 
 /** One layout for both kinds of page. `o` holds already-escaped HTML fragments. */
 function layout(o) {
+  // Keep the exact same colour choices visible when a shopper jumps straight
+  // from "اطلبي إطلالتك" to the COD form; the first picker remains by the photo.
+  const checkoutPicker = o.picker
+    ? o.picker.replace('id="lpColors"', 'id="lpFormColors"')
+      .replace('id="lpColorName"', 'id="lpFormColorName"')
+    : "";
+  const orderForm = checkoutPicker
+    ? ORDER_FORM.replace('<form class="order" id="lpForm" novalidate>',
+      '<form class="order" id="lpForm" novalidate>\n' + checkoutPicker)
+    : ORDER_FORM;
+  // Refresh the browser-cached runtime only on affected grouped and legacy
+  // product pages. Unrelated generated LPs retain their exact original HTML.
+  const choiceVersion = checkoutPicker ||
+    /tooling\/pages\/ss-(?:1009|1035|1036|1038|1039|1040)\.json/.test(o.source || "")
+    ? "20261030-5" : "20261030-4";
   return `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -224,7 +239,7 @@ ${CSS}</style>
 <div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p></div>
 ${o.picker}
 <div id="lpOptions">${o.options}</div>
-${ORDER_FORM}
+${orderForm}
 <p id="lpStatus" role="status" aria-live="polite"></p>
 <div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="button" id="lpAddCart" disabled>أضيفي للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
 <h2 class="reassurance">طلبك واضح من البداية</h2>
@@ -236,7 +251,7 @@ ${o.video}
 <footer><strong dir="ltr">SELECT SHOP WOMEN</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
-${o.scripts}<script type="module" src="/lp/runtime.js?v=20261030-4"></script>
+${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}"></script>
 </body>
 </html>
 `;
