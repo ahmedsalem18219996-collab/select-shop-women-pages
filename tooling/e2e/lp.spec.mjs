@@ -265,8 +265,11 @@ test("automatic page for any product: old /lp/?p= and ?code= links order directl
   await page.goto("/lp/?p=SS-99999");
   await expect(page.locator("#lpStatus")).toHaveText("القطعة دي مش متاحة دلوقتي.");
   await expect(page.locator("#lpOrder")).toBeDisabled();
-  await page.goto("/p/?code=SS-1008");
-  await expect(page.locator("#productTitle")).toHaveText("Leather jacket");
+  await page.goto("/p/?code=SS-1008&utm_source=facebook&fbclid=abc123");
+  await page.waitForURL(u => u.pathname === "/lp/ss-1008/");
+  expect(new URL(page.url()).searchParams.get("utm_source")).toBe("facebook");
+  expect(new URL(page.url()).searchParams.get("fbclid")).toBe("abc123");
+  await expect(page.locator("#lpForm")).toBeVisible();
   await page.goto("/lp/?p=bad");
   await page.waitForURL(u => u.pathname === "/");
   expect(page.external).toEqual([]);

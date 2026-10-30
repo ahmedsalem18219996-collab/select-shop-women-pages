@@ -18,36 +18,25 @@ test("premium storefront renders verified catalog and retains product navigation
   const color = await page.locator(".hdr").evaluate(el => getComputedStyle(el).backgroundColor);
   expect(color).toBe("rgba(247, 246, 242, 0.98)"); // Atelier warm-paper header
   const productLink = page.locator("#feed .card .shot-link").first();
-  await expect(productLink).toHaveAttribute("href", /\/p\/\?code=SS-\d+/);
+  await expect(productLink).toHaveAttribute("href", /\/lp\/\?p=SS-\d+/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await mkdir("preview-output", { recursive: true });
   await page.screenshot({ path: `preview-output/${info.project.name}-home.png`, animations: "disabled" });
   await productLink.click();
-  await expect(page).toHaveURL(/\/p\/\?code=SS-\d+/);
-  await expect(page.locator("#productTitle")).not.toContainText("جارٍ تحميل", { timeout: 12000 });
-  await expect(page.locator("#productPrice")).not.toBeEmpty();
-  await expect(page.locator("#addToCart")).toBeEnabled();
-  await expect(page.locator("#productPhoto")).toBeVisible();
-  const thumbs = page.locator("#productThumbs img");
-  await expect(thumbs).toHaveCount(4);
-  await thumbs.last().scrollIntoViewIfNeeded();
-  await expect.poll(() => thumbs.evaluateAll(images => images.every(img => img.complete && img.naturalWidth > 0)), { timeout: 15000 }).toBe(true);
-  await expect(page.locator(".commerce-size-heading > b")).toHaveText("مقاس واحد");
-  await expect(page.locator("#optionFields select")).toHaveCount(0);
-  if (info.project.name === "mobile") {
-    await expect(page.locator("#productMobileBuyBar")).toBeVisible();
-    expect(await page.locator("#productMobilePrice").textContent()).toBe(await page.locator("#productPrice").textContent());
-    await expect(page.locator("#productMobileOrder")).toBeEnabled();
-  } else {
-    await expect(page.locator("#productMobileBuyBar")).toBeHidden();
-  }
+  await page.waitForURL(u=>u.pathname.startsWith("/lp/"), { timeout:12000 });
+  await expect(page.locator("#lpTitle")).not.toBeEmpty();
+  await expect(page.locator("#lpPrice")).not.toBeEmpty();
+  await expect(page.locator("#lpHero img")).toBeVisible();
+  await expect(page.locator("#lpForm")).toBeVisible();
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  await expect(page.locator("#addToCart")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: `preview-output/${info.project.name}-product.png`, fullPage: true, animations: "disabled" });
+  await page.screenshot({ path: `preview-output/${info.project.name}-product.png`, fullPage:true, animations:"disabled" });
   expect(errors).toEqual([]);
 });
 
-test("mobile sticky buy bar submits to the existing cart exactly once", async ({ page, request }, info) => {
-  await page.goto("/p/?code=SS-1008");
+test("legacy cart remains isolated behind explicit legacy=1", async ({ page, request }, info) => {
+  await page.goto("/p/?code=SS-1008&legacy=1");
   await expect(page.locator("#addToCart")).toBeEnabled();
   const before = (await (await request.get("/__mock/log")).json()).cartAdds.length;
   if (info.project.name === "mobile") {
