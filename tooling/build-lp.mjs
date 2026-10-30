@@ -51,7 +51,8 @@ export function colorData(page, products) {
     // Reuse the existing optimized SS-1010 photos instead of re-encoding
     // another copy on the grouped Balloon Suit page. The relative sibling
     // path resolves under /lp/ and is checked against committed assets.
-    const prefix = page.id === "ballon-suit" && c.code === "SS-1010" ? "../ss-1010/" : "";
+    const prefix = page.reuse_images === true ? "../ss-" + c.code.slice(3).toLowerCase() + "/"
+      : page.id === "ballon-suit" && c.code === "SS-1010" ? "../ss-1010/" : "";
     return { code: c.code, name: c.name, hex: c.hex, alt,
       hero: { avif: imgSet(c.code, 0, "avif", prefix), webp: imgSet(c.code, 0, "webp", prefix), src: `${prefix}img/${c.code}/0-800.webp` },
       gallery: pics.slice(1).map((_, i) => `${prefix}img/${c.code}/${i + 1}-${GALLERY_WIDTH}.webp`) };
@@ -209,7 +210,7 @@ function layout(o) {
     : ORDER_FORM;
   // Refresh the browser-cached runtime only on affected grouped and legacy
   // product pages. Unrelated generated LPs retain their exact original HTML.
-  const choiceVersion = /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040)\.json/.test(o.source || "")
+  const choiceVersion = /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
     ? "20261030-7" : checkoutPicker ? "20261030-5" : "20261030-4";
   return `<!doctype html>
 <html lang="ar" dir="rtl">

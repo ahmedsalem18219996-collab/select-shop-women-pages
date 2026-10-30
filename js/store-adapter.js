@@ -64,6 +64,12 @@ window.SelectStore = (() => {
         { code: "SS-1010", name: "رمادي زيتي", hex: "#898B7D" },
       ],
     },
+    {name:"بلوفر مقلم",path:"/lp/striped-knit/",colors:[{"code":"SS-1042","name":"أحمر","hex":"#BB3340"},{"code":"SS-1043","name":"بينك","hex":"#D9A5B9"},{"code":"SS-1044","name":"أسود × أبيض","hex":"#28282A"}]},
+    {name:"سويت شيرت PRA",path:"/lp/pra-sweatshirt/",colors:[{"code":"SS-1015","name":"أصفر","hex":"#DEE957"},{"code":"SS-1027","name":"بني","hex":"#49352D"},{"code":"SS-1028","name":"كحلي","hex":"#263654"}]},
+    {name:"جاكيت Chinese",path:"/lp/chinese-jacket/",colors:[{"code":"SS-1014","name":"أحمر","hex":"#AE1E30"},{"code":"SS-1023","name":"بيج","hex":"#C7B39C"},{"code":"SS-1024","name":"بني","hex":"#503027"},{"code":"SS-1025","name":"زيتي","hex":"#52523E"},{"code":"SS-1026","name":"أسود","hex":"#242426"}]},
+    {name:"بلوفر أزرار",path:"/lp/button-knit/",colors:[{"code":"SS-1019","name":"نبيتي","hex":"#722536"},{"code":"SS-1021","name":"أوف وايت","hex":"#EEEADF"},{"code":"SS-1022","name":"كحلي","hex":"#273451"}]},
+    {name:"بلوفر Zebra",path:"/lp/zebra-knit/",colors:[{"code":"SS-1012","name":"أبيض × أسود","hex":"#EEEDE7"},{"code":"SS-1029","name":"بيج × أسود","hex":"#C3AD85"},{"code":"SS-1030","name":"أسود × أبيض","hex":"#222225"}]},
+    {name:"جاكيت كاروهات",path:"/lp/checked-jacket/",colors:[{"code":"SS-1031","name":"بيج","hex":"#B7A6A0"},{"code":"SS-1032","name":"بني","hex":"#504840"},{"code":"SS-1033","name":"كحلي","hex":"#2B3652"},{"code":"SS-1034","name":"أسود","hex":"#212025"}]},
   ];
   const modelForCode = new Map(VERIFIED_MODEL_FAMILIES.flatMap(
     family => family.colors.map(color => [color.code, family])
