@@ -11,6 +11,8 @@ test("premium storefront renders verified catalog and retains product navigation
   await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty();
   await expect(page.locator("#womenOwnerAnnouncement")).toHaveCount(1);
   await expect(page.locator("#womenOwnerAnnouncement")).not.toBeEmpty();
+  const accent = await page.locator("#womenOwnerAnnouncement").evaluate(el => getComputedStyle(el).borderBottomColor);
+  expect(accent).toBe("rgb(184, 160, 108)"); // Atelier brass, not legacy violet
   await expect(page.locator("#feed .card").first()).toBeVisible({ timeout: 12000 });
   // A shop with actual products must never tell buyers it is still preparing them.
   await expect(page.locator(".hero p")).not.toContainText("بنجهز");
