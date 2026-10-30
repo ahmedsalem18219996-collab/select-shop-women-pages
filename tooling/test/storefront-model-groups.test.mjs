@@ -41,8 +41,9 @@ test("price or category mismatch falls back to separate real products", () => {
 
 test("missing sibling stays standalone; never display an unavailable colour", () => {
   const out = group([item("SS-1009", 1200, "جاكيت")]);
-  assert.deepEqual(out.map(x => x.id), ["SS-1009"]);
-  assert.deepEqual(out.map(x => x.sw), [[]]);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, "SS-1009");
+  assert.equal(out[0].sw.length, 0);
 });
 
 test("prefer purchasable sibling for card image while retaining real SKU", () => {
