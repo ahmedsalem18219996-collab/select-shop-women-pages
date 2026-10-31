@@ -54,12 +54,22 @@ export function colorData(page, products) {
     const prefix = page.reuse_images === true ? "../ss-" + c.code.slice(3).toLowerCase() + "/"
       : page.id === "ballon-suit" && c.code === "SS-1010" ? "../ss-1010/" : "";
     return { code: c.code, name: c.name, hex: c.hex, alt,
+      ...(page.campaign?.zoom ? { zoom: pics.map(m => m.url) } : {}),
       hero: { avif: imgSet(c.code, 0, "avif", prefix), webp: imgSet(c.code, 0, "webp", prefix), src: `${prefix}img/${c.code}/0-800.webp` },
       gallery: pics.slice(1).map((_, i) => `${prefix}img/${c.code}/${i + 1}-${GALLERY_WIDTH}.webp`) };
   });
 }
 
 // Shared by every generated page and the automatic shell, so the two never drift apart.
+const CAMPAIGN_CSS = `
+body[data-campaign] .atelier-heading{font-size:clamp(28px,4vw,42px);line-height:1.35;margin:0}
+body[data-campaign] .campaign-trust{margin:0;font-size:14px;color:var(--muted)}
+body[data-campaign] .campaign-jump{display:block;padding:15px;text-align:center;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}
+body[data-campaign] #lpAddCart[hidden]{display:none!important}
+body[data-campaign] .hero img,body[data-campaign] .gallery img{cursor:zoom-in}
+body[data-campaign] .hero{background:var(--paper)}
+@media(max-width:899px){body[data-campaign] .page{gap:16px}body[data-campaign] .atelier-heading{order:0}body[data-campaign] .hero{height:auto;aspect-ratio:4/5}body[data-campaign] .hero img{height:100%;object-fit:contain;object-position:center}body[data-campaign] .campaign-trust{order:4}body[data-campaign] .campaign-jump{order:4}body[data-campaign] .bar>div{gap:8px}body[data-campaign] .bar .sum{min-width:80px}body[data-campaign] #lpOrder{flex:1;min-width:0}body[data-campaign] .top{padding:12px 20px}body[data-campaign] .mark{font-size:23px}}
+`;
 const CSS = `:root{--bg:#F8F5F4;--surface:#F1EAEE;--line:#E7DCE2;--mauve:#7A5C71;--ink:#2A2129;--muted:#5F5560;--gold:#A8894E;--f:"Readex Pro","Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif;color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{background:var(--bg)}
@@ -198,6 +208,7 @@ ${field("address", "العنوان بالتفصيل", `<textarea name="address" 
 
 /** One layout for both kinds of page. `o` holds already-escaped HTML fragments. */
 function layout(o) {
+  const campaign = o.campaign;
   // Keep the exact same colour choices visible when a shopper jumps straight
   // from "اطلبي إطلالتك" to the COD form; the first picker remains by the photo.
   const checkoutPicker = o.picker
@@ -210,7 +221,7 @@ function layout(o) {
     : ORDER_FORM;
   // Refresh the browser-cached runtime only on affected grouped and legacy
   // product pages. Unrelated generated LPs retain their exact original HTML.
-  const choiceVersion = /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
+  const choiceVersion = campaign ? "20261031-sweater-1" : /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
     ? "20261030-7" : checkoutPicker ? "20261030-5" : "20261030-4";
   return `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -229,9 +240,9 @@ ${o.route || ""}<script id="lp-ab">${AB_SNIPPET}</script>
 <script id="lp-prefetch">${PREFETCH(o.codeExpr)}</script>
 <style>
 ${o.fontFaces}
-${CSS}</style>
+${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
-<body>
+<body${campaign ? ' data-campaign="focused"' : ""}>
 <header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
 <main class="page">
 <div class="media">
@@ -239,13 +250,13 @@ ${CSS}</style>
 <div class="gallery" id="lpGallery">${o.gallery}</div>
 </div>
 <div class="info">
-<p class="atelier-heading">تفاصيل تكمّل إطلالتك</p>
+<p class="atelier-heading">${campaign ? esc(campaign.headline) : "تفاصيل تكمّل إطلالتك"}</p>
 <div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p></div>
 ${o.picker}
 <div id="lpOptions">${o.options}</div>
-${orderForm}
+${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · الشحن واضح قبل التأكيد</p><a class="campaign-jump" href="#lpForm">اختاري الكمية واطلبي دلوقتي</a>\n` : ""}${orderForm}
 <p id="lpStatus" role="status" aria-live="polite"></p>
-<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="button" id="lpAddCart" disabled>أضيفي للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
+<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="button" id="lpAddCart"${campaign?.directOnly ? " hidden" : ""} disabled>أضيفي للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
 <h2 class="reassurance">طلبك واضح من البداية</h2>
 <ul class="notes">${o.benefits.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
 <div class="desc" id="lpMore">${o.more}</div>
@@ -273,6 +284,7 @@ export function render(page, products, fontFaces = "") {
   const picker = colors.length > 1 ? `<fieldset class="pick" id="lpColors"><legend>اللون: <span id="lpColorName">${esc(first.name)}</span></legend><div class="row">${colors.map((c, i) =>
     `<button type="button" class="chip" data-code="${esc(c.code)}" aria-pressed="${i === 0}"><i style="background:${esc(c.hex)}"></i>${esc(c.name)}</button>`).join("")}</div></fieldset>` : "";
   return layout({
+    campaign: page.campaign,
     source: ` from tooling/pages/${esc(page.id)}.json`,
     title: `${esc(title)} · SELECT SHOP WOMEN`,
     description: `${esc(title)}. اطلبي من نفس الصفحة، الدفع عند الاستلام والشحن لكل المحافظات.`,
@@ -285,11 +297,11 @@ export function render(page, products, fontFaces = "") {
     options: oneSize ? `<div class="lp-opt"><span class="one">مقاس واحد</span></div>` : "",
     choice: esc((first.name ? first.name + " · " : "") + (oneSize ? "مقاس واحد" : "اختاري المقاس")),
     benefits: page.benefits || DEFAULT_BENEFITS,
-    more: lines.slice(1).map(l => `<p>${esc(l)}</p>`).join(""),
+    more: page.campaign?.colourNote ? `<p>${esc(page.campaign.colourNote)}</p>` : lines.slice(1).map(l => `<p>${esc(l)}</p>`).join(""),
     video: page.video ? `<button type="button" class="video" data-lp-video="${esc(page.video.src)}">▶ شغّلي الفيديو</button>` : "",
     noscript: `<a href="/p/?code=${esc(first.code)}">افتحي صفحة المنتج للطلب</a>`,
-    data: JSON.stringify({ id: page.id, code: first.code, colors }).replace(/</g, "\\u003c"),
-    scripts: "",
+    data: JSON.stringify({ id: page.id, code: first.code, colors, ...(page.campaign ? { directOnly: page.campaign.directOnly === true, campaign: true } : {}) }).replace(/</g, "\\u003c"),
+    scripts: page.campaign?.zoom ? '<script type="module" src="/lp/image-zoom.js?v=20261031-1"></script>' : "",
   });
 }
 
