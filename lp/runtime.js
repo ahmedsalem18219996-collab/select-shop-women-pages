@@ -432,8 +432,10 @@ async function init() {
     return raw.filter(lineOk).slice(0, 50);
   };
   const refreshCartCount = () => {
-    try { $("#lpCartCount").textContent = String(readBag().reduce((n,l)=>n+l.quantity,0)); }
-    catch { $("#lpCartCount").textContent = '0'; }
+    const count = $("#lpCartCount");
+    if (!count) return; // Focused direct-order pages deliberately have no bag link.
+    try { count.textContent = String(readBag().reduce((n,l)=>n+l.quantity,0)); }
+    catch { count.textContent = '0'; }
   };
   refreshCartCount();
   cartBtn.addEventListener("click", async () => {
