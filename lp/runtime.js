@@ -669,8 +669,13 @@ async function init() {
 
   // Governorates load next to the product; the form works as soon as both are in.
   const regionsReady = read("regions", "/regions").then(d => {
-    for (const r of Array.isArray(d.regions) ? d.regions : []) {
-      if (typeof r?.key !== "string" || typeof r?.label !== "string") continue;
+    const regions = (Array.isArray(d.regions) ? d.regions : [])
+      .filter(r => typeof r?.key === "string" && typeof r?.label === "string");
+    if (page.directOnly) {
+      const priority = r => r.label.trim() === "القاهرة" ? 0 : r.label.trim() === "الجيزة" ? 1 : 2;
+      regions.sort((a, b) => priority(a) - priority(b));
+    }
+    for (const r of regions) {
       region.append(Object.assign(document.createElement("option"), { value: r.key, textContent: r.label }));
     }
   }).catch(() => say("مش قادرين نحمّل المحافظات دلوقتي. حدّثي الصفحة.", true));
