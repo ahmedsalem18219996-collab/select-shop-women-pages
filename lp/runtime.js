@@ -617,7 +617,7 @@ async function init() {
       mixToggle.setAttribute("aria-expanded", "false");
     }
     if (singleQtyBox) singleQtyBox.style.display = mixMode ? "none" : "";
-    cartBtn.hidden = mixMode; // the direct COD form handles all selected colours
+    cartBtn.hidden = page.directOnly === true || mixMode; // the direct COD form handles all selected colours
     say("");
     void requote();
   });
