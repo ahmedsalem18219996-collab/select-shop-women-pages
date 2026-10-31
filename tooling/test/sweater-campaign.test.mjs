@@ -13,6 +13,7 @@ test('focused campaign shows escaped product-led headline and a direct COD jump 
   assert.match(html, /"code":"SS-1011"/);
   assert.match(html, /id="lpForm"/);
   assert.match(html, /id="lpAddCart" hidden/);
+  assert.doesNotMatch(html, /id="lpCartLink"/);
   assert.match(html, /src="\/lp\/image-zoom.js/);
   assert.doesNotMatch(html, /data-code="SS-1043"/);
 });

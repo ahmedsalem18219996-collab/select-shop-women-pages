@@ -5,6 +5,7 @@ test('original pullover only: direct order, correct quantity and no cart button'
   await page.goto(LP);
   await expect(page.locator('#lpPrice')).toHaveText('٥٥٠');
   await expect(page.locator('#lpAddCart')).toBeHidden();
+  await expect(page.locator('#lpCartLink')).toHaveCount(0);
   await expect(page.locator('#lpColors .chip')).toHaveCount(0);
   await expect(page.locator('#lpHero img')).toHaveAttribute('src', /SS-1011/);
   await page.locator('#lpQtyUp').click();

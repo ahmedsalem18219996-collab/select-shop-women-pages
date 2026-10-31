@@ -130,7 +130,7 @@ for (const [id, code] of PAGES) {
   });
 }
 
-test("every generated direct-order page now also offers the optional multi-product cart", async () => {
+test("generated pages retain optional cart except explicitly focused direct-only campaigns", async () => {
   const html = renderShell("");
   assert.match(html, /id="lpAddCart"/);
   assert.match(html, /id="lpCartLink"/);
@@ -144,7 +144,8 @@ test("every generated direct-order page now also offers the optional multi-produ
     const page = await readFile(new URL("../../lp/" + d.name + "/index.html", import.meta.url), "utf8");
     assert.match(page, /id="lpAddCart"/, d.name);
     assert.match(page, /id="lpOrder"/, d.name);
-    assert.match(page, /id="lpCartLink"/, d.name);
+    if (page.includes('"directOnly":true')) assert.doesNotMatch(page, /id="lpCartLink"/, d.name);
+    else assert.match(page, /id="lpCartLink"/, d.name);
   }
 });
 
