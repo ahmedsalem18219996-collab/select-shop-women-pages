@@ -2,10 +2,18 @@ import { test, expect } from '@playwright/test';
 const LP = '/lp/ss-1011/?utm_source=facebook&utm_campaign=ss1011_focused';
 test('original pullover only: direct order, correct quantity and no cart button', async ({ page, request }) => {
   const external=[]; page.on('request',r=>{if(new URL(r.url()).hostname!=='127.0.0.1')external.push(r.url());});
+  await page.route('**/women-checkout/regions', async route => {
+    const response = await route.fetch();
+    const data = await response.json();
+    data.regions.reverse(); // Server order must not determine the two preferred choices.
+    await route.fulfill({response, json:data});
+  });
   await page.goto(LP);
   await expect(page.locator('#lpPrice')).toHaveText('٥٥٠');
   await expect(page.locator('#lpAddCart')).toBeHidden();
   await expect(page.locator('#lpCartLink')).toHaveCount(0);
+  await expect(page.locator('[name=region] option').nth(1)).toHaveText('القاهرة');
+  await expect(page.locator('[name=region] option').nth(2)).toHaveText('الجيزة');
   await expect(page.locator('#lpColors .chip')).toHaveCount(0);
   await expect(page.locator('#lpHero img')).toHaveAttribute('src', /SS-1011/);
   await page.locator('#lpQtyUp').click();
