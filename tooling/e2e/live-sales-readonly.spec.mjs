@@ -12,7 +12,7 @@ test.beforeEach(async ({page}) => {
       attemptedOrders++;return route.abort('blockedbyclient');
     }
     // No production analytics/DB writes; allow ONLY read-only public checkout quotes.
-    if(method!=='GET' && method!=='HEAD' && !(method==='POST' && url.hostname===apiHost &&
+    if(!['GET','HEAD','OPTIONS'].includes(method) && !(method==='POST' && url.hostname===apiHost &&
         ['/functions/v1/women-checkout/checkout/quote','/functions/v1/women-checkout/cart/resolve'].includes(url.pathname))){
       return route.abort('blockedbyclient');
     }
