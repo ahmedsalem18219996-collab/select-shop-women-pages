@@ -80,7 +80,7 @@ export function mountModelColorBatch(host, model, api, onComplete) {
     return latest;
   };
 
-  save.addEventListener("click", async () => {
+  save.onclick = async () => {
     if (saving) return;
     const selected = rowStates.filter(r => r.name.value.trim() || r.sku.value.trim() || r.saved);
     if (!selected.length) { feedback.textContent = "ضيفي لون واحد على الأقل."; return; }
@@ -159,7 +159,7 @@ export function mountModelColorBatch(host, model, api, onComplete) {
       saving = false; save.disabled = false; append.disabled = rowStates.length >= 12;
       rowStates.forEach(r => { r.remove.disabled = r.locked || r.saved; });
     }
-  });
+  };
   const actions = el("div", "row");
   actions.append(append, save);
   frame.append(rowsHost, actions, feedback);
