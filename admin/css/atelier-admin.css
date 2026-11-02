@@ -68,3 +68,15 @@
 .model-live-editor input[type=color]{width:100%;height:44px;padding:2px;cursor:pointer}
 .model-live-editor button{min-height:44px}
 @media(max-width:520px){.model-live-editor{padding:12px}.model-live-editor .model-live-row{grid-template-columns:1fr 90px}.model-live-editor .model-live-row button{grid-column:1/-1}}
+
+/* Add several persisted-model colours in one authenticated editing session. */
+.model-colour-batch{display:grid;gap:12px;margin:12px 0 0;padding:16px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface)}
+.model-colour-batch h3{margin:0}
+.model-colour-batch .model-batch-rows{display:grid;gap:10px}
+.model-colour-batch .model-batch-row{display:grid;grid-template-columns:minmax(125px,2fr) minmax(90px,1fr) minmax(120px,1fr) auto;gap:9px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:var(--r-m)}
+.model-colour-batch .field{min-width:0;display:grid;gap:5px}
+.model-colour-batch input{width:100%;min-height:44px}
+.model-colour-batch input[type=color]{height:44px;padding:2px;cursor:pointer}
+.model-colour-batch .model-batch-row small{grid-column:1/-1;min-height:18px}
+.model-colour-batch button{min-height:44px}
+@media(max-width:640px){.model-colour-batch{padding:10px}.model-colour-batch .model-batch-row{grid-template-columns:1fr 100px}.model-colour-batch .model-batch-row .field:nth-child(3){grid-column:1/-1}.model-colour-batch .model-batch-row button{grid-column:1/-1}}
