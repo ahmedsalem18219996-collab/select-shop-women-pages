@@ -56,7 +56,7 @@ if(c) check('live products', Array.isArray(c.data?.items) && c.data.items.length
 // orders, inventory, customer data, or analytics.
 // IMPORTANT: Fail closed on errors; a successful homepage alone is not enough.
 const publicCodes = Array.isArray(c?.data?.items)
-  ? [...new Set(c.data.items.map(x => x.publicCode).filter(x => /^SS-\\d{4,19}$/.test(x)))]
+  ? [...new Set(c.data.items.map(x => x.publicCode).filter(x => /^SS-\d{4,19}$/.test(x)))]
   : [];
 check('catalog SKUs well formed and unique', c?.data?.items?.length === publicCodes.length,
   'catalog_items='+(c?.data?.items?.length ?? 'null')+', valid_unique='+publicCodes.length);
