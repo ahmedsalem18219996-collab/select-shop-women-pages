@@ -289,7 +289,9 @@ function createSheet(ctx) {
       <button class="chip" type="button" id="c-one-size" aria-pressed="false">${t('create.oneSize')}</button>
       <div class="chips" id="c-sizes" style="flex-wrap:wrap"></div>
       <input class="input" id="c-size" placeholder="${t('create.sizesPh')}" maxlength="18"><small>${t('create.sizesHint')}</small></div>
-    <div class="field"><span>ألوان الموديل (اختياري)</span><div class="chips" id="c-colors" style="flex-wrap:wrap"></div><input class="input" id="c-color" placeholder="مثال: بني، بيبي بلو، أسود" maxlength="40"><small>اكتبي اللون واضغطي Enter أو فاصلة. كل الألوان تحت نفس المنتج وكوده.</small></div>
+    <div class="field"><span>ألوان الموديل (اختياري)</span><div class="chips" id="c-colors" style="flex-wrap:wrap"></div>
+      <div class="row"><input class="input" id="c-color" placeholder="مثال: بني، بيبي بلو، أسود" maxlength="40" aria-label="اكتبي لون الموديل"><button class="btn btn-soft btn-sm" type="button" id="c-add-color">إضافة اللون</button></div>
+      <small>اكتبي الألوان وافصلي بينها بفاصلة، أو استخدمي زر «إضافة اللون». هيتعمل منتج واحد باختيارات ألوان مختلفة؛ بعد الحفظ حددي سعر ومخزون كل لون وصوره قبل النشر.</small></div>
     <label class="switch"><input type="checkbox" id="c-new" checked><i></i>${t('create.isNew')}</label>
     <ol class="blockers" id="c-steps" hidden></ol>`,
     foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>${t('create.submit')}</button>` });
@@ -342,6 +344,7 @@ function createSheet(ctx) {
   };
   colorInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ',' || e.key === '،') { e.preventDefault(); addColor(); } });
   colorInput.addEventListener('blur', addColor);
+  $('#c-add-color', box).addEventListener('click', addColor);
   $('#c-colors', box).addEventListener('click', (e) => { const b=e.target.closest('[data-rm-color]'); if (b) { colors.splice(+b.dataset.rmColor, 1); paintColors(); } });
   const key = idempotencyKey();
   $('[data-create]', box).onclick = async (e) => {
@@ -407,6 +410,7 @@ function createSheet(ctx) {
           }
         } else fail(available);
       }
+      if (colors.length || sizes.length) sessionStorage.setItem('wa.ptab', 'variants');
       closeLayer(); done(t('create.done')); ctx.go('products/' + code);
     });
   };
