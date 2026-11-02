@@ -71,13 +71,29 @@ window.SelectStore = (() => {
     {name:"بلوفر Zebra",path:"/lp/zebra-knit/",colors:[{"code":"SS-1012","name":"أبيض × أسود","hex":"#EEEDE7"},{"code":"SS-1029","name":"بيج × أسود","hex":"#C3AD85"},{"code":"SS-1030","name":"أسود × أبيض","hex":"#222225"}]},
     {name:"جاكيت كاروهات",path:"/lp/checked-jacket/",colors:[{"code":"SS-1031","name":"بيج","hex":"#B7A6A0"},{"code":"SS-1032","name":"بني","hex":"#504840"},{"code":"SS-1033","name":"كحلي","hex":"#2B3652"},{"code":"SS-1034","name":"أسود","hex":"#212025"}]},
   ];
-  const modelForCode = new Map(VERIFIED_MODEL_FAMILIES.flatMap(
-    family => family.colors.map(color => [color.code, family])
-  ));
-  const groupVerifiedModels = products => {
+  const normaliseLiveFamilies = models => Array.isArray(models) ? models.filter(m =>
+    m && typeof m.slug === "string" && /^[a-z][a-z0-9-]{2,63}$/.test(m.slug) &&
+    typeof m.name === "string" && m.name.trim().length > 1 && Array.isArray(m.colors) &&
+    m.colors.length > 0
+  ).map(m => {
+    const colors = m.colors.filter(c => c && /^SS-[0-9]{4,19}$/.test(c.code || "") &&
+      typeof c.name === "string" && /^#[0-9a-fA-F]{6}$/.test(c.hex || ""));
+    const slug = m.slug;
+    const path = slug === "leather-jacket" ? "/lp/ss-1008/" :
+      slug === "balloon-suit" ? "/lp/ballon-suit/" :
+      ["striped-knit","pra-sweatshirt","chinese-jacket","button-knit","zebra-knit","checked-jacket"].includes(slug)
+        ? "/lp/" + slug + "/" : "/lp/?model=" + encodeURIComponent(slug);
+    return { name: m.name.trim().slice(0,160), path, colors,
+      category: typeof m.category === "string" ? m.category : "", persisted: true };
+  }).filter(m => m.colors.length > 0) : null;
+
+  const groupVerifiedModels = (products, apiModels = null) => {
+    const families = normaliseLiveFamilies(apiModels) || VERIFIED_MODEL_FAMILIES;
+    const modelForCode = new Map(families.flatMap(
+      family => family.colors.map(color => [color.code, family])));
     const byCode = new Map(products.map(product => [product.id, product]));
     const eligible = new Map();
-    for (const family of VERIFIED_MODEL_FAMILIES) {
+    for (const family of families) {
       const members = family.colors
         .map(color => ({ ...color, product: byCode.get(color.code) }))
         .filter(color => color.product);
@@ -86,11 +102,15 @@ window.SelectStore = (() => {
       // The pre-rendered LP always boots its FIRST configured colour. If that
       // default SKU is hidden or sold out, leave the real SKUs separate: a
       // different available colour must not route into an unavailable first one.
-      if (members.length < 2 || members[0].code !== family.colors[0].code ||
+      const duplicateCodes = new Set(family.colors.map(c => c.code)).size !== family.colors.length;
+      // Modern one-SKU/many-colour products keep the native variant option picker.
+      // Legacy families share a card and may legitimately have different per-colour prices.
+      if (duplicateCodes || members.length < 2 ||
+        members[0].code !== family.colors[0].code ||
         members[0].product.purchasable !== true ||
-        !members.every(color =>
-          color.product.price === members[0].product.price &&
-          color.product.cat === members[0].product.cat)) continue;
+        (family.persisted ? !members.every(c => c.product.cat === family.category)
+          : !members.every(c => c.product.price === members[0].product.price &&
+              c.product.cat === members[0].product.cat))) continue;
       eligible.set(family, members);
     }
     const shown = new Set();
@@ -104,6 +124,9 @@ window.SelectStore = (() => {
       return [{
         ...primary.product,
         name: family.name,
+        // One model may have multiple real per-colour selling prices. The card
+        // displays the lowest price; /checkout/quote remains server authoritative.
+        price: family.persisted ? Math.min(...members.map(c => c.product.price)) : primary.product.price,
         sw: members.map(color => color.hex),
         isNew: members.some(color => color.product.isNew),
         purchasable: members.some(color => color.product.purchasable),
@@ -218,7 +241,7 @@ window.SelectStore = (() => {
             purchasable: item.purchasable === true,
           }));
         const categories = ["الكل", ...(products.some(p => p.isNew) ? ["الجديد"] : []), ...visibleCategories];
-        return { ...empty(), categories, products: groupVerifiedModels(products) };
+        return { ...empty(), categories, products: groupVerifiedModels(products, data.models) };
       } catch (error) {
         // Never fall back to fabricated demo products on a public storefront.
         window.SELECT_CONFIG.loadError = true;
