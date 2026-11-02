@@ -5,6 +5,7 @@ import { checkSourceImage, optimizeUploadImage, optimizationSummary } from '../i
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
 import { mountModelControls } from '../model-controls.js';
+import { mountModelSkuQuickEdit } from '../model-sku-quick-edit.js';
 import { saveFamilyCategory } from '../model-category.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
@@ -176,6 +177,7 @@ async function renderList(ctx) {
               <a class="btn btn-soft btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="media">الصور</a>
               <a class="btn btn-ghost btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="details">البيانات</a>
             </span>
+            <div class="model-quick-slot" data-quick-code="${m.product.public_code}"></div>
           </div>`)}
         </div>`,
         foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>`
@@ -221,6 +223,11 @@ async function renderList(ctx) {
           await load();
         });
         if (document.contains(select)) select.disabled = false;
+      });
+      box.querySelectorAll('[data-quick-code]').forEach(slot => {
+        mountModelSkuQuickEdit(slot, slot.dataset.quickCode, call, {
+          price:can('products.price'), stock:can('inventory.manage')
+        });
       });
       box.querySelectorAll('[data-open-sku]').forEach(a => a.addEventListener('click', () => {
         sessionStorage.setItem('wa.ptab', a.dataset.editTab || 'details');
