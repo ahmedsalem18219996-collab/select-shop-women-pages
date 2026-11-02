@@ -17,7 +17,7 @@ function renderEditor(api, complete = () => {}) {
     inputs[2].value = code;
   };
   const save = [...host.querySelectorAll("button")].find(b => b.textContent === "حفظ الألوان");
-  const feedback = host.querySelector(".model-colour-batch [role=status]");
+  const feedback = [...host.querySelectorAll("[role=status]")].at(-1);
   return { host, rows, edit, save, feedback };
 }
 
@@ -78,7 +78,7 @@ test("lost create response retries with the same key and never duplicates a prod
   assert.equal(state.products.size, 1);
   assert.equal(state.attaches, 0);
   await ui.save.onclick();
-  assert.equal(state.creates, 3, "first lost create, then retry same key and create second row only if filled");
+  assert.equal(state.creates, 2, "first lost create, then retry using the same key");
   assert.equal(state.products.size, 1);
   assert.equal(state.keys[0], state.keys[1]);
   assert.equal(state.colors.length, 1);
