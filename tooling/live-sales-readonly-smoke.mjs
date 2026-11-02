@@ -6,10 +6,11 @@ const CHECKOUT = BACKEND + '/women-checkout';
 const failures = [];
 async function request(label, url, options = {}) {
   try {
+    const { headers: customHeaders = {}, ...rest } = options;
     const response = await fetch(url, {
-      redirect: 'follow', cache: 'no-store',
-      headers: { Origin: HOME, Accept: 'application/json, text/html;q=0.9', ...(options.headers || {}) },
-      signal: AbortSignal.timeout(20000), ...options
+      redirect: 'follow', cache: 'no-store', ...rest,
+      headers: { Origin: HOME, Accept: 'application/json, text/html;q=0.9', ...customHeaders },
+      signal: AbortSignal.timeout(20000)
     });
     const body = await response.text();
     assert.equal(response.status, 200, label + ' HTTP ' + response.status + ': ' + body.slice(0, 100));
