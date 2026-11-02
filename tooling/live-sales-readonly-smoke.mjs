@@ -50,6 +50,49 @@ for (const [label, url, keyword] of urls) {
 }
 const c = await request('public catalog', BACKEND+'/women-store-bridge/catalog');
 if(c) check('live products', Array.isArray(c.data?.items) && c.data.items.length > 0, 'items='+(c.data?.items?.length ?? 'null'));
+
+// Production-wide sellability audit: every visible SKU must resolve to a real,
+// buyable server variant. Neither GET /product nor POST /checkout/quote writes
+// orders, inventory, customer data, or analytics.
+// IMPORTANT: Fail closed on errors; a successful homepage alone is not enough.
+const publicCodes = Array.isArray(c?.data?.items)
+  ? [...new Set(c.data.items.map(x => x.publicCode).filter(x => /^SS-\\d{4,19}$/.test(x)))]
+  : [];
+check('catalog SKUs well formed and unique', c?.data?.items?.length === publicCodes.length,
+  'catalog_items='+(c?.data?.items?.length ?? 'null')+', valid_unique='+publicCodes.length);
+let readySkus = 0;
+const quoteBySku = async (code, product) => {
+  const v = product?.variants?.find(x => x.purchasable === true && Array.isArray(x.selection));
+  if(!v || !Number.isInteger(product.structureVersion)) return false;
+  const response = await request('COD Cairo quote '+code, CHECKOUT+'/checkout/quote', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ lines: [{
+      publicCode:code, structureVersion:product.structureVersion,
+      quantity:1, selection:v.selection
+    }], deliveryRegionKey:'cairo' })
+  });
+  if(!response) return false;
+  const q=response.data;
+  const valid=q?.purchasable === true &&
+    q?.shippingTotal?.amountMinor === 9000 &&
+    Number.isSafeInteger(q?.merchandiseSubtotal?.amountMinor) &&
+    q?.grandTotal?.amountMinor === q?.merchandiseSubtotal?.amountMinor + 9000;
+  check('authentic quote '+code,valid,
+    'shipping='+String(q?.shippingTotal?.amountMinor)+', total='+String(q?.grandTotal?.amountMinor));
+  return valid;
+};
+for(const code of publicCodes){
+  const record=await request('public SKU '+code, CHECKOUT+'/product/'+code);
+  if (!record) continue;
+  const p=record.data?.product;
+  const available=!!p && Number.isInteger(p.structureVersion) &&
+    Array.isArray(p.variants) && p.variants.some(v=>v.purchasable === true);
+  check('live sellable SKU '+code,available);
+  if(available && await quoteBySku(code,p)) readySkus++;
+}
+check('ALL public SKUs support a confirmed COD quote', readySkus===publicCodes.length,
+  'ready='+readySkus+'/'+publicCodes.length);
+
 const cfg = await request('checkout config', CHECKOUT+'/checkout-config');
 if(cfg) check('REAL COD ACCEPTANCE ENABLED', cfg.data?.enabled === true, 'enabled='+String(cfg.data?.enabled));
 const regions = await request('shipping regions', CHECKOUT+'/regions');
