@@ -1,5 +1,5 @@
 import { t } from '../i18n.js';
-import { html, render, $, $$, icon, fmtNum, skRows, sheet, closeLayer, confirmDialog, withBusy, done, fail, sortable } from '../ui.js';
+import { html, render, $, $$, icon, fmtNum, skRows, sheet, closeLayer, confirmDialog, withBusy, done, fail, sortable, island } from '../ui.js';
 import { call } from '../api.js';
 
 export default {
@@ -37,12 +37,18 @@ export default {
       $('[data-save]', box).onclick = async (e) => {
         const name = $('#cn', box).value.trim(); if (!name) { $('#cn', box).setAttribute('aria-invalid', 'true'); return; }
         const res = await withBusy(e.currentTarget, () => call('categories.save', { id: c?.id || null, name, name_en: $('#ce', box).value.trim() || null, visible: $('#cv', box).checked }));
-        if (res.outcome === 'saved') { closeLayer(); done(); load(); } else fail(res);
+        if (res.outcome === 'saved') { closeLayer(); done(); load(); }
+        else if (res.outcome === 'in_use') {
+          island('error', 'التصنيف مرتبط بمنتجات أو موديلات', 'ماينفعش نغيّر اسمه وهو مستخدم. انقلي المنتجات والموديلات لتصنيف تاني الأول.');
+        } else fail(res);
       };
       $('[data-del]', box)?.addEventListener('click', async () => {
         if (!(await confirmDialog({ title: c.name, text: t('categories.deleteQ'), okText: t('app.delete'), danger: true }))) return;
         const res = await call('categories.delete', { id: c.id });
-        if (res.outcome === 'deleted') { done(); load(); } else fail(res);
+        if (res.outcome === 'deleted') { done(); load(); }
+        else if (res.outcome === 'in_use') {
+          island('error', 'التصنيف مستخدم بالفعل', 'مش هنحذفه عشان المنتجات والموديلات المرتبطة بيه ما تتأثرش.');
+        } else fail(res);
       });
     };
     await load();

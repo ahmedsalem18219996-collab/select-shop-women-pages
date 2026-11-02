@@ -143,6 +143,7 @@ async function renderDetail(ctx, code) {
       ${o.status === 'confirmed' ? html`<section class="card stack"><div class="card-head"><h3>${t('orders.fulfillment')}</h3>${f?.tracking_code ? html`<span class="code muted">${f.carrier || ''} ${f.tracking_code}</span>` : ''}</div>
         <div class="stepper">${STAGES.map((s) => { const idx = STAGES.indexOf(stage), i = STAGES.indexOf(s); return html`<div class="step ${i < idx || (stage === 'delivered' && s === 'delivered') ? 'done' : i === idx ? 'now' : ''}"><i></i>${t('stage.' + s)}</div>`; })}
           <div class="step ${['return_requested', 'returned'].includes(stage) ? 'now' : ''}"><i></i>${stage === 'returned' ? t('stage.returned') : t('stage.return_requested')}</div></div>
+        ${(next.includes('returned') || ['return_requested','returned'].includes(stage)) ? html`<p class="muted" role="note" style="margin:0;font-size:13px">تنبيه الجرد: اختيار «مرتجع» هنا بيسجّل حالة الشحن فقط، ومش بيرجع أي قطع للمخزون تلقائيًا. ما تزودش المخزون إلا بعد استلام القطع وفحص حالتها في إجراء جرد معتمد.</p>` : ''}
         ${can('orders.manage') && next.length ? html`<form class="stack" id="ff"><div class="grid2">
           <label class="field"><span>${t('orders.nextStage')}</span><select class="select" id="fs">${next.map((s) => html`<option value="${s}">${t('stage.' + s)}</option>`)}</select></label>
           <label class="field"><span>${t('orders.carrier')}</span><input class="input" id="fc" value="${f?.carrier || ''}" maxlength="80"></label>
