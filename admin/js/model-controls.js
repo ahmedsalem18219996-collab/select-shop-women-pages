@@ -1,3 +1,4 @@
+import { mountModelColorBatch } from "./model-color-batch.js";
 // WOMEN persisted model editor. Rendered ONLY when authenticated models.list
 // confirms that the backend registry is installed; legacy static models never
 // show inert Add/Rename controls. No unsafe innerHTML from user data.
@@ -129,4 +130,5 @@ export function mountModelControls(host, model, api, saved) {
   frame.append(create("p","muted",
     "لو الكود فاضي هيتعمل منتج Draft جديد؛ لازم سعر وصور وشحن ومخزون قبل النشر. مفيش أي أوردر أو إعلان بيتعمل من هنا."));
   frame.append(status);host.append(frame);
+  mountModelColorBatch(host, model, api, saved);
 }
