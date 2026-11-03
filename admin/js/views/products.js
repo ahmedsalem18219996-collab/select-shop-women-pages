@@ -6,6 +6,7 @@ import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
 import { saveFamilyCategory } from '../model-category.js';
 import { mountQuickProductEditor } from '../quick-product.js';
+import { countStatuses, STATUS_LABELS, statusAction, prepublishHints } from '../product-lifecycle.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
 let categories = [];
@@ -24,6 +25,16 @@ async function renderList(ctx) {
       <b>التوريد حسب الطلب</b>
       <p class="muted" style="margin-top:6px">كميات المخزون هنا افتراضية لتنظيم قبول الأوردرات، ومش معناها إن القطع موجودة عندك. اتأكدي من التوافر والسعر عند المورد قبل تأكيد كل طلب، واخفِي المنتج لو مش هتقدري توفريه.</p>
     </section>
+    <section class="card" aria-label="التحكم في نشر المنتجات" style="margin-bottom:14px">
+      <div class="card-head"><h3>المنتجات المعروضة واللي لسه هتتنشر</h3><span class="muted">إدارة آمنة بدون حذف</span></div>
+      <div class="catalog-state-grid">
+        <a class="catalog-state" href="#/products?status=public"><strong data-product-count="public">—</strong><span>منشور للعميلات</span></a>
+        <a class="catalog-state" href="#/products?status=draft"><strong data-product-count="draft">—</strong><span>مسودات للتجهيز</span></a>
+        <a class="catalog-state" href="#/products?status=hidden"><strong data-product-count="hidden">—</strong><span>مخفي مؤقتًا</span></a>
+        <a class="catalog-state" href="#/products?status=archived"><strong data-product-count="archived">—</strong><span>مؤرشف</span></a>
+      </div>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">«إخفاء» يوقف عرض المنتج من غير حذف الصور أو بيانات الطلبات القديمة. «نشر» بيخضع لفحص جاهزية المنتج.</p>
+    </section>
     <div class="toolbar">
       <label class="searchbox"><span class="sr">${t('app.search')}</span>${icon('search')}<input class="input" id="q" type="search" value="${state.q}" placeholder="${t('products.searchPh')}" autocomplete="off"></label>
       <div class="row" style="justify-content:flex-end">
@@ -34,6 +45,18 @@ async function renderList(ctx) {
       </div>
     </div>
     <div id="results">${skRows(6)}</div></div>`);
+  const refreshCounts = async () => {
+    try {
+      const r = await call('products.list', { limit: 100 });
+      if (r?.outcome !== 'ok' || !Array.isArray(r.data)) return;
+      const sums = countStatuses(r.data);
+      for (const [status, count] of Object.entries(sums)) {
+        const target = $('[data-product-count="' + status + '"]', el);
+        if (target) target.textContent = fmtNum(count);
+      }
+    } catch { /* Safe: never invent counts when the Admin API is unavailable. */ }
+  };
+  void refreshCounts();
   // The list may arrive after the user has moved to another screen: only fill the select if it is still on the page.
   loadCategories().then((cs) => { const s = $('#cat', el); if (!s) return; cs.forEach((c) => { const o = new Option(c.name, c.name); o.selected = c.name === state.category; s.add(o); }); });
   const results = $('#results', el);
@@ -56,12 +79,19 @@ async function renderList(ctx) {
         const minModelPrice = pricesOnModel.length ? Math.min(...pricesOnModel) : null;
         return g.family ? html`<div class="row-card model-summary" style="--k:${k}">
           <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-          <span class="row-main"><button class="model-open" type="button" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختاري اللون والمقاس وعدّلي بسهولة</span>${minModelPrice !== null ? html`<span class="model-price">السعر من ${money(minModelPrice)}</span>` : ''} </button></span>
-        </div>` : html`<a class="row-card" style="--k:${k}" href="#/products/${p.public_code}">
-          <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-          <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
-          ${p.stock_low ? html`<span class="badge warn">${t('products.lowStock')}</span>` : ''}</span></span>
-          <span class="row-end"><b class="num">${priceText(p)}</b>${statusBadge(p.status)}</span></a>`;
+          <span class="row-main"><button class="model-open" type="button" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختاري اللون والمقاس وعدّلي بسهولة</span><span class="model-state-summary">${g.members.filter(m => m.product.status === 'public').length} من ${g.members.length} ألوان منشورة</span>${minModelPrice !== null ? html`<span class="model-price">السعر من ${money(minModelPrice)}</span>` : ''} </button></span>
+        </div>` : html`<div class="row-card catalog-mobile-product" style="--k:${k}" data-mobile-product="${p.public_code}">
+          <a class="catalog-mobile-open" href="#/products/${p.public_code}" aria-label="افتحي تفاصيل ${p.title}">
+            <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
+            <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
+            ${p.stock_low ? html`<span class="badge warn">${t('products.lowStock')}</span>` : ''}</span></span>
+            <span class="row-end"><b class="num">${priceText(p)}</b>${statusBadge(p.status)}</span>
+          </a>
+          <div class="catalog-mobile-actions">
+            <button type="button" class="btn btn-primary btn-sm" data-quick-mobile="${p.public_code}">تعديل سريع</button>
+            ${can('products.publish') && statusAction(p.status) ? html`<button type="button" class="btn btn-soft btn-sm" data-status-action="${p.public_code}">${statusAction(p.status).label}</button>` : ''}
+          </div>
+        </div>`;
       })}</div>
       <div class="table-wrap desk-only"><table class="t">
         <thead><tr><th>${t('products.title')}</th><th>${t('products.category')}</th><th>${t('products.price')}</th><th title="حد تنظيمي افتراضي وليس قطع مخزنة">كمية افتراضية</th><th>${t('products.views')}</th><th>${t('products.status')}</th><th></th></tr></thead>
@@ -83,7 +113,7 @@ async function renderList(ctx) {
               <td class="num">${stock === null ? '—' : fmtNum(stock)}</td>
               <td class="num muted">${fmtNum(views)}</td>
               <td><span class="muted">حسب كل لون</span></td>
-              <td><button type="button" class="btn btn-primary btn-sm" data-manage-model="${g.key}">تعديل الموديل</button></td>
+              <td><button type="button" class="btn btn-primary btn-sm" data-manage-model="${g.key}">تعديل الموديل والنشر</button></td>
             </tr>`;
           }
           return html`<tr data-code="${p.public_code}">
@@ -95,7 +125,7 @@ async function renderList(ctx) {
           <td class="num muted">${fmtNum(p.views_30d)}</td>
           <td>${statusBadge(p.status)}</td>
           <td><div class="row">
-            ${can('products.publish') && p.status !== 'archived' ? html`<button class="btn btn-soft btn-sm" data-toggle>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button>` : ''}
+            ${can('products.publish') && statusAction(p.status) ? html`<button class="btn btn-soft btn-sm" data-status-action="${p.public_code}">${statusAction(p.status).label}</button>` : ''}
             ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<button type="button" class="btn btn-danger btn-sm" data-archive>حذف المنتج</button>` : ''}
           </div></td></tr>`;
         })}</tbody></table></div>`);
