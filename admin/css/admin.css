@@ -485,3 +485,8 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .quick-section { padding:12px; }
   .quick-header .code { font-size:11px; }
 }
+
+
+.model-summary .model-edit-hint { margin-top:3px; display:inline-flex; align-self:flex-start; background:var(--surface-2);
+  border:1px solid var(--line-2); border-radius:9px; padding:5px 9px; font-weight:700; line-height:1.5; }
+.model-summary .model-price { font-size:13px; font-weight:700; color:var(--ink); }
