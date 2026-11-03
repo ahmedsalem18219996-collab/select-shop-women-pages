@@ -74,10 +74,10 @@ async function signInAsTestOwner(page, ops) {
     return route.continue();
   });
   await page.goto(target, { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('a[href="#/products"]').first()).toBeVisible({ timeout: 15000 });
-  await page.locator('a[href="#/products"]').first().click();
-  await expect(page.locator('button[data-new]').first()).toBeVisible();
-  await page.locator('button[data-new]').first().click();
+  await expect(page.locator('a[href="#/products"]:visible').first()).toBeVisible({ timeout: 15000 });
+  await page.locator('a[href="#/products"]:visible').first().click();
+  await expect(page.locator('button[data-new]:visible').first()).toBeVisible();
+  await page.locator('button[data-new]:visible').first().click();
   await expect(page.locator('#c-title')).toBeVisible();
 }
 
