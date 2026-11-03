@@ -566,7 +566,7 @@ const TABS = {
     const options = d.product?.options || [];
     const variantName = (v) => (v.selections || []).map(s => options.find(o=>o.option_id===s.option_id)?.values.find(x=>x.value_id===s.value_id)?.value || '?').join(' / ') || 'مقاس واحد';
     render(body, html`<section class="card stack"><div class="card-head"><h3>${t('editor.media')}</h3><span class="muted">${fmtNum(media.length)}</span></div>
-      <p class="muted" style="margin:0;font-size:12.5px">${t('editor.uploadHint')}</p>
+      <p class="muted" style="margin:0;font-size:12.5px">${t('editor.uploadHint')} ممكن تختاري أكتر من صورة مرة واحدة؛ النظام بيضغط الصور قبل الرفع. أول صورة ظاهرة بتكون الغلاف. <strong>لو المنتج ليه ألوان مختلفة، اختاري اللون والمقاس المناسب من القائمة قبل الرفع.</strong></p>
       ${canEdit && variants.length ? html`<label class="field"><span>الصور تخص أنهي لون ومقاس؟</span><select class="select" id="m-variant"><option value="">صور عامة للمنتج</option>${variants.map(v=>html`<option value="${v.position}">${variantName(v)}</option>`)}</select><small>اختاري اللون/المقاس قبل رفع الصور. الصور العامة لكل الاختيارات.</small></label>` : ""}
       <div class="media-grid">
         ${media.map((m, i) => html`<figure class="media ${m.hidden ? 'hidden' : ''}" data-id="${m.media_id}" style="margin:0">
@@ -583,10 +583,20 @@ const TABS = {
         ${canEdit ? html`<label class="drop" id="drop">${icon('upload')}<span>${t('editor.upload')}</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" id="file"></label>` : ''}
       </div>${!media.length && !canEdit ? html`<p class="muted">${t('editor.noMedia')}</p>` : ''}</section>`);
     if (!canEdit) return;
+    let uploading = false;
     const upload = async (files) => {
+      if (uploading) { island('busy', 'فيه صور بتترفع بالفعل؛ متضغطيش رفع تاني قبل ما تخلص.'); return; }
       const list = [...files].filter((f) => checkSourceImage(f) === null);
-      if (list.length !== files.length) island('error', t('err.image'));
-      let version = d.media?.structure_version ?? d.product.structure_version, ok = 0;
+      if (!list.length) { island('error', 'اختاري صور JPG أو PNG أو WebP وحجمها مناسب. جرّبي صورة أصغر من 5MB.'); return; }
+      uploading = true;
+      const uploadField = $('#file', body);
+      if (uploadField) uploadField.disabled = true;
+      // Keep the chosen option stable for every photo in the same batch.
+      const variantPos = $('#m-variant', body)?.value;
+      try {
+      if (list.length !== files.length) island('error', 'فيه صور اتشالت من الدفعة لأنها مش JPG/PNG/WebP أو حجمها كبير. هنرفع الصور السليمة بس.');
+      const version = d.media?.structure_version ?? d.product.structure_version;
+      let ok = 0;
       for (const [i, f] of list.entries()) {
         island('busy', `${t('editor.upload')} ${i + 1}/${list.length}`);
         let prepared;
@@ -594,12 +604,17 @@ const TABS = {
         catch (err) { island('error', err?.message || t('err.image')); break; }
         if (prepared.optimized) island('busy', optimizationSummary(prepared));
         const fd = new FormData(); fd.append('code', code); fd.append('image', prepared.file); fd.append('version', String(version)); fd.append('alt', d.product.title);
-        const variantPos = $('#m-variant', body)?.value;
         if (variantPos !== undefined && variantPos !== '') fd.append('variant_position', variantPos);
         const res = await uploadProductImage(fd);
         if (res.outcome === 'saved') ok++; else { fail(res); break; }
       }
-      if (ok) { done(); reload(); }
+      if (ok === list.length) done('تم رفع ' + ok + ' صورة. راجعي الغلاف وربط الصور بالألوان قبل النشر.');
+      else island('error', 'اترفع ' + ok + ' من ' + list.length + ' صورة. راجعي الصور المحفوظة وأعيدي رفع الناقص فقط.');
+      if (ok) reload();
+      } finally {
+        uploading = false;
+        if (uploadField && document.contains(uploadField)) { uploadField.disabled = false; uploadField.value = ''; }
+      }
     };
     $('#file', body).addEventListener('change', (e) => upload(e.target.files));
     const drop = $('#drop', body);
