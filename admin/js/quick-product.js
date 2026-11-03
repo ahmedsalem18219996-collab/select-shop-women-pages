@@ -132,7 +132,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       }
       const tasks = [];
       if (canPrice && price !== chosen.amount_minor) {
-        const single = rows.length === 1 && !rows[0].hasExplicitSize;
+        const single = rows.length === 1 && !rows[0].hasExplicitSize && !chosen.override;
         tasks.push(['سعر البيع', 'products.' + (single ? 'set_price' : 'set_variant_price'),
           single ? { code, amount_minor: price } :
             { code, version: product.structure_version, position, amount_minor: price }]);
