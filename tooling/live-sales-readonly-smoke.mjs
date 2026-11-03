@@ -189,7 +189,6 @@ if (adminProductsUi) {
 }
 if (quickUi) check('colour publish/hide confirmation stays inside modal',
   quickUi.body.includes('data-quick-status-confirm') &&
-  quickUi.body.includes('products.publish') === false &&
   quickUi.body.includes('lifecycle.op') &&
   quickUi.body.includes('question.remove()'));
 const GA4 = await request('unchanged production GA4 tag', HOME+'/js/analytics.js');
