@@ -147,17 +147,18 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       const photos = list.filter(f => checkSourceImage(f) === null);
       if (!photos.length) { island('error', 'اختاري صورة JPG أو PNG أو WebP مناسبة، أقل من 5MB.'); input.value = ''; return; }
       uploading = true; input.disabled = true;
-      const selectedCode = code, baseVersion = detail.media?.structure_version ?? product.structure_version;
+      const selectedCode = code;
+      let mediaVersion = detail.media?.structure_version ?? product.structure_version;
       let uploaded = 0;
       try {
-        for (const file of photos) {
+        for (const [index, file] of photos.entries()) {
           let prepared;
           try { prepared = await optimizeUploadImage(file, 'product'); }
           catch(e) { island('error', e?.message || 'تعذّر تجهيز صورة'); break; }
           const form = new FormData();
           form.append('code', selectedCode);
           form.append('image', prepared.file);
-          form.append('version', String(baseVersion));
+          form.append('version', String(mediaVersion));
           form.append('alt', product.title);
           // Product-scope within the legacy one-SKU-per-colour family:
           // the photo applies to every size of THIS colour, not all sibling colours.
@@ -165,6 +166,15 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
           try { result = await uploadProductImage(form); } catch { result = { outcome: 'network' }; }
           if (result?.outcome !== 'saved') { fail(result); break; }
           uploaded++;
+          // A media attachment may advance the server version. Refresh it before
+          // the next image, rather than retrying with a stale version and
+          // mistakenly reporting the entire colour batch as complete.
+          if (index + 1 < photos.length) {
+            let fresh;
+            try { fresh = await call('products.get', { code: selectedCode }); } catch { fresh = { outcome: 'network' }; }
+            if (fresh?.outcome !== 'ok') { island('error', 'اترفعت صور، لكن تعذّر التأكد من آخر نسخة قبل استكمال الباقي.'); break; }
+            mediaVersion = fresh.data?.media?.structure_version ?? fresh.data?.product?.structure_version ?? mediaVersion;
+          }
         }
         if (uploaded === photos.length && !invalid.length) done('تم رفع صور اللون المحدد بنجاح');
         else island('error', 'اترفع ' + uploaded + ' من ' + list.length + ' صورة. راجعي الناقص قبل إعادة المحاولة.');
