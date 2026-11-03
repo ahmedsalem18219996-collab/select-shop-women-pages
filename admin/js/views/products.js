@@ -456,6 +456,9 @@ async function renderEditor(ctx, code) {
   const d = r.data, p = d.product;
   ctx.setTitle(p.title);
   const reload = () => renderEditor(ctx, code);
+  const visiblePhotos = (d.media?.media || []).filter(m => !m.hidden && !m.delete_pending);
+  const hasVirtualAvailability = (p.variants || []).some(v => v.active && v.availability === 'available'
+    && Number(d.stock?.[String(v.position)]?.quantity || 0) > 0);
   let tab = sessionStorage.getItem('wa.ptab') || 'details';
   const tabs = ['details', 'media', 'variants', 'publish', ...(d.activity ? ['activity'] : [])];
   if (!tabs.includes(tab)) tab = 'details';
@@ -463,6 +466,16 @@ async function renderEditor(ctx, code) {
     <div class="page-head"><div><a class="btn btn-ghost btn-sm" href="#/products">${icon(document.dir === 'rtl' ? 'chev' : 'chevBack')}${t('nav.products')}</a>
       <h2 style="margin-top:8px">${p.title}</h2><p class="row"><span class="code">${p.public_code}</span>${statusBadge(p.status)}<span class="muted">${ago(p.updated_at)}</span></p></div>
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}</div>
+    ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
+      <div class="card-head"><h3>كمّلي الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعميلات لحد النشر</span></div>
+      <p class="muted" style="margin:0">ابدئي بالصور، بعدين السعر والإتاحة الافتراضية لكل لون ومقاس، وأخيرًا راجعي الشحن وانشري. الصور العامة بتظهر لكل الاختيارات؛ لو الصور مختلفة اختاري اللون والمقاس وقت الرفع.</p>
+      <div class="row" style="flex-wrap:wrap">
+        <button type="button" class="btn btn-soft btn-sm" data-setup-tab="media">١. الصور (${visiblePhotos.length ? visiblePhotos.length + ' صورة' : 'لسه ناقصة'})</button>
+        <button type="button" class="btn btn-soft btn-sm" data-setup-tab="variants">٢. السعر والإتاحة الافتراضية (${hasVirtualAvailability ? 'متظبطة' : 'تحتاج مراجعة'})</button>
+        <button type="button" class="btn btn-soft btn-sm" data-setup-tab="details">٣. البيانات وطريقة الشحن (${p.shipping_profile ? 'محددة' : 'الشحن ناقص'})</button>
+        <button type="button" class="btn btn-primary btn-sm" data-setup-tab="publish">راجعي جاهزية النشر</button>
+      </div>
+    </section>` : ''}
     <div class="seg" role="tablist">${tabs.map((x) => html`<button role="tab" data-v="${x}" aria-selected="${x === tab}">${t('editor.tabs.' + x)}</button>`)}</div>
     <div class="editor"><div id="tabbody"></div>
       <aside>
@@ -473,6 +486,16 @@ async function renderEditor(ctx, code) {
       </aside></div></div>`);
   $('[data-pub]', el)?.addEventListener('click', async (e) => {
     const publish = p.status !== 'public';
+    if (publish && !visiblePhotos.length) {
+      island('error', 'المنتج لسه مالوش صور ظاهرة. ارفعي صورة واحدة على الأقل قبل النشر.');
+      $('[data-v="media"]', el)?.click();
+      return;
+    }
+    if (publish && !p.shipping_profile) {
+      island('error', 'طريقة الشحن مش محددة. اختاري طريقة الشحن من تبويب البيانات قبل النشر.');
+      $('[data-v="details"]', el)?.click();
+      return;
+    }
     const res = await withBusy(e.currentTarget, () => call(publish ? 'products.publish' : 'products.hide', { code }));
     if (['published', 'hidden', 'already_public', 'already_hidden'].includes(res.outcome)) { done(); reload(); }
     else if (res.outcome === 'rejected' && res.blockers) island('error', t('editor.blockers'), res.blockers.map((b) => t('blocker.' + b, b)).join('، '));
@@ -481,14 +504,20 @@ async function renderEditor(ctx, code) {
   const body = $('#tabbody', el);
   const show = (name) => { tab = name; sessionStorage.setItem('wa.ptab', name); TABS[name](body, { ctx, d, p, code, reload }); };
   segmented($('.seg', el), show);
+  $('[data-setup-tab]', el).forEach(button => button.addEventListener('click', () => {
+    const target = button.dataset.setupTab;
+    $('[data-v="' + target + '"]', el)?.click();
+  }));
   show(tab);
 }
 
 function publishCard(p, d) {
   const blockers = p.publish_blockers || [];
-  const soft = [!p.shipping_profile && 'noShipping', !(d.media?.media || []).length && 'noMedia'].filter(Boolean);
+  const photosReady = (d.media?.media || []).some(m => !m.hidden && !m.delete_pending);
+  const soft = [!p.shipping_profile && 'noShipping', !photosReady && 'noMedia'].filter(Boolean);
   return html`<section class="card"><div class="card-head"><h3>${t('editor.publishTitle')}</h3>${statusBadge(p.status)}</div>
     ${blockers.length ? html`<p class="muted" style="margin:0 0 8px">${t('editor.blockers')}</p><ul class="blockers">${blockers.map((b) => html`<li>${icon('alert')}${t('blocker.' + b, b)}</li>`)}</ul>`
+      : soft.length ? html`<p class="muted" style="margin:0">المنتج ناقصه حاجات قبل النشر:</p>`
       : html`<div class="ready">${t('editor.ready')}</div>`}
     ${soft.length ? html`<ul class="blockers" style="margin-top:8px">${soft.map((b) => html`<li>${icon('alert')}${t('blocker.' + b)}</li>`)}</ul>` : ''}</section>`;
 }
@@ -605,7 +634,8 @@ const TABS = {
     const valueOf = (v) => v.selections?.length ? v.selections.map((s) => p.options.find((o) => o.option_id === s.option_id)?.values.find((x) => x.value_id === s.value_id)?.value).join(' / ') : '—';
     render(body, html`<div class="stack">
       <section class="card stack variants"><div class="card-head"><h3>${t('editor.variants')}</h3><span class="muted">${fmtNum(p.variants.length)}</span></div>
-      ${p.variants.length ? html`<div class="table-wrap"><table class="t"><thead><tr><th>${t('editor.variant')}</th><th>${t('editor.vPrice')}</th><th>${t('editor.qty')}</th><th>${t('editor.available')}</th><th></th></tr></thead>
+      <p class="muted" style="margin:0">المخزون هنا افتراضي: اكتبي عددًا تنظيميًا موجبًا للون والمقاس اللي تقدري توفريه من المورد، وفعّلي «متاح». راجعي المورد قبل تأكيد أي أوردر. كل خانة بتتحفظ تلقائيًا لما تخرجي منها.</p>
+      ${p.variants.length ? html`<div class="table-wrap"><table class="t"><thead><tr><th>${t('editor.variant')}</th><th>${t('editor.vPrice')}</th><th title="عدد تنظيمي افتراضي، مش قطع مخزنة">كمية افتراضية</th><th>${t('editor.available')}</th><th></th></tr></thead>
         <tbody>${p.variants.map((v) => { const st = d.stock[String(v.position)]; return html`<tr data-pos="${v.position}" ${v.active ? '' : 'style="opacity:.55"'}>
           <td><b>${valueOf(v)}</b>${v.blockers?.length && v.active ? html`<div class="row-meta">${v.blockers.filter((b) => b !== 'product_not_public').map((b) => html`<span>${t('blocker.' + b, b)}</span>`)}</div>` : ''}</td>
           <td><div class="input-money"><input data-vprice inputmode="decimal" value="${v.price_source === 'variant_override' ? v.amount_minor / 100 : ''}" placeholder="${p.base_price ? p.base_price.amount_minor / 100 : ''}" ${can('products.price') ? '' : 'disabled'} aria-label="${t('editor.vPrice')}"><span>EGP</span></div></td>
@@ -633,8 +663,16 @@ const TABS = {
     body.addEventListener('change', async (e) => {
       const tr = row(e.target); if (!tr) return; const pos = +tr.dataset.pos;
       let res;
-      if (e.target.matches('[data-vprice]')) { const raw = e.target.value.trim(); const v = raw ? toMinor(raw) : null; if (raw && (v === null || v < 100)) { e.target.setAttribute('aria-invalid', 'true'); return; } res = await call('products.set_variant_price', { code, version: ver(), position: pos, amount_minor: v }); }
-      if (e.target.matches('[data-qty]')) { const q = e.target.value.trim(); if (!/^\d{1,6}$/.test(q)) { e.target.setAttribute('aria-invalid', 'true'); return; } res = await call('products.set_stock', { code, version: ver(), position: pos, quantity: Number(q) }); if (res.outcome === 'saved') $('[data-avail]', tr).checked = res.available; }
+      if (e.target.matches('[data-vprice]')) { const raw = e.target.value.trim(); const v = raw ? toMinor(raw) : null; if (raw && (v === null || v < 100)) {
+        e.target.setAttribute('aria-invalid', 'true');
+        island('error', 'السعر الخاص لازم يكون رقم صحيح بالجنيه، زي 650. أو سيبي الخانة فاضية لاستخدام السعر الأساسي.');
+        return;
+      } res = await call('products.set_variant_price', { code, version: ver(), position: pos, amount_minor: v }); }
+      if (e.target.matches('[data-qty]')) { const q = e.target.value.trim(); if (!/^\d{1,6}$/.test(q)) {
+        e.target.setAttribute('aria-invalid', 'true');
+        island('error', 'اكتبي كمية افتراضية رقم صحيح من 0 لحد 999999، من غير حروف أو كسور.');
+        return;
+      } res = await call('products.set_stock', { code, version: ver(), position: pos, quantity: Number(q) }); if (res.outcome === 'saved') $('[data-avail]', tr).checked = res.available; }
       if (e.target.matches('[data-avail]')) res = await call('products.set_availability', { code, version: ver(), position: pos, available: e.target.checked });
       if (res?.outcome === 'saved') { e.target.removeAttribute('aria-invalid'); done(); refreshAside(); } else if (res) { fail(res); if (res.code === 'PS002') reload(); }
     });
