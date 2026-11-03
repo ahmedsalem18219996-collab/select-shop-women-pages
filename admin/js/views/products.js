@@ -19,6 +19,10 @@ async function renderList(ctx) {
   render(el, html`<div class="page">
     <div class="page-head"><div><h2>${t('products.title')}</h2><p>${t('products.subtitle')}</p></div>
       ${can('products.edit') ? html`<div class="actions"><button class="btn btn-primary" data-new>${icon('plus')}${t('products.new')}</button></div>` : ''}</div>
+    <section class="card" aria-label="المخزون الافتراضي" style="margin-bottom:14px">
+      <b>التوريد حسب الطلب</b>
+      <p class="muted" style="margin-top:6px">كميات المخزون هنا افتراضية لتنظيم قبول الأوردرات، ومش معناها إن القطع موجودة عندك. اتأكدي من التوافر والسعر عند المورد قبل تأكيد كل طلب، واخفِي المنتج لو مش هتقدري توفريه.</p>
+    </section>
     <div class="toolbar">
       <label class="searchbox"><span class="sr">${t('app.search')}</span>${icon('search')}<input class="input" id="q" type="search" value="${state.q}" placeholder="${t('products.searchPh')}" autocomplete="off"></label>
       <div class="row" style="justify-content:flex-end">
@@ -57,7 +61,7 @@ async function renderList(ctx) {
           <span class="row-end"><b class="num">${priceText(p)}</b>${statusBadge(p.status)}</span></a>`;
       })}</div>
       <div class="table-wrap desk-only"><table class="t">
-        <thead><tr><th>${t('products.title')}</th><th>${t('products.category')}</th><th>${t('products.price')}</th><th>${t('products.stock')}</th><th>${t('products.views')}</th><th>${t('products.status')}</th><th></th></tr></thead>
+        <thead><tr><th>${t('products.title')}</th><th>${t('products.category')}</th><th>${t('products.price')}</th><th title="حد تنظيمي افتراضي وليس قطع مخزنة">كمية افتراضية</th><th>${t('products.views')}</th><th>${t('products.status')}</th><th></th></tr></thead>
         <tbody>${listedGroups.map(g => {
           const p = g.members[0].product;
           if (g.family) {
