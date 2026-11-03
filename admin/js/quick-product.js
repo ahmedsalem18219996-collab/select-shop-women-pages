@@ -1,10 +1,11 @@
 // Simple mobile-first editor for legacy colour families AND standalone WOMEN SKUs.
 // Each colour in legacy families is a separate real SKU. Never synthesize sizes,
 // merge SKUs, or claim that an unavailable variant is purchasable.
-import { $, $$, esc, money, toMinor, withBusy, island, done, fail, closeLayer } from './ui.js';
+import { $, $$, esc, money, toMinor, withBusy, island, done, fail, closeLayer, confirmDialog } from './ui.js';
 import { call, uploadProductImage, mediaUrl } from './api.js';
 import { checkSourceImage, optimizeUploadImage } from './image-optimize.js';
 import { variantChoices } from './quick-variants.js';
+import { statusAction, prepublishHints, STATUS_LABELS } from './product-lifecycle.js';
 
 const safeHex = (x) => /^#[\da-fA-F]{6}$/.test(x || '') ? x : '#777777';
 const safeImage = (x) => {
@@ -55,6 +56,8 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     const canPrice = ctx.can('products.price');
     const canQty = ctx.can('inventory.manage');
     const canImages = ctx.can('media.manage');
+    const canPublish = ctx.can('products.publish');
+    const lifecycle = canPublish ? statusAction(product.status) : null;
     const colourOptions = [...new Set(rows.map(r => r.colour).filter(Boolean))];
     const hasColourOption = colourOptions.length > 0;
     const selectedColour = chosen.colour || colourOptions[0] || null;
@@ -84,7 +87,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       hasUnspecifiedSize ? '<p class="muted quick-help">المنتج ده مش متسجل له مقاسات مختلفة. المعروض حاليًا اختيار واحد فقط؛ مش هنخترع مقاسات ممكن توصل غلط للعميلة.</p>' : '',
       '</div>',
       '<div class="quick-section">',
-      '<div class="quick-header"><b>٣. السعر والإتاحة</b><span class="muted">' + esc(product.status === 'public' ? 'منشور' : 'غير منشور') + '</span></div>',
+      '<div class="quick-header"><b>٣. السعر والإتاحة</b><span class="muted">' + esc(STATUS_LABELS[product.status] || 'غير منشور') + '</span></div>',
       '<div class="quick-fields">',
       '<label class="field"><span>سعر البيع (جنيه)</span><input class="input" inputmode="decimal" data-quick-price value="' + esc(priceValue) + '" placeholder="مثال: 650"' + (canPrice ? '' : ' disabled') + '></label>',
       '<label class="field"><span>كمية افتراضية</span><input class="input" inputmode="numeric" data-quick-qty value="' + esc(chosen.quantity ?? '') + '" placeholder="مثال: 20"' + (canQty ? '' : ' disabled') + '></label>',
@@ -103,6 +106,13 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
         : '<p class="muted quick-help">الصور المرفوعة هنا تخص كود اللون المحدد، وبتظهر مع كل مقاساته. مش بتتغير صور بقية الألوان.</p>',
       '<div class="row" style="flex-wrap:wrap"><a class="btn btn-ghost btn-sm" data-quick-link data-quick-tab="details" href="#/products/' + esc(code) + '">الاسم والوصف والشحن</a>',
       '<a class="btn btn-ghost btn-sm" data-quick-link data-quick-tab="media" href="#/products/' + esc(code) + '">إدارة الصور القديمة</a></div>',
+      '</div>',
+      '<div class="quick-section">',
+      '<div class="quick-header"><b>٥. حالة نشر اللون</b><span class="badge">' + esc(STATUS_LABELS[product.status] || 'غير معروف') + '</span></div>',
+      lifecycle ? '<button type="button" class="btn ' + (product.status === 'public' ? 'btn-soft' : 'btn-primary') +
+        '" data-quick-status>' + esc(lifecycle.label) + '</button>' :
+        '<p class="muted">صلاحيات هذا الحساب لا تسمح بتغيير حالة النشر، أو المنتج مؤرشف.</p>',
+      '<p class="muted quick-help">الإخفاء مؤقت ومش بيحذف المنتج أو أوردراته. النشر بيخلي المنتج متاح للعميلات بعد مراجعة جاهزيته.</p>',
       '</div>'
     ].join('');
 
@@ -113,6 +123,33 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       const target = rows.find(r => r.colour === button.dataset.quickInternalColour);
       if (target) { position = target.position; show(detail); }
     }));
+    $('[data-quick-status]', panel)?.addEventListener('click', async (event) => {
+      if (saving || uploading || !lifecycle) return;
+      const btn = event.currentTarget;
+      if (lifecycle.op === 'products.publish') {
+        const hints = prepublishHints(detail);
+        if (hints.length) { island('error', 'قبل النشر: ' + hints.join('، ')); return; }
+      }
+      const yes = await confirmDialog({
+        title: lifecycle.label + ' — ' + product.title,
+        text: lifecycle.op === 'products.publish'
+          ? 'اللون ده هيظهر للعملاء. راجعتي الصور والسعر والمقاس والتوافر من المورد؟'
+          : 'اللون ده هيختفي مؤقتًا من المتجر، من غير حذف الأوردرات أو الصور. موافقة؟',
+        okText: lifecycle.label
+      });
+      if (!yes) return;
+      saving = true;
+      try {
+        const result = await withBusy(btn, () => call(lifecycle.op, { code }));
+        if (['published', 'hidden', 'already_public', 'already_hidden'].includes(result?.outcome)) {
+          done(lifecycle.op === 'products.publish' ? 'اتنشر اللون في المتجر' : 'اتخفى اللون مؤقتًا');
+          onChanged();
+          await load(code, position);
+        } else if (result?.outcome === 'rejected' && result.blockers) {
+          island('error', 'مش جاهز للنشر: ' + result.blockers.join('، '));
+        } else fail(result);
+      } finally { saving = false; }
+    });
     $('[data-quick-save]', panel)?.addEventListener('click', async (event) => {
       if (saving || uploading) return;
       const btn = event.currentTarget;
