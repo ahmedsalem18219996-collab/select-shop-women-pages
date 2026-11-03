@@ -7,8 +7,9 @@ const makeRow=(code,title,price=65000)=>({
   image:null,price_min_minor:price,price_max_minor:price,stock_total:20,
   stock_low:false,views_30d:0,updated_at:'2026-11-01T00:00:00Z'
 });
-async function harness(page) {
+async function harness(page, role = 'owner') {
   const calls=[];
+  const permissions = role === 'owner' ? [] : ['products.view', 'media.manage'];
   const catalog=[
     makeRow('SS-1042','بلوفر مقلم أحمر'),
     makeRow('SS-1043','بلوفر مقلم بينك'),
@@ -28,7 +29,7 @@ async function harness(page) {
       const b=JSON.parse(req.postData()||'{}'),op=b.op,args=b.args||{};
       calls.push({op,args});
       let payload={outcome:'forbidden'};
-      if(op==='session.get')payload={outcome:'ok',data:{email:'qa-owner@example.test',role:'owner',permissions:[]}};
+      if(op==='session.get')payload={outcome:'ok',data:{email:'qa-owner@example.test',role,permissions}};
       else if(op==='categories.list')payload={outcome:'ok',data:[{name:'بلوفرات',visible:true}]};
       else if(op==='products.list')payload={outcome:'ok',data:catalog};
       else if(op==='products.get'){
@@ -66,6 +67,7 @@ test('owner edits EXISTING grouped colour and virtual quantity from one sheet, n
   await page.locator('[data-manage-model]:visible').first().click();
   await expect(page.locator('[data-quick-colors] [data-quick-code]')).toHaveCount(3);
   await expect(page.locator('[data-quick-panel]')).toContainText('مش متسجل له مقاسات مختلفة');
+  await test.info().attach('legacy-model-editor', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
   await expect(page.locator('[data-quick-price]')).toHaveValue('650');
   await page.locator('[data-quick-price]').fill('690');
   await page.locator('[data-quick-save]').click();
@@ -96,4 +98,16 @@ test('old standalone SKU has an accessible quick edit screen without recreating 
   await expect(page.locator('[data-quick-panel]')).toContainText('صور اللون ده');
   await expect(page.locator('[data-quick-panel]')).toContainText('مش متسجل له مقاسات مختلفة');
   expect(calls.filter(x=>x.op==='products.create')).toHaveLength(0);
+});
+
+test('catalogue-only staff can see colour and photos but cannot change price or virtual stock',async ({page})=>{
+  const {calls}=await harness(page,'staff');
+  await page.locator('[data-manage-model]:visible').first().click();
+  await expect(page.locator('[data-quick-colors] [data-quick-code]')).toHaveCount(3);
+  await expect(page.locator('[data-quick-price]')).toBeDisabled();
+  await expect(page.locator('[data-quick-qty]')).toBeDisabled();
+  await expect(page.locator('[data-quick-available]')).toBeDisabled();
+  await expect(page.locator('[data-quick-save]')).toHaveCount(0);
+  await expect(page.locator('[data-quick-files]')).toHaveCount(1);
+  expect(calls.filter(x=>x.op==='products.set_price'||x.op==='products.set_stock')).toHaveLength(0);
 });
