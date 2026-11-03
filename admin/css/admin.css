@@ -522,3 +522,10 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .catalog-mobile-open { grid-template-columns:70px minmax(0,1fr) auto; gap:9px; }
   .catalog-mobile-open .row-end { max-width:100px; }
 }
+
+
+.quick-status-confirm { display:grid; gap:10px; border:1px solid var(--primary);
+  background:var(--surface-2); border-radius:var(--r-m); padding:12px; }
+.quick-status-confirm p { margin:0; font-size:13px; line-height:1.7; }
+.quick-status-confirm .row { gap:8px; flex-wrap:wrap; }
+.quick-status-confirm .btn { flex:1; min-height:44px; }
