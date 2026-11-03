@@ -442,3 +442,46 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+
+/* WOMEN Admin — touch-friendly colour/size editor for existing SKUs. */
+.quick-colors { display:grid; grid-template-columns:repeat(auto-fill,minmax(102px,1fr)); gap:10px; }
+.quick-color { min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:6px;
+  padding:9px 6px; background:var(--surface); border:2px solid var(--line-2); border-radius:var(--r-m);
+  min-height:107px; text-align:center; font-weight:600; }
+.quick-color img { width:100%; height:77px; object-fit:cover; object-position:top; border-radius:var(--r-s); }
+.quick-color b { font-size:13px; line-height:1.5; }
+.quick-dot { width:15px; height:15px; border:1px solid var(--line-2); border-radius:50%; flex:none; }
+.quick-color[aria-pressed="true"] { border-color:var(--primary); background:var(--surface-2); box-shadow:0 0 0 2px var(--spot); }
+.quick-color:focus-visible, .quick-size:focus-visible { outline:3px solid var(--tape); outline-offset:2px; }
+[data-quick-panel] { display:grid; gap:12px; min-width:0; }
+.quick-section { min-width:0; display:grid; gap:12px; border:1px solid var(--line-2);
+  border-radius:var(--r-l); background:var(--surface); padding:15px; }
+.quick-header { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+.quick-header b { font-size:15px; }
+.quick-sizes { display:flex; flex-wrap:wrap; gap:8px; }
+.quick-size { border:1px solid var(--line-2); border-radius:var(--r-m); background:var(--surface-2);
+  min-height:44px; padding:9px 13px; font-weight:600; text-align:center; }
+.quick-size[aria-pressed="true"] { background:var(--primary); border-color:var(--primary); color:var(--on-primary); }
+.quick-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+.quick-fields .field { min-width:0; }
+.quick-fields .input { min-width:0; }
+.quick-check { display:flex; align-items:center; gap:10px; font-weight:600; min-height:44px; }
+.quick-check input { width:21px; height:21px; accent-color:var(--primary); }
+.quick-save { min-height:48px; width:100%; }
+.quick-help { margin:0; font-size:12.5px; line-height:1.75; }
+.quick-pictures { display:flex; gap:9px; overflow-x:auto; scroll-snap-type:x proximity; }
+.quick-pictures img { width:88px; height:108px; object-fit:cover; border-radius:var(--r-s); flex:none; scroll-snap-align:start; }
+.quick-upload { display:flex; gap:8px; align-items:center; justify-content:center; min-height:48px; position:relative; }
+.quick-advanced { border:1px solid var(--line-2); background:var(--surface); border-radius:var(--r-m); padding:14px; }
+.quick-advanced > summary { cursor:pointer; font-weight:600; min-height:30px; }
+.quick-advanced[open] > summary { margin-bottom:14px; }
+.quick-advanced .model-color-line + .model-color-line { margin-top:10px; }
+@media (max-width:460px) {
+  .quick-colors { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .quick-color { min-height:92px; padding:7px 4px; }
+  .quick-color img { height:68px; }
+  .quick-fields { grid-template-columns:1fr 1fr; gap:8px; }
+  .quick-section { padding:12px; }
+  .quick-header .code { font-size:11px; }
+}
