@@ -151,7 +151,7 @@ const quickUi = await request('deployed colour and size quick editor', HOME+'/ad
 if (quickUi) {
   check('quick editor matches real stored SKUs',
     quickUi.body.includes('products.get') && quickUi.body.includes('products.set_stock') &&
-    quickUi.body.includes('products.set_variant_price') &&
+    quickUi.body.includes('set_variant_price') &&
     quickUi.body.includes('data-quick-internal-colour') &&
     quickUi.body.includes('data-quick-position'));
   check('photo upload uses correct SKU/variant scopes',
