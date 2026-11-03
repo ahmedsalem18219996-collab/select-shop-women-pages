@@ -490,3 +490,42 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .model-summary .model-edit-hint { margin-top:3px; display:inline-flex; align-self:flex-start; background:var(--surface-2);
   border:1px solid var(--line-2); border-radius:9px; padding:5px 9px; font-weight:700; line-height:1.5; }
 .model-summary .model-price { font-size:13px; font-weight:700; color:var(--ink); }
+
+
+/* WOMEN — owner-controlled lifecycle and truthful GA4 Region reporting. */
+.catalog-state-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
+.catalog-state { display:flex; flex-direction:column; justify-content:center; align-items:center;
+  min-height:79px; text-align:center; gap:4px; padding:12px 6px; border:1px solid var(--line-2);
+  border-radius:var(--r-m); background:var(--surface-2); text-decoration:none; color:inherit; }
+.catalog-state strong { font-size:23px; line-height:1.15; font-variant-numeric:tabular-nums; }
+.catalog-state span { font-size:12px; line-height:1.5; }
+.catalog-state:hover,.catalog-state:focus-visible { border-color:var(--primary); }
+.catalog-mobile-product { display:flex!important; flex-direction:column; gap:10px; align-items:stretch; }
+.catalog-mobile-open { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px;
+  align-items:center; color:inherit; text-decoration:none; width:100%; }
+.catalog-mobile-open .thumb { margin:0; }
+.catalog-mobile-open .row-main { min-width:0; }
+.catalog-mobile-open .row-end { display:flex; flex-direction:column; align-items:flex-start; gap:7px; }
+.catalog-mobile-actions { display:flex; flex-wrap:wrap; gap:9px; padding-top:9px; border-top:1px solid var(--line-2); }
+.catalog-mobile-actions .btn { min-height:43px; flex:1; }
+.model-state-summary { display:inline-flex; padding:3px 7px; border-radius:9px;
+  background:var(--surface-2); color:var(--ink); font-size:12px; }
+.traffic-bars { display:grid; gap:15px; max-height:760px; overflow-y:auto; padding:6px 0; }
+.traffic-place { display:grid; gap:5px; }
+.traffic-place .row { font-size:13px; }
+.traffic-track { background:var(--surface-2); height:9px; overflow:hidden; border-radius:99px; }
+.traffic-track span { display:block; height:100%; border-radius:99px; background:var(--primary); min-width:2px; }
+.traffic-note { font-size:12px; margin:10px 0 0; line-height:1.6; }
+@media(max-width:620px){
+  .catalog-state-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .catalog-state { min-height:72px; }
+  .catalog-mobile-open { grid-template-columns:70px minmax(0,1fr) auto; gap:9px; }
+  .catalog-mobile-open .row-end { max-width:100px; }
+}
+
+
+.quick-status-confirm { display:grid; gap:10px; border:1px solid var(--primary);
+  background:var(--surface-2); border-radius:var(--r-m); padding:12px; }
+.quick-status-confirm p { margin:0; font-size:13px; line-height:1.7; }
+.quick-status-confirm .row { gap:8px; flex-wrap:wrap; }
+.quick-status-confirm .btn { flex:1; min-height:44px; }
