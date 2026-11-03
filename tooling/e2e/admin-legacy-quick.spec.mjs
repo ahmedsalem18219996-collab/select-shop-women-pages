@@ -210,3 +210,22 @@ test('visitor region and source analytics only use locally imported GA4 CSV, no 
   await expect(page.locator('#traffic-source-results')).toContainText('facebook / paid');
   expect(calls.filter(x=>x.op.includes('geo')||x.op.includes('traffic')||x.op==='products.publish')).toHaveLength(0);
 });
+
+
+test('owner hides one model colour with inline confirmation and keeps editor open',async ({page})=>{
+  const {calls}=await harness(page);
+  await page.locator('[data-manage-model]:visible').first().click();
+  await expect(page.locator('[data-quick-colors] [data-quick-code]')).toHaveCount(3);
+  await page.locator('[data-quick-status]').click();
+  await expect(page.locator('[data-quick-status-confirm]')).toBeVisible();
+  await page.locator('[data-quick-status-confirm] button').first().click();
+  await expect(page.locator('[data-quick-status-confirm]')).toHaveCount(0);
+  expect(calls.filter(c=>c.op==='products.hide')).toHaveLength(0);
+  await page.locator('[data-quick-status]').click();
+  await page.locator('[data-quick-status-yes]').click();
+  await expect.poll(()=>calls.filter(c=>c.op==='products.hide').length).toBe(1);
+  expect(calls.find(c=>c.op==='products.hide').args.code).toBe('SS-1042');
+  await expect(page.locator('[data-quick-colors] [data-quick-code]')).toHaveCount(3);
+  await expect(page.locator('[data-quick-status]')).toContainText('نشر');
+  await expect(page.locator('#layer .sheet')).toBeVisible();
+});
