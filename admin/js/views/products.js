@@ -479,6 +479,7 @@ async function renderEditor(ctx, code) {
   render(el, html`<div class="page">
     <div class="page-head"><div><a class="btn btn-ghost btn-sm" href="#/products">${icon(document.dir === 'rtl' ? 'chev' : 'chevBack')}${t('nav.products')}</a>
       <h2 style="margin-top:8px">${p.title}</h2><p class="row"><span class="code">${p.public_code}</span>${statusBadge(p.status)}<span class="muted">${ago(p.updated_at)}</span></p></div>
+      <div class="actions"><button type="button" class="btn btn-soft" data-quick-single>تعديل سريع للمقاس والسعر والصور</button></div>
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
       <div class="card-head"><h3>كمّلي الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعميلات لحد النشر</span></div>
@@ -498,6 +499,23 @@ async function renderEditor(ctx, code) {
           <dt>${t('editor.d30')}</dt><dd class="num">${fmtNum(d.views?.last_30_days)}</dd><dt>${t('editor.total')}</dt><dd class="num">${fmtNum(d.views?.total)}</dd></dl></section>
         ${publishCard(p, d)}
       </aside></div></div>`);
+  $('[data-quick-single]', el)?.addEventListener('click', () => {
+    const box = sheet({
+      title: p.title + ' · تعديل سريع',
+      wide: true,
+      body: html`<div class="stack">
+        <p class="muted">اختاري المقاس وعدّلي السعر والإتاحة والصور من نفس الشاشة. المقاسات غير المسجلة هتظهر بوضوح.</p>
+        <div class="quick-colors" data-quick-colors role="group" aria-label="المنتج"></div>
+        <div data-quick-panel aria-live="polite"></div>
+      </div>`,
+      foot: html`<button class="btn btn-ghost" type="button" data-close>إغلاق</button>`
+    });
+    mountQuickProductEditor({
+      box, ctx,
+      members: [{ product: { ...p, image: d.card?.image || null }, color: { name: 'المنتج', hex: '#66768B' } }],
+      onChanged: reload
+    });
+  });
   $('[data-pub]', el)?.addEventListener('click', async (e) => {
     const publish = p.status !== 'public';
     if (publish && !visiblePhotos.length) {
