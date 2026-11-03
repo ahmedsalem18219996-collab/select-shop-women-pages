@@ -131,6 +131,19 @@ if (adminOrdersUi) {
 }
 const adminProductsUi = await request('deployed virtual-stock Admin products UI', HOME+'/admin/js/views/products.js');
 if (adminProductsUi) check('admin virtual-stock label deployed', adminProductsUi.body.includes('كمية افتراضية') && adminProductsUi.body.includes('كميات المخزون هنا افتراضية'));
+if (adminProductsUi) {
+  check('guided staff product uploader deployed',
+    adminProductsUi.body.includes('احفظي المسودة وكمّلي الصور') &&
+    adminProductsUi.body.includes('كمّلي الموديل في ٣ خطوات') &&
+    adminProductsUi.body.includes('المنتج لسه مالوش صور ظاهرة'));
+  check('correct multiple-step DOM helper deployed',
+    adminProductsUi.body.includes("$$('[data-setup-tab]', el).forEach("));
+  check('photo batch upload de-duplicated and failures reported',
+    adminProductsUi.body.includes('let uploading = false') &&
+    adminProductsUi.body.includes('اترفع '));
+}
+const deployedAdmin = await request('deployed Admin HTML cache-version', HOME+'/admin/');
+if (deployedAdmin) check('Admin JS v15 deployed', deployedAdmin.body.includes('js/app.js?v=15'));
 const adminHealth = await request('admin Edge health', BACKEND+'/women-admin/health');
 if (adminHealth) check('admin Edge healthy', adminHealth.data?.status === 'ok');
 console.log('\nTOTAL FAILURES:', failures.length);
