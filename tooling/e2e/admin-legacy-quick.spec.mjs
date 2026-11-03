@@ -9,6 +9,7 @@ const makeRow=(code,title,price=65000)=>({
 });
 async function harness(page, role = 'owner') {
   const calls=[];
+  const uploads=[];
   const permissions = role === 'owner' ? [] : ['products.view', 'media.manage'];
   const catalog=[
     makeRow('SS-1042','بلوفر مقلم أحمر'),
@@ -25,6 +26,13 @@ async function harness(page, role = 'owner') {
   });
   await page.route('**/*',async route=>{
     const req=route.request(),url=new URL(req.url());
+    if(url.pathname.endsWith('/women-admin/media/upload')){
+      const raw=req.postData()||'';
+      const match=raw.match(/name="code"\r?\n\r?\n(SS-\d+)/);
+      uploads.push({code:match?.[1]||null,raw});
+      return route.fulfill({status:200,headers:{'access-control-allow-origin':'*','content-type':'application/json'},
+        body:JSON.stringify({outcome:'saved'})});
+    }
     if(url.pathname.endsWith('/women-admin/call')){
       const b=JSON.parse(req.postData()||'{}'),op=b.op,args=b.args||{};
       calls.push({op,args});
@@ -60,7 +68,7 @@ async function harness(page, role = 'owner') {
   await expect(page.locator('a[href="#/products"]:visible').first()).toBeVisible();
   await page.locator('a[href="#/products"]:visible').first().click();
   await expect(page.locator('[data-manage-model]:visible').first()).toBeVisible();
-  return {calls,state};
+  return {calls,state,uploads};
 }
 test('owner edits EXISTING grouped colour and virtual quantity from one sheet, no mixed SKUs',async ({page})=>{
   const {calls,state}=await harness(page);
@@ -110,4 +118,23 @@ test('catalogue-only staff can see colour and photos but cannot change price or 
   await expect(page.locator('[data-quick-save]')).toHaveCount(0);
   await expect(page.locator('[data-quick-files]')).toHaveCount(1);
   expect(calls.filter(x=>x.op==='products.set_price'||x.op==='products.set_stock')).toHaveLength(0);
+});
+
+test('uploading a photo to one legacy colour never attaches it to sibling colour SKU',async ({page})=>{
+  const {uploads,calls}=await harness(page);
+  await page.locator('[data-manage-model]:visible').first().click();
+  await expect(page.locator('[data-quick-panel]')).toContainText('صور اللون ده');
+  const image=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9bR4sAAAAASUVORK5CYII=','base64');
+  await page.locator('[data-quick-files]').setInputFiles({name:'red.png',mimeType:'image/png',buffer:image});
+  await expect.poll(()=>uploads.length).toBe(1);
+  expect(uploads[0].code).toBe('SS-1042');
+  expect(uploads[0].raw).not.toContain('variant_position');
+
+  await page.locator('[data-quick-code="SS-1043"]').click();
+  await expect(page.locator('[data-quick-panel]')).toContainText('صور اللون ده');
+  await page.locator('[data-quick-files]').setInputFiles({name:'pink.png',mimeType:'image/png',buffer:image});
+  await expect.poll(()=>uploads.length).toBe(2);
+  expect(uploads[1].code).toBe('SS-1043');
+  expect(uploads[1].raw).not.toContain('variant_position');
+  expect(calls.filter(x=>x.op==='products.create'||x.op==='products.structure')).toHaveLength(0);
 });
