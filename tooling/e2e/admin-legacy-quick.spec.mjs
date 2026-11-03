@@ -199,7 +199,7 @@ test('owner can hide a published standalone product safely, but incomplete produ
 test('visitor region and source analytics only use locally imported GA4 CSV, no saved location',async ({page})=>{
   const {calls}=await harness(page);
   await page.goto(HOME+'#/traffic');
-  await expect(page.getByRole('heading',{name:'المحافظات ومصادر الزيارات'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'المحافظات ومصادر الزيارات',level:2})).toBeVisible();
   const csv='Country,Region,Sessions\nEgypt,Cairo,100\nEgypt,Giza,30\nFrance,Paris,99\n';
   await page.locator('#traffic-region-file').setInputFiles({name:'region.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});
   await expect(page.locator('#traffic-region-results')).toContainText('Cairo');
