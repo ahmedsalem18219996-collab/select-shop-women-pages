@@ -259,10 +259,9 @@ function quickPrice(code, after) {
 function createSheet(ctx) {
   const sizes = [];
   const colors = [];
-  const box = sheet({ title: t('create.title'), body: html`
-    <p class="muted" style="margin:0 0 8px">١. اكتبي بيانات الموديل واختياراته، وبعد الحفظ هتفتحي شاشة رفع الصور ثم تظبيط الإتاحة والنشر. <strong>المنتج بيتحفظ مسودة ومش بيظهر للعميلات تلقائيًا.</strong></p>
+  const box = sheet({ title: t('create.title'), wide: true, body: html`
+    <p class="muted" style="margin:0 0 8px">ابدئي بالاسم والسعر والقسم، وبعدها الألوان والمقاسات. بعد الحفظ هترفعي الصور. <strong>المنتج بيتحفظ مسودة ومش بيظهر للعميلات تلقائيًا.</strong></p>
     <label class="field"><span>${t('create.name')}</span><input class="input" id="c-title" maxlength="200" required autocomplete="off" placeholder="${t('create.namePh')}"></label>
-    <label class="field"><span>${t('create.description')}</span><textarea class="textarea" id="c-desc" maxlength="10000"></textarea></label>
     <div class="grid2">
       <label class="field"><span>${t('create.category')}</span><select class="select" id="c-cat" required></select></label>
       ${ctx.can('products.price') ? html`<label class="field"><span>${t('create.price')}</span><div class="input-money"><input id="c-price" inputmode="decimal" autocomplete="off" placeholder="مثال: 650"><span class="sr">سعر بيع المنتج بالجنيه المصري</span><span>EGP</span></div></label>` : ''}
@@ -273,6 +272,10 @@ function createSheet(ctx) {
       <div class="chips" id="c-sizes" style="flex-wrap:wrap"></div>
       <input class="input" id="c-size" placeholder="${t('create.sizesPh')}" maxlength="18"><small>لو مقاس واحد سيبي الحقل فاضي أو اضغطي «مقاس واحد». للمقاسات المختلفة اكتبي S، M، L أو أي مقاسات مناسبة.</small></div>
     <div class="field"><span>ألوان الموديل (اختياري)</span><div class="chips" id="c-colors" style="flex-wrap:wrap"></div><input class="input" id="c-color" placeholder="مثال: بني، بيبي بلو، أسود" maxlength="40"><small>كل لون هيظهر اختيار للعميلة تحت نفس الموديل. اكتبي الألوان وافصلي بينها بفاصلة (،). لو لون واحد بس، اكتبيه برضه علشان العميلة تعرف اختياره.</small></div>
+    <details class="card" style="padding:12px 14px">
+      <summary style="cursor:pointer">وصف المنتج (اختياري) — ممكن تكمّليه بعد رفع الصور</summary>
+      <label class="field" style="margin-top:10px"><span>${t('create.description')}</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
+    </details>
     <label class="switch"><input type="checkbox" id="c-new" checked><i></i>${t('create.isNew')}</label>
     <p class="err" id="c-error" role="alert" aria-live="polite" hidden></p>
     <ol class="blockers" id="c-steps" hidden></ol>`,
