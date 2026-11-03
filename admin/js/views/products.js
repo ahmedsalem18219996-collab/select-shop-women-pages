@@ -260,30 +260,47 @@ function createSheet(ctx) {
   const sizes = [];
   const colors = [];
   const box = sheet({ title: t('create.title'), body: html`
-    <label class="field"><span>${t('create.name')}</span><input class="input" id="c-title" maxlength="200" placeholder="${t('create.namePh')}"></label>
+    <p class="muted" style="margin:0 0 8px">١. اكتبي بيانات الموديل واختياراته، وبعد الحفظ هتفتحي شاشة رفع الصور ثم تظبيط الإتاحة والنشر. <strong>المنتج بيتحفظ مسودة ومش بيظهر للعميلات تلقائيًا.</strong></p>
+    <label class="field"><span>${t('create.name')}</span><input class="input" id="c-title" maxlength="200" required autocomplete="off" placeholder="${t('create.namePh')}"></label>
     <label class="field"><span>${t('create.description')}</span><textarea class="textarea" id="c-desc" maxlength="10000"></textarea></label>
     <div class="grid2">
-      <label class="field"><span>${t('create.category')}</span><select class="select" id="c-cat"></select></label>
-      ${ctx.can('products.price') ? html`<label class="field"><span>${t('create.price')}</span><div class="input-money"><input id="c-price" inputmode="decimal" placeholder="0"><span>EGP</span></div></label>` : ''}
+      <label class="field"><span>${t('create.category')}</span><select class="select" id="c-cat" required></select></label>
+      ${ctx.can('products.price') ? html`<label class="field"><span>${t('create.price')}</span><div class="input-money"><input id="c-price" inputmode="decimal" autocomplete="off" placeholder="مثال: 650"><span class="sr">سعر بيع المنتج بالجنيه المصري</span><span>EGP</span></div></label>` : ''}
     </div>
     <div class="field"><span>${t('create.sizes')}</span>
       <button class="chip" type="button" id="c-one-size" aria-pressed="false">${t('create.oneSize')}</button>
       <div class="chips" id="c-sizes" style="flex-wrap:wrap"></div>
-      <input class="input" id="c-size" placeholder="${t('create.sizesPh')}" maxlength="18"><small>${t('create.sizesHint')}</small></div>
-    <div class="field"><span>ألوان الموديل (اختياري)</span><div class="chips" id="c-colors" style="flex-wrap:wrap"></div><input class="input" id="c-color" placeholder="مثال: بني، بيبي بلو، أسود" maxlength="40"><small>اكتبي اللون واضغطي Enter أو فاصلة. كل الألوان تحت نفس المنتج وكوده.</small></div>
+      <input class="input" id="c-size" placeholder="${t('create.sizesPh')}" maxlength="18"><small>لو مقاس واحد سيبي الحقل فاضي أو اضغطي «مقاس واحد». للمقاسات المختلفة اكتبي S، M، L أو أي مقاسات مناسبة.</small></div>
+    <div class="field"><span>ألوان الموديل (اختياري)</span><div class="chips" id="c-colors" style="flex-wrap:wrap"></div><input class="input" id="c-color" placeholder="مثال: بني، بيبي بلو، أسود" maxlength="40"><small>كل لون هيظهر اختيار للعميلة تحت نفس الموديل. اكتبي الألوان وافصلي بينها بفاصلة (،). لو لون واحد بس، اكتبيه برضه علشان العميلة تعرف اختياره.</small></div>
     <label class="switch"><input type="checkbox" id="c-new" checked><i></i>${t('create.isNew')}</label>
+    <p class="err" id="c-error" role="alert" aria-live="polite" hidden></p>
     <ol class="blockers" id="c-steps" hidden></ol>`,
-    foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>${t('create.submit')}</button>` });
+    foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>احفظي المسودة وكمّلي الصور</button>` });
   $$('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
   const catSel = $('#c-cat', box);
   const createButton = $('[data-create]', box);
   createButton.disabled = true;
+  const error = $('#c-error', box);
+  const message = (text, target) => {
+    error.textContent = text;
+    error.hidden = !text;
+    if (target) {
+      target.setAttribute('aria-invalid', 'true');
+      target.focus();
+    }
+  };
   (categories.length ? Promise.resolve(categories) : loadCategories()).then((cs) => {
+    if (!cs.some(c => c.visible !== false)) {
+      message('مفيش قسم ظاهر متاح. خلي المسؤولة عن الأقسام تفعّل قسم الأول، أو راجعي الاتصال بالسيرفر.');
+      return;
+    }
     const ordered = [...cs].sort((a, b) => Number(b.visible !== false) - Number(a.visible !== false));
     ordered.forEach((c) => catSel.add(new Option(c.visible === false ? `${c.name} (${t('status.hidden')})` : c.name, c.name)));
     const firstVisible = ordered.find((c) => c.visible !== false);
     if (firstVisible) catSel.value = firstVisible.name;
-  }).finally(() => { createButton.disabled = false; });
+  }).catch(() => message('تعذّر تحميل الأقسام. اقفلي النافذة وجربي تاني.')).finally(() => {
+    if (document.contains(createButton)) createButton.disabled = !catSel.value || !categories.some(c => c.name === catSel.value && c.visible !== false);
+  });
   const oneSize = 'One Size';
   const oneSizeButton = $('#c-one-size', box);
   const sizeInput = $('#c-size', box);
@@ -326,14 +343,25 @@ function createSheet(ctx) {
   $('#c-colors', box).addEventListener('click', (e) => { const b=e.target.closest('[data-rm-color]'); if (b) { colors.splice(+b.dataset.rmColor, 1); paintColors(); } });
   const key = idempotencyKey();
   $('[data-create]', box).onclick = async (e) => {
+    message('');
     addSize(); addColor();
-    if (colors.length * Math.max(1, sizes.length) > 200) { island('error', 'الحد الأقصى ٢٠٠ تركيبة ألوان ومقاسات. قلّلي عدد الاختيارات قبل إنشاء المنتج.'); return; }
+    if (colors.length * Math.max(1, sizes.length) > 200) {
+      message('فيه ألوان ومقاسات أكتر من الحد المسموح (٢٠٠ تركيبة). قلّلي عدد الاختيارات.'); return;
+    }
     const title = $('#c-title', box).value.trim();
-    if (!title) { $('#c-title', box).setAttribute('aria-invalid', 'true'); $('#c-title', box).focus(); return; }
+    if (title.length < 2) { message('اكتبي اسم موديل واضح من حرفين على الأقل.', $('#c-title', box)); return; }
+    if (!catSel.value || !categories.some(c => c.name === catSel.value && c.visible !== false)) {
+      message('اختاري قسم ظاهر صحيح قبل حفظ المنتج.', catSel); return;
+    }
     const priceIn = $('#c-price', box)?.value.trim();
     const price = priceIn ? toMinor(priceIn) : null;
-    if (priceIn && (price === null || price < 100)) { $('#c-price', box).parentElement.style.borderColor = 'var(--danger)'; return; }
-    const steps = $('#c-steps', box); steps.hidden = false;
+    if ($('#c-price', box) && (price === null || price < 100)) {
+      message('اكتبي سعر البيع بالجنيه، زي 650. السعر مطلوب علشان فريقك يقدر يجهز المنتج للنشر.', $('#c-price', box)); return;
+    }
+    // Staff without price permission may still draft the catalogue; a price manager finishes it.
+    $('#c-title', box).removeAttribute('aria-invalid');
+    $('#c-price', box)?.removeAttribute('aria-invalid');
+    const steps = $('#c-steps', box); steps.replaceChildren(); steps.hidden = false;
     const step = (label, state) => { const li = document.createElement('li'); li.textContent = `${state === 'ok' ? '✓' : '…'} ${label}`; steps.append(li); return li; };
     await withBusy(e.currentTarget, async () => {
       let li = step(t('create.steps.create'));
@@ -341,6 +369,18 @@ function createSheet(ctx) {
       if (!['created', 'existing'].includes(r.outcome)) { fail(r); li.remove(); return; }
       li.textContent = '✓ ' + t('create.steps.create');
       const code = r.code; let version = r.structure_version;
+      const goToDraft = (tab, info) => {
+        closeLayer();
+        sessionStorage.setItem('wa.ptab', tab);
+        island('error', info);
+        ctx.go('products/' + code);
+      };
+      if (r.outcome === 'existing') {
+        // A timed-out first attempt may have created only part of the draft.
+        // Do NOT overwrite prices, duplicate options or claim that setup succeeded.
+        goToDraft('details', 'المسودة كانت اتحفظت بالفعل. راجعي السعر والألوان والمقاسات والصور قبل النشر؛ مش هنكرر الإنشاء.');
+        return;
+      }
       if (price) {
         li = step(t('create.steps.price'));
         const pr = await call('products.set_price', { code, amount_minor: price });
@@ -348,8 +388,7 @@ function createSheet(ctx) {
           li.textContent = '✗ ' + t('create.steps.price');
           fail(pr);
           // A created product remains a draft: do not claim successful setup if its price failed.
-          closeLayer();
-          ctx.go('products/' + code);
+          goToDraft('details', 'الموديل اتحفظ مسودة، لكن السعر محتاج مراجعة. كمّلي السعر من تبويب البيانات، ومتنشريهوش قبل التحقق.');
           return;
         }
         li.textContent = '✓ ' + t('create.steps.price');
@@ -363,20 +402,29 @@ function createSheet(ctx) {
         for (const dim of dimensions) {
           li = step('اختيارات ' + dim.name);
           const result = await call('products.structure', { code, version, change: { op: 'add_option', name: dim.name, values: dim.values } });
-          if (result.outcome !== 'applied') { li.textContent = '✗ اختيارات ' + dim.name; fail(result); ctx.go('products/' + code); return; }
+          if (result.outcome !== 'applied') {
+            li.textContent = '✗ اختيارات ' + dim.name;
+            fail(result);
+            goToDraft('variants', 'المنتج اتعمل مسودة، لكن إعداد ' + dim.name + ' ماكملش. راجعي الاختيارات من تبويب المقاسات والإتاحة.');
+            return;
+          }
           version = result.structure_version; li.textContent = '✓ اختيارات ' + dim.name;
         }
         const selections = dimensions.reduce((acc, dim) => acc.flatMap(combo => dim.values.map((_, i) => [...combo, i])), [[]]);
         li = step('تجهيز الألوان والمقاسات');
         const result = await call('products.structure', { code, version, change: { op: 'create_variants', selections } });
         if (result.outcome !== 'applied') {
-          li.textContent = '✗ تجهيز الألوان والمقاسات'; fail(result); ctx.go('products/' + code); return;
+          li.textContent = '✗ تجهيز الألوان والمقاسات';
+          fail(result);
+          goToDraft('variants', 'المنتج محفوظ مسودة، لكن التوليفات ماكملتش. راجعيها في تبويب المقاسات والإتاحة.');
+          return;
         }
         version = result.structure_version; li.textContent = '✓ تجهيز الألوان والمقاسات';
       }
       // Shipping is a separate explicit product assignment. Without it, an Owner-created
       // product may be visible but cannot be quoted correctly at checkout.
       // Pick the WOMEN default when available, else the first active shipping profile.
+      let shippingReady = !ctx.can('shipping.manage');
       if (ctx.can('shipping.manage') && r.outcome === 'created') {
         const available = await call('shipping.get');
         if (available.outcome === 'ok') {
@@ -385,10 +433,15 @@ function createSheet(ctx) {
           if (standard) {
             const assigned = await call('products.set_shipping_profile', { code, profile_key: standard.key });
             if (assigned.outcome !== 'saved') fail(assigned);
+            else shippingReady = true;
           }
         } else fail(available);
       }
-      closeLayer(); done(t('create.done')); ctx.go('products/' + code);
+      closeLayer();
+      sessionStorage.setItem('wa.ptab', ctx.can('media.manage') ? 'media' : 'details');
+      done(shippingReady ? 'المسودة محفوظة. ارفعي صور الألوان، وحددي الكمية الافتراضية والإتاحة، وبعدها انشري المنتج.' :
+        'المنتج اتحفظ مسودة، لكن تعيين الشحن ماكملش. حددي طريقة الشحن من البيانات قبل النشر.');
+      ctx.go('products/' + code);
     });
   };
 }
