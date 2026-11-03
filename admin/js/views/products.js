@@ -508,7 +508,7 @@ async function renderEditor(ctx, code) {
   const body = $('#tabbody', el);
   const show = (name) => { tab = name; sessionStorage.setItem('wa.ptab', name); TABS[name](body, { ctx, d, p, code, reload }); };
   segmented($('.seg', el), show);
-  $('[data-setup-tab]', el).forEach(button => button.addEventListener('click', () => {
+  $$('[data-setup-tab]', el).forEach(button => button.addEventListener('click', () => {
     const target = button.dataset.setupTab;
     $('[data-v="' + target + '"]', el)?.click();
   }));
