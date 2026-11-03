@@ -78,6 +78,10 @@ async function renderList({ el, query, session }) {
     <div class="page-head"><div><h2>${t('orders.title')}</h2><p>${t('orders.subtitle')}</p></div>
       ${session?.role === 'owner' ? html`<button type="button" class="btn btn-primary" data-export-shipping>تنزيل شيت الشحن (Excel)</button>` : ''}</div>
     ${session?.role === 'owner' ? html`<p class="muted" style="font-size:12px">ينزّل الأوردرات المؤكدة حسب الفلتر الحالي (حتى 99 أوردر في كل ملف). الملف فيه بيانات العملاء؛ شاركه مع شركة الشحن فقط.</p>` : ''}
+    <section class="card" aria-label="خطوات البيع حسب الطلب" style="margin-bottom:14px">
+      <b>البيع حسب الطلب — بدون مخزون فعلي</b>
+      <p class="muted" style="margin-top:6px">الأوردر الجديد بيفضل «معلق» لحد ما تتأكدي من العميلة واللون والمقاس والعنوان، وتراجعي توافر البضاعة وسعرها عند المورد. بعد الاتفاق والتجهيز، أكدي الأوردر وابدئي الشحن. أرقام المخزون في النظام تنظيمية مش بضاعة عندك.</p>
+    </section>
     <div class="toolbar"><label class="searchbox"><span class="sr">${t('app.search')}</span>${icon('search')}<input class="input" id="q" type="search" value="${state.q}" placeholder="${t('orders.searchPh')}" autocomplete="off"></label>
       <div class="chips" role="group" aria-label="${t('products.status')}" style="justify-content:flex-end">
         ${['active', '', 'pending', 'confirmed', 'cancelled'].map((s) => html`<button class="chip" data-status="${s}" aria-pressed="${state.status === s}">${s === 'active' ? 'الجارية' : s ? t('status.' + s) : t('app.all')}</button>`)}</div></div>
@@ -140,6 +144,10 @@ async function renderDetail(ctx, code) {
         ${(o.allowed_transitions || []).includes('confirmed') ? html`<button class="btn btn-primary" data-to="confirmed">${icon('check')}${t('orders.confirm')}</button>` : ''}
         ${(o.allowed_transitions || []).includes('cancelled') && (!stage || stage === 'preparing') ? html`<button class="btn btn-danger" data-to="cancelled">${t('orders.cancel')}</button>` : ''}</div>` : ''}</div>
     <div class="editor"><div class="stack">
+      ${o.status === 'pending' ? html`<section class="card stack" aria-label="مراجعة طلب جديد حسب الطلب">
+        <h3>قبل تأكيد الأوردر</h3>
+        <p class="muted">١. أكدي بيانات العميلة واللون والمقاس. ٢. راجعي السعر والتوافر عند المورد. ٣. اتفقي على ميعاد الشحن ووفّري القطعة. ٤. بعد كده استخدمي «تأكيد الطلب»؛ لو القطعة غير متاحة، ألغيه بدل ما توعدي العميلة بالشحن.</p>
+      </section>` : ''}
       ${o.status === 'confirmed' ? html`<section class="card stack"><div class="card-head"><h3>${t('orders.fulfillment')}</h3>${f?.tracking_code ? html`<span class="code muted">${f.carrier || ''} ${f.tracking_code}</span>` : ''}</div>
         <div class="stepper">${STAGES.map((s) => { const idx = STAGES.indexOf(stage), i = STAGES.indexOf(s); return html`<div class="step ${i < idx || (stage === 'delivered' && s === 'delivered') ? 'done' : i === idx ? 'now' : ''}"><i></i>${t('stage.' + s)}</div>`; })}
           <div class="step ${['return_requested', 'returned'].includes(stage) ? 'now' : ''}"><i></i>${stage === 'returned' ? t('stage.returned') : t('stage.return_requested')}</div></div>
@@ -166,7 +174,7 @@ async function renderDetail(ctx, code) {
     </aside></div></div>`);
   $$('[data-to]', el).forEach((b) => b.addEventListener('click', async () => {
     const to = b.dataset.to;
-    if (!(await confirmDialog({ title: to === 'confirmed' ? t('orders.confirm') : t('orders.cancel'), text: to === 'confirmed' ? t('orders.confirmQ') : t('orders.cancelQ'), okText: to === 'confirmed' ? t('orders.confirm') : t('orders.cancel'), danger: to === 'cancelled' }))) return;
+    if (!(await confirmDialog({ title: to === 'confirmed' ? t('orders.confirm') : t('orders.cancel'), text: to === 'confirmed' ? 'اتأكدتي من بيانات العميلة، وتوافر اللون والمقاس والسعر عند المورد، واتفقتم على ميعاد الشحن؟ التأكيد معناه إن الأوردر جاهز للتجهيز والشحن.' : t('orders.cancelQ'), okText: to === 'confirmed' ? t('orders.confirm') : t('orders.cancel'), danger: to === 'cancelled' }))) return;
     const res = await withBusy(b, () => call('orders.transition', { code, version: o.status_version, target: to }));
     if (res.outcome === 'changed') { done(); reload(); } else { fail(res); if (res.outcome === 'conflict') reload(); }
   }));
