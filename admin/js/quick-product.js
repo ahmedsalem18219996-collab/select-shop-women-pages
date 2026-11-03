@@ -233,6 +233,13 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     show(details);
   }
 
+  const footerSave = $('[data-quick-save-footer]', box);
+  footerSave?.addEventListener('click', () => {
+    if (saving || uploading) return;
+    const inner = $('[data-quick-save]', panel);
+    if (inner && !inner.disabled) inner.click();
+  });
+
   colorRoot.addEventListener('click', e => {
     const button = e.target.closest('[data-quick-code]');
     if (button && !saving && !uploading) load(button.dataset.quickCode);
