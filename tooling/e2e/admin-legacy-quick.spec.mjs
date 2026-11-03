@@ -91,7 +91,7 @@ test('owner edits EXISTING grouped colour and virtual quantity from one sheet, n
   await test.info().attach('legacy-model-editor', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
   await expect(page.locator('[data-quick-price]')).toHaveValue('650');
   await page.locator('[data-quick-price]').fill('690');
-  await page.locator('[data-quick-save]').click();
+  await page.locator('[data-quick-save-footer]').click();
   await expect(page.locator('[data-quick-price]')).toHaveValue('690');
   expect(state['SS-1042'].price).toBe(69000);
   expect(state['SS-1043'].price).toBe(65000);
@@ -100,7 +100,7 @@ test('owner edits EXISTING grouped colour and virtual quantity from one sheet, n
   await expect(page.locator('[data-quick-price]')).toHaveValue('650');
   await page.locator('[data-quick-qty]').fill('12');
   await page.locator('[data-quick-available]').uncheck();
-  await page.locator('[data-quick-save]').click();
+  await page.locator('[data-quick-save-footer]').click();
   await expect(page.locator('[data-quick-qty]')).toHaveValue('12');
   await expect.poll(()=>state['SS-1043'].quantity,{timeout:5000}).toBe(12);
   await expect.poll(()=>state['SS-1043'].available,{timeout:5000}).toBe(false);
