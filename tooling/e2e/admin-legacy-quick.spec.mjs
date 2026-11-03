@@ -72,6 +72,8 @@ async function harness(page, role = 'owner') {
       } else if(op==='products.set_price'){state[args.code].price=args.amount_minor;payload={outcome:'saved'};}
       else if(op==='products.set_stock'){state[args.code].quantity=args.quantity;payload={outcome:'saved',available:state[args.code].available};}
       else if(op==='products.set_availability'){state[args.code].available=args.available;payload={outcome:'saved'};}
+      else if(op==='products.hide'){catalog.find(p=>p.public_code===args.code).status='hidden';payload={outcome:'hidden'};}
+      else if(op==='products.publish'){catalog.find(p=>p.public_code===args.code).status='public';payload={outcome:'published'};}
       return route.fulfill({status:200,headers:{'access-control-allow-origin':'*','content-type':'application/json'},body:JSON.stringify(payload)});
     }
     if(url.hostname.endsWith('.supabase.co'))return route.abort('blockedbyclient');
@@ -172,4 +174,39 @@ test('new unified SKU: select real colour then real size, and attach photo to EX
   await expect.poll(()=>uploads.length).toBe(1);
   expect(uploads[0].code).toBe('SS-1088');
   expect(uploads[0].raw).toMatch(/name="variant_position"\r?\n\r?\n3/);
+});
+
+test('owner can hide a published standalone product safely, but incomplete product cannot republish',async ({page},info)=>{
+  const {calls}=await harness(page);
+  await expect(page.locator('[data-product-count="public"]')).toContainText(/[٥5]/);
+  const button=info.project.name==='mobile'
+    ?page.locator('[data-mobile-product="SS-1011"] [data-status-action]')
+    :page.locator('tr[data-code="SS-1011"] [data-status-action]');
+  await expect(button).toBeVisible();
+  await button.click();
+  await expect(page.locator('#layer [data-yes]')).toBeVisible();
+  await page.locator('#layer [data-no]').click();
+  expect(calls.filter(x=>x.op==='products.hide')).toHaveLength(0);
+  await button.click();
+  await page.locator('#layer [data-yes]').click();
+  await expect.poll(()=>calls.filter(x=>x.op==='products.hide').length).toBe(1);
+  await expect(button).toContainText('نشر');
+  await button.click();
+  await expect(page.locator('#island')).toContainText('صورة');
+  expect(calls.filter(x=>x.op==='products.publish')).toHaveLength(0);
+});
+
+test('visitor region and source analytics only use locally imported GA4 CSV, no saved location',async ({page})=>{
+  const {calls}=await harness(page);
+  await page.goto(HOME+'#/traffic');
+  await expect(page.getByRole('heading',{name:'المحافظات ومصادر الزيارات'})).toBeVisible();
+  const csv='Country,Region,Sessions\nEgypt,Cairo,100\nEgypt,Giza,30\nFrance,Paris,99\n';
+  await page.locator('#traffic-region-file').setInputFiles({name:'region.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});
+  await expect(page.locator('#traffic-region-results')).toContainText('Cairo');
+  await expect(page.locator('#traffic-region-results')).toContainText('Giza');
+  await expect(page.locator('#traffic-region-results')).not.toContainText('Paris');
+  const sources='Session source / medium,Sessions\n"facebook / paid",80\n"instagram / social",20\n';
+  await page.locator('#traffic-source-file').setInputFiles({name:'source.csv',mimeType:'text/csv',buffer:Buffer.from(sources)});
+  await expect(page.locator('#traffic-source-results')).toContainText('facebook / paid');
+  expect(calls.filter(x=>x.op.includes('geo')||x.op.includes('traffic')||x.op==='products.publish')).toHaveLength(0);
 });
