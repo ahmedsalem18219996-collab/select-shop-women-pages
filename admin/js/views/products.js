@@ -155,7 +155,11 @@ async function renderList(ctx) {
         title: g.name + ' · تعديل سهل',
         wide: true,
         body: html`<div class="stack">
-          <p class="muted">كل موديل له قسم واحد. تغيير القسم هنا بيحدّث كل ألوانه الموجودة، مع الحفاظ على مخزون وأوردرات كل لون.</p>
+          <p class="muted">اختاري لون الموديل من الصور، وبعدها المقاس؛ عدّلي السعر والإتاحة والصور من نفس الشاشة. كل تغيير بيخص اللون اللي اخترتيه فقط.</p>
+          <div class="quick-colors" data-quick-colors role="group" aria-label="اختاري لون الموديل"></div>
+          <div data-quick-panel aria-live="polite"></div>
+          <details class="quick-advanced"><summary>تغيير القسم لكل الألوان (اختياري)</summary>
+          <p class="muted">القسم هنا بيتغير لكل الألوان الموجودة، من غير ما يلمس الأوردرات القديمة.</p>
           ${can('products.edit') ? html`<div class="model-category-editor">
             <label class="field"><span>القسم الخاص بالموديل (${allMembers.length} ألوان)</span>
               <select class="select" id="model-category" aria-label="اختاري قسم الموديل">
@@ -166,7 +170,9 @@ async function renderList(ctx) {
             <button class="btn btn-primary" type="button" data-save-model-category>حفظ القسم لكل الألوان</button>
             <p class="muted" id="model-category-feedback" role="status" aria-live="polite"></p>
           </div>` : html`<p class="muted">تعديل القسم يحتاج صلاحية تعديل المنتجات.</p>`}
-          <p class="muted">للصور والسعر والمخزون: افتحي اللون المطلوب. إضافة لون جديد للموديل وتغيير أسماء الألوان الظاهرة في المتجر تحتاج ربطًا ديناميكيًا بالخادم، ومش متاحة بأمان في النسخة الحالية.</p>
+          </details>
+          <details class="quick-advanced"><summary>روابط تعديل إضافية للمستخدم المتقدم</summary>
+          <p class="muted">لو عايزة تعديل بيانات المنتج القديمة بالتفصيل افتحي اللون. إضافة لون جديد للموديل أو مقاس جديد لمنتج منشور محتاجة ربط خادم آمن مش موجود حاليًا.</p>
           ${allMembers.map(m => html`<div class="model-color-line">
             <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="model-dot" style="background:${m.color.hex}"></span>
