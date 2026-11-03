@@ -126,6 +126,15 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     $('[data-quick-status]', panel)?.addEventListener('click', async (event) => {
       if (saving || uploading || !lifecycle) return;
       const btn = event.currentTarget;
+      const draftPrice = $('[data-quick-price]', panel)?.value?.trim();
+      const draftQty = $('[data-quick-qty]', panel)?.value?.trim();
+      const draftAvailable = $('[data-quick-available]', panel)?.checked;
+      if ((canPrice && toMinor(draftPrice) !== chosen.amount_minor) ||
+          (canQty && (String(chosen.quantity ?? '') !== String(draftQty ?? '') ||
+            draftAvailable !== chosen.availability))) {
+        island('error', 'احفظي تعديلات السعر والإتاحة الأول، وبعدها غيّري حالة النشر.');
+        return;
+      }
       if (lifecycle.op === 'products.publish') {
         const hints = prepublishHints(detail);
         if (hints.length) { island('error', 'قبل النشر: ' + hints.join('، ')); return; }
