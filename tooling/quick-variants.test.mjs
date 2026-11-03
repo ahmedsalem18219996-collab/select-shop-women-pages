@@ -25,6 +25,9 @@ test('real colour and size choices retain their exact server-defined variant pos
   assert.match(rows[0].label,/بينك/);
   assert.match(rows[0].label,/L/);
   assert.equal(rows[0].override,true);
+  assert.equal(rows[0].colour,'بينك');
+  assert.equal(rows[0].size,'L');
+  assert.equal(rows[0].hasExplicitSize,true);
   assert.equal(rows[0].quantity,3);
 });
 test('unknown options and unpriced old variants do not invent stock, sizes or prices', () => {
@@ -35,4 +38,12 @@ test('unknown options and unpriced old variants do not invent stock, sizes or pr
   assert.equal(rows[0].availability,false);
   assert.equal(rows[0].active,false);
   assert.deepEqual(variantChoices({variants:[]},{}),[]);
+});
+
+test('colour-only option is not mistaken for a size',()=>{
+ const p={options:[{option_id:'c',name:'اللون',values:[{value_id:'brown',value:'بني'}]}],
+  variants:[{position:2,active:true,availability:'available',selections:[{option_id:'c',value_id:'brown'}]}]};
+ const v=variantChoices(p,{})[0];
+ assert.equal(v.colour,'بني'); assert.equal(v.size,null);
+ assert.equal(v.hasExplicitSize,false);
 });
