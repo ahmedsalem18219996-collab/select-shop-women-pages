@@ -144,8 +144,8 @@ if (adminProductsUi) {
 }
 const deployedAdmin = await request('deployed Admin HTML cache-version', HOME+'/admin/');
 if (deployedAdmin) {
-  check('Admin JS v16 deployed', deployedAdmin.body.includes('js/app.js?v=16'));
-  check('Admin mobile CSS v10 deployed', deployedAdmin.body.includes('css/admin.css?v=10'));
+  check('Admin JS v17 deployed', deployedAdmin.body.includes('js/app.js?v=17'));
+  check('Admin mobile CSS v11 deployed', deployedAdmin.body.includes('css/admin.css?v=11'));
 }
 const quickUi = await request('deployed colour and size quick editor', HOME+'/admin/js/quick-product.js');
 if (quickUi) {
@@ -163,6 +163,37 @@ if (variantModule) check('size remains independent of colour', variantModule.bod
 const css = await request('deployed touch-friendly editor CSS', HOME+'/admin/css/admin.css');
 if (css) check('touch-friendly size buttons and colour cards', css.body.includes('.quick-size') && css.body.includes('.quick-color'));
 if (adminProductsUi) check('grouped old products use quick editor', adminProductsUi.body.includes('mountQuickProductEditor({ box, ctx, members: allMembers') && adminProductsUi.body.includes('data-quick-single'));
+const liveTraffic = await request('new governorate and source report view', HOME+'/admin/js/views/traffic.js');
+if (liveTraffic) {
+  check('GA4 report links and local-only CSV import deployed',
+    liveTraffic.body.includes('traffic-region-file') &&
+    liveTraffic.body.includes('traffic-source-file') &&
+    liveTraffic.body.includes('analytics.google.com') &&
+    liveTraffic.body.includes('file.text()'));
+  check('no fabricated governorate counts on first load',
+    liveTraffic.body.includes('مفيش أرقام محافظات مؤكدة') &&
+    liveTraffic.body.includes('مش فيها محافظة'));
+}
+const ga4Parser = await request('new safe GA4 region and source CSV parser', HOME+'/admin/js/ga4-report.js');
+if (ga4Parser) check('region and session source mapping deployed',
+  ga4Parser.body.includes('parseGa4Traffic') && ga4Parser.body.includes('knownRegion') && ga4Parser.body.includes('knownSources'));
+const lifecycle = await request('new safe product status transitions', HOME+'/admin/js/product-lifecycle.js');
+if (lifecycle) check('publish and hide with preflight but no archive restoration',
+  lifecycle.body.includes('products.hide') && lifecycle.body.includes('products.publish') && lifecycle.body.includes('prepublishHints'));
+if (adminProductsUi) {
+  check('mobile staff launch controls deployed',
+    adminProductsUi.body.includes('catalog-state-grid') &&
+    adminProductsUi.body.includes('data-status-action') &&
+    adminProductsUi.body.includes('changeStatus') &&
+    adminProductsUi.body.includes('data-quick-mobile'));
+}
+if (quickUi) check('colour publish/hide confirmation stays inside modal',
+  quickUi.body.includes('data-quick-status-confirm') &&
+  quickUi.body.includes('products.publish') === false &&
+  quickUi.body.includes('lifecycle.op') &&
+  quickUi.body.includes('question.remove()'));
+const GA4 = await request('unchanged production GA4 tag', HOME+'/js/analytics.js');
+if (GA4) check('original GA4 measurement ID unchanged', GA4.body.includes('G-NB8PZCX35Z'));
 const adminHealth = await request('admin Edge health', BACKEND+'/women-admin/health');
 if (adminHealth) check('admin Edge healthy', adminHealth.data?.status === 'ok');
 console.log('\nTOTAL FAILURES:', failures.length);
