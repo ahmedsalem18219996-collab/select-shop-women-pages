@@ -95,12 +95,22 @@ export default {
         <div class="card kpi spotlight lift"><span class="label">${icon('eye')}${t('dash.views7')}</span>
           <span class="value" data-count="${d.views.days_7}">0</span><span class="foot">${t('dash.viewsToday')}: ${fmtNum(d.views.today)}</span></div>
       </section>
+      <section class="card" aria-label="إدارة المنتجات المعروضة والزيارات" style="margin-bottom:14px">
+        <div class="card-head"><h3>تحكّمي في اللي بيتعرض للعميلات</h3></div>
+        <p class="muted" style="margin:0 0 10px">المسودة مش بتظهر في المتجر. المنتج المخفي تقدري ترجعي تنشريه بعد مراجعة السعر والتوافر.</p>
+        <div class="row" style="flex-wrap:wrap;gap:8px">
+          <a href="#/products?status=public" class="btn btn-soft btn-sm">المنشور</a>
+          <a href="#/products?status=draft" class="btn btn-primary btn-sm">راجعي المسودات (${fmtNum(d.products.draft)})</a>
+          <a href="#/products?status=hidden" class="btn btn-soft btn-sm">المنتجات المخفية</a>
+          <a href="#/traffic" class="btn btn-soft btn-sm">زيارات المحافظات ومصادرها</a>
+        </div>
+      </section>
       <div class="bento">
         ${o ? html`<section class="card spotlight"><div class="card-head"><h3>${t('dash.chart')}</h3><span class="muted">${money(o.revenue_7d_minor)} · 7d</span></div>
           <div class="bars" role="img" aria-label="${t('dash.chart')}">
             ${(d.revenue_by_day || []).map((x, k, all) => html`<div class="bar ${k === all.length - 1 ? 'today' : ''}" style="--h:${Math.round((x.minor / maxDay) * 100)}%;--k:${k}" tabindex="0"><i></i><span>${money(x.minor)} · ${fmtNum(x.orders)} ${t('dash.orders')}</span></div>`)}
           </div><div class="bars-axis"><span>${(d.revenue_by_day || [])[0]?.day || ''}</span><span>${(d.revenue_by_day || []).at(-1)?.day || ''}</span></div></section>` : ''}
-        <section class="card"><div class="card-head"><h3>${t('dash.lowStock')}</h3>${icon('alert')}</div>
+        <section class="card"><div class="card-head"><h3>إتاحة افتراضية محتاجة متابعة</h3>${icon('alert')}</div><p class="muted" style="font-size:12px;margin:0 0 8px">الكمية تنظيمية، مش بضاعة مخزّنة عندك. راجعي التوافر عند المورد قبل تأكيد الطلب.</p>
           ${d.low_stock.length ? html`<div class="list">${d.low_stock.map((x, k) => html`<a class="row-card" style="--k:${k};grid-template-columns:1fr auto" href="#/products/${x.code}">
             <span class="row-main"><b>${x.title}</b><span class="row-meta"><span class="code">${x.code}</span>${x.label ? html`<span>${t('dash.size')} ${x.label}</span>` : ''}</span></span>
             <span class="badge ${x.quantity === 0 ? 'danger' : 'warn'}">${fmtNum(x.quantity)} ${t('dash.piece')}</span></a>`)}</div>`
