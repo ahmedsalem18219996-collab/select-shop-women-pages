@@ -183,6 +183,7 @@ async function renderList(ctx) {
               <a class="btn btn-ghost btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="details">البيانات</a>
             </span>
           </div>`)}
+          </details>
         </div>`,
         foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>`
       });
