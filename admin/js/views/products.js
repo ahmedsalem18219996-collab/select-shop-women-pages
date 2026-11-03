@@ -6,7 +6,7 @@ import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
 import { saveFamilyCategory } from '../model-category.js';
 import { mountQuickProductEditor } from '../quick-product.js?v=17';
-import { countStatuses, STATUS_LABELS, statusAction, prepublishHints } from '../product-lifecycle.js';
+import { countStatuses, PRODUCT_STATES, statusAction, prepublishHints } from '../product-lifecycle.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
 let categories = [];
@@ -46,15 +46,16 @@ async function renderList(ctx) {
     </div>
     <div id="results">${skRows(6)}</div></div>`);
   const refreshCounts = async () => {
-    try {
-      const r = await call('products.list', { limit: 100 });
-      if (r?.outcome !== 'ok' || !Array.isArray(r.data)) return;
-      const sums = countStatuses(r.data);
-      for (const [status, count] of Object.entries(sums)) {
+    // Query each status explicitly: all-products results may omit archives.
+    await Promise.all(PRODUCT_STATES.map(async status => {
+      try {
+        const r = await call('products.list', { status, limit: 100 });
+        if (r?.outcome !== 'ok' || !Array.isArray(r.data)) return;
+        const count = countStatuses(r.data)[status];
         const target = $('[data-product-count="' + status + '"]', el);
         if (target) target.textContent = fmtNum(count);
-      }
-    } catch { /* Safe: never invent counts when the Admin API is unavailable. */ }
+      } catch { /* Leave — rather than manufacture a count on failure. */ }
+    }));
   };
   void refreshCounts();
   // The list may arrive after the user has moved to another screen: only fill the select if it is still on the page.
