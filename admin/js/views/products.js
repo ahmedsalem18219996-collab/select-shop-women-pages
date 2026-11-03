@@ -187,7 +187,7 @@ async function renderList(ctx) {
           </div>`)}
           </details>
         </div>`,
-        foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>`
+        foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>${can('products.price') || can('inventory.manage') ? html`<button type="button" class="btn btn-primary" data-quick-save-footer>حفظ اللون والمقاس</button>` : ''}`
       });
       mountQuickProductEditor({ box, ctx, members: allMembers, onChanged: load });
       box.querySelector('[data-close]')?.addEventListener('click', closeLayer);
@@ -510,7 +510,7 @@ async function renderEditor(ctx, code) {
         <div class="quick-colors" data-quick-colors role="group" aria-label="المنتج"></div>
         <div data-quick-panel aria-live="polite"></div>
       </div>`,
-      foot: html`<button class="btn btn-ghost" type="button" data-close>إغلاق</button>`
+      foot: html`<button class="btn btn-ghost" type="button" data-close>إغلاق</button>${can('products.price') || can('inventory.manage') ? html`<button type="button" class="btn btn-primary" data-quick-save-footer>حفظ اللون والمقاس</button>` : ''}`
     });
     mountQuickProductEditor({
       box, ctx,
