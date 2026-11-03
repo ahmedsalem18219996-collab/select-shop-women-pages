@@ -15,7 +15,8 @@ async function harness(page, role = 'owner') {
     makeRow('SS-1042','بلوفر مقلم أحمر'),
     makeRow('SS-1043','بلوفر مقلم بينك'),
     makeRow('SS-1044','بلوفر مقلم أسود × أبيض'),
-    makeRow('SS-1011','بلوفر بيبي بلو')
+    makeRow('SS-1011','بلوفر بيبي بلو'),
+    makeRow('SS-1088','بلوفر بألوان ومقاسات')
   ];
   const state=Object.fromEntries(catalog.map(p=>[p.public_code,{price:p.price_min_minor,quantity:20,available:true}]));
   await page.addInitScript(()=>{
@@ -45,13 +46,25 @@ async function harness(page, role = 'owner') {
         if(!p)payload={outcome:'not_found'};
         else{
           const v=state[args.code];
+          const unified=args.code==='SS-1088';
+          const options=unified ? [
+            {option_id:'co',name:'اللون',values:[{value_id:'pink',value:'بينك'},{value_id:'brown',value:'بني'}]},
+            {option_id:'sz',name:'المقاس',values:[{value_id:'s',value:'S'},{value_id:'m',value:'M'}]}
+          ] : [];
+          const variants=unified ? [0,1,2,3].map((position)=>({
+            position,active:true,availability:'available',amount_minor:v.price,price_source:'base',
+            selections:[{option_id:'co',value_id:position<2?'pink':'brown'},
+              {option_id:'sz',value_id:position%2?'m':'s'}]
+          })) : [{position:0,active:true,availability:v.available?'available':'unavailable',
+            amount_minor:v.price,price_source:'base',selections:[]}];
+          const stock=unified?{'0':{quantity:20},'1':{quantity:20},'2':{quantity:20},'3':{quantity:20}}:
+            {'0':{quantity:v.quantity}};
           payload={outcome:'ok',data:{
             product:{...p,base_price:{amount_minor:v.price},structure_version:1,
               shipping_profile:{key:'women_standard',name:'شحن عادي'},
-              variants:[{position:0,active:true,availability:v.available?'available':'unavailable',
-                amount_minor:v.price,price_source:'base',selections:[]}],options:[],publish_blockers:[]},
+              variants,options,publish_blockers:[]},
             card:{category:'بلوفرات',is_new:false,image:null},
-            stock:{'0':{quantity:v.quantity}},
+            stock,
             media:{media:[],structure_version:1},shipping_profiles:[{key:'women_standard',name:'شحن عادي'}],
             views:{today:0,last_7_days:0,last_30_days:0,total:0},activity:[]
           }};
@@ -137,4 +150,26 @@ test('uploading a photo to one legacy colour never attaches it to sibling colour
   expect(uploads[1].code).toBe('SS-1043');
   expect(uploads[1].raw).not.toContain('variant_position');
   expect(calls.filter(x=>x.op==='products.create'||x.op==='products.structure')).toHaveLength(0);
+});
+
+test('new unified SKU: select real colour then real size, and attach photo to EXACT variant',async ({page})=>{
+  const {uploads}=await harness(page);
+  await page.goto(HOME+'#/products/SS-1088');
+  await expect(page.locator('[data-quick-single]')).toBeVisible();
+  await page.locator('[data-quick-single]').click();
+  await expect(page.locator('[data-quick-internal-colour]')).toHaveCount(2);
+  await expect(page.locator('[data-quick-position]')).toHaveCount(2);
+  await page.locator('[data-quick-internal-colour="بني"]').click();
+  await expect(page.locator('[data-quick-position="2"]')).toHaveAttribute('aria-pressed','true');
+  await page.locator('[data-quick-position="3"]').click();
+  await expect(page.locator('[data-quick-position="3"]')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('[data-quick-panel]')).toContainText('اختيار اللون والمقاس المحدد فقط');
+  await test.info().attach('unified-colour-size-editor', {
+    body:await page.screenshot({animations:'disabled'}),contentType:'image/png'
+  });
+  const image=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9bR4sAAAAASUVORK5CYII=','base64');
+  await page.locator('[data-quick-files]').setInputFiles({name:'brown-M.png',mimeType:'image/png',buffer:image});
+  await expect.poll(()=>uploads.length).toBe(1);
+  expect(uploads[0].code).toBe('SS-1088');
+  expect(uploads[0].raw).toMatch(/name="variant_position"\r?\n\r?\n3/);
 });
