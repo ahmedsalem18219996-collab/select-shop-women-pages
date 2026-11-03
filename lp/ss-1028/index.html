@@ -133,10 +133,25 @@ h1{font-size:34px}.price{font-size:26px}
 .order .step{background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)}.order .step button{background:var(--bg)}
 @media(max-width:380px){.mark{font-size:24px;letter-spacing:.26em}.top>a:last-child{font-size:13px}}
 @media(min-width:560px) and (max-width:899px){.hero,.hero img{height:auto;aspect-ratio:4/5}.hero{width:min(100%,520px);align-self:center}}
+/* Premium pass (2026-11-04): product photo first, one-line header and buttons, truthful trust strip, zoomable photos. */
+.top{display:flex;align-items:center;gap:14px}.top .jump{margin-inline-start:auto;white-space:nowrap}
+#lpCartLink{white-space:nowrap;border:0;background:var(--paper);padding:0 14px}
+.trust{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.trust li{font-size:12.5px;line-height:1.4;padding:7px 10px;background:var(--paper);color:var(--ink)}
+.trust li::before{content:"✓";margin-inline-end:6px;color:var(--gold)}
+#lpMore:not(:empty)::before{content:"تفاصيل القطعة";display:block;margin-bottom:4px;font-weight:600;color:var(--ink)}
+.bar button{white-space:nowrap}#lpAddCart{border-radius:0;border-color:var(--accent);color:var(--accent)}
+.hero img,.gallery img{cursor:zoom-in}#lpFormColors{order:0}
+@media(max-width:899px){.top{padding:10px 16px;gap:10px}.mark{font-size:20px;letter-spacing:.3em}.top .jump{font-size:13px}#lpCartLink{font-size:13px;padding:0 10px}
+.page{padding:0 16px 40px;gap:18px}.hero{order:0;width:auto;height:auto;aspect-ratio:4/5;margin-inline:-16px}.hero img{height:100%;object-position:50% 30%}
+.atelier-heading{order:1;font-size:26px}.head{order:2}.trust{order:2}
+.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.gallery img{width:100%;height:auto;aspect-ratio:4/5}
+.bar>div{gap:8px}.bar .sum{flex:none}#lpAddCart{flex:1 1 0;padding:0 6px;font-size:13px}#lpOrder{flex:1.25 1 0;font-size:15px}}
+@media(min-width:560px) and (max-width:899px){.hero{margin-inline:auto}}
 </style>
 </head>
 <body>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a class="jump" href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
 <main class="page">
 <div class="media">
 <picture class="hero" id="lpHero"><source type="image/avif" srcset="img/SS-1028/0-480.avif 480w, img/SS-1028/0-800.avif 800w" sizes="(min-width: 900px) 560px, 100vw"><source type="image/webp" srcset="img/SS-1028/0-480.webp 480w, img/SS-1028/0-800.webp 800w" sizes="(min-width: 900px) 560px, 100vw"><img src="img/SS-1028/0-800.webp" alt="سويت شيرت PRA" width="800" height="1000" fetchpriority="high" decoding="async"></picture>
@@ -145,6 +160,7 @@ h1{font-size:34px}.price{font-size:26px}
 <div class="info">
 <p class="atelier-heading">تفاصيل تكمّل إطلالتك</p>
 <div class="head"><div class="row"><h1 id="lpTitle">سويت شيرت PRA</h1><p class="price"><span id="lpPrice">٧٥٠</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">سويت شيرت كاجوال لإطلاله يوميه مريحه بخامه شتوي</p></div>
+<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>
 
 <div id="lpOptions"><div class="lp-opt"><span class="one">مقاس واحد</span></div></div>
 <form class="order" id="lpForm" novalidate>
@@ -168,7 +184,7 @@ h1{font-size:34px}.price{font-size:26px}
 </main>
 <footer><strong dir="ltr">SELECT SHOP WOMEN</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center"><a href="/p/?code=SS-1028">افتحي صفحة المنتج للطلب</a></p></noscript>
-<script type="application/json" id="lp-data">{"id":"ss-1028","code":"SS-1028","colors":[{"code":"SS-1028","name":"","hex":"","alt":"سويت شيرت PRA","hero":{"avif":"img/SS-1028/0-480.avif 480w, img/SS-1028/0-800.avif 800w","webp":"img/SS-1028/0-480.webp 480w, img/SS-1028/0-800.webp 800w","src":"img/SS-1028/0-800.webp"},"gallery":["img/SS-1028/1-320.webp"]}]}</script>
-<script type="module" src="/lp/runtime.js?v=20261030-4"></script>
+<script type="application/json" id="lp-data">{"id":"ss-1028","code":"SS-1028","colors":[{"code":"SS-1028","name":"","hex":"","alt":"سويت شيرت PRA","zoom":["https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/ba02706ef3874fab9c2e47c9bdef9559.jpg","https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/94fb7b120dc744e59ac4afb6bfb1c962.jpg"],"hero":{"avif":"img/SS-1028/0-480.avif 480w, img/SS-1028/0-800.avif 800w","webp":"img/SS-1028/0-480.webp 480w, img/SS-1028/0-800.webp 800w","src":"img/SS-1028/0-800.webp"},"gallery":["img/SS-1028/1-320.webp"]}]}</script>
+<script type="module" src="/lp/image-zoom.js?v=20261104-1"></script><script type="module" src="/lp/runtime.js?v=20261030-4"></script>
 </body>
 </html>

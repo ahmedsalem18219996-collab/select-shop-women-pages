@@ -516,9 +516,15 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .traffic-track { background:var(--surface-2); height:9px; overflow:hidden; border-radius:99px; }
 .traffic-track span { display:block; height:100%; border-radius:99px; background:var(--primary); min-width:2px; }
 .traffic-note { font-size:12px; margin:10px 0 0; line-height:1.6; }
+/* One compact card: the product list and search start on the first mobile screen. */
+.on-demand-note { margin:0 0 12px; font-size:13px; }
+.on-demand-note summary { cursor:pointer; min-height:32px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.on-demand-note p { margin:6px 0 0; }
 @media(max-width:620px){
-  .catalog-state-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .catalog-state { min-height:72px; }
+  .catalog-state-grid { gap:6px; }
+  .catalog-state { min-height:62px; padding:8px 2px; gap:2px; }
+  .catalog-state strong { font-size:19px; }
+  .catalog-state span { font-size:11px; }
   .catalog-mobile-open { grid-template-columns:70px minmax(0,1fr) auto; gap:9px; }
   .catalog-mobile-open .row-end { max-width:100px; }
 }

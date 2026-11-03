@@ -133,10 +133,25 @@ h1{font-size:34px}.price{font-size:26px}
 .order .step{background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)}.order .step button{background:var(--bg)}
 @media(max-width:380px){.mark{font-size:24px;letter-spacing:.26em}.top>a:last-child{font-size:13px}}
 @media(min-width:560px) and (max-width:899px){.hero,.hero img{height:auto;aspect-ratio:4/5}.hero{width:min(100%,520px);align-self:center}}
+/* Premium pass (2026-11-04): product photo first, one-line header and buttons, truthful trust strip, zoomable photos. */
+.top{display:flex;align-items:center;gap:14px}.top .jump{margin-inline-start:auto;white-space:nowrap}
+#lpCartLink{white-space:nowrap;border:0;background:var(--paper);padding:0 14px}
+.trust{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.trust li{font-size:12.5px;line-height:1.4;padding:7px 10px;background:var(--paper);color:var(--ink)}
+.trust li::before{content:"✓";margin-inline-end:6px;color:var(--gold)}
+#lpMore:not(:empty)::before{content:"تفاصيل القطعة";display:block;margin-bottom:4px;font-weight:600;color:var(--ink)}
+.bar button{white-space:nowrap}#lpAddCart{border-radius:0;border-color:var(--accent);color:var(--accent)}
+.hero img,.gallery img{cursor:zoom-in}#lpFormColors{order:0}
+@media(max-width:899px){.top{padding:10px 16px;gap:10px}.mark{font-size:20px;letter-spacing:.3em}.top .jump{font-size:13px}#lpCartLink{font-size:13px;padding:0 10px}
+.page{padding:0 16px 40px;gap:18px}.hero{order:0;width:auto;height:auto;aspect-ratio:4/5;margin-inline:-16px}.hero img{height:100%;object-position:50% 30%}
+.atelier-heading{order:1;font-size:26px}.head{order:2}.trust{order:2}
+.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.gallery img{width:100%;height:auto;aspect-ratio:4/5}
+.bar>div{gap:8px}.bar .sum{flex:none}#lpAddCart{flex:1 1 0;padding:0 6px;font-size:13px}#lpOrder{flex:1.25 1 0;font-size:15px}}
+@media(min-width:560px) and (max-width:899px){.hero{margin-inline:auto}}
 </style>
 </head>
 <body>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a class="jump" href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
 <main class="page">
 <div class="media">
 <picture class="hero" id="lpHero"><source type="image/avif" srcset="img/SS-1008/0-480.avif 480w, img/SS-1008/0-800.avif 800w" sizes="(min-width: 900px) 560px, 100vw"><source type="image/webp" srcset="img/SS-1008/0-480.webp 480w, img/SS-1008/0-800.webp 800w" sizes="(min-width: 900px) 560px, 100vw"><img src="img/SS-1008/0-800.webp" alt="Leather jacket باللون بني" width="800" height="1000" fetchpriority="high" decoding="async"></picture>
@@ -145,11 +160,12 @@ h1{font-size:34px}.price{font-size:26px}
 <div class="info">
 <p class="atelier-heading">تفاصيل تكمّل إطلالتك</p>
 <div class="head"><div class="row"><h1 id="lpTitle">Leather jacket</h1><p class="price"><span id="lpPrice">١٬٢٠٠</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">جاكيت جلد بتصميم انيق وتفاصيل مميزه</p></div>
+<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>
 <fieldset class="pick" id="lpColors"><legend>اللون: <span id="lpColorName">بني</span></legend><div class="row"><button type="button" class="chip" data-code="SS-1008" aria-pressed="true"><i style="background:#5A3B2C"></i>بني</button><button type="button" class="chip" data-code="SS-1009" aria-pressed="false"><i style="background:#1F1B1E"></i>أسود</button></div></fieldset>
 <div id="lpOptions"><div class="lp-opt"><span class="one">مقاس واحد</span></div></div>
 <form class="order" id="lpForm" novalidate>
-<fieldset class="pick" id="lpFormColors"><legend>اللون: <span id="lpFormColorName">بني</span></legend><div class="row"><button type="button" class="chip" data-code="SS-1008" aria-pressed="true"><i style="background:#5A3B2C"></i>بني</button><button type="button" class="chip" data-code="SS-1009" aria-pressed="false"><i style="background:#1F1B1E"></i>أسود</button></div></fieldset>
 <h2>اطلبي دلوقتي<small>سيبي بياناتك، والتوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب.</small></h2>
+<fieldset class="pick" id="lpFormColors"><legend>اللون: <span id="lpFormColorName">بني</span></legend><div class="row"><button type="button" class="chip" data-code="SS-1008" aria-pressed="true"><i style="background:#5A3B2C"></i>بني</button><button type="button" class="chip" data-code="SS-1009" aria-pressed="false"><i style="background:#1F1B1E"></i>أسود</button></div></fieldset>
 <div class="qty"><span id="lpQtyLabel">الكمية</span><div class="step" role="group" aria-labelledby="lpQtyLabel"><button type="button" id="lpQtyUp" data-q="1" aria-label="زوّدي واحدة">+</button><output id="lpQty" aria-live="polite">١</output><button type="button" id="lpQtyDown" data-q="-1" aria-label="قلّلي واحدة" disabled>−</button></div></div>
 <label class="f"><span>الاسم</span><input name="name" autocomplete="name" maxlength="200" enterkeyhint="next" required><small id="lpErr-name" aria-live="polite"></small></label>
 <label class="f"><span>رقم الموبايل</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="01xxxxxxxxx" dir="ltr" enterkeyhint="next" required><small id="lpErr-phone" aria-live="polite"></small></label>
@@ -169,7 +185,7 @@ h1{font-size:34px}.price{font-size:26px}
 </main>
 <footer><strong dir="ltr">SELECT SHOP WOMEN</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center"><a href="/p/?code=SS-1008">افتحي صفحة المنتج للطلب</a></p></noscript>
-<script type="application/json" id="lp-data">{"id":"ss-1008","code":"SS-1008","colors":[{"code":"SS-1008","name":"بني","hex":"#5A3B2C","alt":"Leather jacket باللون بني","hero":{"avif":"img/SS-1008/0-480.avif 480w, img/SS-1008/0-800.avif 800w","webp":"img/SS-1008/0-480.webp 480w, img/SS-1008/0-800.webp 800w","src":"img/SS-1008/0-800.webp"},"gallery":["img/SS-1008/1-320.webp","img/SS-1008/2-320.webp","img/SS-1008/3-320.webp"]},{"code":"SS-1009","name":"أسود","hex":"#1F1B1E","alt":"Leather jacket باللون أسود","hero":{"avif":"img/SS-1009/0-480.avif 480w, img/SS-1009/0-800.avif 800w","webp":"img/SS-1009/0-480.webp 480w, img/SS-1009/0-800.webp 800w","src":"img/SS-1009/0-800.webp"},"gallery":["img/SS-1009/1-320.webp","img/SS-1009/2-320.webp","img/SS-1009/3-320.webp"]}]}</script>
-<script type="module" src="/lp/runtime.js?v=20261030-7"></script>
+<script type="application/json" id="lp-data">{"id":"ss-1008","code":"SS-1008","colors":[{"code":"SS-1008","name":"بني","hex":"#5A3B2C","alt":"Leather jacket باللون بني","zoom":["https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/e95f88d5e65846a8962c6df192ee3ae7.jpg","https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/92c5ed4212d3499fbf54ff44f9a72892.jpg","https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/0a6d19bfb3de428688b7b4d801e18c9f.jpg","https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/9f29d84e2e2e4238a48e381e1d0b425e.jpg"],"hero":{"avif":"img/SS-1008/0-480.avif 480w, img/SS-1008/0-800.avif 800w","webp":"img/SS-1008/0-480.webp 480w, img/SS-1008/0-800.webp 800w","src":"img/SS-1008/0-800.webp"},"gallery":["img/SS-1008/1-320.webp","img/SS-1008/2-320.webp","img/SS-1008/3-320.webp"]},{"code":"SS-1009","name":"أسود","hex":"#1F1B1E","alt":"Leather jacket باللون أسود","zoom":["https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/54d164fae59c4f5dbbd137670802fc7c.jpg","https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/9320930acb45464e83ded71141dfe6d0.jpg","https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/91ff89594a954dad99020954c081a99a.jpg","https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/ee4b5fd21bcb4a42b5b164160aaf1ad9.jpg"],"hero":{"avif":"img/SS-1009/0-480.avif 480w, img/SS-1009/0-800.avif 800w","webp":"img/SS-1009/0-480.webp 480w, img/SS-1009/0-800.webp 800w","src":"img/SS-1009/0-800.webp"},"gallery":["img/SS-1009/1-320.webp","img/SS-1009/2-320.webp","img/SS-1009/3-320.webp"]}]}</script>
+<script type="module" src="/lp/image-zoom.js?v=20261104-1"></script><script type="module" src="/lp/runtime.js?v=20261030-7"></script>
 </body>
 </html>

@@ -21,12 +21,9 @@ async function renderList(ctx) {
   render(el, html`<div class="page">
     <div class="page-head"><div><h2>${t('products.title')}</h2><p>${t('products.subtitle')}</p></div>
       ${can('products.edit') ? html`<div class="actions"><button class="btn btn-primary" data-new>${icon('plus')}${t('products.new')}</button></div>` : ''}</div>
-    <section class="card" aria-label="المخزون الافتراضي" style="margin-bottom:14px">
-      <b>التوريد حسب الطلب</b>
-      <p class="muted" style="margin-top:6px">كميات المخزون هنا افتراضية لتنظيم قبول الأوردرات، ومش معناها إن القطع موجودة عندك. اتأكدي من التوافر والسعر عند المورد قبل تأكيد كل طلب، واخفِي المنتج لو مش هتقدري توفريه.</p>
-    </section>
-    <section class="card" aria-label="التحكم في نشر المنتجات" style="margin-bottom:14px">
-      <div class="card-head"><h3>المنتجات المعروضة واللي لسه هتتنشر</h3><span class="muted">إدارة آمنة بدون حذف</span></div>
+    <section class="card catalog-overview" aria-label="التحكم في نشر المنتجات" style="margin-bottom:14px">
+      <details class="on-demand-note" aria-label="المخزون الافتراضي"><summary><b>التوريد حسب الطلب</b> · الكميات هنا افتراضية</summary>
+        <p class="muted">كميات المخزون هنا افتراضية لتنظيم قبول الأوردرات، ومش معناها إن القطع موجودة عندك. اتأكدي من التوافر والسعر عند المورد قبل تأكيد كل طلب، واخفِي المنتج لو مش هتقدري توفريه.</p></details>
       <div class="catalog-state-grid">
         <a class="catalog-state" href="#/products?status=public"><strong data-product-count="public">—</strong><span>منشور للعميلات</span></a>
         <a class="catalog-state" href="#/products?status=draft"><strong data-product-count="draft">—</strong><span>مسودات للتجهيز</span></a>

@@ -176,3 +176,17 @@ test("automatic shell: same form and runtime, no product data baked in, committe
   const faces = readexFaces(await readFile(new URL("../../css/fonts.css", import.meta.url), "utf8"));
   assert.equal(await readFile(new URL("../../lp/index.html", import.meta.url), "utf8"), renderShell(faces, await shellRoutes()));
 });
+
+test("every generated product page: zoomable original photos, trust strip, in-form colours under the form heading", async () => {
+  const generated = await readdir(new URL("../../lp/", import.meta.url), { withFileTypes: true });
+  for (const d of generated.filter(x => x.isDirectory() && !["img"].includes(x.name))) {
+    const page = await readFile(new URL("../../lp/" + d.name + "/index.html", import.meta.url), "utf8").catch(() => null);
+    if (!page) continue;
+    assert.match(page, /src="\/lp\/image-zoom\.js/, d.name);
+    const data = JSON.parse(page.match(/<script type="application\/json" id="lp-data">([^<]*)<\/script>/)[1]);
+    for (const c of data.colors) assert.ok(c.zoom.length >= 1 && c.zoom.every(u => u.startsWith("https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/")), d.name);
+    if (!data.campaign) assert.match(page, /<ul class="trust"/, d.name);
+    const form = page.slice(page.indexOf('id="lpForm"'));
+    if (form.includes('id="lpFormColors"')) assert.ok(form.indexOf("</h2>") < form.indexOf('id="lpFormColors"'), d.name);
+  }
+});

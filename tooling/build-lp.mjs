@@ -54,7 +54,7 @@ export function colorData(page, products) {
     const prefix = page.reuse_images === true ? "../ss-" + c.code.slice(3).toLowerCase() + "/"
       : page.id === "ballon-suit" && c.code === "SS-1010" ? "../ss-1010/" : "";
     return { code: c.code, name: c.name, hex: c.hex, alt,
-      ...(page.campaign?.zoom ? { zoom: pics.map(m => m.url) } : {}),
+      zoom: pics.map(m => m.url), // full-size originals, fetched only when the shopper opens a photo
       hero: { avif: imgSet(c.code, 0, "avif", prefix), webp: imgSet(c.code, 0, "webp", prefix), src: `${prefix}img/${c.code}/0-800.webp` },
       gallery: pics.slice(1).map((_, i) => `${prefix}img/${c.code}/${i + 1}-${GALLERY_WIDTH}.webp`) };
   });
@@ -186,6 +186,21 @@ h1{font-size:34px}.price{font-size:26px}
 .order .step{background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)}.order .step button{background:var(--bg)}
 @media(max-width:380px){.mark{font-size:24px;letter-spacing:.26em}.top>a:last-child{font-size:13px}}
 @media(min-width:560px) and (max-width:899px){.hero,.hero img{height:auto;aspect-ratio:4/5}.hero{width:min(100%,520px);align-self:center}}
+/* Premium pass (2026-11-04): product photo first, one-line header and buttons, truthful trust strip, zoomable photos. */
+.top{display:flex;align-items:center;gap:14px}.top .jump{margin-inline-start:auto;white-space:nowrap}
+#lpCartLink{white-space:nowrap;border:0;background:var(--paper);padding:0 14px}
+.trust{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.trust li{font-size:12.5px;line-height:1.4;padding:7px 10px;background:var(--paper);color:var(--ink)}
+.trust li::before{content:"✓";margin-inline-end:6px;color:var(--gold)}
+#lpMore:not(:empty)::before{content:"تفاصيل القطعة";display:block;margin-bottom:4px;font-weight:600;color:var(--ink)}
+.bar button{white-space:nowrap}#lpAddCart{border-radius:0;border-color:var(--accent);color:var(--accent)}
+.hero img,.gallery img{cursor:zoom-in}#lpFormColors{order:0}
+@media(max-width:899px){.top{padding:10px 16px;gap:10px}.mark{font-size:20px;letter-spacing:.3em}.top .jump{font-size:13px}#lpCartLink{font-size:13px;padding:0 10px}
+.page{padding:0 16px 40px;gap:18px}.hero{order:0;width:auto;height:auto;aspect-ratio:4/5;margin-inline:-16px}.hero img{height:100%;object-position:50% 30%}
+.atelier-heading{order:1;font-size:26px}.head{order:2}.trust{order:2}
+.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.gallery img{width:100%;height:auto;aspect-ratio:4/5}
+.bar>div{gap:8px}.bar .sum{flex:none}#lpAddCart{flex:1 1 0;padding:0 6px;font-size:13px}#lpOrder{flex:1.25 1 0;font-size:15px}}
+@media(min-width:560px) and (max-width:899px){.hero{margin-inline:auto}}
 `;
 
 const DEFAULT_BENEFITS = ["الدفع عند الاستلام، من غير دفع مقدم", "اختاري المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد", "الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل"];
@@ -216,8 +231,7 @@ function layout(o) {
       .replace('id="lpColorName"', 'id="lpFormColorName"')
     : "";
   const orderForm = checkoutPicker
-    ? ORDER_FORM.replace('<form class="order" id="lpForm" novalidate>',
-      '<form class="order" id="lpForm" novalidate>\n' + checkoutPicker)
+    ? ORDER_FORM.replace('</small></h2>', '</small></h2>\n' + checkoutPicker)
     : ORDER_FORM;
   // Refresh the browser-cached runtime only on affected grouped and legacy
   // product pages. Unrelated generated LPs retain their exact original HTML.
@@ -243,7 +257,7 @@ ${o.fontFaces}
 ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
 <body${campaign ? ' data-campaign="focused"' : ""}>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a href="#lpForm">اطلبي إطلالتك</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}</header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a class="jump" href="#lpForm">اطلبي إطلالتك</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}</header>
 <main class="page">
 <div class="media">
 <picture class="hero" id="lpHero">${o.hero}</picture>
@@ -252,7 +266,7 @@ ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 <div class="info">
 <p class="atelier-heading">${campaign ? esc(campaign.headline) : "تفاصيل تكمّل إطلالتك"}</p>
 <div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p></div>
-${o.picker}
+${campaign ? "" : `<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>\n`}${o.picker}
 <div id="lpOptions">${o.options}</div>
 ${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · الشحن واضح قبل التأكيد</p><a class="campaign-jump" href="#lpForm">اختاري الكمية واطلبي دلوقتي</a>\n` : ""}${orderForm}
 <p id="lpStatus" role="status" aria-live="polite"></p>
@@ -301,7 +315,7 @@ export function render(page, products, fontFaces = "") {
     video: page.video ? `<button type="button" class="video" data-lp-video="${esc(page.video.src)}">▶ شغّلي الفيديو</button>` : "",
     noscript: `<a href="/p/?code=${esc(first.code)}">افتحي صفحة المنتج للطلب</a>`,
     data: JSON.stringify({ id: page.id, code: first.code, colors, ...(page.campaign ? { directOnly: page.campaign.directOnly === true, campaign: true } : {}) }).replace(/</g, "\\u003c"),
-    scripts: page.campaign?.zoom ? '<script type="module" src="/lp/image-zoom.js?v=20261031-1"></script>' : "",
+    scripts: '<script type="module" src="/lp/image-zoom.js?v=20261104-1"></script>',
   });
 }
 
