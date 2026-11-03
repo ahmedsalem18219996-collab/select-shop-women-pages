@@ -143,7 +143,26 @@ if (adminProductsUi) {
     adminProductsUi.body.includes('اترفع '));
 }
 const deployedAdmin = await request('deployed Admin HTML cache-version', HOME+'/admin/');
-if (deployedAdmin) check('Admin JS v15 deployed', deployedAdmin.body.includes('js/app.js?v=15'));
+if (deployedAdmin) {
+  check('Admin JS v16 deployed', deployedAdmin.body.includes('js/app.js?v=16'));
+  check('Admin mobile CSS v10 deployed', deployedAdmin.body.includes('css/admin.css?v=10'));
+}
+const quickUi = await request('deployed colour and size quick editor', HOME+'/admin/js/quick-product.js');
+if (quickUi) {
+  check('quick editor matches real stored SKUs',
+    quickUi.body.includes('products.get') && quickUi.body.includes('products.set_stock') &&
+    quickUi.body.includes('products.set_variant_price') &&
+    quickUi.body.includes('data-quick-internal-colour') &&
+    quickUi.body.includes('data-quick-position'));
+  check('photo upload uses correct SKU/variant scopes',
+    quickUi.body.includes('selectedCode') && quickUi.body.includes('scopedToVariant') &&
+    quickUi.body.includes('variant_position'));
+}
+const variantModule = await request('deployed real colour/size mapping', HOME+'/admin/js/quick-variants.js');
+if (variantModule) check('size remains independent of colour', variantModule.body.includes('hasExplicitSize: size !== null'));
+const css = await request('deployed touch-friendly editor CSS', HOME+'/admin/css/admin.css');
+if (css) check('touch-friendly size buttons and colour cards', css.body.includes('.quick-size') && css.body.includes('.quick-color'));
+if (adminProductsUi) check('grouped old products use quick editor', adminProductsUi.body.includes('mountQuickProductEditor({ box, ctx, members: allMembers') && adminProductsUi.body.includes('data-quick-single'));
 const adminHealth = await request('admin Edge health', BACKEND+'/women-admin/health');
 if (adminHealth) check('admin Edge healthy', adminHealth.data?.status === 'ok');
 console.log('\nTOTAL FAILURES:', failures.length);
