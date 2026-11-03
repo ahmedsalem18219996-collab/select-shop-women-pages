@@ -267,6 +267,7 @@ function createSheet(ctx) {
       <label class="field"><span>${t('create.category')}</span><select class="select" id="c-cat" required></select></label>
       ${ctx.can('products.price') ? html`<label class="field"><span>${t('create.price')}</span><div class="input-money"><input id="c-price" inputmode="decimal" autocomplete="off" placeholder="مثال: 650"><span class="sr">سعر بيع المنتج بالجنيه المصري</span><span>EGP</span></div></label>` : ''}
     </div>
+    ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هتحدده مسؤولة التسعير بعد الحفظ.</p>` : ''}
     <div class="field"><span>${t('create.sizes')}</span>
       <button class="chip" type="button" id="c-one-size" aria-pressed="false">${t('create.oneSize')}</button>
       <div class="chips" id="c-sizes" style="flex-wrap:wrap"></div>
@@ -424,7 +425,7 @@ function createSheet(ctx) {
       // Shipping is a separate explicit product assignment. Without it, an Owner-created
       // product may be visible but cannot be quoted correctly at checkout.
       // Pick the WOMEN default when available, else the first active shipping profile.
-      let shippingReady = !ctx.can('shipping.manage');
+      let shippingReady = false;
       if (ctx.can('shipping.manage') && r.outcome === 'created') {
         const available = await call('shipping.get');
         if (available.outcome === 'ok') {
@@ -440,7 +441,7 @@ function createSheet(ctx) {
       closeLayer();
       sessionStorage.setItem('wa.ptab', ctx.can('media.manage') ? 'media' : 'details');
       done(shippingReady ? 'المسودة محفوظة. ارفعي صور الألوان، وحددي الكمية الافتراضية والإتاحة، وبعدها انشري المنتج.' :
-        'المنتج اتحفظ مسودة، لكن تعيين الشحن ماكملش. حددي طريقة الشحن من البيانات قبل النشر.');
+        'المسودة محفوظة. طريقة الشحن لسه محتاجة تتحدد من موظفة عندها صلاحية الشحن قبل النشر.');
       ctx.go('products/' + code);
     });
   };
