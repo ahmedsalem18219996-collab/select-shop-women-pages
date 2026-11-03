@@ -2,16 +2,19 @@ export function variantChoices(product, stock = {}) {
   const options = Array.isArray(product?.options) ? product.options : [];
   const variants = Array.isArray(product?.variants) ? product.variants : [];
   return variants.map((v) => {
-    const labels = (v.selections || []).map((s) => {
+    const selectionValues = (v.selections || []).map((s) => {
       const o = options.find(o => o.option_id === s.option_id);
-      const value = o?.values?.find(x => x.value_id === s.value_id)?.value;
-      return [o?.name, value].filter(Boolean).join(': ');
-    }).filter(Boolean);
+      return { name: o?.name || '', value: o?.values?.find(x => x.value_id === s.value_id)?.value || '' };
+    }).filter(x => x.value);
+    const labels = selectionValues.map(x => [x.name, x.value].filter(Boolean).join(': '));
+    const colour = selectionValues.find(x => /اللون|colou?r/i.test(x.name))?.value || null;
+    const size = selectionValues.find(x => /المقاس|size/i.test(x.name))?.value || null;
     const base = product.base_price?.amount_minor;
     return {
       position: v.position,
       label: labels.length ? labels.join(' / ') : 'مقاس واحد (مش مسجل مقاس محدد)',
-      hasExplicitSize: labels.length > 0,
+      hasExplicitSize: size !== null,
+      colour, size,
       active: v.active === true,
       availability: v.availability === 'available',
       quantity: stock[String(v.position)]?.quantity ?? null,
