@@ -132,6 +132,57 @@ async function renderList(ctx) {
     // categories list may arrive after the first paint
     if (can('products.edit') && !categories.length) await loadCategories().then(load);
   };
+  const visibleProduct = (code) => listedGroups.flatMap(g => g.members).find(m => m.product.public_code === code)?.product;
+  const changeStatus = async (button, code) => {
+    if (!can('products.publish')) return;
+    const item = visibleProduct(code);
+    const action = statusAction(item?.status);
+    if (!item || !action) { island('error', 'المنتج مش ظاهر في القائمة، اعملي تحديث وجربي تاني.'); return; }
+    // A product can have stale listing metadata: use the authenticated detail and
+    // never publish based on client-side guesses about readiness.
+    if (action.op === 'products.publish') {
+      let detail;
+      try { detail = await call('products.get', { code }); } catch { detail = { outcome: 'network' }; }
+      if (detail?.outcome !== 'ok') { fail(detail); return; }
+      const hints = prepublishHints(detail.data);
+      if (hints.length) {
+        island('error', 'المنتج لسه مش جاهز للنشر: ' + hints.join('، '));
+        return;
+      }
+    }
+    const yes = await confirmDialog({
+      title: action.op === 'products.publish' ? 'نشر ' + item.title : 'إخفاء ' + item.title,
+      text: action.op === 'products.publish'
+        ? 'بعد النشر المنتج هيظهر للعميلات ويقدروا يطلبوه. اتأكدتي من السعر والصور والتوافر عند المورد؟'
+        : 'المنتج هيتشال من العرض مؤقتًا، من غير ما نحذف بياناته أو الأوردرات القديمة. موافقة؟',
+      okText: action.label
+    });
+    if (!yes) return;
+    const res = await withBusy(button, () => call(action.op, { code }));
+    if (['published', 'hidden', 'already_public', 'already_hidden'].includes(res?.outcome)) {
+      done(action.op === 'products.publish' ? 'المنتج اتنشر للعميلات' : 'المنتج اتخفى مؤقتًا من المتجر');
+      await load(); void refreshCounts();
+    } else if (res?.outcome === 'rejected' && Array.isArray(res.blockers)) {
+      island('error', 'النشر مرفوض لأن فيه بيانات ناقصة: ' + res.blockers.map(b => t('blocker.' + b, b)).join('، '));
+    } else fail(res);
+  };
+  const openQuickMobile = (code) => {
+    const product = visibleProduct(code);
+    if (!product) { island('error', 'المنتج اتغير، اعملي تحديث وجربي تاني.'); return; }
+    const box = sheet({
+      title: product.title + ' · تعديل سريع',
+      wide: true,
+      body: html`<div class="stack"><p class="muted">اختاري اللون والمقاس وعدّلي السعر والإتاحة والصور، أو ارجعي لبيانات المنتج المتقدمة.</p>
+        <div class="quick-colors" data-quick-colors role="group" aria-label="اللون"></div>
+        <div data-quick-panel aria-live="polite"></div></div>`,
+      foot: html`<button class="btn btn-ghost" data-close type="button">إغلاق</button>`
+    });
+    mountQuickProductEditor({
+      box, ctx,
+      members: [{ product, color: { name: product.title, hex: '#66768B' } }],
+      onChanged: () => { void load(); void refreshCounts(); }
+    });
+  };
   results.addEventListener('change', async (e) => {
     const s = e.target.closest('[data-cat]'); if (!s) return;
     const code = s.closest('tr[data-code]')?.dataset.code;
@@ -251,15 +302,11 @@ async function renderList(ctx) {
       }));
       return;
     }
+    const quick = e.target.closest('[data-quick-mobile]');
+    if (quick) { openQuickMobile(quick.dataset.quickMobile); return; }
+    const statusBtn = e.target.closest('[data-status-action]');
+    if (statusBtn) { await changeStatus(statusBtn, statusBtn.dataset.statusAction); return; }
     const tr = e.target.closest('tr[data-code]');
-    if (e.target.closest('[data-toggle]') && tr) {
-      const btn = e.target.closest('[data-toggle]');
-      const publish = btn.textContent.trim() === t('products.publish');
-      const r = await withBusy(btn, () => call(publish ? 'products.publish' : 'products.hide', { code: tr.dataset.code }));
-      if (['published', 'hidden', 'already_public', 'already_hidden'].includes(r.outcome)) { done(publish ? t('products.published') : t('products.hidden')); load(); }
-      else if (r.outcome === 'rejected' && r.blockers) island('error', t('editor.blockers'), r.blockers.map((b) => t('blocker.' + b, b)).join('، '));
-      else fail(r);
-    }
     if (e.target.closest('[data-archive]') && tr && ctx.session?.role === 'owner') {
       const code=tr.dataset.code;
       const confirmed=await confirmDialog({
