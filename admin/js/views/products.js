@@ -52,9 +52,11 @@ async function renderList(ctx) {
     render(results, html`
       <div class="list mobile-only">${listedGroups.map((g, k) => {
         const p = g.members[0].product;
+        const pricesOnModel = g.members.map(m => m.product.price_min_minor).filter(Number.isInteger);
+        const minModelPrice = pricesOnModel.length ? Math.min(...pricesOnModel) : null;
         return g.family ? html`<div class="row-card model-summary" style="--k:${k}">
           <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-          <span class="row-main"><button class="model-open" type="button" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختاري اللون والمقاس وعدّلي بسهولة</span></button></span>
+          <span class="row-main"><button class="model-open" type="button" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختاري اللون والمقاس وعدّلي بسهولة</span>${minModelPrice !== null ? html`<span class="model-price">السعر من ${money(minModelPrice)}</span>` : ''} </button></span>
         </div>` : html`<a class="row-card" style="--k:${k}" href="#/products/${p.public_code}">
           <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
           <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
