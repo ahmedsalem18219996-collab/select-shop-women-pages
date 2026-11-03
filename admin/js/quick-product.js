@@ -1,7 +1,7 @@
 // Simple mobile-first editor for legacy colour families AND standalone WOMEN SKUs.
 // Each colour in legacy families is a separate real SKU. Never synthesize sizes,
 // merge SKUs, or claim that an unavailable variant is purchasable.
-import { $, $$, esc, money, toMinor, withBusy, island, done, fail, closeLayer, confirmDialog } from './ui.js';
+import { $, $$, esc, money, toMinor, withBusy, island, done, fail, closeLayer } from './ui.js';
 import { call, uploadProductImage, mediaUrl } from './api.js';
 import { checkSourceImage, optimizeUploadImage } from './image-optimize.js';
 import { variantChoices } from './quick-variants.js';
@@ -130,25 +130,42 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
         const hints = prepublishHints(detail);
         if (hints.length) { island('error', 'قبل النشر: ' + hints.join('، ')); return; }
       }
-      const yes = await confirmDialog({
-        title: lifecycle.label + ' — ' + product.title,
-        text: lifecycle.op === 'products.publish'
-          ? 'اللون ده هيظهر للعملاء. راجعتي الصور والسعر والمقاس والتوافر من المورد؟'
-          : 'اللون ده هيختفي مؤقتًا من المتجر، من غير حذف الأوردرات أو الصور. موافقة؟',
-        okText: lifecycle.label
+      // Confirm INSIDE the existing sheet. A nested confirmDialog would replace
+      // the modal, losing colour/size context and discarding edited form fields.
+      if ($('[data-quick-status-confirm]', panel)) return;
+      const question = document.createElement('div');
+      question.dataset.quickStatusConfirm = '1';
+      question.className = 'quick-status-confirm';
+      const paragraph = document.createElement('p');
+      paragraph.textContent = lifecycle.op === 'products.publish'
+        ? 'اللون ده هيظهر للعملاء. اتأكدتي من الصور والسعر والمقاس والتوافر عند المورد؟'
+        : 'اللون ده هيختفي مؤقتًا من المتجر، من غير حذف الأوردرات أو الصور. موافقة؟';
+      const controls = document.createElement('div');
+      controls.className = 'row';
+      const cancel = document.createElement('button');
+      cancel.type = 'button'; cancel.className = 'btn btn-ghost btn-sm';
+      cancel.textContent = 'رجوع';
+      const proceed = document.createElement('button');
+      proceed.type = 'button'; proceed.className = 'btn btn-primary btn-sm';
+      proceed.dataset.quickStatusYes = '1'; proceed.textContent = 'تأكيد ' + lifecycle.label;
+      controls.append(cancel, proceed); question.append(paragraph, controls);
+      btn.after(question);
+      cancel.addEventListener('click', () => question.remove());
+      proceed.addEventListener('click', async () => {
+        if (saving || uploading) return;
+        saving = true; proceed.disabled = true;
+        try {
+          const result = await withBusy(proceed, () => call(lifecycle.op, { code }));
+          if (['published', 'hidden', 'already_public', 'already_hidden'].includes(result?.outcome)) {
+            done(lifecycle.op === 'products.publish' ? 'اتنشر اللون في المتجر' : 'اتخفى اللون مؤقتًا');
+            onChanged();
+            await load(code, position);
+          } else if (result?.outcome === 'rejected' && result.blockers) {
+            island('error', 'مش جاهز للنشر: ' + result.blockers.join('، '));
+            question.remove();
+          } else { fail(result); question.remove(); }
+        } finally { saving = false; }
       });
-      if (!yes) return;
-      saving = true;
-      try {
-        const result = await withBusy(btn, () => call(lifecycle.op, { code }));
-        if (['published', 'hidden', 'already_public', 'already_hidden'].includes(result?.outcome)) {
-          done(lifecycle.op === 'products.publish' ? 'اتنشر اللون في المتجر' : 'اتخفى اللون مؤقتًا');
-          onChanged();
-          await load(code, position);
-        } else if (result?.outcome === 'rejected' && result.blockers) {
-          island('error', 'مش جاهز للنشر: ' + result.blockers.join('، '));
-        } else fail(result);
-      } finally { saving = false; }
     });
     $('[data-quick-save]', panel)?.addEventListener('click', async (event) => {
       if (saving || uploading) return;
