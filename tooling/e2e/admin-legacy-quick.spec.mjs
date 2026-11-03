@@ -102,8 +102,8 @@ test('owner edits EXISTING grouped colour and virtual quantity from one sheet, n
   await page.locator('[data-quick-available]').uncheck();
   await page.locator('[data-quick-save]').click();
   await expect(page.locator('[data-quick-qty]')).toHaveValue('12');
-  expect(state['SS-1043'].quantity).toBe(12);
-  expect(state['SS-1043'].available).toBe(false);
+  await expect.poll(()=>state['SS-1043'].quantity,{timeout:5000}).toBe(12);
+  await expect.poll(()=>state['SS-1043'].available,{timeout:5000}).toBe(false);
   expect(state['SS-1042'].quantity).toBe(20);
   const writes=calls.filter(x=>x.op.startsWith('products.set_'));
   expect(writes.map(x=>x.args.code)).toEqual(['SS-1042','SS-1043','SS-1043']);
