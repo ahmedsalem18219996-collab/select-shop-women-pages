@@ -55,16 +55,33 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     const canPrice = ctx.can('products.price');
     const canQty = ctx.can('inventory.manage');
     const canImages = ctx.can('media.manage');
-    const hasUnspecifiedSize = !rows.some(r => r.hasExplicitSize);
-    const visiblePhotos = (detail.media?.media || []).filter(m => !m.hidden && !m.delete_pending);
+    const colourOptions = [...new Set(rows.map(r => r.colour).filter(Boolean))];
+    const hasColourOption = colourOptions.length > 0;
+    const selectedColour = chosen.colour || colourOptions[0] || null;
+    const rowsInColour = hasColourOption ? rows.filter(r => r.colour === selectedColour) : rows;
+    const hasUnspecifiedSize = !rowsInColour.some(r => r.hasExplicitSize);
+    const visiblePhotos = (detail.media?.media || []).filter(m => {
+      if (m.hidden || m.delete_pending) return false;
+      if (!hasColourOption || m.scope === 'product') return true;
+      if (m.scope === 'option_value') return m.option_value?.value === selectedColour;
+      if (m.scope === 'variant') {
+        const values = m.variant?.values || [];
+        return values.includes(selectedColour) && (!chosen.size || values.includes(chosen.size));
+      }
+      return false;
+    });
     const priceValue = chosen.amount_minor === null ? '' : String(chosen.amount_minor / 100);
-    const sizeOptions = rows.map(r => '<button type="button" class="quick-size" data-quick-position="' + r.position +
-      '" aria-pressed="' + (r.position === position) + '">' + esc(r.label) + (r.active ? '' : ' (موقوف)') + '</button>').join('');
+    const colourButtons = colourOptions.map(c => '<button type="button" class="quick-size" data-quick-internal-colour="' + esc(c) +
+      '" aria-pressed="' + (c === selectedColour) + '">' + esc(c) + '</button>').join('');
+    const sizeOptions = rowsInColour.map(r => '<button type="button" class="quick-size" data-quick-position="' + r.position +
+      '" aria-pressed="' + (r.position === position) + '">' + esc(r.size || (r.hasExplicitSize ? r.label : 'مقاس واحد (غير محدد)')) +
+      (r.active ? '' : ' (موقوف)') + '</button>').join('');
     panel.innerHTML = [
       '<div class="quick-section">',
-      '<div class="quick-header"><b>٢. اختاري المقاس أو الاختيار</b><span class="code">' + esc(code) + '</span></div>',
-      '<div class="quick-sizes">' + sizeOptions + '</div>',
-      hasUnspecifiedSize ? '<p class="muted quick-help">المنتج القديم ده مش متسجل له مقاسات مختلفة. المعروض حاليًا اختيار واحد فقط؛ مش هنخترع مقاسات ممكن توصل غلط للعميلة.</p>' : '',
+      '<div class="quick-header"><b>٢. اختاري اللون والمقاس</b><span class="code">' + esc(code) + '</span></div>',
+      hasColourOption ? '<span class="muted">لون الاختيار:</span><div class="quick-sizes" role="group" aria-label="اختاري لون المنتج">' + colourButtons + '</div>' : '',
+      '<span class="muted">المقاس:</span><div class="quick-sizes" role="group" aria-label="اختاري مقاس المنتج">' + sizeOptions + '</div>',
+      hasUnspecifiedSize ? '<p class="muted quick-help">المنتج ده مش متسجل له مقاسات مختلفة. المعروض حاليًا اختيار واحد فقط؛ مش هنخترع مقاسات ممكن توصل غلط للعميلة.</p>' : '',
       '</div>',
       '<div class="quick-section">',
       '<div class="quick-header"><b>٣. السعر والإتاحة</b><span class="muted">' + esc(product.status === 'public' ? 'منشور' : 'غير منشور') + '</span></div>',
@@ -80,8 +97,10 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       '<div class="quick-section">',
       '<div class="quick-header"><b>٤. صور اللون ده</b><span class="muted">' + visiblePhotos.length + ' صورة</span></div>',
       '<div class="quick-pictures">' + visiblePhotos.slice(0, 8).map(m => '<img src="' + esc(safeImage(m.storage_path)) + '" alt="صورة اللون" loading="lazy">').join('') + '</div>',
-      (canImages ? '<label class="btn btn-soft quick-upload">ارفعي صور اللون ده (كل المقاسات)<input data-quick-files type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr"></label>' : '<p class="muted">رفع الصور يحتاج صلاحية إدارة الصور.</p>'),
-      '<p class="muted quick-help">الصور المرفوعة هنا تخص كود اللون المحدد، وبتظهر مع كل مقاساته. مش بتتغير صور بقية الألوان.</p>',
+      (canImages ? '<label class="btn btn-soft quick-upload">' + (hasColourOption ? 'ارفعي صورة اللون والمقاس المختارين' : 'ارفعي صور اللون ده (كل المقاسات)') +
+        '<input data-quick-files type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr"></label>' : '<p class="muted">رفع الصور يحتاج صلاحية إدارة الصور.</p>'),
+      hasColourOption ? '<p class="muted quick-help">الصورة هنا تخص اختيار اللون والمقاس المحدد فقط. لو نفس الصورة مطلوبة لباقي المقاسات، لازم تربطيها بكل مقاس منفصل في النسخة الحالية.</p>'
+        : '<p class="muted quick-help">الصور المرفوعة هنا تخص كود اللون المحدد، وبتظهر مع كل مقاساته. مش بتتغير صور بقية الألوان.</p>',
       '<div class="row" style="flex-wrap:wrap"><a class="btn btn-ghost btn-sm" data-quick-link data-quick-tab="details" href="#/products/' + esc(code) + '">الاسم والوصف والشحن</a>',
       '<a class="btn btn-ghost btn-sm" data-quick-link data-quick-tab="media" href="#/products/' + esc(code) + '">إدارة الصور القديمة</a></div>',
       '</div>'
@@ -89,6 +108,10 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
 
     $$('[data-quick-position]', panel).forEach(button => button.addEventListener('click', () => {
       position = Number(button.dataset.quickPosition); show(detail);
+    }));
+    $$('[data-quick-internal-colour]', panel).forEach(button => button.addEventListener('click', () => {
+      const target = rows.find(r => r.colour === button.dataset.quickInternalColour);
+      if (target) { position = target.position; show(detail); }
     }));
     $('[data-quick-save]', panel)?.addEventListener('click', async (event) => {
       if (saving || uploading) return;
@@ -147,7 +170,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       const photos = list.filter(f => checkSourceImage(f) === null);
       if (!photos.length) { island('error', 'اختاري صورة JPG أو PNG أو WebP مناسبة، أقل من 5MB.'); input.value = ''; return; }
       uploading = true; input.disabled = true;
-      const selectedCode = code;
+      const selectedCode = code, selectedPosition = position, scopedToVariant = hasColourOption;
       let mediaVersion = detail.media?.structure_version ?? product.structure_version;
       let uploaded = 0;
       try {
@@ -160,6 +183,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
           form.append('image', prepared.file);
           form.append('version', String(mediaVersion));
           form.append('alt', product.title);
+          if (scopedToVariant) form.append('variant_position', String(selectedPosition));
           // Product-scope within the legacy one-SKU-per-colour family:
           // the photo applies to every size of THIS colour, not all sibling colours.
           let result;
