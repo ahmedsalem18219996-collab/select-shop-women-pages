@@ -11,6 +11,13 @@ const fakeTime = '2026-11-03T00:00:00Z';
 
 async function signInAsTestOwner(page, ops) {
   let structure = 1;
+  // Use an in-memory QA session: no real login or real Auth credentials.
+  await page.addInitScript(({ email }) => {
+    sessionStorage.setItem('wa.session', JSON.stringify({
+      access_token: 'local-qa-only', refresh_token: 'local-qa-refresh',
+      expires_at: Date.now() + 3600_000, email
+    }));
+  }, { email: mockUser.email });
   await page.route('**/*', async route => {
     const req = route.request();
     const url = new URL(req.url());
@@ -67,10 +74,7 @@ async function signInAsTestOwner(page, ops) {
     return route.continue();
   });
   await page.goto(target, { waitUntil: 'domcontentloaded' });
-  await page.locator('#email').fill(mockUser.email);
-  await page.locator('#password').fill('local-only-password');
-  await page.locator('#login button[type=submit]').click();
-  await expect(page.locator('a[href="#/products"]').first()).toBeVisible();
+  await expect(page.locator('a[href="#/products"]').first()).toBeVisible({ timeout: 15000 });
   await page.locator('a[href="#/products"]').first().click();
   await expect(page.locator('button[data-new]').first()).toBeVisible();
   await page.locator('button[data-new]').first().click();
