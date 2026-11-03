@@ -46,6 +46,8 @@ for (const [label, url, keyword] of urls) {
     // A hidden preview hint is expected in source; only ?design-preview=1 may show it.
     check('demo banner hidden by default', /id=["']demoNote["']\s+hidden/.test(r.body));
     check('home catalog gateway referenced', r.body.includes('women-store-bridge/catalog'));
+    check('on-demand selling note deployed to live homepage', r.body.includes('التوافر وميعاد الشحن بيتأكدوا بعد تسجيل طلبك'));
+
   }
 }
 const c = await request('public catalog', BACKEND+'/women-store-bridge/catalog');
@@ -123,6 +125,12 @@ if (product) {
     }
   }
 }
+const adminOrdersUi = await request('deployed on-demand Admin orders UI', HOME+'/admin/js/views/orders.js');
+if (adminOrdersUi) {
+  check('admin supplier-first checklist deployed', adminOrdersUi.body.includes('البيع حسب الطلب — بدون مخزون فعلي') && adminOrdersUi.body.includes('اتأكدتي من بيانات العميلة'));
+}
+const adminProductsUi = await request('deployed virtual-stock Admin products UI', HOME+'/admin/js/views/products.js');
+if (adminProductsUi) check('admin virtual-stock label deployed', adminProductsUi.body.includes('كمية افتراضية') && adminProductsUi.body.includes('كميات المخزون هنا افتراضية'));
 const adminHealth = await request('admin Edge health', BACKEND+'/women-admin/health');
 if (adminHealth) check('admin Edge healthy', adminHealth.data?.status === 'ok');
 console.log('\nTOTAL FAILURES:', failures.length);
