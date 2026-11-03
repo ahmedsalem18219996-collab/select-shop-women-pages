@@ -5,6 +5,7 @@ import { checkSourceImage, optimizeUploadImage, optimizationSummary } from '../i
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
 import { saveFamilyCategory } from '../model-category.js';
+import { mountQuickProductEditor } from '../quick-product.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
 let categories = [];
@@ -51,9 +52,11 @@ async function renderList(ctx) {
     render(results, html`
       <div class="list mobile-only">${listedGroups.map((g, k) => {
         const p = g.members[0].product;
+        const pricesOnModel = g.members.map(m => m.product.price_min_minor).filter(Number.isInteger);
+        const minModelPrice = pricesOnModel.length ? Math.min(...pricesOnModel) : null;
         return g.family ? html`<div class="row-card model-summary" style="--k:${k}">
           <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-          <span class="row-main"><button class="model-open" type="button" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اضغطي لتعديل الألوان والسعر والمخزون</span></button></span>
+          <span class="row-main"><button class="model-open" type="button" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختاري اللون والمقاس وعدّلي بسهولة</span>${minModelPrice !== null ? html`<span class="model-price">السعر من ${money(minModelPrice)}</span>` : ''} </button></span>
         </div>` : html`<a class="row-card" style="--k:${k}" href="#/products/${p.public_code}">
           <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
           <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
@@ -74,13 +77,13 @@ async function renderList(ctx) {
             const views = g.members.reduce((n,m)=>n+(Number(m.product.views_30d)||0),0);
             return html`<tr data-family="${g.key}" class="model-group-row">
               <td><div class="cell-main"><span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-                <div class="row-main"><button type="button" class="model-open" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m=>html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اضغطي لإدارة الألوان والتعديل</span></button></div></div></td>
+                <div class="row-main"><button type="button" class="model-open" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m=>html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختاري اللون والمقاس وعدّلي بسهولة</span></button></div></div></td>
               <td>${p.category}</td>
               <td class="num">${low === null || high === null ? '—' : low === high ? money(low) : html`${money(low)} – ${money(high)}`}</td>
               <td class="num">${stock === null ? '—' : fmtNum(stock)}</td>
               <td class="num muted">${fmtNum(views)}</td>
               <td><span class="muted">حسب كل لون</span></td>
-              <td><button type="button" class="btn btn-primary btn-sm" data-manage-model="${g.key}">إدارة الألوان</button></td>
+              <td><button type="button" class="btn btn-primary btn-sm" data-manage-model="${g.key}">تعديل الموديل</button></td>
             </tr>`;
           }
           return html`<tr data-code="${p.public_code}">
@@ -143,7 +146,7 @@ async function renderList(ctx) {
         }
       }
       const allMembers = g.family.colors.map(color => byCode.get(color.code));
-      if (allMembers.some(m => !m) || allMembers.some(m => m.product.status === 'archived')) {
+      if (allMembers.some(m => !m)) {
         island('error', 'الموديل فيه لون مؤرشف أو غير متاح، راجعيه قبل تغيير القسم.');
         return;
       }
@@ -151,10 +154,14 @@ async function renderList(ctx) {
       const categoryNames = [...new Set(allMembers.map(m => m.product.category))];
       const currentCategory = categoryNames.length === 1 ? categoryNames[0] : '';
       const box = sheet({
-        title: g.name + ' · إدارة الألوان',
+        title: g.name + ' · تعديل سهل',
         wide: true,
         body: html`<div class="stack">
-          <p class="muted">كل موديل له قسم واحد. تغيير القسم هنا بيحدّث كل ألوانه الموجودة، مع الحفاظ على مخزون وأوردرات كل لون.</p>
+          <p class="muted">اختاري لون الموديل من الصور، وبعدها المقاس؛ عدّلي السعر والإتاحة والصور من نفس الشاشة. كل تغيير بيخص اللون اللي اخترتيه فقط.</p>
+          <div class="quick-colors" data-quick-colors role="group" aria-label="اختاري لون الموديل"></div>
+          <div data-quick-panel aria-live="polite"></div>
+          <details class="quick-advanced"><summary>تغيير القسم لكل الألوان (اختياري)</summary>
+          <p class="muted">القسم هنا بيتغير لكل الألوان الموجودة، من غير ما يلمس الأوردرات القديمة.</p>
           ${can('products.edit') ? html`<div class="model-category-editor">
             <label class="field"><span>القسم الخاص بالموديل (${allMembers.length} ألوان)</span>
               <select class="select" id="model-category" aria-label="اختاري قسم الموديل">
@@ -165,7 +172,9 @@ async function renderList(ctx) {
             <button class="btn btn-primary" type="button" data-save-model-category>حفظ القسم لكل الألوان</button>
             <p class="muted" id="model-category-feedback" role="status" aria-live="polite"></p>
           </div>` : html`<p class="muted">تعديل القسم يحتاج صلاحية تعديل المنتجات.</p>`}
-          <p class="muted">للصور والسعر والمخزون: افتحي اللون المطلوب. إضافة لون جديد للموديل وتغيير أسماء الألوان الظاهرة في المتجر تحتاج ربطًا ديناميكيًا بالخادم، ومش متاحة بأمان في النسخة الحالية.</p>
+          </details>
+          <details class="quick-advanced"><summary>روابط تعديل إضافية للمستخدم المتقدم</summary>
+          <p class="muted">لو عايزة تعديل بيانات المنتج القديمة بالتفصيل افتحي اللون. إضافة لون جديد للموديل أو مقاس جديد لمنتج منشور محتاجة ربط خادم آمن مش موجود حاليًا.</p>
           ${allMembers.map(m => html`<div class="model-color-line">
             <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="model-dot" style="background:${m.color.hex}"></span>
@@ -176,9 +185,11 @@ async function renderList(ctx) {
               <a class="btn btn-ghost btn-sm" href="#/products/${m.product.public_code}" data-open-sku data-edit-tab="details">البيانات</a>
             </span>
           </div>`)}
+          </details>
         </div>`,
-        foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>`
+        foot: html`<button class="btn btn-ghost" data-close>إغلاق</button>${can('products.price') || can('inventory.manage') ? html`<button type="button" class="btn btn-primary" data-quick-save-footer>حفظ اللون والمقاس</button>` : ''}`
       });
+      mountQuickProductEditor({ box, ctx, members: allMembers, onChanged: load });
       box.querySelector('[data-close]')?.addEventListener('click', closeLayer);
       box.querySelector('[data-save-model-category]')?.addEventListener('click', async e => {
         const button = e.currentTarget;
@@ -186,6 +197,7 @@ async function renderList(ctx) {
         const feedback = $('#model-category-feedback', box);
         const category = select?.value;
         if (!category || !categories.some(c => c.name === category)) { feedback.textContent = 'اختاري قسم صحيح الأول.'; return; }
+        if (allMembers.some(m => m.product.status === 'archived')) { feedback.textContent = 'فيه لون مؤرشف؛ مينفعش نغيّر القسم لكل الألوان. عدّلي الألوان النشطة منفصلة.'; return; }
         if (allMembers.every(m => m.product.category === category)) { feedback.textContent = 'الموديل بالفعل في القسم ده.'; return; }
         select.disabled = true;
         await withBusy(button, async () => {
@@ -469,6 +481,7 @@ async function renderEditor(ctx, code) {
   render(el, html`<div class="page">
     <div class="page-head"><div><a class="btn btn-ghost btn-sm" href="#/products">${icon(document.dir === 'rtl' ? 'chev' : 'chevBack')}${t('nav.products')}</a>
       <h2 style="margin-top:8px">${p.title}</h2><p class="row"><span class="code">${p.public_code}</span>${statusBadge(p.status)}<span class="muted">${ago(p.updated_at)}</span></p></div>
+      <div class="actions"><button type="button" class="btn btn-soft" data-quick-single>تعديل سريع للمقاس والسعر والصور</button></div>
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
       <div class="card-head"><h3>كمّلي الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعميلات لحد النشر</span></div>
@@ -488,6 +501,23 @@ async function renderEditor(ctx, code) {
           <dt>${t('editor.d30')}</dt><dd class="num">${fmtNum(d.views?.last_30_days)}</dd><dt>${t('editor.total')}</dt><dd class="num">${fmtNum(d.views?.total)}</dd></dl></section>
         ${publishCard(p, d)}
       </aside></div></div>`);
+  $('[data-quick-single]', el)?.addEventListener('click', () => {
+    const box = sheet({
+      title: p.title + ' · تعديل سريع',
+      wide: true,
+      body: html`<div class="stack">
+        <p class="muted">اختاري المقاس وعدّلي السعر والإتاحة والصور من نفس الشاشة. المقاسات غير المسجلة هتظهر بوضوح.</p>
+        <div class="quick-colors" data-quick-colors role="group" aria-label="المنتج"></div>
+        <div data-quick-panel aria-live="polite"></div>
+      </div>`,
+      foot: html`<button class="btn btn-ghost" type="button" data-close>إغلاق</button>${can('products.price') || can('inventory.manage') ? html`<button type="button" class="btn btn-primary" data-quick-save-footer>حفظ اللون والمقاس</button>` : ''}`
+    });
+    mountQuickProductEditor({
+      box, ctx,
+      members: [{ product: { ...p, image: d.card?.image || null }, color: { name: 'المنتج', hex: '#66768B' } }],
+      onChanged: reload
+    });
+  });
   $('[data-pub]', el)?.addEventListener('click', async (e) => {
     const publish = p.status !== 'public';
     if (publish && !visiblePhotos.length) {
