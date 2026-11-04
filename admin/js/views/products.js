@@ -848,7 +848,10 @@ const TABS = {
           feedback.textContent = 'اتبعث الحفظ لكن التأكيد فشل. راجعي السعر قبل النشر.';
           island('error', feedback.textContent); return;
         }
+        // Keep the current editor snapshot fresh when staff switches tabs without a page reload.
         p.structure_version = latest.structure_version;
+        p.variants = latest.variants;
+        p.base_price = latest.base_price;
         feedback.textContent = '✓ اتحفظ سعر اللون واتأكدنا منه';
         done('تم حفظ السعر');
         void refreshAside().catch(() => {});
