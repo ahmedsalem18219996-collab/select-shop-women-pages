@@ -9,7 +9,7 @@ test("Atelier storefront + admin route styles are served", async ({ request }) =
     ["/cart/", "/css/atelier-site.css?v=20261104-1"],
     ["/checkout/", "/css/atelier-site.css?v=20261104-1"],
     ["/order-success/", "/css/atelier-site.css?v=20261104-1"],
-    ["/admin/", "/admin/css/atelier-admin.css?v=20261104-1"],
+    ["/admin/", "/admin/css/atelier-admin.css?v=20261104-price-fix"],
   ];
   for (const [url, stylesheet] of routes) {
     const response = await request.get(url);
