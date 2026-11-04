@@ -121,3 +121,71 @@ CLEAN is Next.js/React with its own database and roles; no component or backend 
 - **Live GA4 numbers in Admin**: still via GA4 report import (#44). A live feed needs a backend GA4 Data API service account — a backend change, not in this PR.
 - **Production field data** (real-user LCP/INP): needs the deployed site; measure after release.
 - Backend draft PRs (#43–#54 in staging) were not touched; nothing here depends on them.
+
+## Round 3: "Maison" redesign (visual identity, not spacing)
+
+Review of round 2: the site still looked like the old one. Round 3 replaces the visual identity on all four surfaces
+(home, product/landing pages, the automatic `/lp/?p=` page, Admin) while keeping every function, product, colour, size,
+order path, GA4 (`G-NB8PZCX35Z`), Meta Pixel, and virtual stock untouched. No new library, font file, or script.
+
+**Figma:** page «Redesign · Maison (2026-11)» in https://www.figma.com/design/wGzZe8pBrl0mgk0czTaz8p (node 4:44).
+The mobile home, landing page, and Admin list were drawn there first. Chosen direction: a fashion-house look
+(ink black, warm ivory, champagne gold accents, square edges, light large type), built on the brand font already
+self-hosted (Readex Pro 300–600).
+
+### What changed visually
+| Surface | Before | After (Maison) |
+|---|---|---|
+| Home, first mobile screen | Heading + chips + 2 small cards | **Full-bleed product cover** with name, live price, «اطلبي الآن» (straight to the order form) and «تسوقي الكل»; promises in a 3-column strip below |
+| Home, header | Olive wordmark, left-aligned | Centred letterspaced **SELECT / SHOP WOMAN** wordmark, ink announcement bar with a gold rule |
+| Home, cards and sections | Rounded cards, green «+» | Square cards, ink «+», «THE EDIT» section kicker, ink full-bleed promise band and footer |
+| Landing pages | Script heading «تفاصيل تكمّل إطلالتك», green buttons | **Floating ivory card over the photo** (gold rule, light 30px title, price, promises all on the first screen); ink sticky order bar with an ivory «تأكيد الطلب»; square colour chips with an ink pressed state; white order panel |
+| Admin | Rounded olive UI | Ink top bar (phone) / **ink navigation column** with gold active mark (desktop), outlined square status badges, status counts as an editorial index (light large numerals in hairline columns) |
+
+The home hero shows the first purchasable product from the live catalog (falls back to SS-1008, whose photo is in the HTML).
+Its photo is preloaded in `index.html`, so the first paint no longer waits for the catalog API.
+
+### Before / After (real Chromium, Pixel 7 and 1366×900, local mock)
+| | |
+|---|---|
+| Home (mobile) | ![](img/ba-home-mobile.webp) |
+| Landing page (mobile) | ![](img/ba-lp-mobile.webp) |
+| Home (desktop) | ![](img/ba-home-desktop.webp) |
+| Landing page (desktop) | ![](img/ba-lp-desktop.webp) |
+| Admin products (mobile) | ![](img/ba-admin-products-mobile.webp) |
+| Admin products (desktop) | ![](img/ba-admin-products-desktop.webp) |
+| Admin product edit (mobile) | ![](img/ba-admin-product-edit-mobile.webp) |
+| Admin dashboard (desktop) | ![](img/ba-admin-dashboard-desktop.webp) |
+
+Mobile order journey on the new design (home cover → model page → zoom → colour → form → confirmation; 1 mock order, 0 external requests):
+
+![Mobile journey (Maison)](img/mobile-order-journey-maison.webp)
+
+### Preview before publishing
+Nothing is deployed. To see it locally (mock data, no production writes, no GA4):
+```
+cd tooling && PORT=4180 node serve.mjs
+```
+then open http://127.0.0.1:4180/ (use `127.0.0.1`, not `localhost`: the mock API allows that origin only).
+`/lp/ss-1008/`, `/lp/ballon-suit/` and `/admin/` (Admin needs the `admin-shots.mjs` harness, since login is real).
+
+### Speed (Pixel 7 profile, cold load, median of 3, same mock; before = `origin/release`)
+| Page | Slow 3G before | Slow 3G after | Slow 4G before | Slow 4G after |
+|---|---|---|---|---|
+| / (home) | 4628 ms · CLS 0.247 | **2332 ms** · CLS 0.071 | 1908 ms | **1584 ms** |
+| /lp/ballon-suit/ | 5260 ms | **2828 ms** | 1636 ms | **904 ms** |
+| /lp/ss-1008/ | 3232 ms | **1500 ms** | 972 ms | **732 ms** |
+
+The home page now meets the 2.5 s target on Slow 3G too (round 2's open blocker): the first paint is the preloaded
+cover photo instead of a card that waited for `app.js` + the catalog API. The redesign adds no font file, script, or library.
+
+### Tests after round 3 (local, Windows)
+| Suite | Result |
+|---|---|
+| Lint | clean |
+| Unit (`node --test`) | 103/103 |
+| E2E Playwright, mobile + desktop (orders, colours, sizes, stock, events, cart, Admin styles) | **144 passed · 14 skipped · 0 failed** |
+| Mobile order journey (`journey-shots.mjs`) | 1 mock order, 0 external requests |
+
+Test updates were only to pinned visual values (new tokens `#141310`/`#f5f1ea`, CSS cache-bust `v=20261104-1`).
+Still not done: production field data (needs the release), and review/approval of this design before any merge or deploy.

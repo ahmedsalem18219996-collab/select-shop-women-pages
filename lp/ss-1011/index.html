@@ -150,6 +150,67 @@ html:not(.hl){--f:"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif}html:not(.hl) 
 .gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.gallery img{width:100%;height:auto;aspect-ratio:4/5}
 .bar>div{gap:8px}.bar .sum{flex:none}#lpAddCart{flex:1 1 0;padding:0 6px;font-size:13px}#lpOrder{flex:1.25 1 0;font-size:15px}}
 @media(min-width:560px) and (max-width:899px){.hero{margin-inline:auto}}
+/* Maison (2026-11): same identity as the home page stylesheet: ink, ivory, champagne gold,
+   square edges, light large type. Readex Pro only (Rakkas is no longer drawn on ordinary pages). */
+:root{--bg:#f5f1ea;--paper:#ece5d9;--surface:#ece5d9;--line:#ddd5c7;--ink:#141310;--accent:#141310;--mauve:#141310;--muted:#6f685c;--gold:#b08d57}
+body{font-weight:400}
+.top{border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:6}
+.mark{font-weight:600;letter-spacing:.34em;line-height:1;gap:4px}
+.mark::after{content:"SHOP WOMAN";width:auto;height:auto;background:none;font:400 8px/1 var(--f);letter-spacing:.38em;color:var(--muted)}
+.top .jump{font-size:13px;text-decoration:none;border-bottom:1px solid var(--ink);padding:4px 0}
+#lpCartLink{background:var(--ink);color:var(--bg)}
+body:not([data-campaign]) .atelier-heading{font:400 11px/1.6 var(--f);letter-spacing:.22em;color:var(--gold);margin:0}
+.head{gap:8px}
+.head .row{flex-direction:column;align-items:flex-start;gap:6px}
+h1{font-weight:300;font-size:30px;line-height:1.25;letter-spacing:-.015em}
+.price{font-size:24px;font-weight:600}
+.price small{font-size:13px}
+.desc{color:var(--muted)}
+.trust{gap:0;border-block:1px solid var(--line)}
+.trust li{background:none;padding:11px 12px 11px 0;font-size:12px}
+.trust li::before{content:"";display:inline-block;width:5px;height:5px;background:var(--gold);transform:rotate(45deg);vertical-align:middle;margin-inline-end:8px}
+.pick legend,.lp-opt legend{font-weight:500;font-size:13px;letter-spacing:.02em}
+.chip,.lp-opt span,.one{border-radius:0!important;background:#fff;border:1px solid var(--line);min-height:46px}
+.chip[aria-pressed="true"],.lp-opt input:checked+span{background:#fff;color:var(--ink);border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);font-weight:600}
+.chip i{border-radius:50%}
+.gallery img{border-radius:0}
+.order{background:#fff;border:1px solid var(--line);padding:22px 18px}
+.order h2{font-weight:300;font-size:26px;letter-spacing:-.01em}
+.order h2 small{font-size:13px;color:var(--muted);margin-top:4px}
+.f{font-weight:500;font-size:13px}
+.f input,.f select,.f textarea{background-color:#fff;border:1px solid var(--line);border-radius:0}
+.f input:focus,.f select:focus,.f textarea:focus{outline:0;border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.order .step,.order .step button{background:#fff}
+.totals{border-top:1px solid var(--line)!important;padding-top:14px}
+#lpOrder{background:var(--ink);color:#f5f1ea;border-radius:0;font-weight:500;letter-spacing:.04em}
+#lpOrder:active{background:#000}
+#lpOrder:disabled{background:#cfc8bb;color:#4a453d}
+#lpAddCart{border:1px solid var(--ink);color:var(--ink);background:transparent;border-radius:0;font-weight:500}
+.reassurance{font:300 24px/1.35 var(--f);letter-spacing:-.01em}
+.notes{background:none;border-block:1px solid var(--line);padding:6px 0}
+.notes li{padding-inline-start:16px;position:relative}
+.notes li::before{content:"";position:absolute;inset-inline-start:0;top:.65em;width:5px;height:5px;background:var(--gold);transform:rotate(45deg)}
+.done{background:#fff;border:1px solid var(--line)}
+.done .tick{border-radius:0;background:var(--ink)}
+footer{background:var(--ink);color:#f5f1ea}
+footer strong{font-weight:300;letter-spacing:.2em}
+@media(max-width:899px){
+.page{gap:16px}
+.bar{background:var(--ink);border:0}
+.bar .sum b{color:#f5f1ea}.bar .sum span{color:rgba(245,241,234,.7)}
+#lpOrder{background:#f5f1ea;color:var(--ink)}
+#lpOrder:disabled{background:#4a463e;color:#bdb5a7}
+#lpAddCart{border-color:rgba(245,241,234,.6);color:#f5f1ea}
+/* floating editorial card over the photo: name, price and promises reach the first screen */
+body:not([data-campaign]) .atelier-heading{position:relative;z-index:1;margin:-88px 12px 0;padding:18px 18px 0;background:var(--bg);border-top:2px solid var(--gold)}
+body:not([data-campaign]) .head{position:relative;z-index:1;margin:-16px 12px 0;padding:10px 18px 16px;background:var(--bg)}
+}
+@media(min-width:900px){
+.top{padding:16px 32px}
+.media{position:sticky;top:84px}
+h1{font-size:44px}.price{font-size:28px}
+.info{gap:22px}
+}
 
 
 body[data-campaign] .atelier-heading{font-size:clamp(28px,4vw,42px);line-height:1.35;margin:0}

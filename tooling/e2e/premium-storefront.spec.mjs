@@ -12,13 +12,13 @@ test("premium storefront renders verified catalog and retains product navigation
   await expect(page.locator("#womenOwnerAnnouncement")).toHaveCount(1);
   await expect(page.locator("#womenOwnerAnnouncement")).not.toBeEmpty();
   const accent = await page.locator("#womenOwnerAnnouncement").evaluate(el => getComputedStyle(el).borderBottomColor);
-  expect(accent).toBe("rgb(184, 160, 108)"); // Atelier brass, not legacy violet
+  expect(accent).toBe("rgb(176, 141, 87)"); // Maison champagne gold, not legacy violet
   await expect(page.locator("#feed .card").first()).toBeVisible({ timeout: 12000 });
   // A shop with actual products must never tell buyers it is still preparing them.
   await expect(page.locator(".hero p")).not.toContainText("بنجهز");
   await expect(page.locator("#countOut")).not.toHaveText("جارٍ التحميل…");
   const color = await page.locator(".hdr").evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(color).toBe("rgba(247, 246, 242, 0.98)"); // Atelier warm-paper header
+  expect(color).toBe("rgba(245, 241, 234, 0.97)"); // Maison ivory header
   const productLink = page.locator("#feed .card .shot-link").first();
   // SS-1008 + SS-1009 are one verified model; the card must open the
   // canonical pre-rendered page rather than the legacy per-colour URL.

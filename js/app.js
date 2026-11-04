@@ -19,6 +19,25 @@
   const P = DATA.products, LOOKS = DATA.looks, STORIES = DATA.stories, CATS = DATA.categories;
   const chart = DATA.sizeChart, chartMin = DATA.sizeChartMin || { bust: 80, waist: 62 };
   const byId = id => P.find(p => String(p.id) === String(id));
+  // Hero = first orderable product in the owner's catalog order. The HTML ships SS-1008 so the photo paints
+  // before the catalog arrives; only swap when the live first product differs.
+  const heroItem = P.find(p => p.url && p.purchasable !== false) || P.find(p => p.url);
+  if (heroItem && $('#heroImg')) {
+    const base = String(heroItem.url).split('#')[0];
+    $('#heroPick').href = base; $('#heroOrder').href = base + '#lpForm';
+    $('#heroName').textContent = heroItem.name;
+    $('#heroPrice').textContent = fmt(heroItem.price) + ' ' + CUR;
+    const img = $('#heroImg');
+    if (img.dataset.code !== heroItem.id) {
+      const dir = '/lp/' + String(heroItem.id).toLowerCase() + '/img/' + heroItem.id + '/';
+      img.parentElement.querySelector('source')?.remove();
+      // Not every code has a pre-rendered photo folder: fall back to the catalog thumbnail once.
+      img.onerror = () => { img.onerror = null; img.removeAttribute('srcset'); img.src = heroItem.image || ''; };
+      img.srcset = dir + '0-480.webp 480w, ' + dir + '0-800.webp 800w';
+      img.src = dir + '0-800.webp';
+      img.alt = heroItem.name; img.dataset.code = heroItem.id;
+    }
+  }
   // Keep the visible header links in sync with admin-controlled categories.
   const categoryNav = $('.hdr-links');
   if (categoryNav) {
@@ -381,7 +400,7 @@
       <article class="card" style="--k:${k}">
         <div class="shot" style="--c:${cssColor(p.c)}">
           <a class="shot-link" href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}" aria-label="افتحي تفاصيل ${esc(p.name)}">
-            ${p.image ? `<img src="${esc(p.image)}" ${p.smallImage ? `srcset="${esc(p.smallImage)} 400w, ${esc(p.image)} 560w" sizes="(max-width: 699px) calc((100vw - 60px) / 2), (max-width: 979px) calc((100vw - 80px) / 3), 300px"` : ""} alt="${esc(p.name)}" width="600" height="800" data-fallback="${esc(p.originalImage && p.originalImage !== p.image ? p.originalImage : "")}" loading="${k < 2 ? "eager" : "lazy"}" fetchpriority="${k < 2 ? "high" : "low"}" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
+            ${p.image ? `<img src="${esc(p.image)}" ${p.smallImage ? `srcset="${esc(p.smallImage)} 400w, ${esc(p.image)} 560w" sizes="(max-width: 699px) calc((100vw - 60px) / 2), (max-width: 979px) calc((100vw - 80px) / 3), 300px"` : ""} alt="${esc(p.name)}" width="600" height="800" data-fallback="${esc(p.originalImage && p.originalImage !== p.image ? p.originalImage : "")}" loading="lazy" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
             <span class="shot-link-label">شوفي التفاصيل ↗</span>
           </a>
           ${p.was ? `<span class="badge">خصم ${Math.round((1 - p.price / p.was) * 100)}%</span>` : p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
