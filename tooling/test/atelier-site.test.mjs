@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 const storeRoutes = [
-  ["index.html", 'href="css/atelier-site.css?v=20261104-1"', 'class="atelier-home"'],
+  ["index.html", 'href="css/atelier-site.css?v=20261104-brand-hero"', 'class="atelier-home"'],
   ["p/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-product"'],
   ["cart/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-cart"'],
   ["checkout/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-checkout"'],
@@ -41,7 +41,7 @@ test("Atelier preserves storefront controls, legacy checkout and the isolated ad
   assert.match(checkout, /id="placeOrder"/);
   assert.match(done, /id="orderCode"/);
   assert.match(admin, /id="app"/);
-  assert.match(admin, /css\/atelier-admin\.css\?v=20261104-1/);
+  assert.match(admin, /css\/atelier-admin\.css\?v=20261104-price-fix/);
   assert.match(admin, /script-src 'self'/);
   assert.match(await source("admin/css/atelier-admin.css"), /:root\[data-theme="dark"\]/);
   assert.match(checkout, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);

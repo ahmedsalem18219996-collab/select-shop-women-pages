@@ -117,3 +117,9 @@
 .upload-tile[data-state="failed"] .upload-state small{color:var(--danger);font-weight:600}
 .quick-pictures .upload-tile{flex:none;width:88px;height:108px;aspect-ratio:auto}
 .media,.drop,.upload-state{border-radius:var(--r-m)}
+
+/* Explicit, readable per-colour price save on all screen sizes. */
+.variant-price-cell{display:grid;gap:6px;min-width:155px}
+.variant-price-cell .input-money{width:100%}
+.variant-price-cell [data-save-vprice]{min-height:40px;white-space:nowrap}
+.variant-price-cell [data-price-feedback]{display:block;line-height:1.5;min-height:1em;font-size:11px;color:var(--primary)}

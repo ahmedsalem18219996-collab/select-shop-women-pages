@@ -14,6 +14,15 @@ test("premium storefront renders verified catalog and retains product navigation
   const accent = await page.locator("#womenOwnerAnnouncement").evaluate(el => getComputedStyle(el).borderBottomColor);
   expect(accent).toBe("rgb(176, 141, 87)"); // Maison champagne gold, not legacy violet
   await expect(page.locator("#feed .card").first()).toBeVisible({ timeout: 12000 });
+  await expect(page.locator("#heroImg")).toHaveCount(0);
+  await expect(page.locator("#heroPick")).toHaveCount(0);
+  await expect(page.locator(".hero-cta a")).toHaveAttribute("href", "#shop");
+  // SS-1011 is no longer special-cased: if published in the real public catalog,
+  // it must appear as one ordinary product card with its direct COD landing page.
+  const sweater = page.locator("#feed .card").filter({ has: page.locator('[data-name="SS-1011"]') });
+  await expect(sweater).toHaveCount(1);
+  await expect(sweater.locator(".shot-link")).toHaveAttribute("href", /\/lp\/\?p=SS-1011$/);
+  await expect(sweater.locator(".pr")).toContainText("550");
   // A shop with actual products must never tell buyers it is still preparing them.
   await expect(page.locator(".hero p")).not.toContainText("بنجهز");
   await expect(page.locator("#countOut")).not.toHaveText("جارٍ التحميل…");

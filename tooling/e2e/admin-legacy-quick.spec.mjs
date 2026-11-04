@@ -18,7 +18,7 @@ async function harness(page, role = 'owner') {
     makeRow('SS-1011','بلوفر بيبي بلو'),
     makeRow('SS-1088','بلوفر بألوان ومقاسات')
   ];
-  const state=Object.fromEntries(catalog.map(p=>[p.public_code,{price:p.price_min_minor,quantity:20,available:true}]));
+  const state=Object.fromEntries(catalog.map(p=>[p.public_code,{price:p.price_min_minor,quantity:20,available:true,overrides:{}}]));
   await page.addInitScript(()=>{
     sessionStorage.setItem('wa.session',JSON.stringify({
       access_token:'local-qa-only',refresh_token:'local-qa-refresh',
@@ -52,7 +52,8 @@ async function harness(page, role = 'owner') {
             {option_id:'sz',name:'المقاس',values:[{value_id:'s',value:'S'},{value_id:'m',value:'M'}]}
           ] : [];
           const variants=unified ? [0,1,2,3].map((position)=>({
-            position,active:true,availability:'available',amount_minor:v.price,price_source:'base',
+            position,active:true,availability:'available',amount_minor:v.overrides[position]??v.price,
+            price_source:v.overrides[position]!=null?'variant_override':'base',
             selections:[{option_id:'co',value_id:position<2?'pink':'brown'},
               {option_id:'sz',value_id:position%2?'m':'s'}]
           })) : [{position:0,active:true,availability:v.available?'available':'unavailable',
@@ -70,6 +71,10 @@ async function harness(page, role = 'owner') {
           }};
         }
       } else if(op==='products.set_price'){state[args.code].price=args.amount_minor;payload={outcome:'saved'};}
+      else if(op==='products.set_variant_price'){
+        state[args.code].overrides[args.position]=args.amount_minor;
+        payload={outcome:'saved'};
+      }
       else if(op==='products.set_stock'){state[args.code].quantity=args.quantity;payload={outcome:'saved',available:state[args.code].available};}
       else if(op==='products.set_availability'){state[args.code].available=args.available;payload={outcome:'saved'};}
       else if(op==='products.hide'){catalog.find(p=>p.public_code===args.code).status='hidden';payload={outcome:'hidden'};}
@@ -228,4 +233,27 @@ test('owner hides one model colour with inline confirmation and keeps editor ope
   await expect(page.locator('[data-quick-colors] [data-quick-code]')).toHaveCount(3);
   await expect(page.locator('[data-quick-status]')).toContainText('نشر');
   await expect(page.locator('#layer .sheet')).toBeVisible();
+});
+
+
+test('variant price saves only after explicit click and is confirmed from a fresh server read; colour selector opens',async ({page})=>{
+  const {calls}=await harness(page);
+  await page.goto(HOME+'#/products/SS-1088');
+  await page.locator('[data-v="variants"]').click();
+  const row=page.locator('tr[data-pos="2"]');
+  await expect(row.locator('[data-vprice]')).toHaveAttribute('placeholder','650');
+  await row.locator('[data-vprice]').fill('730');
+  await row.locator('[data-vprice]').blur();
+  expect(calls.filter(x=>x.op==='products.set_variant_price')).toHaveLength(0);
+  await row.locator('[data-save-vprice]').click();
+  await expect(row.locator('[data-price-feedback]')).toContainText('اتحفظ');
+  const writes=calls.filter(x=>x.op==='products.set_variant_price');
+  expect(writes).toHaveLength(1);
+  expect(writes[0].args).toMatchObject({code:'SS-1088',position:2,amount_minor:73000});
+  await page.locator('[data-v="details"]').click();
+  await page.locator('[data-v="variants"]').click();
+  await expect(page.locator('tr[data-pos="2"] [data-vprice]')).toHaveValue('730');
+  await page.locator('[data-open-quick-colours]').click();
+  await expect(page.locator('[data-quick-internal-colour]')).toHaveCount(2);
+  expect(calls.filter(x=>x.op==='products.create')).toHaveLength(0);
 });

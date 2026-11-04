@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://byluoipdunralsurwebt.supabase.co" crossorigin>
-<!-- The hero photo is the first paint (LCP): start it before CSS, scripts and the catalog. -->
-<link rel="preload" as="image" type="image/avif" fetchpriority="high" imagesrcset="lp/ss-1008/img/SS-1008/0-480.avif 480w, lp/ss-1008/img/SS-1008/0-800.avif 800w" imagesizes="(min-width: 980px) 560px, 100vw">
+<!-- The brand-first hero is text-only: don't preload a jacket photo or compete with product cards. -->
 <!-- WOMEN public release: official verified domain. -->
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://selectshopeg.com/">
@@ -563,7 +562,7 @@ body{background:var(--mirror)}
   .seg{height:41px}
 }
 </style>
-<link rel="stylesheet" href="css/atelier-site.css?v=20261104-1">
+<link rel="stylesheet" href="css/atelier-site.css?v=20261104-brand-hero">
 <script>
 /* Begin the public catalog request during HTML parsing instead of waiting for the UI bundle. */
 // Include only our isolated QA server so GitHub Lighthouse measures the same
@@ -610,19 +609,13 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
       <div class="stories" id="stories" aria-label="ستوري"></div>
     </div>
 
-    <!-- Hero = the first catalog product (app.js keeps it in sync with the live catalog order). -->
-    <section class="hero" aria-labelledby="heroTitle">
-      <picture class="hero-media">
-        <source type="image/avif" srcset="lp/ss-1008/img/SS-1008/0-480.avif 480w, lp/ss-1008/img/SS-1008/0-800.avif 800w" sizes="(min-width: 980px) 560px, 100vw">
-        <img id="heroImg" data-code="SS-1008" src="lp/ss-1008/img/SS-1008/0-800.webp" srcset="lp/ss-1008/img/SS-1008/0-480.webp 480w, lp/ss-1008/img/SS-1008/0-800.webp 800w" sizes="(min-width: 980px) 560px, 100vw" width="800" height="1000" alt="جاكيت جلد" fetchpriority="high" decoding="async">
-      </picture>
+    <!-- Brand-only hero: all real products (including SS-1011) belong to the same catalog grid. -->
+    <section class="hero hero--brand" aria-labelledby="heroTitle">
       <div class="hero-copy">
-        <span class="hero-kicker">مختارات الموسم</span>
+        <span class="hero-kicker">SELECT SHOP WOMEN · THE EDIT</span>
         <h1 id="heroTitle">اختاري ستايلك <span class="hl">بطريقتك.</span></h1>
-        <a class="hero-pick" id="heroPick" href="/lp/ss-1008/"><span id="heroName">جاكيت جلد</span><span id="heroPrice" class="hero-price"></span></a>
         <div class="hero-cta">
-          <a class="btn-solid" id="heroOrder" href="/lp/ss-1008/#lpForm">اطلبي الآن</a>
-          <a class="btn-line" href="#shop">تسوقي الكل</a>
+          <a class="btn-solid" href="#shop">تصفحي المنتجات</a>
         </div>
       </div>
       <p class="hero-lead">تصفحي الموديلات بصورها وأسعارها، واختاري القطعة اللي تحبيها. التوافر وميعاد الشحن بيتأكدوا بعد تسجيل طلبك، والدفع عند الاستلام.</p>
