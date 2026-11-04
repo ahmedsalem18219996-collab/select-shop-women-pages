@@ -111,6 +111,26 @@ html,body{background:#f7f6f2;color:#22251f}
  .commerce-card{padding:16px}
  .atelier-checkout .wrap,.atelier-success .wrap{padding-inline:16px}
 }
+/* Shop-first home (Figma direction B, 2026-11-04): promises up front, products on the first phone screen.
+   Each card still opens its model landing page, where colour, size, zoom and the direct COD order live. */
+.hero-trust{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0}
+.hero-trust li{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--hair);border-radius:999px;background:#fff;color:var(--ink);font:500 12px/1.5 var(--f-body)}
+.hero-trust li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold);flex:none}
+@media(max-width:699px){
+ .hero{padding-block:12px 4px}
+ .hero h1{font-size:clamp(26px,7.4vw,32px);line-height:1.3;max-width:none}
+ .hero p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.7;margin-top:6px}
+ .hero-trust{margin:10px calc(-1*var(--gr)) 0 calc(-1*var(--gl));padding-left:var(--gl);padding-right:var(--gr);gap:5px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+ .hero-trust::-webkit-scrollbar{display:none}
+ .hero-trust li{padding:4px 9px;font-size:11px;white-space:nowrap}
+ .shop{padding-top:12px}
+ .shop-head{align-items:center}
+ .shop-head h2{font-size:20px;line-height:1.4}
+ .shop-head .hint{display:none}
+ .shop-head .num{padding-bottom:0}
+ .tape-dock{padding-block:6px 10px}
+ .promises{margin-top:28px}
+}
 @media(prefers-reduced-motion:reduce){
  .look,.card,.seg,.cta,.commerce-btn{animation:none!important;transition:none!important}
 }

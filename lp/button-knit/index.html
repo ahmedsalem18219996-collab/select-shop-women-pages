@@ -141,7 +141,9 @@ h1{font-size:34px}.price{font-size:26px}
 .trust li::before{content:"✓";margin-inline-end:6px;color:var(--gold)}
 #lpMore:not(:empty)::before{content:"تفاصيل القطعة";display:block;margin-bottom:4px;font-weight:600;color:var(--ink)}
 .bar button{white-space:nowrap}#lpAddCart{border-radius:0;border-color:var(--accent);color:var(--accent)}
-.hero img,.gallery img{cursor:zoom-in}#lpFormColors{order:0}
+.hero img,.gallery img{cursor:zoom-in}#lpFormColors{order:0}html:not(.hl) .gallery img{display:none}
+/* Brand fonts download after the hero photo; until then text uses the system Arabic font (same weights). */
+html:not(.hl){--f:"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif}html:not(.hl) .atelier-heading,html:not(.hl) .reassurance{font-family:var(--f)}
 @media(max-width:899px){.top{padding:10px 16px;gap:10px}.mark{font-size:20px;letter-spacing:.3em}.top .jump{font-size:13px}#lpCartLink{font-size:13px;padding:0 10px}
 .page{padding:0 16px 40px;gap:18px}.hero{order:0;width:auto;height:auto;aspect-ratio:4/5;margin-inline:-16px}.hero img{height:100%;object-position:50% 30%}
 .atelier-heading{order:1;font-size:26px}.head{order:2}.trust{order:2}
@@ -154,7 +156,7 @@ h1{font-size:34px}.price{font-size:26px}
 <header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a class="jump" href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
 <main class="page">
 <div class="media">
-<picture class="hero" id="lpHero"><source type="image/avif" srcset="../ss-1019/img/SS-1019/0-480.avif 480w, ../ss-1019/img/SS-1019/0-800.avif 800w" sizes="(min-width: 900px) 560px, 100vw"><source type="image/webp" srcset="../ss-1019/img/SS-1019/0-480.webp 480w, ../ss-1019/img/SS-1019/0-800.webp 800w" sizes="(min-width: 900px) 560px, 100vw"><img src="../ss-1019/img/SS-1019/0-800.webp" alt="بلوڤر باللون نبيتي" width="800" height="1000" fetchpriority="high" decoding="async"></picture>
+<picture class="hero" id="lpHero"><source type="image/avif" srcset="../ss-1019/img/SS-1019/0-480.avif 480w, ../ss-1019/img/SS-1019/0-800.avif 800w" sizes="(min-width: 900px) 560px, 100vw"><source type="image/webp" srcset="../ss-1019/img/SS-1019/0-480.webp 480w, ../ss-1019/img/SS-1019/0-800.webp 800w" sizes="(min-width: 900px) 560px, 100vw"><img src="../ss-1019/img/SS-1019/0-800.webp" alt="بلوڤر باللون نبيتي" width="800" height="1000" fetchpriority="high" decoding="async" onload="document.documentElement.classList.add('hl')" onerror="document.documentElement.classList.add('hl')"></picture>
 <div class="gallery" id="lpGallery"><img src="../ss-1019/img/SS-1019/1-320.webp" alt="بلوڤر باللون نبيتي" width="320" height="400" loading="lazy" decoding="async"></div>
 </div>
 <div class="info">

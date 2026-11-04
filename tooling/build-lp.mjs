@@ -194,7 +194,9 @@ h1{font-size:34px}.price{font-size:26px}
 .trust li::before{content:"✓";margin-inline-end:6px;color:var(--gold)}
 #lpMore:not(:empty)::before{content:"تفاصيل القطعة";display:block;margin-bottom:4px;font-weight:600;color:var(--ink)}
 .bar button{white-space:nowrap}#lpAddCart{border-radius:0;border-color:var(--accent);color:var(--accent)}
-.hero img,.gallery img{cursor:zoom-in}#lpFormColors{order:0}
+.hero img,.gallery img{cursor:zoom-in}#lpFormColors{order:0}html:not(.hl) .gallery img{display:none}
+/* Brand fonts download after the hero photo; until then text uses the system Arabic font (same weights). */
+html:not(.hl){--f:"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif}html:not(.hl) .atelier-heading,html:not(.hl) .reassurance{font-family:var(--f)}
 @media(max-width:899px){.top{padding:10px 16px;gap:10px}.mark{font-size:20px;letter-spacing:.3em}.top .jump{font-size:13px}#lpCartLink{font-size:13px;padding:0 10px}
 .page{padding:0 16px 40px;gap:18px}.hero{order:0;width:auto;height:auto;aspect-ratio:4/5;margin-inline:-16px}.hero img{height:100%;object-position:50% 30%}
 .atelier-heading{order:1;font-size:26px}.head{order:2}.trust{order:2}
@@ -202,6 +204,10 @@ h1{font-size:34px}.price{font-size:26px}
 .bar>div{gap:8px}.bar .sum{flex:none}#lpAddCart{flex:1 1 0;padding:0 6px;font-size:13px}#lpOrder{flex:1.25 1 0;font-size:15px}}
 @media(min-width:560px) and (max-width:899px){.hero{margin-inline:auto}}
 `;
+
+// Gallery thumbnails stay unloaded (display:none + lazy) until the hero photo arrives, so on slow networks the
+// hero gets the whole connection instead of sharing it with photos below the fold.
+const HERO_READY = ` onload="document.documentElement.classList.add('hl')" onerror="document.documentElement.classList.add('hl')"`;
 
 const DEFAULT_BENEFITS = ["الدفع عند الاستلام، من غير دفع مقدم", "اختاري المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد", "الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل"];
 
@@ -305,7 +311,7 @@ export function render(page, products, fontFaces = "") {
     canonical: `<link rel="canonical" href="https://selectshopeg.com/lp/${esc(page.id)}/">\n`,
     preload: `<link rel="preload" as="image" type="image/avif" imagesrcset="${first.hero.avif}" imagesizes="${sizes}" fetchpriority="high">\n`,
     codeExpr: JSON.stringify(first.code), fontFaces,
-    hero: `<source type="image/avif" srcset="${first.hero.avif}" sizes="${sizes}"><source type="image/webp" srcset="${first.hero.webp}" sizes="${sizes}"><img src="${first.hero.src}" alt="${esc(first.alt)}" width="800" height="1000" fetchpriority="high" decoding="async">`,
+    hero: `<source type="image/avif" srcset="${first.hero.avif}" sizes="${sizes}"><source type="image/webp" srcset="${first.hero.webp}" sizes="${sizes}"><img src="${first.hero.src}" alt="${esc(first.alt)}" width="800" height="1000" fetchpriority="high" decoding="async"${HERO_READY}>`,
     gallery: first.gallery.map(src => `<img src="${src}" alt="${esc(first.alt)}" width="320" height="400" loading="lazy" decoding="async">`).join(""),
     h1: esc(title), price, desc: lines[0] ? esc(lines[0]) : "", picker,
     options: oneSize ? `<div class="lp-opt"><span class="one">مقاس واحد</span></div>` : "",
@@ -350,7 +356,7 @@ export function renderShell(fontFaces = "", routes = {}) {
     source: " (automatic product page)", title: "SELECT SHOP WOMEN",
     description: "اطلبي من نفس الصفحة من SELECT SHOP WOMEN. الدفع عند الاستلام والشحن لكل المحافظات.",
     canonical: "", preload: "", codeExpr: code, fontFaces, route: ROUTE(routes),
-    hero: `<img alt="" width="800" height="1000" decoding="async">`, gallery: "", h1: "", price: "—", desc: "", picker: "", options: "",
+    hero: `<img alt="" width="800" height="1000" decoding="async"${HERO_READY}>`, gallery: "", h1: "", price: "—", desc: "", picker: "", options: "",
     choice: "اختاري المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
     noscript: `<a href="/">افتحي المتجر</a>`, data: JSON.stringify({ auto: true }),
     scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n`,
