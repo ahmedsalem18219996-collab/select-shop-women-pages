@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 const storeRoutes = [
-  ["index.html", 'href="css/atelier-site.css?v=20261104-1"', 'class="atelier-home"'],
+  ["index.html", 'href="css/atelier-site.css?v=20261104-brand-hero"', 'class="atelier-home"'],
   ["p/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-product"'],
   ["cart/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-cart"'],
   ["checkout/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-checkout"'],
