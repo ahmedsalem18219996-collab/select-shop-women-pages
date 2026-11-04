@@ -1,7 +1,7 @@
 import { t } from '../i18n.js';
 import { html, render, toString, $, $$, icon, money, toMinor, fmtNum, ago, date, statusBadge, skRows, sheet, closeLayer, confirmDialog, withBusy, island, done, fail, debounce, segmented, idempotencyKey, spotlight, esc } from '../ui.js';
 import { call, uploadProductImage, deleteProductImage, mediaUrl } from '../api.js';
-import { checkSourceImage, optimizeUploadImage, optimizationSummary } from '../image-optimize.js';
+import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from '../image-optimize.js';
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
 import { saveFamilyCategory } from '../model-category.js';
@@ -704,22 +704,53 @@ const TABS = {
       const variantPos = $('#m-variant', body)?.value;
       try {
       if (list.length !== files.length) island('error', 'فيه صور اتشالت من الدفعة لأنها مش JPG/PNG/WebP أو حجمها كبير. هنرفع الصور السليمة بس.');
-      const version = d.media?.structure_version ?? d.product.structure_version;
+      let version = d.media?.structure_version ?? d.product.structure_version;
       let ok = 0;
+      const missed = []; // { file, text }: shown again after the refresh so staff see exactly what to retry
+      // Every chosen photo shows at once with its own progress; nothing is stored until compression succeeded.
+      const tiles = list.map((f) => previewTile($('.media-grid', body), $('#drop', body), f));
       for (const [i, f] of list.entries()) {
         island('busy', `${t('editor.upload')} ${i + 1}/${list.length}`);
+        tiles[i].preparing();
         let prepared;
         try { prepared = await optimizeUploadImage(f, 'product'); }
-        catch (err) { island('error', err?.message || t('err.image')); break; }
-        if (prepared.optimized) island('busy', optimizationSummary(prepared));
+        catch (err) {
+          // The original stays untouched on the device and nothing reaches the store; carry on with the next photo.
+          const text = 'ما اترفعتش: ' + (err?.message || t('err.image'));
+          tiles[i].failed(text); missed.push({ file: f, text }); continue;
+        }
+        tiles[i].uploading(prepared.uploadedBytes);
         const fd = new FormData(); fd.append('code', code); fd.append('image', prepared.file); fd.append('version', String(version)); fd.append('alt', d.product.title);
         if (variantPos !== undefined && variantPos !== '') fd.append('variant_position', variantPos);
-        const res = await uploadProductImage(fd);
-        if (res.outcome === 'saved') ok++; else { fail(res); break; }
+        let res;
+        try { res = await uploadProductImage(fd); } catch { res = { outcome: 'network' }; }
+        if (res.outcome !== 'saved') {
+          tiles[i].failed('ما اترفعتش. الصور القديمة زي ما هي.');
+          missed.push({ file: f, text: 'ما اترفعتش. الصور القديمة زي ما هي.' });
+          list.slice(i + 1).forEach((x, k) => { tiles[i + 1 + k].failed('اتوقفت قبل الرفع'); missed.push({ file: x, text: 'اتوقفت قبل الرفع' }); });
+          fail(res); break;
+        }
+        ok++;
+        tiles[i].ok(prepared.optimized ? 'اترفعت ✓ ' + sizeLabel(prepared.originalBytes) + ' ← ' + sizeLabel(prepared.uploadedBytes) : 'اترفعت ✓ ' + sizeLabel(prepared.uploadedBytes));
+        // A saved photo may advance the media version; read it before the next one so a batch never fails half way.
+        if (i + 1 < list.length) {
+          let fresh;
+          try { fresh = await call('products.get', { code }); } catch { fresh = { outcome: 'network' }; }
+          if (fresh?.outcome === 'ok') version = fresh.data?.media?.structure_version ?? fresh.data?.product?.structure_version ?? version;
+        }
       }
-      if (ok === list.length) done('تم رفع ' + ok + ' صورة. راجعي الغلاف وربط الصور بالألوان قبل النشر.');
-      else island('error', 'اترفع ' + ok + ' من ' + list.length + ' صورة. راجعي الصور المحفوظة وأعيدي رفع الناقص فقط.');
-      if (ok) reload();
+      tiles.forEach((tile) => tile.release());
+      if (ok === list.length) { done('تم رفع ' + ok + ' صورة. راجعي الغلاف وربط الصور بالألوان قبل النشر.'); reload(); }
+      else {
+        const message = 'اترفع ' + ok + ' من ' + list.length + ' صورة. ما اترفعتش: ' + missed.map((m) => m.file.name).join('، ') + '. الصور الأصلية على جهازك زي ما هي؛ أعيدي رفع الناقص بس.';
+        if (ok) {
+          // Show the saved photos as real media, then put the failed ones back so the retry list stays visible.
+          await reload();
+          const grid = $('.media-grid'), drop = $('#drop');
+          if (grid) missed.forEach((m) => previewTile(grid, drop, m.file).failed(m.text));
+        }
+        island('error', message);
+      }
       } finally {
         uploading = false;
         if (uploadField && document.contains(uploadField)) { uploadField.disabled = false; uploadField.value = ''; }

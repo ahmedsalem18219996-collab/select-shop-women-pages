@@ -30,7 +30,7 @@ test('photo upload is one batch, target variant is frozen, partial failure does 
   assert.match(source, /let uploading = false/);
   assert.match(source, /if \(uploading\)/);
   assert.match(source, /const variantPos = \$\('#m-variant', body\)\?\.value/);
-  assert.match(source, /if \(ok === list\.length\) done/);
+  assert.match(source, /if \(ok === list\.length\) \{? ?done/);
   assert.match(source, /اترفع ' \+ ok \+ ' من '/);
 });
 

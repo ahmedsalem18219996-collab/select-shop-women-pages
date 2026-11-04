@@ -210,3 +210,44 @@ Admin, desktop: orders · order detail
 Admin flows tested by Playwright (mock API, no Supabase): create product with field errors → photo step; edit grouped colour and virtual
 quantity; photo upload attaches to the exact colour only; hide a published product, incomplete product cannot republish;
 catalogue-only staff cannot change price/stock. Orders list/detail rendered with fictional QA orders (`admin-shots.mjs`).
+
+## Smart image upload (Admin)
+
+Built on the optimizer the project already had (`admin/js/image-optimize.js`, used by the product page, the quick colour/size sheet,
+storefront and settings uploads). No second system, no backend, storage or database change.
+
+| | Before | After |
+|---|---|---|
+| Product photo goal | ≤ 450 KB, one fallback quality (0.81) | **≤ 250 KB**: quality steps 0.86 → 0.82 → 0.78 and stops as soon as it fits; never below 0.78 (fabric texture, true colour) |
+| Large WebP (e.g. 12 MB from a phone) | Skipped, then **rejected** above 5 MB | Compressed like JPG/PNG; animated WebP still never flattened |
+| What staff see | Toast «رفع 1/3» only | **Preview tile per photo at once**, own progress bar: في الانتظار → بنجهّز الصورة → بترفع… → «اترفعت ✓ 21.7MB ← 225KB» |
+| Several photos on the product page | Same media version for every photo (later photos could be refused) | Version re-read after each saved photo (as the quick sheet already did) |
+| A photo fails | Batch stops, message only | Failed photo keeps a red tile with the reason; saved ones appear; nothing existing is replaced; original stays on the device |
+
+Format: WebP. Browsers can't encode AVIF from a canvas reliably, and the storefront/server only accept JPG/PNG/WebP, so
+AVIF is used where it is generated at build time (landing-page photos), not at upload.
+
+### Real-browser test (Chromium, Admin product page, upload answered in memory)
+Test files: a real product photo enlarged to camera sizes with sensor grain (`tooling/upload-bench.mjs`):
+
+| Original | Uploaded | Size | Quality vs original (PSNR) | Time (cumulative, 3 photos) |
+|---|---|---|---|---|
+| 1.9 MB · 3000×4000 JPG | WebP 1200×1600 | **230 KB** | 37.0 dB | 0.9 s |
+| 9.2 MB · 4500×6000 JPG | WebP 1200×1600 | **227 KB** | 37.3 dB | 1.8 s |
+| 21.7 MB · 6000×8000 JPG (48 MP) | WebP 1200×1600 | **225 KB** | 38.0 dB | 3.1 s |
+
+Same results on mobile (Pixel 7) and desktop. ~37–38 dB against a deliberately grainy original means the grain is smoothed and the
+garment, colour, and texture are kept. `FAIL_AT=2` run: photo 1 saved, photo 2 «ما اترفعتش. الصور القديمة زي ما هي.», photo 3 «اتوقفت قبل الرفع»; 
+the saved photo stays and the two failed tiles stay visible for a retry.
+
+![Upload progress and partial failure](img/admin-upload-progress-fail.webp)
+
+Page speed: a new product photo now weighs ~230 KB instead of up to 450 KB (−50%) wherever it is shown full size (cards before
+thumbnails are built, product gallery). Cards keep `srcset` + `loading="lazy"`; the home cover and landing-page hero stay the
+preloaded, `fetchpriority="high"` LCP images; full-size zoom originals load only when a shopper taps a photo.
+
+Per-colour photos: unchanged rules, covered by Playwright (`uploading a photo to one legacy colour never attaches it to sibling
+colour SKU`, `attach photo to EXACT variant`): 20/20 Admin tests pass.
+
+Not automated (needs a backend/storage job): the 400/560 px card thumbnails for **new** uploads are still made by the existing
+`scripts/build_catalog_thumbs.py` before a release; until then cards use the ~230 KB photo.

@@ -3,7 +3,7 @@
 // merge SKUs, or claim that an unavailable variant is purchasable.
 import { $, $$, esc, money, toMinor, withBusy, island, done, fail, closeLayer } from './ui.js';
 import { call, uploadProductImage, mediaUrl } from './api.js';
-import { checkSourceImage, optimizeUploadImage } from './image-optimize.js';
+import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from './image-optimize.js';
 import { variantChoices } from './quick-variants.js';
 import { statusAction, prepublishHints, STATUS_LABELS } from './product-lifecycle.js';
 
@@ -236,11 +236,18 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       const selectedCode = code, selectedPosition = position, scopedToVariant = hasColourOption;
       let mediaVersion = detail.media?.structure_version ?? product.structure_version;
       let uploaded = 0;
+      const pictures = $('.quick-pictures', panel);
+      const tiles = pictures ? photos.map(f => previewTile(pictures, null, f)) : [];
       try {
         for (const [index, file] of photos.entries()) {
           let prepared;
+          tiles[index]?.preparing();
           try { prepared = await optimizeUploadImage(file, 'product'); }
-          catch(e) { island('error', e?.message || 'تعذّر تجهيز صورة'); break; }
+          catch(e) {
+            tiles[index]?.failed('ما اترفعتش: ' + (e?.message || 'تعذّر تجهيز الصورة'));
+            island('error', (e?.message || 'تعذّر تجهيز صورة') + ' الصورة الأصلية على جهازك زي ما هي، ومفيش حاجة اتغيرت في المتجر.'); break;
+          }
+          tiles[index]?.uploading(prepared.uploadedBytes);
           const form = new FormData();
           form.append('code', selectedCode);
           form.append('image', prepared.file);
@@ -251,8 +258,9 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
           // the photo applies to every size of THIS colour, not all sibling colours.
           let result;
           try { result = await uploadProductImage(form); } catch { result = { outcome: 'network' }; }
-          if (result?.outcome !== 'saved') { fail(result); break; }
+          if (result?.outcome !== 'saved') { tiles[index]?.failed('ما اترفعتش. الصور القديمة زي ما هي.'); fail(result); break; }
           uploaded++;
+          tiles[index]?.ok(prepared.optimized ? 'اترفعت ✓ ' + sizeLabel(prepared.originalBytes) + ' ← ' + sizeLabel(prepared.uploadedBytes) : 'اترفعت ✓');
           // A media attachment may advance the server version. Refresh it before
           // the next image, rather than retrying with a stale version and
           // mistakenly reporting the entire colour batch as complete.
@@ -266,7 +274,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
         if (uploaded === photos.length && !invalid.length) done('تم رفع صور اللون المحدد بنجاح');
         else island('error', 'اترفع ' + uploaded + ' من ' + list.length + ' صورة. راجعي الناقص قبل إعادة المحاولة.');
         if (uploaded && code === selectedCode) { onChanged(); await load(selectedCode, position); }
-      } finally { uploading = false; if (document.contains(input)) { input.value = ''; input.disabled = false; } }
+      } finally { tiles.forEach(t => t.release()); uploading = false; if (document.contains(input)) { input.value = ''; input.disabled = false; } }
     });
     bindLink();
   }

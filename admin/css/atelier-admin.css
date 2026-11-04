@@ -104,3 +104,16 @@
 .model-category-editor .btn{min-height:46px}
 .model-category-editor #model-category-feedback{flex-basis:100%;margin:0}
 @media(max-width:520px){.model-category-editor .field,.model-category-editor .btn{width:100%;min-width:0}}
+
+/* Upload preview tiles: the chosen photo appears at once with its own progress and result. */
+.upload-tile{margin:0}
+.upload-tile img{opacity:.6;transition:opacity .2s}
+.upload-tile[data-state="ok"] img{opacity:1}
+.upload-state{position:absolute;inset-inline:0;bottom:0;display:grid;gap:5px;padding:7px 8px;background:color-mix(in srgb,var(--surface) 92%,transparent)}
+.upload-state progress{width:100%;height:4px;accent-color:var(--ink)}
+.upload-state small{font-size:11px;line-height:1.4;color:var(--ink-2);overflow-wrap:anywhere}
+.upload-tile[data-state="ok"] .upload-state small{color:var(--ink);font-weight:600}
+.upload-tile[data-state="failed"]{border-color:var(--danger)}
+.upload-tile[data-state="failed"] .upload-state small{color:var(--danger);font-weight:600}
+.quick-pictures .upload-tile{flex:none;width:88px;height:108px;aspect-ratio:auto}
+.media,.drop,.upload-state{border-radius:var(--r-m)}

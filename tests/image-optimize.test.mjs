@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkSourceImage, imageDimensions, IMAGE_PRESETS, MAX_UPLOAD_BYTES, MAX_SOURCE_BYTES, optimizeUploadImage, optimizationSummary } from '../admin/js/image-optimize.js';
+import { checkSourceImage, imageDimensions, IMAGE_PRESETS, MAX_UPLOAD_BYTES, MAX_SOURCE_BYTES, optimizeUploadImage, optimizationSummary, isAnimatedWebp, sizeLabel } from '../admin/js/image-optimize.js';
 const sample = (size, type = 'image/jpeg', name = 'photo.jpg') => ({ size, type, name, lastModified: 1 });
 test('preserves quality with per-use budgets', () => {
   assert.equal(IMAGE_PRESETS.product.quality, 0.86);
@@ -66,4 +66,54 @@ test('browser canvas optimization makes WebP, keeps original unmodified', async 
     globalThis.document = oldDocument;
     globalThis.File = oldFile;
   }
+});
+
+// Fake browser canvas: toBlob size depends on the requested quality, so the ladder can be observed.
+async function withCanvas(sizeAt, run) {
+  const saved = [globalThis.createImageBitmap, globalThis.document, globalThis.File];
+  const asked = [];
+  globalThis.createImageBitmap = async () => ({ width: 6000, height: 7500, close() {} });
+  globalThis.document = { createElement: () => ({ width: 0, height: 0,
+    getContext: () => ({ drawImage() {} }),
+    toBlob(cb, type, q) { asked.push(q); cb(new Blob([new Uint8Array(sizeAt(q))], { type })); } }) };
+  globalThis.File = class { constructor(parts, name, o) { Object.assign(this, { name, type: o.type, lastModified: o.lastModified, size: parts[0].size }); } };
+  try { return await run(asked); } finally { [globalThis.createImageBitmap, globalThis.document, globalThis.File] = saved; }
+}
+const webp = (animated, size) => { // minimal RIFF/WEBP/VP8X header; flag 0x02 = animation
+  const b = new Uint8Array(32); b.set([...'RIFF'].map(c => c.charCodeAt(0)), 0); b.set([...'WEBPVP8X'].map(c => c.charCodeAt(0)), 8); b[20] = animated ? 0x02 : 0;
+  const blob = new Blob([b], { type: 'image/webp' });
+  return { size, type: 'image/webp', name: 'look.webp', lastModified: 1, slice: (s, e) => blob.slice(s, e) };
+};
+test('20MB camera photo: steps quality down to reach the 250KB goal, stops as soon as it fits', async () => {
+  await withCanvas((q) => (q >= 0.86 ? 420_000 : q >= 0.82 ? 300_000 : 230_000), async (asked) => {
+    const r = await optimizeUploadImage(sample(20 * 1024 * 1024), 'product');
+    assert.deepEqual(asked, [0.86, 0.82, 0.78]);
+    assert.equal(r.uploadedBytes, 230_000); assert.equal(r.width, 1280); assert.equal(r.height, 1600);
+  });
+});
+test('quality never drops below the floor that keeps fabric detail, even if still over the goal', async () => {
+  await withCanvas(() => 600_000, async (asked) => {
+    const r = await optimizeUploadImage(sample(10 * 1024 * 1024), 'product');
+    assert.ok(Math.min(...asked) >= IMAGE_PRESETS.product.floor);
+    assert.equal(r.optimized, true); assert.equal(r.uploadedBytes, 600_000);
+  });
+});
+test('large still WebP is compressed; animated WebP is never flattened', async () => {
+  assert.equal(await isAnimatedWebp(webp(true, 1)), true);
+  assert.equal(await isAnimatedWebp(webp(false, 1)), false);
+  await withCanvas(() => 200_000, async () => {
+    const still = await optimizeUploadImage(webp(false, 12 * 1024 * 1024), 'product');
+    assert.equal(still.optimized, true); assert.equal(still.uploadedBytes, 200_000);
+    const anim = webp(true, 2 * 1024 * 1024);
+    assert.equal((await optimizeUploadImage(anim, 'product')).file, anim);
+  });
+});
+test('failed compression throws and never returns a replacement file', async () => {
+  await withCanvas(() => 0, async () => {
+    await assert.rejects(optimizeUploadImage(sample(10 * 1024 * 1024), 'product'), /تعذّر ضغط الصورة/);
+  });
+});
+test('size labels read naturally', () => {
+  assert.equal(sizeLabel(20 * 1024 * 1024), '20.0MB');
+  assert.equal(sizeLabel(212 * 1024), '212KB');
 });
