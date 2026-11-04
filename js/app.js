@@ -19,25 +19,8 @@
   const P = DATA.products, LOOKS = DATA.looks, STORIES = DATA.stories, CATS = DATA.categories;
   const chart = DATA.sizeChart, chartMin = DATA.sizeChartMin || { bust: 80, waist: 62 };
   const byId = id => P.find(p => String(p.id) === String(id));
-  // Hero = first orderable product in the owner's catalog order. The HTML ships SS-1008 so the photo paints
-  // before the catalog arrives; only swap when the live first product differs.
-  const heroItem = P.find(p => p.url && p.purchasable !== false) || P.find(p => p.url);
-  if (heroItem && $('#heroImg')) {
-    const base = String(heroItem.url).split('#')[0];
-    $('#heroPick').href = base; $('#heroOrder').href = base + '#lpForm';
-    $('#heroName').textContent = heroItem.name;
-    $('#heroPrice').textContent = fmt(heroItem.price) + ' ' + CUR;
-    const img = $('#heroImg');
-    if (img.dataset.code !== heroItem.id) {
-      const dir = '/lp/' + String(heroItem.id).toLowerCase() + '/img/' + heroItem.id + '/';
-      img.parentElement.querySelector('source')?.remove();
-      // Not every code has a pre-rendered photo folder: fall back to the catalog thumbnail once.
-      img.onerror = () => { img.onerror = null; img.removeAttribute('srcset'); img.src = heroItem.image || ''; };
-      img.srcset = dir + '0-480.webp 480w, ' + dir + '0-800.webp 800w';
-      img.src = dir + '0-800.webp';
-      img.alt = heroItem.name; img.dataset.code = heroItem.id;
-    }
-  }
+  // The home hero is brand-only; the catalog decides which real products appear below.
+  // No public SKU is featured, filtered, or auto-swapped into the hero.
   // Keep the visible header links in sync with admin-controlled categories.
   const categoryNav = $('.hdr-links');
   if (categoryNav) {
