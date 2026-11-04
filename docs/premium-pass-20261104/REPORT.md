@@ -189,3 +189,24 @@ cover photo instead of a card that waited for `app.js` + the catalog API. The re
 
 Test updates were only to pinned visual values (new tokens `#141310`/`#f5f1ea`, CSS cache-bust `v=20261104-1`).
 Still not done: production field data (needs the release), and review/approval of this design before any merge or deploy.
+
+### Final screenshots (round 3, local mock)
+Storefront, mobile: home cover · catalogue · leather jacket page · Balloon Suit page · its colour chooser and order form
+
+![Final storefront mobile](img/final-store-mobile.webp)
+
+Storefront, desktop: catalogue (THE EDIT) · Balloon Suit page
+
+![Final storefront desktop](img/final-store-desktop.webp)
+
+Admin, mobile: products · colour/size/price/virtual stock sheet · product editor (data, photos, sizes, publish) · orders · order detail (confirm/cancel)
+
+![Final admin mobile](img/final-admin-mobile.webp)
+
+Admin, desktop: orders · order detail
+
+![Final admin desktop](img/final-admin-desktop.webp)
+
+Admin flows tested by Playwright (mock API, no Supabase): create product with field errors → photo step; edit grouped colour and virtual
+quantity; photo upload attaches to the exact colour only; hide a published product, incomplete product cannot republish;
+catalogue-only staff cannot change price/stock. Orders list/detail rendered with fictional QA orders (`admin-shots.mjs`).
