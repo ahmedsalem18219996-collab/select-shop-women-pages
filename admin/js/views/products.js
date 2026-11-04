@@ -789,11 +789,12 @@ const TABS = {
     const valueOf = (v) => v.selections?.length ? v.selections.map((s) => p.options.find((o) => o.option_id === s.option_id)?.values.find((x) => x.value_id === s.value_id)?.value).join(' / ') : '—';
     render(body, html`<div class="stack">
       <section class="card stack variants"><div class="card-head"><h3>${t('editor.variants')}</h3><span class="muted">${fmtNum(p.variants.length)}</span></div>
-      <p class="muted" style="margin:0">المخزون هنا افتراضي: اكتبي عددًا تنظيميًا موجبًا للون والمقاس اللي تقدري توفريه من المورد، وفعّلي «متاح». راجعي المورد قبل تأكيد أي أوردر. كل خانة بتتحفظ تلقائيًا لما تخرجي منها.</p>
+      <p class="muted" style="margin:0">المخزون هنا افتراضي: اكتبي عددًا تنظيميًا موجبًا للون والمقاس اللي تقدري توفريه من المورد، وفعّلي «متاح». راجعي المورد قبل تأكيد أي أوردر. علشان تحفظي سعر لون معين، اكتبي السعر واضغطي زر «حفظ السعر» في نفس الصف. الرقم الرمادي مثال للسعر الأساسي فقط. الكمية والإتاحة بتتحفظ لما تخرجي من الخانة.</p>
+      <button type="button" class="btn btn-primary btn-sm" data-open-quick-colours>اختاري اللون والمقاس وعدّلي السعر بسهولة</button>
       ${p.variants.length ? html`<div class="table-wrap"><table class="t"><thead><tr><th>${t('editor.variant')}</th><th>${t('editor.vPrice')}</th><th title="عدد تنظيمي افتراضي، مش قطع مخزنة">كمية افتراضية</th><th>${t('editor.available')}</th><th></th></tr></thead>
         <tbody>${p.variants.map((v) => { const st = d.stock[String(v.position)]; return html`<tr data-pos="${v.position}" ${v.active ? '' : 'style="opacity:.55"'}>
           <td><b>${valueOf(v)}</b>${v.blockers?.length && v.active ? html`<div class="row-meta">${v.blockers.filter((b) => b !== 'product_not_public').map((b) => html`<span>${t('blocker.' + b, b)}</span>`)}</div>` : ''}</td>
-          <td><div class="input-money"><input data-vprice inputmode="decimal" value="${v.price_source === 'variant_override' ? v.amount_minor / 100 : ''}" placeholder="${p.base_price ? p.base_price.amount_minor / 100 : ''}" ${can('products.price') ? '' : 'disabled'} aria-label="${t('editor.vPrice')}"><span>EGP</span></div></td>
+          <td><div class="variant-price-cell"><div class="input-money"><input data-vprice inputmode="decimal" value="${v.price_source === 'variant_override' ? v.amount_minor / 100 : ''}" placeholder="${p.base_price ? p.base_price.amount_minor / 100 : ''}" ${can('products.price') ? '' : 'disabled'} aria-label="سعر اللون بالجنيه"><span>EGP</span></div>${can('products.price') ? html`<button type="button" class="btn btn-primary btn-sm" data-save-vprice>حفظ السعر</button>` : ''}<small data-price-feedback role="status" aria-live="polite"></small></div></td>
           <td><input class="input qty num" data-qty inputmode="numeric" value="${st ? st.quantity : ''}" placeholder="—" ${can('inventory.manage') ? '' : 'disabled'} aria-label="${t('editor.qty')}"></td>
           <td><label class="switch"><input type="checkbox" data-avail ${v.availability === 'available' ? 'checked' : ''} ${can('inventory.manage') ? '' : 'disabled'}><i></i><span class="sr">${t('editor.available')}</span></label></td>
           <td>${can('products.edit') ? html`<button class="btn btn-ghost btn-sm" data-active>${v.active ? t('team.suspend') : t('team.activate')}</button>` : ''}</td></tr>`; })}</tbody></table></div>
@@ -815,14 +816,51 @@ const TABS = {
     };
     const row = (el) => el.closest('tr[data-pos]');
     const ver = () => p.structure_version;
+    const saveVariantPrice = async (tr) => {
+      const input = tr?.querySelector('[data-vprice]'), button = tr?.querySelector('[data-save-vprice]');
+      const feedback = tr?.querySelector('[data-price-feedback]');
+      if (!input || !button || button.disabled) return;
+      const raw = input.value.trim(), amount = raw ? toMinor(raw) : null;
+      if (raw && (amount === null || amount < 100)) {
+        input.setAttribute('aria-invalid', 'true');
+        feedback.textContent = 'اكتبي سعر صحيح بالجنيه، مثل 650.';
+        island('error', feedback.textContent); return;
+      }
+      input.removeAttribute('aria-invalid');
+      button.disabled = true; input.disabled = true;
+      feedback.textContent = 'جاري حفظ السعر…';
+      try {
+        const position = Number(tr.dataset.pos);
+        const result = await call('products.set_variant_price', { code, version: ver(), position, amount_minor: amount });
+        if (result?.outcome !== 'saved') {
+          feedback.textContent = 'السعر ما اتحفظش، راجعي الرسالة.';
+          fail(result);
+          if (result?.code === 'PS002') reload();
+          return;
+        }
+        const check = await call('products.get', { code });
+        const latest = check?.outcome === 'ok' ? check.data?.product : null;
+        const variant = latest?.variants?.find((v) => v.position === position);
+        const confirmed = variant && (amount === null
+          ? variant.price_source !== 'variant_override'
+          : variant.price_source === 'variant_override' && variant.amount_minor === amount);
+        if (!confirmed) {
+          feedback.textContent = 'اتبعث الحفظ لكن التأكيد فشل. راجعي السعر قبل النشر.';
+          island('error', feedback.textContent); return;
+        }
+        p.structure_version = latest.structure_version;
+        feedback.textContent = '✓ اتحفظ سعر اللون واتأكدنا منه';
+        done('تم حفظ السعر');
+        void refreshAside();
+      } catch {
+        feedback.textContent = 'مشكلة اتصال: مش متأكدين إن السعر اتحفظ. حدّثي الصفحة.';
+        island('error', feedback.textContent);
+      } finally { button.disabled = false; input.disabled = false; }
+    };
     body.addEventListener('change', async (e) => {
       const tr = row(e.target); if (!tr) return; const pos = +tr.dataset.pos;
       let res;
-      if (e.target.matches('[data-vprice]')) { const raw = e.target.value.trim(); const v = raw ? toMinor(raw) : null; if (raw && (v === null || v < 100)) {
-        e.target.setAttribute('aria-invalid', 'true');
-        island('error', 'السعر الخاص لازم يكون رقم صحيح بالجنيه، زي 650. أو سيبي الخانة فاضية لاستخدام السعر الأساسي.');
-        return;
-      } res = await call('products.set_variant_price', { code, version: ver(), position: pos, amount_minor: v }); }
+      // Price is saved only with the explicit button, so there is no silent blur-save.
       if (e.target.matches('[data-qty]')) { const q = e.target.value.trim(); if (!/^\d{1,6}$/.test(q)) {
         e.target.setAttribute('aria-invalid', 'true');
         island('error', 'اكتبي كمية افتراضية رقم صحيح من 0 لحد 999999، من غير حروف أو كسور.');
@@ -831,8 +869,15 @@ const TABS = {
       if (e.target.matches('[data-avail]')) res = await call('products.set_availability', { code, version: ver(), position: pos, available: e.target.checked });
       if (res?.outcome === 'saved') { e.target.removeAttribute('aria-invalid'); done(); refreshAside(); } else if (res) { fail(res); if (res.code === 'PS002') reload(); }
     });
+    body.addEventListener('keydown', (e) => {
+      if (e.target.matches('[data-vprice]') && e.key === 'Enter') {
+        e.preventDefault(); void saveVariantPrice(row(e.target));
+      }
+    });
     body.addEventListener('click', async (e) => {
       const b = e.target.closest('button'); if (!b) return;
+      if (b.matches('[data-save-vprice]')) { await saveVariantPrice(row(b)); return; }
+      if (b.matches('[data-open-quick-colours]')) { document.querySelector('[data-quick-single]')?.click(); return; }
       let res;
       if (b.matches('[data-active]')) { const pos = +row(b).dataset.pos; res = await call('products.structure', { code, version: ver(), change: { op: 'set_variant_active', variant: pos, active: !p.variants.find((v) => v.position === pos).active } }); }
       if (b.matches('[data-addopt]')) { const name = $('#o-name', body).value.trim(); const values = $('#o-values', body).value.split(/[,،]/).map((x) => x.trim()).filter(Boolean); if (!name || !values.length) return; res = await call('products.structure', { code, version: ver(), change: { op: 'add_option', name, values } }); }
