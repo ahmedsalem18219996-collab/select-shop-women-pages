@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 const LP = '/lp/ss-1011/?utm_source=facebook&utm_campaign=ss1011_focused';
 test('original pullover only: direct order, correct quantity and no cart button', async ({ page, request }) => {
   const external=[]; page.on('request',r=>{if(new URL(r.url()).hostname!=='127.0.0.1')external.push(r.url());});
@@ -32,7 +33,7 @@ test('original pullover only: direct order, correct quantity and no cart button'
   expect(external).toEqual([]);
 });
 test('click and keyboard open full-detail photo; Escape closes and restores focus', async ({page})=>{
-  await page.route('https://byluoipdunralsurwebt.supabase.co/storage/**', route => route.fulfill({path: new URL('../../lp/ss-1011/img/SS-1011/0-800.webp', import.meta.url).pathname, contentType:'image/webp'}));
+  await page.route('https://byluoipdunralsurwebt.supabase.co/storage/**', route => route.fulfill({path: fileURLToPath(new URL('../../lp/ss-1011/img/SS-1011/0-800.webp', import.meta.url)), contentType:'image/webp'}));
   await page.goto(LP);
   const photo=page.locator('#lpHero img');
   await expect(photo).toHaveAttribute('role','button');

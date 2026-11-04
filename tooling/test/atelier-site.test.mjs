@@ -4,18 +4,18 @@ import { readFile } from "node:fs/promises";
 
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 const storeRoutes = [
-  ["index.html", 'href="css/atelier-site.css?v=20261030-1"', 'class="atelier-home"'],
-  ["p/index.html", 'href="../css/atelier-site.css?v=20261030-1"', 'class="atelier-product"'],
-  ["cart/index.html", 'href="../css/atelier-site.css?v=20261030-1"', 'class="atelier-cart"'],
-  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261030-1"', 'class="atelier-checkout"'],
-  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261030-1"', 'class="atelier-success"'],
+  ["index.html", 'href="css/atelier-site.css?v=20261104-1"', 'class="atelier-home"'],
+  ["p/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-product"'],
+  ["cart/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-cart"'],
+  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-checkout"'],
+  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261104-1"', 'class="atelier-success"'],
 ];
 
 test("Atelier shared style loads on every public storefront step", async () => {
   const sheet = await source("css/atelier-site.css");
-  assert.match(sheet, /--ink:#22251f/);
-  assert.match(sheet, /--pin:#303c2d/);
-  assert.match(sheet, /--mirror:#f7f6f2/);
+  assert.match(sheet, /--ink:#141310/);
+  assert.match(sheet, /--pin:#141310/);
+  assert.match(sheet, /--mirror:#f5f1ea/);
   for (const [path, href, klass] of storeRoutes) {
     const html = await source(path);
     assert.ok(html.includes(href), path + " lacks Atelier stylesheet");
@@ -41,7 +41,7 @@ test("Atelier preserves storefront controls, legacy checkout and the isolated ad
   assert.match(checkout, /id="placeOrder"/);
   assert.match(done, /id="orderCode"/);
   assert.match(admin, /id="app"/);
-  assert.match(admin, /css\/atelier-admin\.css\?v=20261031-3/);
+  assert.match(admin, /css\/atelier-admin\.css\?v=20261104-1/);
   assert.match(admin, /script-src 'self'/);
   assert.match(await source("admin/css/atelier-admin.css"), /:root\[data-theme="dark"\]/);
   assert.match(checkout, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);
