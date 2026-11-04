@@ -842,8 +842,8 @@ const TABS = {
         const latest = check?.outcome === 'ok' ? check.data?.product : null;
         const variant = latest?.variants?.find((v) => v.position === position);
         const confirmed = variant && (amount === null
-          ? variant.price_source !== 'variant_override'
-          : variant.price_source === 'variant_override' && variant.amount_minor === amount);
+          ? variant.price_source !== 'variant_override' && variant.amount_minor === latest.base_price?.amount_minor
+          : variant.amount_minor === amount);
         if (!confirmed) {
           feedback.textContent = 'اتبعث الحفظ لكن التأكيد فشل. راجعي السعر قبل النشر.';
           island('error', feedback.textContent); return;
@@ -851,7 +851,7 @@ const TABS = {
         p.structure_version = latest.structure_version;
         feedback.textContent = '✓ اتحفظ سعر اللون واتأكدنا منه';
         done('تم حفظ السعر');
-        void refreshAside();
+        void refreshAside().catch(() => {});
       } catch {
         feedback.textContent = 'مشكلة اتصال: مش متأكدين إن السعر اتحفظ. حدّثي الصفحة.';
         island('error', feedback.textContent);
