@@ -31,13 +31,13 @@ function showFunnel(slot,{steps,conversion}){
     const prev=i?steps[i-1].count:null;
     const line=create('div','traffic-place'),row=create('div','row');
     row.style.justifyContent='space-between';row.style.gap='12px';
-    const rate=prev&&s.count!==null?' · '+fmt(Math.round(s.count/prev*1000)/10)+'% من اللي قبلها':'';
+    const rate=prev&&s.count!==null?' · '+fmt(Math.round(s.count/prev*1000)/10)+'% من أحداث المرحلة السابقة':'';
     row.append(create('b','',s.label),create('span','num',s.count===null?'مش موجود في الملف':fmt(s.count)+rate));
     const track=create('div','traffic-track'),bar=create('span');
-    bar.style.width=(top&&s.count!==null?Math.round(s.count/top*100):0)+'%';
+    bar.style.width=(top&&s.count!==null?Math.min(100,Math.round(s.count/top*100)):0)+'%';
     track.append(bar);line.append(row,track);list.append(line);
   });
-  slot.append(list,create('b','',conversion===null?'نسبة التحويل: محتاجة view_item وpurchase في الملف':'نسبة التحويل (طلبات ÷ مشاهدات منتج): '+fmt(Math.round(conversion*1000)/10)+'%'),
+  slot.append(list,create('b','',conversion===null?'النسبة: محتاجة view_item وpurchase في الملف':'نسبة أحداث الشراء إلى مشاهدة المنتج: '+fmt(Math.round(conversion*1000)/10)+'%'),
     create('p','muted traffic-note','أرقام مقاسة من GA4 في المتصفح، وبتقل لو العميلة رافضة الكوكيز أو عندها مانع إعلانات. عدد الطلبات الحقيقي من صفحة الطلبات، مش من الملف ده.'));
 }
 function showReport(slot,report){
@@ -78,7 +78,7 @@ export default {
       '<p class="muted" style="margin:0">من GA4: Reports → Acquisition → Traffic acquisition، اختاري Session source / medium، وبعدها Export → CSV.</p>',
       '<label class="field"><span>اختاري ملف CSV لمصادر الزيارات</span><input class="input" type="file" id="traffic-source-file" accept=".csv,text/csv"></label>',
       '<div id="traffic-source-results" aria-live="polite"><p class="muted">ارفعي تقرير المصدر علشان تشوفي توزيع الزيارات.</p></div></section>',
-      '<section class="card stack"><div class="card-head"><h3>مسار الشراء</h3><span class="muted">مشاهدة ← شنطة ← بدء طلب ← طلب</span></div>',
+      '<section class="card stack"><div class="card-head"><h3>أحداث الشراء في GA4</h3><span class="muted">أعداد الأحداث المسجلة، مش عدد العميلات</span></div>',
       '<p class="muted" style="margin:0">من GA4: Reports → Engagement → Events، وبعدها Export → CSV.</p>',
       '<label class="field"><span>اختاري ملف CSV للأحداث</span><input class="input" type="file" id="traffic-events-file" accept=".csv,text/csv"></label>',
       '<div id="traffic-events-results" aria-live="polite"><p class="muted">ارفعي تقرير الأحداث علشان تشوفي نسبة التحويل.</p></div></section>',
