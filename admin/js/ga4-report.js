@@ -87,10 +87,10 @@ export function groupSources(items){
 // GA4 Reports → Engagement → Events → Export CSV. Counts are what GA4 measured in browsers (ad blockers and
 // refused cookies undercount); real orders are the Orders page, never this file.
 export const FUNNEL=[
-  {event:'view_item',label:'شافت المنتج'},
-  {event:'add_to_cart',label:'أضافت للشنطة'},
-  {event:'begin_checkout',label:'بدأت الطلب'},
-  {event:'purchase',label:'طلب اتسجّل'}
+  {event:'view_item',label:'حدث مشاهدة منتج'},
+  {event:'add_to_cart',label:'حدث إضافة للشنطة'},
+  {event:'begin_checkout',label:'حدث بدء الطلب'},
+  {event:'purchase',label:'حدث تسجيل طلب'}
 ];
 export function parseGa4Events(text){
   const rows=csvRows(text);
