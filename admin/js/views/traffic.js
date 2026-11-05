@@ -1,6 +1,6 @@
 // WOMEN Admin — GA4 reports imported locally, not uploaded or geolocated by us.
 // Versioned: this view needs the funnel/grouping exports, never an older cached copy of the parser.
-import { parseGa4Traffic, parseGa4Events, groupSources } from '../ga4-report.js?v=20261105-funnel';
+import { parseGa4Traffic, parseGa4Events, groupSources } from '../ga4-report.js?v=20261106-events';
 
 const ANALYTICS = 'https://analytics.google.com/analytics/web/';
 const CONNECT = 'https://app.hypd.ai/sources?utm_source=mcp&utm_content=none_selected';
