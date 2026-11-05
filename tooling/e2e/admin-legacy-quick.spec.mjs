@@ -217,8 +217,8 @@ test('visitor region and source analytics only use locally imported GA4 CSV, no 
   await expect(page.locator('#traffic-source-results')).toContainText('Instagram');
   const events='Event name,Event count\npage_view,900\nview_item,1000\nadd_to_cart,120\nbegin_checkout,60\npurchase,20\n';
   await page.locator('#traffic-events-file').setInputFiles({name:'events.csv',mimeType:'text/csv',buffer:Buffer.from(events)});
-  await expect(page.locator('#traffic-events-results')).toContainText('بدأت الطلب');
-  await expect(page.locator('#traffic-events-results')).toContainText('نسبة التحويل (طلبات ÷ مشاهدات منتج): ٢%');
+  await expect(page.locator('#traffic-events-results')).toContainText('حدث بدء الطلب');
+  await expect(page.locator('#traffic-events-results')).toContainText('نسبة أحداث الشراء إلى مشاهدة المنتج: ٢%');
   expect(calls.filter(x=>x.op.includes('geo')||x.op.includes('traffic')||x.op==='products.publish')).toHaveLength(0);
 });
 
