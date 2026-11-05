@@ -48,14 +48,14 @@ Colour model in Admin (step 3 preview) · LP order after choosing a colour and s
 ![](img/admin-colours-preview-mobile.webp) ![](img/lp-colour-switch-mobile.webp) ![](img/after-admin-dashboard-mobile.webp)
 
 ## Needs approval (backend, not done here on purpose)
-1. **B1 — LP colour photos in production:** deploy women-checkout with `media[].target` (backend commit `0a2e668`, branch `feature/product-discovery-20261022`). Until then the LP keeps showing the model's shared photos; per-colour sizes and prices already work.
-2. **B3 — supplier cost:** apply `supabase/migrations/20261105100000_women_supplier_costs.sql` (backend branch `feature/women-supplier-cost-20261105`, commit `1989d07`; dry run: `node ci/women-supplier-cost/run.mjs <deps>`). Additive only: two new tables, a snapshot trigger that can never block an order, Owner-only ops in front of the deployed `women_admin_call`; rollback block included. Until applied, the Admin shows "محتاج تفعيل من السيرفر" and nothing breaks.
+1. **B1 — LP colour photos in production:** [staging PR #56](https://github.com/ahmedsalem18219996-collab/select-shop-women-staging/pull/56), women-checkout only, 21 lines (`0a2e668`), adds `media[].target`. The live API has no `target` today, so until it is deployed the LP keeps showing the model's shared photos; per-colour sizes and prices already work.
+2. **B3 — supplier cost:** [staging PR #55](https://github.com/ahmedsalem18219996-collab/select-shop-women-staging/pull/55), a clean branch from `main` with no workflow changes (`f914f51`). Additive migration with a fail-closed preflight, a read-only production check and a tested rollback that keeps data. Dry run on the deployed schema (no stock migration): 7 passed, 0 failed, including 27 cost checks. Until it is applied, the Admin shows "محتاج تفعيل من السيرفر" and nothing breaks.
 3. *(optional)* B2 — colour-level photo upload in women-admin (`6e96015`). Not needed: photos are already tagged per colour through its Variant.
 
 Known limits: orders placed before B3 have no frozen cost and show as "غير مكتمل" (no back-fill with today's cost); returns count per whole order, not per item.
 
 ## Launch steps
 1. Review and merge this PR into `release` (GitHub Pages publishes it).
-2. Approve and apply B3 in the WOMEN Supabase project only (never the CLEAN or orders projects); run `costs.get` for one product as the Owner.
-3. Approve and deploy B1; open one multi-colour LP and switch colours on a phone.
+2. B3: run `ci/women-supplier-cost/preflight-readonly.sql` on WOMEN production (expect 0 rows), then apply the migration to the WOMEN project only (never CLEAN or orders); save one cost as the Owner.
+3. B1: confirm the deployed women-checkout source equals the PR base, deploy women-checkout only, then open one multi-colour LP and switch colours on a phone.
 4. Enter supplier costs for live models from «الألوان والصور»; watch the dashboard profit card turn from "غير مكتمل" to complete as new orders arrive.
