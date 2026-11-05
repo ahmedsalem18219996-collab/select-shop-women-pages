@@ -12,7 +12,7 @@ test("premium storefront renders verified catalog and retains product navigation
   await expect(page.locator("#womenOwnerAnnouncement")).toHaveCount(1);
   await expect(page.locator("#womenOwnerAnnouncement")).not.toBeEmpty();
   const accent = await page.locator("#womenOwnerAnnouncement").evaluate(el => getComputedStyle(el).borderBottomColor);
-  expect(accent).toBe("rgb(176, 141, 87)"); // Maison champagne gold, not legacy violet
+  expect(accent).toBe("rgb(212, 164, 175)"); // Soft Luxury dusty rose #D4A4AF, not legacy violet
   await expect(page.locator("#feed .card").first()).toBeVisible({ timeout: 12000 });
   await expect(page.locator("#heroImg")).toHaveCount(0);
   await expect(page.locator("#heroPick")).toHaveCount(0);
@@ -27,7 +27,7 @@ test("premium storefront renders verified catalog and retains product navigation
   await expect(page.locator(".hero p")).not.toContainText("بنجهز");
   await expect(page.locator("#countOut")).not.toHaveText("جارٍ التحميل…");
   const color = await page.locator(".hdr").evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(color).toBe("rgba(245, 241, 234, 0.97)"); // Maison ivory header
+  expect(color).toBe("rgba(248, 245, 242, 0.97)"); // Soft Luxury ivory #F8F5F2 header
   const productLink = page.locator("#feed .card .shot-link").first();
   // SS-1008 + SS-1009 are one verified model; the card must open the
   // canonical pre-rendered page rather than the legacy per-colour URL.
