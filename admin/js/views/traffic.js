@@ -81,7 +81,7 @@ export default {
       '<section class="card stack"><div class="card-head"><h3>أحداث الشراء في GA4</h3><span class="muted">أعداد الأحداث المسجلة، مش عدد العميلات</span></div>',
       '<p class="muted" style="margin:0">من GA4: Reports → Engagement → Events، وبعدها Export → CSV.</p>',
       '<label class="field"><span>اختاري ملف CSV للأحداث</span><input class="input" type="file" id="traffic-events-file" accept=".csv,text/csv"></label>',
-      '<div id="traffic-events-results" aria-live="polite"><p class="muted">ارفعي تقرير الأحداث علشان تشوفي نسبة التحويل.</p></div></section>',
+      '<div id="traffic-events-results" aria-live="polite"><p class="muted">ارفعي تقرير الأحداث علشان تشوفي أعداد الأحداث ونسبتها بين المراحل.</p></div></section>',
       '<section class="card stack"><b>الخصوصية ودقة التقرير</b><p class="muted" style="margin:0">الملف بيتقري على موبايلك/كمبيوترك من غير رفعه لسيرفر. Region تقديري وقد يكون غير معروف. ما نعتبرش الزيارات مبيعات، ولا نختار محافظات الإعلان من الزيارات لوحدها.</p></section>',
       '</div>'
     ].join('');
