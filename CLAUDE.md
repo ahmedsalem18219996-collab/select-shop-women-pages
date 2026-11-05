@@ -16,7 +16,7 @@ Live storefront + admin for SELECT SHOP WOMEN (women's clothing, Egypt, Cash on 
 
 ## Hard rules
 1. Never push directly to `release` or `main`. Never merge or deploy without the owner's explicit approval in this session. Work on a feature branch and open a PR.
-2. Never touch production data. Supabase `byluoipdunralsurwebt` is named "staging" but IS PRODUCTION with real orders. Read-only queries only, and only when the task says so.
+2. Never touch production data. Supabase `byluoipdunralsurwebt` is named "staging" but IS PRODUCTION with real orders. Read-only queries only, and only when the task says so. Any read from production returns aggregated counts only — never customer rows or personal data. Any exception needs the owner's explicit approval first.
 3. Never print, commit or ask for secrets (service role keys, tokens, passwords). Never show customer PII (names, phones, addresses).
 4. Never change DNS, CNAME, domain or GitHub workflow permissions.
 5. Never rename/renumber SKUs or change old landing-page and ad links (`/lp/<id>/`, `/lp/?p=CODE`, their redirects and UTM parameters). Never merge historical products in the DB.
