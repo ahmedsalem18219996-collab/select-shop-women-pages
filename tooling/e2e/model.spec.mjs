@@ -161,9 +161,30 @@ test("short form: exactly name, mobile, governorate, address (+ quantity), chang
   await page.goto(MODEL);
   const fields = await page.locator("#lpForm :is(input,select,textarea)").evaluateAll(els => els.map(e => [e.name, e.required]));
   expect(fields).toEqual([["name", true], ["phone", true], ["region", true], ["address", true]]);
+  await expect(page.locator("[name=region] option")).toHaveText(["اختاري المحافظة", "القاهرة", "الجيزة", "أسوان"]); // most orders first
   await fillBuyer(page, "cairo");
   await expect(page.locator("#lpTotal")).toHaveText("١٬٠٧٠ ج");
   await page.locator("#lpColors").getByRole("button", { name: "أسود" }).click();
   await expect(page.locator("#lpTotal")).toHaveText("١٬٠٧٠ ج"); // fresh server quote for the new colour
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("owner test browser (?notrack=1 stored): no anonymous product-view beacon", async ({ page }) => {
+  const beacons = [];
+  page.on("request", r => { if (r.method() === "POST" && new URL(r.url()).pathname.endsWith("women-product-views")) beacons.push(r.url()); });
+  await page.addInitScript(() => localStorage.setItem("women.notrack", "1"));
+  await page.goto(MODEL);
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  await page.locator("#lpColors").getByRole("button", { name: "أسود" }).click();
+  await expect(page.locator("#lpColorName")).toHaveText("أسود");
+  await page.waitForTimeout(500);
+  expect(beacons).toEqual([]);
+});
+
+test("a normal browser sends the anonymous product-view beacon", async ({ page }) => {
+  const beacons = [];
+  page.on("request", r => { if (r.method() === "POST" && new URL(r.url()).pathname.endsWith("women-product-views")) beacons.push(r.url()); });
+  await page.goto(MODEL);
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  await expect.poll(() => beacons.length).toBeGreaterThan(0);
 });

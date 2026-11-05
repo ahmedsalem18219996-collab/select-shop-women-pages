@@ -1,5 +1,6 @@
 // WOMEN Admin — GA4 reports imported locally, not uploaded or geolocated by us.
-import { parseGa4Traffic } from '../ga4-report.js';
+// Versioned: this view needs the funnel/grouping exports, never an older cached copy of the parser.
+import { parseGa4Traffic, parseGa4Events, groupSources } from '../ga4-report.js?v=20261105-funnel';
 
 const ANALYTICS = 'https://analytics.google.com/analytics/web/';
 const CONNECT = 'https://app.hypd.ai/sources?utm_source=mcp&utm_content=none_selected';
@@ -10,6 +11,35 @@ const create = (name,cls,text) => {
   if(text!==undefined)x.textContent=text;
   return x;
 };
+function bars(items,total){
+  const box=create('div','traffic-bars');
+  for(const item of items){
+    const pct=total?Math.round((item.value/total)*1000)/10:0;
+    const line=create('div','traffic-place'),row=create('div','row');
+    row.style.justifyContent='space-between';row.style.gap='12px';
+    row.append(create('b','',item.name),create('span','num',fmt(item.value)+' · '+fmt(pct)+'%'));
+    const track=create('div','traffic-track'),bar=create('span');
+    bar.style.width=pct+'%';track.append(bar);line.append(row,track);box.append(line);
+  }
+  return box;
+}
+function showFunnel(slot,{steps,conversion}){
+  slot.replaceChildren();
+  const top=steps[0].count;
+  const list=create('div','traffic-bars');
+  steps.forEach((s,i)=>{
+    const prev=i?steps[i-1].count:null;
+    const line=create('div','traffic-place'),row=create('div','row');
+    row.style.justifyContent='space-between';row.style.gap='12px';
+    const rate=prev&&s.count!==null?' · '+fmt(Math.round(s.count/prev*1000)/10)+'% من اللي قبلها':'';
+    row.append(create('b','',s.label),create('span','num',s.count===null?'مش موجود في الملف':fmt(s.count)+rate));
+    const track=create('div','traffic-track'),bar=create('span');
+    bar.style.width=(top&&s.count!==null?Math.round(s.count/top*100):0)+'%';
+    track.append(bar);line.append(row,track);list.append(line);
+  });
+  slot.append(list,create('b','',conversion===null?'نسبة التحويل: محتاجة view_item وpurchase في الملف':'نسبة التحويل (طلبات ÷ مشاهدات منتج): '+fmt(Math.round(conversion*1000)/10)+'%'),
+    create('p','muted traffic-note','أرقام مقاسة من GA4 في المتصفح، وبتقل لو العميلة رافضة الكوكيز أو عندها مانع إعلانات. عدد الطلبات الحقيقي من صفحة الطلبات، مش من الملف ده.'));
+}
 function showReport(slot,report){
   slot.replaceChildren();
   const top=create('div','row');
@@ -23,17 +53,10 @@ function showReport(slot,report){
   if(report.kind==='region' && report.droppedCountry)
     slot.append(create('p','muted','استُبعدت '+fmt(report.droppedCountry)+' سطور من خارج مصر.'));
   if(!report.items.length)slot.append(create('p','muted','مفيش بيانات صالحة في الملف.'));
-  const content=create('div','traffic-bars');
-  for(const item of report.items.slice(0,report.kind==='region'?30:20)){
-    const pct=report.total?Math.round((item.value/report.total)*1000)/10:0;
-    const line=create('div','traffic-place');
-    const row=create('div','row');
-    row.style.justifyContent='space-between';row.style.gap='12px';
-    row.append(create('b','',item.name),create('span','num',fmt(item.value)+' · '+fmt(pct)+'%'));
-    const track=create('div','traffic-track'),bar=create('span');
-    bar.style.width=pct+'%';
-    track.append(bar);line.append(row,track);content.append(line);
+  if(report.kind==='source'&&report.items.length){
+    slot.append(create('b','','حسب القناة'),bars(groupSources(report.items),report.total),create('b','','التفاصيل من GA4'));
   }
+  const content=bars(report.items.slice(0,report.kind==='region'?30:20),report.total);
   slot.append(content,create('p','muted traffic-note','البيانات من الملف اللي اخترتيه، والفترة هي نفس الفترة المحددة وقت تصديره من GA4. مش بيانات مباشرة.'));
 }
 export default {
@@ -55,18 +78,24 @@ export default {
       '<p class="muted" style="margin:0">من GA4: Reports → Acquisition → Traffic acquisition، اختاري Session source / medium، وبعدها Export → CSV.</p>',
       '<label class="field"><span>اختاري ملف CSV لمصادر الزيارات</span><input class="input" type="file" id="traffic-source-file" accept=".csv,text/csv"></label>',
       '<div id="traffic-source-results" aria-live="polite"><p class="muted">ارفعي تقرير المصدر علشان تشوفي توزيع الزيارات.</p></div></section>',
+      '<section class="card stack"><div class="card-head"><h3>مسار الشراء</h3><span class="muted">مشاهدة ← شنطة ← بدء طلب ← طلب</span></div>',
+      '<p class="muted" style="margin:0">من GA4: Reports → Engagement → Events، وبعدها Export → CSV.</p>',
+      '<label class="field"><span>اختاري ملف CSV للأحداث</span><input class="input" type="file" id="traffic-events-file" accept=".csv,text/csv"></label>',
+      '<div id="traffic-events-results" aria-live="polite"><p class="muted">ارفعي تقرير الأحداث علشان تشوفي نسبة التحويل.</p></div></section>',
       '<section class="card stack"><b>الخصوصية ودقة التقرير</b><p class="muted" style="margin:0">الملف بيتقري على موبايلك/كمبيوترك من غير رفعه لسيرفر. Region تقديري وقد يكون غير معروف. ما نعتبرش الزيارات مبيعات، ولا نختار محافظات الإعلان من الزيارات لوحدها.</p></section>',
       '</div>'
     ].join('');
-    for(const kind of ['region','source']){
+    for(const kind of ['region','source','events']){
       const input=el.querySelector('#traffic-'+kind+'-file');
       input?.addEventListener('change',async ()=>{
         const file=input.files?.[0],slot=el.querySelector('#traffic-'+kind+'-results');
         if(!file||!slot)return;
         if(file.size>2_000_000){slot.textContent='الملف أكبر من 2MB. صدّري فترة أقصر من GA4.';return;}
         try {
-          const report=parseGa4Traffic(await file.text(),kind);
-          if(document.contains(slot))showReport(slot,report);
+          const text=await file.text();
+          if(!document.contains(slot))return;
+          if(kind==='events')showFunnel(slot,parseGa4Events(text));
+          else showReport(slot,parseGa4Traffic(text,kind));
         }catch(e){if(document.contains(slot))slot.textContent=e?.message||'ملف غير صالح؛ جرّبي تصدري CSV من GA4.';}
       });
     }

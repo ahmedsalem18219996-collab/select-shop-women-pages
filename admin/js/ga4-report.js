@@ -70,3 +70,45 @@ export function parseGa4Traffic(text,kind='region'){
     kind,header:rows[header]
   };
 }
+// Session source / medium → the channel the owner budgets for. Raw GA4 rows stay visible under it.
+export function sourceGroup(name){
+  const s=String(name??'').toLowerCase();
+  if(/(^|[^a-z])(ig|instagram)([^a-z]|$)|instagram\.com/.test(s))return 'Instagram';
+  if(/(^|[^a-z])(fb|facebook|meta)([^a-z]|$)|facebook\.com|fb\.com|fb\.me/.test(s))return 'Facebook';
+  if(/google/.test(s))return 'Google';
+  if(/\(direct\)|^direct|\(none\)$/.test(s))return 'مباشر';
+  return 'تانية';
+}
+export function groupSources(items){
+  const map=new Map();
+  for(const it of items)map.set(sourceGroup(it.name),(map.get(sourceGroup(it.name))||0)+it.value);
+  return [...map.entries()].map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
+}
+// GA4 Reports → Engagement → Events → Export CSV. Counts are what GA4 measured in browsers (ad blockers and
+// refused cookies undercount); real orders are the Orders page, never this file.
+export const FUNNEL=[
+  {event:'view_item',label:'شافت المنتج'},
+  {event:'add_to_cart',label:'أضافت للشنطة'},
+  {event:'begin_checkout',label:'بدأت الطلب'},
+  {event:'purchase',label:'طلب اتسجّل'}
+];
+export function parseGa4Events(text){
+  const rows=csvRows(text);
+  let header=-1,name=-1,count=-1;
+  for(let i=0;i<Math.min(rows.length,35);i++){
+    const col=rows[i].map(normalize);
+    const n=col.findIndex(c=>['eventname','اسمالحدث'].includes(c));
+    const k=col.findIndex(c=>['eventcount','عددالأحداث','عددمراتالحدث'].includes(c));
+    if(n>=0&&k>=0){header=i;name=n;count=k;break;}
+  }
+  if(header<0)throw new Error('ملف الأحداث لازم يحتوي على عمود Event name وعمود Event count.');
+  const totals=new Map();
+  for(const r of rows.slice(header+1)){
+    if(r[0]?.startsWith('#'))continue;
+    const ev=String(r[name]??'').trim().toLowerCase(),v=positiveNumber(r[count]);
+    if(v!==null&&FUNNEL.some(f=>f.event===ev))totals.set(ev,(totals.get(ev)||0)+v);
+  }
+  const steps=FUNNEL.map(f=>({...f,count:totals.get(f.event)??null}));
+  const views=steps[0].count,orders=steps[3].count;
+  return {steps,conversion:views&&orders!==null?orders/views:null};
+}

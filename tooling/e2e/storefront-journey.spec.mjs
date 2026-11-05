@@ -49,6 +49,7 @@ test("legacy checkout: product → cart → checkout → confirmation remains fu
   expect(page.external).toEqual([]);
   await page.locator("#toCheckout").click();
   await page.waitForURL("**/checkout/");
+  await expect(page.locator("#region option").nth(1)).toHaveText("القاهرة"); // cart checkout lists Cairo first too
   await page.locator("#region").selectOption("cairo");
   await page.fill("[name=name]", "اختبار آلي");
   await page.fill("[name=phone]", "01000000000");

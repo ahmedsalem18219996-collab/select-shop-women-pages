@@ -286,3 +286,63 @@ test('dashboard profit card never appears for staff', async ({ page }) => {
   await expect(page.locator('[data-profit-summary]')).toHaveCount(0);
   expect(b.s.ops.some((o) => o.op === 'profit.summary')).toBe(false);
 });
+
+test('unsaved model typing asks before the sheet closes or the screen changes; a save never asks', async ({ page }) => {
+  const b = backend();
+  await open(page, b, owner);
+  await page.locator('a[href="#/products"]:visible').first().click();
+  await page.locator('button[data-new]:visible').first().click();
+  await page.locator('#c-title').fill('بلوزة جديدة');
+  const asked = [];
+  page.on('dialog', (d) => { asked.push(d.message()); void d.dismiss(); });
+  await page.locator('#layer .sheet-head [data-close]').click();
+  await page.locator('#c-title').press('Escape');
+  await page.evaluate(() => { location.hash = '#/orders'; }); // the phone's back button / a link
+  await expect.poll(() => asked.length).toBe(3);
+  expect(asked.every((m) => m.includes('ما اتحفظتش'))).toBe(true);
+  await expect(page.locator('#c-title')).toHaveValue('بلوزة جديدة'); // stayed open, nothing lost
+  await expect(page).not.toHaveURL(/#\/orders/);
+  // Creating the model closes the sheet and moves to its editor without a prompt.
+  await page.locator('#c-price').fill('300');
+  await page.locator('[data-create]').click();
+  await expect(page).toHaveURL(/#\/products\/SS-9101$/);
+  await page.locator('a[href="#/orders"]:visible').first().click();
+  await expect(page).toHaveURL(/#\/orders/);
+  expect(asked).toHaveLength(3);
+});
+
+test('unsaved guard: browser back and reload ask; no prompt without typing, for search, or after a save', async ({ page }) => {
+  const b = backend();
+  await open(page, b, owner);
+  const asked = [];
+  page.on('dialog', (d) => { asked.push(d.type()); void d.accept(); }); // accept = "leave anyway"
+  // No false warnings: browsing, searching, opening and closing a sheet untouched, reloading.
+  await page.locator('a[href="#/products"]:visible').first().click();
+  await page.locator('#q').fill('SS');
+  await page.locator('button[data-new]:visible').first().click();
+  await page.locator('#layer .sheet-head [data-close]').click();
+  await expect(page.locator('#c-title')).toHaveCount(0);
+  await page.locator('a[href="#/orders"]:visible').first().click();
+  await page.goBack();
+  await page.reload();
+  await expect(page.locator('a[href="#/products"]:visible').first()).toBeVisible();
+  expect(asked).toEqual([]);
+  // Typing in an existing model's editor, then the phone/browser back button.
+  await page.goto(target + '#/products');
+  await page.locator('button[data-new]:visible').first().click();
+  await page.locator('#c-title').fill('جيبة');
+  await page.locator('#c-price').fill('300');
+  await page.locator('[data-create]').click();
+  await expect(page).toHaveURL(/#\/products\/SS-9101$/);
+  expect(asked).toEqual([]); // saving never asks
+  await page.locator('[data-draft] [data-d-name], input:visible').first().fill('بيج');
+  await page.goBack();
+  await expect.poll(() => asked.length).toBe(1);
+  expect(asked[0]).toBe('confirm');
+  // Typing in the new-model sheet, then reload: the browser's own "leave site?" (beforeunload) appears.
+  await page.locator('button[data-new]:visible').first().click();
+  await page.locator('#c-title').fill('رمادي');
+  await page.reload();
+  await expect.poll(() => asked.length).toBe(2);
+  expect(asked[1]).toBe('beforeunload');
+});

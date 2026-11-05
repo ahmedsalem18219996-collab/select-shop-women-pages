@@ -179,6 +179,7 @@ async function recordView(/** @type {string} */ code) {
   // Mirrors js/commerce.js: anonymous, deduplicated per browser key on the server; never blocks the page.
   try {
     if (/** @type {any} */ (navigator).globalPrivacyControl === true || navigator.doNotTrack === "1") return;
+    if (localStorage.getItem("women.notrack") === "1") return; // owner test browser (?notrack=1, js/analytics.js)
     let key = localStorage.getItem(VIEW_KEY);
     if (!/^[0-9a-f]{64}$/.test(key || "")) {
       key = hex(32);
@@ -728,10 +729,9 @@ async function init() {
   const regionsReady = read("regions", "/regions").then(d => {
     const regions = (Array.isArray(d.regions) ? d.regions : [])
       .filter(r => typeof r?.key === "string" && typeof r?.label === "string");
-    if (page.directOnly) {
-      const priority = r => r.label.trim() === "القاهرة" ? 0 : r.label.trim() === "الجيزة" ? 1 : 2;
-      regions.sort((a, b) => priority(a) - priority(b));
-    }
+    // Most orders ship to Cairo or Giza: put them first so the customer doesn't scroll 27 governorates.
+    const priority = r => r.label.trim() === "القاهرة" ? 0 : r.label.trim() === "الجيزة" ? 1 : 2;
+    regions.sort((a, b) => priority(a) - priority(b));
     for (const r of regions) {
       region.append(Object.assign(document.createElement("option"), { value: r.key, textContent: r.label }));
     }
