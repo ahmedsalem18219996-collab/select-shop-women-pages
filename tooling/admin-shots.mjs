@@ -33,6 +33,13 @@ async function harness(page) {
       if (op === "session.get") payload = { outcome: "ok", data: { email: "qa-owner@example.test", role: "owner", permissions: [] } };
       else if (op === "categories.list") payload = { outcome: "ok", data: [{ name: "بلوفرات", visible: true }] };
       else if (op === "products.list") payload = { outcome: "ok", data: catalog };
+      else if (op === "dashboard.summary") payload = { outcome: "ok", data: { orders: { revenue_30d_minor: 1650000, revenue_today_minor: 110000, revenue_7d_minor: 495000, pending: 3, to_ship: 2 },
+        products: { public: 3, draft: 1 }, views: { days_7: 412, today: 37 }, top_viewed: [], recent_orders: [], revenue_by_day: [], low_stock: [] } };
+      // QA-only profit lines: 550/350 → 200 (36.4%), one line with an unknown cost so "الربح غير مكتمل" shows.
+      else if (op === "profit.summary") payload = { outcome: "ok", data: { days: 30, lines: [
+        { order_code: "ORD-QA-1", status: "confirmed", returned: false, quantity: 2, line_total_minor: 110000, discount_minor: 0, unit_cost_minor: 35000 },
+        { order_code: "ORD-QA-2", status: "delivered", returned: false, quantity: 1, line_total_minor: 65000, discount_minor: 0, unit_cost_minor: 40000 },
+        { order_code: "ORD-QA-3", status: "confirmed", returned: false, quantity: 1, line_total_minor: 70000, discount_minor: 0, unit_cost_minor: null }] } };
       else if (op === "orders.list") payload = { outcome: "ok", data: args.status === "confirmed" ? [] : orders };
       else if (op === "orders.get") payload = { outcome: "ok", data: { order: orderDetail, fulfillment: null, fulfillment_events: [], activity: [] } };
       else if (op === "products.get") payload = product(catalog.find((x) => x.public_code === args.code) || catalog[0]);

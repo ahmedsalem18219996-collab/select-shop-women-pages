@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../admin/js/views/products.js', import.meta.url), 'utf8');
+const upload = readFileSync(new URL('../admin/js/photo-upload.js', import.meta.url), 'utf8');
 test('new product stays a draft until photos, virtual availability and delivery are reviewed', () => {
-  assert.match(source, /المنتج بيتحفظ مسودة ومش بيظهر للعميلات تلقائيًا/);
-  assert.match(source, /احفظي المسودة وكمّلي الصور/);
-  assert.match(source, /sessionStorage\.setItem\('wa\.ptab', ctx\.can\('media\.manage'\) \? 'media' : 'details'\)/);
+  assert.match(source, /المنتج بيتحفظ مسودة ومش بيظهر للعميلات لحد ما تنشريه/);
+  assert.match(source, /احفظي المسودة وكمّلي الألوان/);
+  assert.match(source, /sessionStorage\.setItem\('wa\.ptab', 'colours'\)/);
   assert.match(source, /خطوات تجهيز مسودة المنتج/);
   assert.match(source, /المنتج لسه مالوش صور ظاهرة/);
   assert.match(source, /طريقة الشحن مش محددة/);
@@ -23,15 +24,18 @@ test('invalid name, missing category and missing price are blocked before produc
 test('idempotent retries never re-create colour options on an existing draft', () => {
   assert.match(source, /if \(r\.outcome === 'existing'\) \{/);
   assert.match(source, /مش هنكرر الإنشاء/);
-  assert.match(source, /goToDraft\('variants'/);
+  // Colours and sizes are no longer created by the first step at all.
+  const create = source.slice(source.indexOf('function createSheet'), source.indexOf('async function renderEditor'));
+  assert.doesNotMatch(create, /products\.structure/);
 });
 
 test('photo upload is one batch, target variant is frozen, partial failure does not claim success', () => {
   assert.match(source, /let uploading = false/);
   assert.match(source, /if \(uploading\)/);
   assert.match(source, /const variantPos = \$\('#m-variant', body\)\?\.value/);
-  assert.match(source, /if \(ok === list\.length\) \{? ?done/);
-  assert.match(source, /اترفع ' \+ ok \+ ' من '/);
+  assert.match(source, /if \(result\.ok === result\.total\) \{ done/);
+  assert.match(upload, /اترفع ' \+ ok \+ ' من '/);
+  assert.match(upload, /الصور القديمة زي ما هي/);
 });
 
 test('virtual quantity is explicitly explained rather than represented as stored inventory', () => {

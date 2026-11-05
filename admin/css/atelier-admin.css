@@ -1,20 +1,21 @@
-/* Admin · "Maison" identity (2026-11), same tokens as the storefront: ink, ivory, champagne gold, square edges.
+/* Admin · "Soft Luxury" identity (2026-11-05), same tokens as the storefront: ivory, mauve actions, plum ink text,
+   dusty rose and champagne accents, square edges. No black bars: light navigation, mauve primary buttons.
    Visual layer only. No permission, stock, order, or routing changes. Layout ideas from SELECT-SHOP-CLEAN's
    admin shell: dark navigation column, quiet top bar, outlined status badges, 44px controls. */
 :root:not([data-theme="dark"]){
- --bg:#faf8f4;--surface:#fff;--surface-2:#f3eee5;--surface-3:#e9e1d3;
- --ink:#141310;--ink-2:#3a362f;--muted:#6f685c;
- --line:rgba(20,19,16,.1);--line-2:rgba(20,19,16,.18);
- --tape:#b08d57;--tape-ink:#141310;--primary:#141310;--on-primary:#f5f1ea;
- --shadow-1:none;--shadow-2:0 12px 30px -16px rgba(20,19,16,.25);--shadow-3:0 24px 56px -22px rgba(20,19,16,.32);
- --spot:rgba(176,141,87,.12);
+ --bg:#FBF8F7;--surface:#fff;--surface-2:#F6EEF0;--surface-3:#EEE2E6;
+ --ink:#302630;--ink-2:#4A3B47;--muted:#6B5B66;
+ --line:rgba(48,38,48,.1);--line-2:rgba(48,38,48,.18);
+ --tape:#C3A582;--tape-ink:#302630;--primary:#765268;--accent:#765268;--on-primary:#fff;--rose:#D4A4AF;--wash:#F3E8EB;
+ --shadow-1:none;--shadow-2:0 12px 30px -16px rgba(48,38,48,.25);--shadow-3:0 24px 56px -22px rgba(48,38,48,.32);
+ --spot:rgba(212,164,175,.16);
 }
 :root[data-theme="dark"]{
  --bg:#12110e;--surface:#1c1a16;--surface-2:#25221d;--surface-3:#302c25;
- --ink:#f5f1ea;--ink-2:#ddd5c7;--muted:#b3aa9b;
- --line:rgba(245,241,234,.1);--line-2:rgba(245,241,234,.18);
- --tape:#b08d57;--tape-ink:#141310;--primary:#d9c29a;--on-primary:#141310;
- --spot:rgba(176,141,87,.1);
+ --ink:#F8F5F2;--ink-2:#E6D9DD;--muted:#b3aa9b;
+ --line:rgba(248,245,242,.1);--line-2:rgba(248,245,242,.18);
+ --tape:#C3A582;--tape-ink:#302630;--primary:#d9b8c4;--accent:#d9b8c4;--on-primary:#302630;--rose:#D4A4AF;--wash:#2b2229;
+ --spot:rgba(195,165,130,.1);
 }
 :root{--r-s:2px;--r-m:4px;--r-l:6px;--r-xl:8px;--f-mark:"Readex Pro","Segoe UI",Tahoma,sans-serif}
 .boot-mark b,.brand{font-family:"Readex Pro","Segoe UI",Tahoma,sans-serif}
@@ -35,27 +36,26 @@
 .card{border-radius:var(--r-m)}
 .page-head h2{font-weight:300;font-size:30px;letter-spacing:-.015em}
 .topbar,.tabbar{border-color:var(--line)}
-:root:not([data-theme="dark"]) .auth-art{background:#141310;color:#f5f1ea}
-/* Phones: ink top bar with the wordmark. Desktop: ink navigation column, light top bar. */
+:root:not([data-theme="dark"]) .auth-art{background:var(--wash);color:var(--ink)}
+/* Phones: light top bar with a mauve wordmark. Desktop: rose-wash navigation column with a mauve active marker. */
 @media(max-width:1023px){
- .topbar{background:#141310;color:#f5f1ea;border-bottom:1px solid #141310}
- .topbar .brand b{color:#f5f1ea;font-size:16px}
- .topbar h1{color:rgba(245,241,234,.78);font-weight:400;font-size:14px}
- .topbar .ibtn,.topbar button{color:#f5f1ea}
+ .topbar{background:var(--surface);color:var(--ink);border-bottom:1px solid var(--line)}
+ .topbar .brand b{color:var(--primary);font-size:16px}
+ .topbar h1{color:var(--muted);font-weight:400;font-size:14px}
 }
 .tab{border-radius:0}
-.tab[aria-current="page"]::before{background:var(--ink);border-radius:0;height:2px}
+.tab[aria-current="page"]::before{background:var(--accent);border-radius:0;height:2px}
 .tab.plus span{border-radius:var(--r-s);box-shadow:none}
 @media(min-width:1024px){
- .sidebar{background:#141310;color:#f5f1ea;border-inline-end:0}
- .sidebar .brand b{color:#f5f1ea}
- .sidebar .nav-group{color:rgba(245,241,234,.42);letter-spacing:.16em;font-size:10.5px}
- .sidebar .nav a{color:rgba(245,241,234,.72);border-radius:var(--r-s)}
- .sidebar .nav a:hover{background:rgba(245,241,234,.06);color:#fff}
- .sidebar .nav a[aria-current="page"]{background:rgba(245,241,234,.1);color:#fff}
- .sidebar .nav a[aria-current="page"]::before{background:var(--tape);border-radius:0;inset-inline-start:-14px}
- .sidebar .me{background:rgba(245,241,234,.06);color:#f5f1ea}
- .sidebar .me small{color:rgba(245,241,234,.55)}
+ .sidebar{background:var(--surface-2);color:var(--ink);border-inline-end:1px solid var(--line)}
+ .sidebar .brand b{color:var(--primary)}
+ .sidebar .nav-group{color:var(--muted);letter-spacing:.16em;font-size:10.5px}
+ .sidebar .nav a{color:var(--ink-2);border-radius:var(--r-s)}
+ .sidebar .nav a:hover{background:var(--spot);color:var(--ink)}
+ .sidebar .nav a[aria-current="page"]{background:var(--surface);color:var(--primary);font-weight:600}
+ .sidebar .nav a[aria-current="page"]::before{background:var(--primary);border-radius:0;inset-inline-start:-14px}
+ .sidebar .me{background:var(--surface);color:var(--ink)}
+ .sidebar .me small{color:var(--muted)}
  .search-trigger{border-radius:var(--r-s)}
 }
 :root:not([data-theme="dark"]) .nav .on,
@@ -69,7 +69,7 @@
 .catalog-state span{font-size:11px;letter-spacing:.03em;color:var(--muted)}
 .catalog-state:hover,.catalog-state:focus-visible{background:var(--spot)}
 .model-summary .model-edit-hint,.model-state-summary{border-radius:0;background:none;border:1px solid var(--line-2);color:var(--ink-2)}
-.model-summary .model-edit-hint{border-color:var(--ink);color:var(--ink)}
+.model-summary .model-edit-hint{border-color:var(--accent);color:var(--ink)}
 @media(max-width:430px){.catalog-state{min-height:64px}.catalog-state strong{font-size:26px}}
 
 /* Same model, many original SKUs: keep the admin list short but editable per colour. */
@@ -123,3 +123,31 @@
 .variant-price-cell .input-money{width:100%}
 .variant-price-cell [data-save-vprice]{min-height:40px;white-space:nowrap}
 .variant-price-cell [data-price-feedback]{display:block;line-height:1.5;min-height:1em;font-size:11px;color:var(--primary)}
+/* Selected filters and segmented controls use the mauve action colour, not ink. */
+:root:not([data-theme="dark"]) .chip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* Colour model editor (2026-11-05): colour cards, per-colour photos, customer preview */
+.note{margin:0;padding:10px 12px;border-radius:12px;background:var(--wash,#F3E8EB);color:var(--ink);font-size:13px;line-height:1.6}
+.swatch{display:inline-block;inline-size:22px;block-size:22px;border-radius:50%;background:var(--sw);border:1px solid var(--line);flex:none;vertical-align:middle}
+.swatch[data-unknown]{background:repeating-linear-gradient(45deg,var(--surface-2) 0 4px,var(--line) 4px 8px)}
+.colour-card.retired{opacity:.6}
+.thumbs{display:flex;gap:8px;overflow-x:auto;padding-block:4px;scroll-snap-type:x proximity}
+.thumbs>*{flex:none;scroll-snap-align:start}
+.thumb{position:relative;margin:0;inline-size:96px}
+.thumb img{inline-size:96px;block-size:120px;object-fit:cover;border-radius:10px;display:block;background:var(--surface-2)}
+.thumb.hidden img{opacity:.4}
+.thumb .badge{position:absolute;inset-block-start:6px;inset-inline-start:6px;font-size:10.5px}
+.thumb .icon-btn{position:absolute;inset-block-end:6px;inset-inline-end:6px;background:var(--surface)}
+.thumb-add{display:grid;place-items:center;gap:4px;block-size:120px;border:1.5px dashed var(--line);border-radius:10px;cursor:pointer;font-size:12px;text-align:center;color:var(--muted)}
+.thumb-add:hover{border-color:var(--primary);color:var(--primary)}
+.thumb-add svg{inline-size:22px;block-size:22px;stroke:currentColor;fill:none;stroke-width:1.6}
+.thumbs .media{inline-size:96px}
+.cost-box summary{cursor:pointer;min-block-size:36px;display:flex;align-items:center;font-weight:600}
+[data-profit][data-kind="loss"]{color:var(--danger);font-weight:600}
+[data-profit][data-kind="incomplete"]{color:var(--warn)}
+.swatch-chip{display:inline-flex;align-items:center;gap:6px}
+.swatch-chip .swatch{inline-size:16px;block-size:16px}
+.preview-shop{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:720px){.preview-shop{grid-template-columns:minmax(0,320px) 1fr}}
+.preview-gallery>img{inline-size:100%;aspect-ratio:4/5;object-fit:cover;border-radius:14px;background:var(--surface-2)}
+.preview-gallery .thumbs img{inline-size:56px;block-size:70px;object-fit:cover;border-radius:8px}

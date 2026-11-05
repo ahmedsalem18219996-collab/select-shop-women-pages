@@ -1,7 +1,10 @@
 import { t } from '../i18n.js';
 import { html, render, toString, $, $$, icon, money, toMinor, fmtNum, ago, date, statusBadge, skRows, sheet, closeLayer, confirmDialog, withBusy, island, done, fail, debounce, segmented, idempotencyKey, spotlight, esc } from '../ui.js';
-import { call, uploadProductImage, deleteProductImage, mediaUrl } from '../api.js';
-import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from '../image-optimize.js';
+import { call, deleteProductImage, mediaUrl } from '../api.js';
+import { previewTile } from '../image-optimize.js';
+import { uploadPhotos, uploadSummary } from '../photo-upload.js';
+import { coloursTab, previewTab } from './model-colours.js?v=20261105-models';
+import { saveCost, profitText, COST_OPS_MISSING } from '../profit.js';
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
 import { saveFamilyCategory } from '../model-category.js';
@@ -342,31 +345,23 @@ function quickPrice(code, after) {
   $('#qp', box).addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
 }
 
-// ======================================================================= create
+// ======================================================================= create (step 1)
 function createSheet(ctx) {
-  const sizes = [];
-  const colors = [];
   const box = sheet({ title: t('create.title'), wide: true, body: html`
-    <p class="muted" style="margin:0 0 8px">ابدئي بالاسم والسعر والقسم، وبعدها الألوان والمقاسات. بعد الحفظ هترفعي الصور. <strong>المنتج بيتحفظ مسودة ومش بيظهر للعميلات تلقائيًا.</strong></p>
+    <p class="muted" style="margin:0 0 8px"><b>الخطوة ١ من ٣:</b> البيانات الأساسية. بعد الحفظ هتضيفي الألوان، وكل لون بصوره ومقاساته وسعره. <strong>المنتج بيتحفظ مسودة ومش بيظهر للعميلات لحد ما تنشريه.</strong></p>
     <label class="field"><span>${t('create.name')}</span><input class="input" id="c-title" maxlength="200" required autocomplete="off" placeholder="${t('create.namePh')}"></label>
     <div class="grid2">
       <label class="field"><span>${t('create.category')}</span><select class="select" id="c-cat" required></select></label>
       ${ctx.can('products.price') ? html`<label class="field"><span>${t('create.price')}</span><div class="input-money"><input id="c-price" inputmode="decimal" autocomplete="off" placeholder="مثال: 650"><span class="sr">سعر بيع المنتج بالجنيه المصري</span><span>EGP</span></div></label>` : ''}
     </div>
     ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هتحدده مسؤولة التسعير بعد الحفظ.</p>` : ''}
-    <div class="field"><span>${t('create.sizes')}</span>
-      <button class="chip" type="button" id="c-one-size" aria-pressed="false">${t('create.oneSize')}</button>
-      <div class="chips" id="c-sizes" style="flex-wrap:wrap"></div>
-      <input class="input" id="c-size" placeholder="${t('create.sizesPh')}" maxlength="18"><small>لو مقاس واحد سيبي الحقل فاضي أو اضغطي «مقاس واحد». للمقاسات المختلفة اكتبي S، M، L أو أي مقاسات مناسبة.</small></div>
-    <div class="field"><span>ألوان الموديل (اختياري)</span><div class="chips" id="c-colors" style="flex-wrap:wrap"></div><input class="input" id="c-color" placeholder="مثال: بني، بيبي بلو، أسود" maxlength="40"><small>كل لون هيظهر اختيار للعميلة تحت نفس الموديل. اكتبي الألوان وافصلي بينها بفاصلة (،). لو لون واحد بس، اكتبيه برضه علشان العميلة تعرف اختياره.</small></div>
-    <details class="card" style="padding:12px 14px">
-      <summary style="cursor:pointer">وصف المنتج (اختياري) — ممكن تكمّليه بعد رفع الصور</summary>
-      <label class="field" style="margin-top:10px"><span>${t('create.description')}</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
-    </details>
+    ${ctx.can('owner') ? html`<label class="field"><span>تكلفة المورد (اختياري، للمالكة بس)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعميلات ولا في المتجر.</small></label>` : ''}
+    <label class="field"><span>${t('create.description')} (اختياري)</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
+    ${ctx.can('media.manage') ? html`<div class="field"><span>الصورة الرئيسية (اختياري)</span><div class="thumbs" id="c-photos"><label class="thumb thumb-add" id="c-photo-add">${icon('upload')}<span>اختاري صورة</span><input type="file" accept="image/jpeg,image/png,image/webp" class="sr" id="c-photo"></label></div><small>صورة عامة للموديل. صور كل لون هترفعيها في الخطوة الجاية.</small></div>` : ''}
     <label class="switch"><input type="checkbox" id="c-new" checked><i></i>${t('create.isNew')}</label>
     <p class="err" id="c-error" role="alert" aria-live="polite" hidden></p>
     <ol class="blockers" id="c-steps" hidden></ol>`,
-    foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>احفظي المسودة وكمّلي الصور</button>` });
+    foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>احفظي المسودة وكمّلي الألوان</button>` });
   $$('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
   const catSel = $('#c-cat', box);
   const createButton = $('[data-create]', box);
@@ -392,53 +387,17 @@ function createSheet(ctx) {
   }).catch(() => message('تعذّر تحميل الأقسام. اقفلي النافذة وجربي تاني.')).finally(() => {
     if (document.contains(createButton)) createButton.disabled = !catSel.value || !categories.some(c => c.name === catSel.value && c.visible !== false);
   });
-  const oneSize = 'One Size';
-  const oneSizeButton = $('#c-one-size', box);
-  const sizeInput = $('#c-size', box);
-  const paintSizes = () => {
-    const onlyOne = sizes.length === 1 && sizes[0] === oneSize;
-    oneSizeButton.setAttribute('aria-pressed', String(onlyOne));
-    sizeInput.disabled = onlyOne;
-    render($('#c-sizes', box), html`${sizes.map((s, i) => html`<button type="button" class="chip" data-rm="${i}" aria-label="${t('app.delete')} ${s}">${s} ${icon('x')}</button>`)}`);
+  const costIn = $('#c-cost', box);
+  const profitLine = () => {
+    const out = $('[data-c-profit]', box); if (!out) return;
+    const cost = costIn.value.trim() ? toMinor(costIn.value.trim()) : null, sell = toMinor($('#c-price', box)?.value.trim() || '');
+    out.textContent = cost === null ? 'التكلفة مش بتظهر للعميلات ولا في المتجر.' : profitText(sell, cost, money).text;
   };
-  oneSizeButton.addEventListener('click', () => {
-    if (sizes.length === 1 && sizes[0] === oneSize) sizes.length = 0;
-    else { sizes.length = 0; sizes.push(oneSize); }
-    sizeInput.value = '';
-    paintSizes();
-  });
-  const addSize = () => {
-    if (sizeInput.disabled) return;
-    for (const item of sizeInput.value.split(/[,،]/)) {
-      const v = item.trim();
-      if (v && !sizes.some(x => x.toLowerCase() === v.toLowerCase()) && sizes.length < 20) sizes.push(v);
-    }
-    sizeInput.value = ''; paintSizes();
-  };
-  sizeInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ',' || e.key === '،') { e.preventDefault(); addSize(); }
-  });
-  sizeInput.addEventListener('blur', addSize);
-  $('#c-sizes', box).addEventListener('click', (e) => { const b = e.target.closest('[data-rm]'); if (b) { sizes.splice(+b.dataset.rm, 1); paintSizes(); } });
-  const colorInput = $('#c-color', box);
-  const paintColors = () => render($('#c-colors', box), html`${colors.map((s,i)=>html`<button type="button" class="chip" data-rm-color="${i}" aria-label="حذف لون ${s}">${s} ${icon('x')}</button>`)}`);
-  const addColor = () => {
-    for (const item of colorInput.value.split(/[,،]/)) {
-      const v = item.trim();
-      if (v && !colors.some(x => x.toLowerCase() === v.toLowerCase()) && colors.length < 12) colors.push(v);
-    }
-    colorInput.value = ''; paintColors();
-  };
-  colorInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ',' || e.key === '،') { e.preventDefault(); addColor(); } });
-  colorInput.addEventListener('blur', addColor);
-  $('#c-colors', box).addEventListener('click', (e) => { const b=e.target.closest('[data-rm-color]'); if (b) { colors.splice(+b.dataset.rmColor, 1); paintColors(); } });
+  costIn?.addEventListener('input', profitLine);
+  $('#c-price', box)?.addEventListener('input', profitLine);
   const key = idempotencyKey();
   $('[data-create]', box).onclick = async (e) => {
     message('');
-    addSize(); addColor();
-    if (colors.length * Math.max(1, sizes.length) > 200) {
-      message('فيه ألوان ومقاسات أكتر من الحد المسموح (٢٠٠ تركيبة). قلّلي عدد الاختيارات.'); return;
-    }
     const title = $('#c-title', box).value.trim();
     if (title.length < 2) { message('اكتبي اسم موديل واضح من حرفين على الأقل.', $('#c-title', box)); return; }
     if (!catSel.value || !categories.some(c => c.name === catSel.value && c.visible !== false)) {
@@ -449,17 +408,20 @@ function createSheet(ctx) {
     if ($('#c-price', box) && (price === null || price < 100)) {
       message('اكتبي سعر البيع بالجنيه، زي 650. السعر مطلوب علشان فريقك يقدر يجهز المنتج للنشر.', $('#c-price', box)); return;
     }
+    const costText = costIn?.value.trim() || '';
+    const cost = costText ? toMinor(costText) : null;
+    if (costText && (cost === null || cost < 1)) { message('تكلفة المورد لازم تكون رقم بالجنيه، زي 350، أو سيبيها فاضية.', costIn); return; }
     // Staff without price permission may still draft the catalogue; a price manager finishes it.
     $('#c-title', box).removeAttribute('aria-invalid');
     $('#c-price', box)?.removeAttribute('aria-invalid');
     const steps = $('#c-steps', box); steps.replaceChildren(); steps.hidden = false;
-    const step = (label, state) => { const li = document.createElement('li'); li.textContent = `${state === 'ok' ? '✓' : '…'} ${label}`; steps.append(li); return li; };
+    const step = (label) => { const li = document.createElement('li'); li.textContent = `… ${label}`; steps.append(li); return li; };
     await withBusy(e.currentTarget, async () => {
       let li = step(t('create.steps.create'));
       const r = await call('products.create', { idempotency_key: key, title, description: $('#c-desc', box).value.trim(), category: catSel.value || null, is_new: $('#c-new', box).checked });
       if (!['created', 'existing'].includes(r.outcome)) { fail(r); li.remove(); return; }
       li.textContent = '✓ ' + t('create.steps.create');
-      const code = r.code; let version = r.structure_version;
+      const code = r.code;
       const goToDraft = (tab, info) => {
         closeLayer();
         sessionStorage.setItem('wa.ptab', tab);
@@ -467,9 +429,8 @@ function createSheet(ctx) {
         ctx.go('products/' + code);
       };
       if (r.outcome === 'existing') {
-        // A timed-out first attempt may have created only part of the draft.
-        // Do NOT overwrite prices, duplicate options or claim that setup succeeded.
-        goToDraft('details', 'المسودة كانت اتحفظت بالفعل. راجعي السعر والألوان والمقاسات والصور قبل النشر؛ مش هنكرر الإنشاء.');
+        // A timed-out first attempt may have created only part of the draft: never overwrite or claim success.
+        goToDraft('details', 'المسودة كانت اتحفظت بالفعل. راجعي السعر والألوان والصور قبل النشر؛ مش هنكرر الإنشاء.');
         return;
       }
       if (price) {
@@ -478,45 +439,21 @@ function createSheet(ctx) {
         if (pr.outcome !== 'saved') {
           li.textContent = '✗ ' + t('create.steps.price');
           fail(pr);
-          // A created product remains a draft: do not claim successful setup if its price failed.
           goToDraft('details', 'الموديل اتحفظ مسودة، لكن السعر محتاج مراجعة. كمّلي السعر من تبويب البيانات، ومتنشريهوش قبل التحقق.');
           return;
         }
         li.textContent = '✓ ' + t('create.steps.price');
       }
-      if (r.outcome === 'created') {
-        // Add every option dimension BEFORE creating the variants (database requirement).
-        const dimensions = [
-          ...(colors.length ? [{ name: 'اللون', values: [...colors] }] : []),
-          ...(sizes.length ? [{ name: 'المقاس', values: [...sizes] }] : []),
-        ];
-        for (const dim of dimensions) {
-          li = step('اختيارات ' + dim.name);
-          const result = await call('products.structure', { code, version, change: { op: 'add_option', name: dim.name, values: dim.values } });
-          if (result.outcome !== 'applied') {
-            li.textContent = '✗ اختيارات ' + dim.name;
-            fail(result);
-            goToDraft('variants', 'المنتج اتعمل مسودة، لكن إعداد ' + dim.name + ' ماكملش. راجعي الاختيارات من تبويب المقاسات والإتاحة.');
-            return;
-          }
-          version = result.structure_version; li.textContent = '✓ اختيارات ' + dim.name;
-        }
-        const selections = dimensions.reduce((acc, dim) => acc.flatMap(combo => dim.values.map((_, i) => [...combo, i])), [[]]);
-        li = step('تجهيز الألوان والمقاسات');
-        const result = await call('products.structure', { code, version, change: { op: 'create_variants', selections } });
-        if (result.outcome !== 'applied') {
-          li.textContent = '✗ تجهيز الألوان والمقاسات';
-          fail(result);
-          goToDraft('variants', 'المنتج محفوظ مسودة، لكن التوليفات ماكملتش. راجعيها في تبويب المقاسات والإتاحة.');
-          return;
-        }
-        version = result.structure_version; li.textContent = '✓ تجهيز الألوان والمقاسات';
+      if (cost !== null) {
+        li = step('تكلفة المورد');
+        let cr;
+        try { cr = await saveCost(call, code, null, cost); } catch { cr = { outcome: 'network' }; }
+        // The cost table ships with this release for approval; until it is live the draft is still fine.
+        li.textContent = cr.outcome === 'saved' ? '✓ تكلفة المورد' : COST_OPS_MISSING.has(cr.outcome) ? '– تكلفة المورد: محتاجة تفعيل من السيرفر' : '✗ تكلفة المورد';
       }
-      // Shipping is a separate explicit product assignment. Without it, an Owner-created
-      // product may be visible but cannot be quoted correctly at checkout.
-      // Pick the WOMEN default when available, else the first active shipping profile.
+      // Shipping is a separate explicit product assignment: the WOMEN default, else the first active profile.
       let shippingReady = false;
-      if (ctx.can('shipping.manage') && r.outcome === 'created') {
+      if (ctx.can('shipping.manage')) {
         const available = await call('shipping.get');
         if (available.outcome === 'ok') {
           const active = (available.data?.profiles || []).filter((p) => p.active);
@@ -528,10 +465,16 @@ function createSheet(ctx) {
           }
         } else fail(available);
       }
+      const photo = $('#c-photo', box)?.files;
+      if (photo?.length) {
+        li = step('الصورة الرئيسية');
+        const up = await uploadPhotos({ files: photo, code, title, version: r.structure_version, grid: $('#c-photos', box), before: $('#c-photo-add', box) });
+        li.textContent = up.ok ? '✓ الصورة الرئيسية' : '✗ الصورة الرئيسية: ارفعيها تاني من تبويب الصور';
+      }
       closeLayer();
-      sessionStorage.setItem('wa.ptab', ctx.can('media.manage') ? 'media' : 'details');
-      done(shippingReady ? 'المسودة محفوظة. ارفعي صور الألوان، وحددي الكمية الافتراضية والإتاحة، وبعدها انشري المنتج.' :
-        'المسودة محفوظة. طريقة الشحن لسه محتاجة تتحدد من موظفة عندها صلاحية الشحن قبل النشر.');
+      sessionStorage.setItem('wa.ptab', 'colours');
+      done(shippingReady ? 'المسودة محفوظة. الخطوة ٢: ضيفي الألوان، وكل لون بمقاساته وصوره.' :
+        'المسودة محفوظة. ضيفي الألوان، وطريقة الشحن لسه محتاجة تتحدد من موظفة عندها صلاحية الشحن قبل النشر.');
       ctx.go('products/' + code);
     });
   };
@@ -551,7 +494,7 @@ async function renderEditor(ctx, code) {
   const hasVirtualAvailability = (p.variants || []).some(v => v.active && v.availability === 'available'
     && Number(d.stock?.[String(v.position)]?.quantity || 0) > 0);
   let tab = sessionStorage.getItem('wa.ptab') || 'details';
-  const tabs = ['details', 'media', 'variants', 'publish', ...(d.activity ? ['activity'] : [])];
+  const tabs = ['details', 'colours', 'preview', 'media', 'variants', 'publish', ...(d.activity ? ['activity'] : [])];
   if (!tabs.includes(tab)) tab = 'details';
   render(el, html`<div class="page">
     <div class="page-head"><div><a class="btn btn-ghost btn-sm" href="#/products">${icon(document.dir === 'rtl' ? 'chev' : 'chevBack')}${t('nav.products')}</a>
@@ -560,12 +503,11 @@ async function renderEditor(ctx, code) {
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
       <div class="card-head"><h3>كمّلي الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعميلات لحد النشر</span></div>
-      <p class="muted" style="margin:0">ابدئي بالصور، بعدين السعر والإتاحة الافتراضية لكل لون ومقاس، وأخيرًا راجعي الشحن وانشري. الصور العامة بتظهر لكل الاختيارات؛ لو الصور مختلفة اختاري اللون والمقاس وقت الرفع.</p>
+      <p class="muted" style="margin:0">كل لون ليه صوره ومقاساته وسعره. راجعي المعاينة زي ما العميلة هتشوفها، وبعدها انشري.</p>
       <div class="row" style="flex-wrap:wrap">
-        <button type="button" class="btn btn-soft btn-sm" data-setup-tab="media">١. الصور (${visiblePhotos.length ? visiblePhotos.length + ' صورة' : 'لسه ناقصة'})</button>
-        <button type="button" class="btn btn-soft btn-sm" data-setup-tab="variants">٢. السعر والإتاحة الافتراضية (${hasVirtualAvailability ? 'متظبطة' : 'تحتاج مراجعة'})</button>
-        <button type="button" class="btn btn-soft btn-sm" data-setup-tab="details">٣. البيانات وطريقة الشحن (${p.shipping_profile ? 'محددة' : 'الشحن ناقص'})</button>
-        <button type="button" class="btn btn-primary btn-sm" data-setup-tab="publish">راجعي جاهزية النشر</button>
+        <button type="button" class="btn btn-soft btn-sm" data-setup-tab="details">١. البيانات (${p.base_price ? 'السعر متحدد' : 'السعر ناقص'}${p.shipping_profile ? '' : '، الشحن ناقص'})</button>
+        <button type="button" class="btn btn-soft btn-sm" data-setup-tab="colours">٢. الألوان والصور (${visiblePhotos.length ? visiblePhotos.length + ' صورة' : 'الصور ناقصة'}${hasVirtualAvailability ? '' : '، التوافر ناقص'})</button>
+        <button type="button" class="btn btn-primary btn-sm" data-setup-tab="preview">٣. المعاينة والنشر</button>
       </div>
     </section>` : ''}
     <div class="seg" role="tablist">${tabs.map((x) => html`<button role="tab" data-v="${x}" aria-selected="${x === tab}">${t('editor.tabs.' + x)}</button>`)}</div>
@@ -632,6 +574,8 @@ function publishCard(p, d) {
 }
 
 const TABS = {
+  colours: coloursTab,
+  preview: previewTab,
   details(body, { ctx, d, p, code, reload }) {
     const { can } = ctx;
     render(body, html`<div class="stack">
@@ -695,62 +639,25 @@ const TABS = {
     let uploading = false;
     const upload = async (files) => {
       if (uploading) { island('busy', 'فيه صور بتترفع بالفعل؛ متضغطيش رفع تاني قبل ما تخلص.'); return; }
-      const list = [...files].filter((f) => checkSourceImage(f) === null);
-      if (!list.length) { island('error', 'اختاري صور JPG أو PNG أو WebP وحجمها مناسب. جرّبي صورة أصغر من 5MB.'); return; }
       uploading = true;
       const uploadField = $('#file', body);
       if (uploadField) uploadField.disabled = true;
       // Keep the chosen option stable for every photo in the same batch.
       const variantPos = $('#m-variant', body)?.value;
       try {
-      if (list.length !== files.length) island('error', 'فيه صور اتشالت من الدفعة لأنها مش JPG/PNG/WebP أو حجمها كبير. هنرفع الصور السليمة بس.');
-      let version = d.media?.structure_version ?? d.product.structure_version;
-      let ok = 0;
-      const missed = []; // { file, text }: shown again after the refresh so staff see exactly what to retry
-      // Every chosen photo shows at once with its own progress; nothing is stored until compression succeeded.
-      const tiles = list.map((f) => previewTile($('.media-grid', body), $('#drop', body), f));
-      for (const [i, f] of list.entries()) {
-        island('busy', `${t('editor.upload')} ${i + 1}/${list.length}`);
-        tiles[i].preparing();
-        let prepared;
-        try { prepared = await optimizeUploadImage(f, 'product'); }
-        catch (err) {
-          // The original stays untouched on the device and nothing reaches the store; carry on with the next photo.
-          const text = 'ما اترفعتش: ' + (err?.message || t('err.image'));
-          tiles[i].failed(text); missed.push({ file: f, text }); continue;
+        const result = await uploadPhotos({ files, code, title: d.product.title, version: d.media?.structure_version ?? d.product.structure_version,
+          grid: $('.media-grid', body), before: $('#drop', body), fields: { variant_position: variantPos } });
+        if (!result.total) return;
+        if (result.ok === result.total) { done('تم رفع ' + result.ok + ' صورة. راجعي الغلاف وربط الصور بالألوان قبل النشر.'); reload(); }
+        else {
+          if (result.ok) {
+            // Show the saved photos as real media, then put the failed ones back so the retry list stays visible.
+            await reload();
+            const grid = $('.media-grid'), drop = $('#drop');
+            if (grid) result.missed.forEach((m) => previewTile(grid, drop, m.file).failed(m.text));
+          }
+          island('error', uploadSummary(result));
         }
-        tiles[i].uploading(prepared.uploadedBytes);
-        const fd = new FormData(); fd.append('code', code); fd.append('image', prepared.file); fd.append('version', String(version)); fd.append('alt', d.product.title);
-        if (variantPos !== undefined && variantPos !== '') fd.append('variant_position', variantPos);
-        let res;
-        try { res = await uploadProductImage(fd); } catch { res = { outcome: 'network' }; }
-        if (res.outcome !== 'saved') {
-          tiles[i].failed('ما اترفعتش. الصور القديمة زي ما هي.');
-          missed.push({ file: f, text: 'ما اترفعتش. الصور القديمة زي ما هي.' });
-          list.slice(i + 1).forEach((x, k) => { tiles[i + 1 + k].failed('اتوقفت قبل الرفع'); missed.push({ file: x, text: 'اتوقفت قبل الرفع' }); });
-          fail(res); break;
-        }
-        ok++;
-        tiles[i].ok(prepared.optimized ? 'اترفعت ✓ ' + sizeLabel(prepared.originalBytes) + ' ← ' + sizeLabel(prepared.uploadedBytes) : 'اترفعت ✓ ' + sizeLabel(prepared.uploadedBytes));
-        // A saved photo may advance the media version; read it before the next one so a batch never fails half way.
-        if (i + 1 < list.length) {
-          let fresh;
-          try { fresh = await call('products.get', { code }); } catch { fresh = { outcome: 'network' }; }
-          if (fresh?.outcome === 'ok') version = fresh.data?.media?.structure_version ?? fresh.data?.product?.structure_version ?? version;
-        }
-      }
-      tiles.forEach((tile) => tile.release());
-      if (ok === list.length) { done('تم رفع ' + ok + ' صورة. راجعي الغلاف وربط الصور بالألوان قبل النشر.'); reload(); }
-      else {
-        const message = 'اترفع ' + ok + ' من ' + list.length + ' صورة. ما اترفعتش: ' + missed.map((m) => m.file.name).join('، ') + '. الصور الأصلية على جهازك زي ما هي؛ أعيدي رفع الناقص بس.';
-        if (ok) {
-          // Show the saved photos as real media, then put the failed ones back so the retry list stays visible.
-          await reload();
-          const grid = $('.media-grid'), drop = $('#drop');
-          if (grid) missed.forEach((m) => previewTile(grid, drop, m.file).failed(m.text));
-        }
-        island('error', message);
-      }
       } finally {
         uploading = false;
         if (uploadField && document.contains(uploadField)) { uploadField.disabled = false; uploadField.value = ''; }
@@ -884,7 +791,7 @@ const TABS = {
       let res;
       if (b.matches('[data-active]')) { const pos = +row(b).dataset.pos; res = await call('products.structure', { code, version: ver(), change: { op: 'set_variant_active', variant: pos, active: !p.variants.find((v) => v.position === pos).active } }); }
       if (b.matches('[data-addopt]')) { const name = $('#o-name', body).value.trim(); const values = $('#o-values', body).value.split(/[,،]/).map((x) => x.trim()).filter(Boolean); if (!name || !values.length) return; res = await call('products.structure', { code, version: ver(), change: { op: 'add_option', name, values } }); }
-      if (b.matches('[data-addval]')) { const oi = +b.dataset.addval; const v = $(`[data-newval="${oi}"]`, body).value.trim(); if (!v) return; res = await call('products.structure', { code, version: ver(), change: { op: 'add_value', option: oi, value: v } }); }
+      if (b.matches('[data-addval]')) { const oi = +b.dataset.addval; const v = $(`[data-newval="${oi}"]`, body).value.trim(); if (!v) return; res = await call('products.structure', { code, version: ver(), change: { op: 'add_value', option: oi, text: v } }); }
       if (b.matches('[data-combos]')) {
         const existing = new Set(p.variants.map((v) => p.options.map((o) => o.values.findIndex((x) => x.value_id === v.selections.find((s) => s.option_id === o.option_id)?.value_id)).join(',')));
         const combos = p.options.reduce((acc, o) => acc.flatMap((c) => o.values.filter((v) => v.active).map((v) => [...c, v.position])), [[]]).filter((c) => !existing.has(c.join(',')));

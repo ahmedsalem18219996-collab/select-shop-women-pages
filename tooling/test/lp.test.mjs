@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
-import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet } from "../../lp/runtime.js";
+import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet, openValues, colourIndex, colourMedia } from "../../lp/runtime.js";
 import { render, renderShell, shellRoutes, photos, esc, AB_SNIPPET, PREFETCH, colorsOf, colorData, readexFaces } from "../build-lp.mjs";
 
 test("landing copy states availability is pending and makes no inspection promise", () => {
@@ -149,24 +149,21 @@ test("generated pages retain optional cart except explicitly focused direct-only
   }
 });
 
-test("Admin collects text entered without Enter and never marks a failed price as complete", async () => {
+test("Admin never marks a failed price as complete, and colour drafts keep what was typed without Enter", async () => {
   const admin = await readFile(new URL("../../admin/js/views/products.js", import.meta.url), "utf8");
-  assert.match(admin, /sizeInput\.addEventListener\('blur', addSize\)/);
-  assert.match(admin, /addSize\(\); addColor\(\);/);
-  assert.match(admin, /colorInput\.value\.split\(\/\[,،\]\//);
-  assert.match(admin, /sizeInput\.value\.split\(\/\[,،\]\//);
+  const colours = await readFile(new URL("../../admin/js/views/model-colours.js", import.meta.url), "utf8");
   assert.match(admin, /if \(pr\.outcome !== 'saved'\)/);
-  assert.match(admin, /A created product remains a draft/);
+  assert.match(admin, /goToDraft\('details', 'الموديل اتحفظ مسودة، لكن السعر محتاج مراجعة/);
+  assert.match(colours, /box\.addEventListener\('input'/, "names and prices are kept on every keystroke");
+  assert.match(colours, /checkDrafts\(/, "checked in Egyptian Arabic before any call");
 });
 
-test("admin creates one multi-colour product and allows variant-specific media uploads", async () => {
- const admin = await readFile(new URL("../../admin/js/views/products.js", import.meta.url), "utf8");
- assert.match(admin, /id="c-color"/);
- assert.match(admin, /const dimensions = \[/);
- assert.match(admin, /name: 'اللون'/);
- assert.match(admin, /name: 'المقاس'/);
- assert.match(admin, /const selections = dimensions\.reduce/);
- assert.match(admin, /fd\.append\('variant_position', variantPos\)/);
+test("admin creates one multi-colour product and attaches each colour photo to that colour's own Variant", async () => {
+  const colours = await readFile(new URL("../../admin/js/views/model-colours.js", import.meta.url), "utf8");
+  assert.match(colours, /planNewModel\(clean, model\.base\)/);
+  assert.match(colours, /fields: photoTarget\(c\)/);
+  const media = await readFile(new URL("../../admin/js/views/products.js", import.meta.url), "utf8");
+  assert.match(media, /fields: \{ variant_position: variantPos \}/);
 });
 
 test("automatic shell: same form and runtime, no product data baked in, committed file is current", async () => {
@@ -189,4 +186,17 @@ test("every generated product page: zoomable original photos, trust strip, in-fo
     const form = page.slice(page.indexOf('id="lpForm"'));
     if (form.includes('id="lpFormColors"')) assert.ok(form.indexOf("</h2>") < form.indexOf('id="lpFormColors"'), d.name);
   }
+});
+
+test("a chosen colour keeps only its own buyable sizes, and brings its own photos (never another shade)", async () => {
+  const { product } = JSON.parse(await readFile(new URL("../fixtures/SS-9101.product.json", import.meta.url), "utf8"));
+  assert.equal(colourIndex(product), 0);
+  assert.deepEqual([...openValues(product, [1, -1], 1)], [3], "brown: One Size only");
+  assert.deepEqual([...openValues(product, [0, -1], 1)].sort(), [0, 1, 2], "baby blue: S, M, L");
+  assert.deepEqual([...openValues(product, [-1, 1], 0)], [0], "size M: pink is not purchasable");
+  const urls = (list) => list.map((m) => m.url.split("/").pop().slice(0, 4));
+  assert.deepEqual(urls(colourMedia(product.media, 0, 0)), ["b1b1", "b2b2", "aaaa"]);
+  assert.deepEqual(urls(colourMedia(product.media, 0, 1)), ["c1c1", "aaaa"]);
+  assert.deepEqual(colourMedia(product.media, 0, 2), [], "no photo of pink: keep what is shown");
+  assert.equal(colourIndex({ options: [{ name: "المقاس" }] }), -1);
 });

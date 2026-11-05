@@ -1,11 +1,11 @@
 /* SELECT SHOP WOMEN · "Maison" identity (2026-11) for every public storefront route.
    Visual layer only: product, cart, COD order and analytics JavaScript are unchanged.
-   Ink black + warm ivory + champagne gold, square corners, light large headings (Readex Pro 300–600,
+   Soft Luxury (2026-11-05): ivory + mauve actions + plum ink text, dusty rose and champagne as accents only, square corners, light large headings (Readex Pro 300–600,
    already self-hosted: no extra font file). Same tokens as the landing pages (tooling/build-lp.mjs). */
 :root{
- --bg:#f5f1ea;--mirror:#f5f1ea;--chalk:#fff;--surface:#ece5d9;--tape:#ece5d9;
- --ink:#141310;--pin:#141310;--mauve:#141310;--accent:#141310;
- --dust:#6f685c;--muted:#6f685c;--hair:#ddd5c7;--line:#ddd5c7;--gold:#b08d57;
+ --bg:#F8F5F2;--mirror:#F8F5F2;--chalk:#fff;--surface:#F3E8EB;--tape:#F3E8EB;
+ --ink:#302630;--pin:#302630;--mauve:#765268;--accent:#765268;--rose:#D4A4AF;--wash:#F3E8EB;
+ --dust:#6B5B66;--muted:#6B5B66;--hair:#E6D9DD;--line:#E6D9DD;--gold:#C3A582;
  --f-display:"Readex Pro","Segoe UI",Tahoma,sans-serif;
  --f-body:"Readex Pro","Segoe UI",Tahoma,sans-serif;
  --f-num:"Readex Pro",ui-sans-serif,system-ui,sans-serif;
@@ -14,19 +14,19 @@
 html,body{background:var(--bg);color:var(--ink)}
 .app{background:var(--mirror)}
 .app :focus-visible,:is(.atelier-checkout,.atelier-success) :focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:0}
-.storefront-owner-announcement{border-bottom:1px solid var(--gold);background:var(--ink);color:#f5f1ea;font:400 11px/1.9 var(--f-body);letter-spacing:.14em;padding:7px 16px}
+.storefront-owner-announcement{border-bottom:1px solid var(--rose);background:var(--wash);color:var(--accent);font:400 11px/1.9 var(--f-body);letter-spacing:.14em;padding:7px 16px}
 
 /* ---------- header: centred wordmark on phones ---------- */
-.hdr{background:rgba(245,241,234,.97);border-bottom:1px solid var(--hair);backdrop-filter:none;-webkit-backdrop-filter:none}
+.hdr{background:rgba(248,245,242,.97);border-bottom:1px solid var(--hair);backdrop-filter:none;-webkit-backdrop-filter:none}
 .hdr-in{min-height:58px}
 .logo{display:grid;justify-items:center;gap:0;line-height:1}
 .logo b{direction:ltr;font:600 21px/1 var(--f-body);letter-spacing:.34em;margin-inline-end:-.34em;text-transform:uppercase;color:var(--ink)}
 .logo b::after{content:none}
 .logo small{font:400 8.5px/1.6 var(--f-body);letter-spacing:.36em;color:var(--dust);text-transform:uppercase;margin-top:3px}
 .hdr-links a{font-size:13px;letter-spacing:.02em}
-.hdr-links a:hover,.commerce-head-link:hover{color:var(--gold)}
+.hdr-links a:hover,.commerce-head-link:hover{color:var(--accent)}
 .ibtn{min-height:44px;min-width:44px;border-radius:0}
-.dot{background:var(--ink);color:#fff;font-family:var(--f-body)}
+.dot{background:var(--accent);color:#fff;font-family:var(--f-body)}
 @media(max-width:979px){
  .hdr-in{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
  .hdr-tools{display:contents}
@@ -36,15 +36,15 @@ html,body{background:var(--bg);color:var(--ink)}
 }
 
 /* ---------- brand-only hero: no hard-coded jacket, fast first paint ---------- */
-.hero--brand{display:grid;grid-template-areas:"copy" "lead" "trust";background:linear-gradient(122deg,#f1eadd 0%,#f8f4ed 56%,#ede1d0 100%);border-block:1px solid var(--hair);margin:0;max-width:none;padding:0;overflow:hidden}
+.hero--brand{display:grid;grid-template-areas:"copy" "lead" "trust";background:linear-gradient(122deg,#F3E8EB 0%,#F8F5F2 56%,#EFDFE4 100%);border-block:1px solid var(--hair);margin:0;max-width:none;padding:0;overflow:hidden}
 .hero--brand .hero-copy{grid-area:copy;position:relative;display:grid;justify-items:start;gap:14px;padding:24px max(20px,var(--gr)) 4px max(20px,var(--gl));color:var(--ink)}
-.hero--brand .hero-kicker{font:500 10px/1.5 var(--f-body);letter-spacing:.25em;color:var(--gold);text-transform:uppercase}
+.hero--brand .hero-kicker{font:500 10px/1.5 var(--f-body);letter-spacing:.25em;color:var(--accent);text-transform:uppercase}
 .hero--brand h1{margin:0;font:300 clamp(33px,8.4vw,54px)/1.2 var(--f-body);letter-spacing:-.025em;color:var(--ink);max-width:18ch;text-wrap:balance}
 .hero--brand .hl{color:inherit;font-weight:500}
 .hero--brand .hl::before{content:none}
 .hero--brand .hero-cta{display:flex;align-items:center;gap:10px;margin-top:2px}
-.hero--brand .btn-solid{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 28px;background:var(--ink);color:#f5f1ea;font:500 14px/1.4 var(--f-body);border:1px solid var(--ink);border-radius:0;transition:background .2s,color .2s}
-.hero--brand .btn-solid:hover{background:#000}
+.hero--brand .btn-solid{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 28px;background:var(--accent);color:#fff;font:500 14px/1.4 var(--f-body);border:1px solid var(--accent);border-radius:0;transition:background .2s,color .2s}
+.hero--brand .btn-solid:hover{background:#5E3F52}
 .hero--brand .hero-lead{grid-area:lead;margin:0;padding:10px max(20px,var(--gr)) 20px max(20px,var(--gl));max-width:62ch;text-align:start;color:var(--dust);font-size:13px;line-height:1.8}
 .hero--brand .hero-trust{grid-area:trust;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--hair);background:rgba(255,255,255,.74)}
 .hero--brand .hero-trust li{display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 6px;font:400 11px/1.5 var(--f-body);text-align:center;color:var(--ink)}
@@ -57,11 +57,11 @@ html,body{background:var(--bg);color:var(--ink)}
 .story .ring span{border-color:var(--bg)}
 .looks{gap:18px;padding-block:12px 20px}
 .look{background:#fff;box-shadow:none;border:1px solid var(--hair);border-radius:0;transform:none}
-.look-tag{background:var(--ink);color:#fff}
+.look-tag{background:var(--accent);color:#fff}
 .shop{padding-top:40px}
 .shop-head{align-items:stretch}
 .shop-head h2{font:300 clamp(28px,6vw,44px)/1.2 var(--f-body);letter-spacing:-.02em}
-.shop-head h2::before{content:"THE EDIT";display:block;font:400 10px/1.8 var(--f-body);letter-spacing:.32em;color:var(--gold);margin-bottom:4px}
+.shop-head h2::before{content:"THE EDIT";display:block;font:400 10px/1.8 var(--f-body);letter-spacing:.32em;color:var(--accent);margin-bottom:4px}
 .shop-head .hint{color:var(--dust);font-size:13px}
 .shop-head .num{font-family:var(--f-body);font-size:12px;color:var(--dust)}
 .tape-dock{background:var(--bg);padding-block:4px 10px;margin-top:10px}
@@ -73,7 +73,7 @@ html,body{background:var(--bg);color:var(--ink)}
 .fade-r{background:linear-gradient(270deg,var(--bg),transparent)}
 .seg{color:var(--dust);font:400 14px/1 var(--f-body);border-radius:0;place-items:center;padding:0}
 .seg.on{color:var(--ink);font-weight:600;transform:none;background:none}
-.seg.on::after{content:"";position:absolute;inset-inline:34px;bottom:0;height:2px;background:var(--ink)}
+.seg.on::after{content:"";position:absolute;inset-inline:34px;bottom:0;height:2px;background:var(--accent)}
 
 /* ---------- product cards: editorial, square, big photo ---------- */
 .feed{gap:30px 14px}
@@ -84,58 +84,58 @@ html,body{background:var(--bg);color:var(--ink)}
 .shot-link-label{display:none}
 .heart{color:#fff}
 .heart[aria-pressed="true"] svg{fill:#fff;stroke:#fff}
-.add{bottom:0;inset-inline-end:0;width:44px;height:44px;border-radius:0;background:var(--ink);color:#f5f1ea;box-shadow:none}
-.add:active{background:#000}
-.badge{border-radius:0;background:var(--ink);color:#f5f1ea;font-family:var(--f-body);letter-spacing:.06em}
+.add{bottom:0;inset-inline-end:0;width:44px;height:44px;border-radius:0;background:var(--accent);color:#fff;box-shadow:none}
+.add:active{background:#5E3F52}
+.badge{border-radius:0;background:var(--accent);color:#fff;font-family:var(--f-body);letter-spacing:.06em}
 .card h3{color:var(--ink);font-weight:400;font-size:14px;line-height:1.45}
 .card h3 a:hover{text-decoration:underline;text-underline-offset:4px}
 .card .pr{color:var(--ink);font-family:var(--f-body);font-weight:600;font-size:14px}
 .card .pr.off{color:#8c2f2f}
 .swatches{gap:4px}
-.swatches i{width:10px;height:10px;box-shadow:inset 0 0 0 1px rgba(20,19,16,.18)}
+.swatches i{width:10px;height:10px;box-shadow:inset 0 0 0 1px rgba(48,38,48,.18)}
 
 /* ---------- promises + footer: full-bleed ink bands ---------- */
-.promises{margin-top:56px;padding-block:30px;background:var(--ink);color:#f5f1ea;box-shadow:0 0 0 100vmax var(--ink);clip-path:inset(0 -100vmax)}
+.promises{margin-top:56px;padding-block:30px;background:var(--wash);color:var(--ink);box-shadow:0 0 0 100vmax var(--wash);clip-path:inset(0 -100vmax)}
 .promise{background:transparent;border:0;border-radius:0;box-shadow:none;padding:6px 0}
-.promise .ic{background:transparent;border:1px solid rgba(176,141,87,.6);border-radius:0;color:var(--gold)}
-.promise b{color:#f5f1ea;font-weight:500}
-.promise span{color:rgba(245,241,234,.7)}
-.foot{margin-top:0;border-top:1px solid rgba(245,241,234,.14);background:var(--ink);color:rgba(245,241,234,.62);box-shadow:0 0 0 100vmax var(--ink);clip-path:inset(0 -100vmax)}
-.foot nav a{color:#f5f1ea}
-.tabbar{background:rgba(245,241,234,.97);border-color:var(--hair);backdrop-filter:none}
+.promise .ic{background:transparent;border:1px solid rgba(195,165,130,.6);border-radius:0;color:var(--accent)}
+.promise b{color:var(--ink);font-weight:500}
+.promise span{color:var(--muted)}
+.foot{margin-top:0;border-top:1px solid var(--hair);background:var(--ink);color:rgba(248,245,242,.72);box-shadow:0 0 0 100vmax var(--ink);clip-path:inset(0 -100vmax)}
+.foot nav a{color:#F8F5F2}
+.tabbar{background:rgba(248,245,242,.97);border-color:var(--hair);backdrop-filter:none}
 .tabbar a,.tabbar button{color:var(--dust)}
 .tabbar .on,.tabbar a[aria-current="page"]{color:var(--ink)}
-.tabbar .on::before{background:var(--ink);border-radius:0;height:2px}
+.tabbar .on::before{background:var(--accent);border-radius:0;height:2px}
 
 /* ---------- sheets, product page (legacy), cart, checkout, confirmation ---------- */
 .sheet,.utility-dialog{background:var(--bg);color:var(--ink);border-radius:0}
 .sheet:not(.show){visibility:hidden;transition:transform .45s var(--ease),visibility 0s .45s}
-.sh-cta:disabled{background:#cfc8bb;color:#4a453d}
+.sh-cta:disabled{background:#E6D9DD;color:#6B5B66}
 .size{border-radius:0}
-.size[aria-checked="true"]{background:var(--ink);color:#fff}
+.size[aria-checked="true"]{background:var(--accent);color:#fff}
 .size.rec::after{background:var(--surface);color:var(--ink)}
 .add,.cta,.sh-cta,.finder .cta{border-radius:0}
-.cta,.sh-cta,.finder .cta,.utility-main-btn{background:var(--ink);color:#fff;box-shadow:none;border-radius:0}
+.cta,.sh-cta,.finder .cta,.utility-main-btn{background:var(--accent);color:#fff;box-shadow:none;border-radius:0}
 .commerce{max-width:1160px}
 .commerce-tape{display:none}
-.commerce-kicker{color:var(--gold);letter-spacing:.2em}
+.commerce-kicker{color:var(--accent);letter-spacing:.2em}
 .commerce-head-link{color:var(--ink)}
 .commerce-head h1,.commerce-card h1{font-family:var(--f-body);font-weight:300;letter-spacing:-.02em}
 .commerce-head h1{font-size:clamp(28px,5vw,42px)}
 .commerce-card{background:#fff;border:1px solid var(--hair);border-radius:0;box-shadow:none}
 .commerce-grid{gap:clamp(16px,4vw,48px)}
 .commerce-photo-frame,.commerce-image{background:var(--surface);border-radius:0}
-.commerce-photo-label{background:rgba(245,241,234,.94);color:var(--ink);border-radius:0}
+.commerce-photo-label{background:rgba(248,245,242,.94);color:var(--ink);border-radius:0}
 .commerce-price{color:var(--ink);font-family:var(--f-num);font-weight:600}
 .commerce-field :is(input,select,textarea){background:#fff;border:1px solid var(--hair);border-radius:0;color:var(--ink)}
 .commerce-field :is(input,select,textarea):focus{outline:2px solid var(--ink);outline-offset:1px}
-.commerce .commerce-btn{background:var(--ink)!important;border-color:var(--ink)!important;color:#fff!important;border-radius:0!important;box-shadow:none}
-.commerce .commerce-btn--ghost{background:#fff!important;border-color:var(--ink)!important;color:var(--ink)!important}
+.commerce .commerce-btn{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important;border-radius:0!important;box-shadow:none}
+.commerce .commerce-btn--ghost{background:#fff!important;border-color:var(--accent)!important;color:var(--ink)!important}
 .commerce-quick-links a{background:#fff;border:1px solid var(--hair);border-radius:0}
 .commerce-summary{border-color:var(--hair)}
 .commerce-yellow-mark::before{background:var(--gold)}
-.commerce-mobile-buybar{background:var(--ink)}
-.commerce-mobile-buybar button{background:#f5f1ea;color:var(--ink);border-radius:0}
+.commerce-mobile-buybar{background:var(--accent)}
+.commerce-mobile-buybar button{background:#F8F5F2;color:var(--ink);border-radius:0}
 .atelier-checkout .top,.atelier-success .top{max-width:640px;padding:18px 22px;border-bottom:1px solid var(--hair)}
 .atelier-checkout .mark,.atelier-success .mark{color:var(--ink);font-size:20px;letter-spacing:.34em}
 .atelier-checkout .mark::after,.atelier-success .mark::after{background:var(--gold)}
@@ -144,9 +144,9 @@ html,body{background:var(--bg);color:var(--ink)}
 .atelier-checkout .card,.atelier-success .card{border:1px solid var(--hair);border-radius:0;background:#fff}
 .atelier-checkout :is(input,select,textarea){background:#fff;border:1px solid var(--hair);border-radius:0}
 .atelier-checkout :is(input,select,textarea):focus{outline:2px solid var(--ink);outline-offset:1px;box-shadow:none}
-.atelier-checkout .confirm{background:rgba(245,241,234,.98);border-color:var(--hair)}
-.atelier-checkout #placeOrder,.atelier-success .btn{background:var(--ink);color:#fff;border-radius:0}
-.atelier-checkout #placeOrder:disabled{background:#cfc8bb;color:#4a453d}
+.atelier-checkout .confirm{background:rgba(248,245,242,.98);border-color:var(--hair)}
+.atelier-checkout #placeOrder,.atelier-success .btn{background:var(--accent);color:#fff;border-radius:0}
+.atelier-checkout #placeOrder:disabled{background:#E6D9DD;color:#6B5B66}
 .atelier-success .done{background:#fff;border:1px solid var(--hair);border-radius:0;padding:40px 24px;margin-top:26px}
 .atelier-success .done #orderCode{color:var(--ink);letter-spacing:.08em}
 

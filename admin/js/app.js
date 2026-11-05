@@ -197,8 +197,10 @@ function palette() {
 addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && state.session) { e.preventDefault(); palette(); } });
 
 // ---------- router ----------
+let navSeq = 0;
 async function route() {
   if (!state.session) return;
+  const nav = ++navSeq;
   const [pathPart, query = ''] = location.hash.replace(/^#\/?/, '').split('?');
   const [name, ...rest] = pathPart.split('/');
   const allowed = allowedItems();
@@ -207,6 +209,7 @@ async function route() {
   if (target !== name) { location.replace('#/' + target); return; }
   $$('[data-path]', app).forEach((a) => { if (a.dataset.path === name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   const mod = (await VIEWS[target]()).default;
+  if (nav !== navSeq) return; // a newer navigation started while this view loaded: never draw the older screen over it
   // Each navigation renders into its own element. A late async render or reload from the previous screen writes into
   // a detached element and can no longer draw over the current one.
   const el = document.createElement('div');
