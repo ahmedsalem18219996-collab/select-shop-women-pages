@@ -81,7 +81,7 @@ async function signInAsTestOwner(page, ops) {
   await expect(page.locator('#c-title')).toBeVisible();
 }
 
-test('Staff gets actionable errors before create, then arrives at photo step', async ({ page }) => {
+test('Staff gets actionable errors before create, then arrives at the colours step', async ({ page }) => {
   const ops = [];
   await signInAsTestOwner(page, ops);
   await expect(page.locator('#c-cat')).toHaveValue('بلوفرات');
@@ -91,19 +91,15 @@ test('Staff gets actionable errors before create, then arrives at photo step', a
   expect(ops.filter(x => x.op === 'products.create')).toHaveLength(0);
 
   await page.locator('#c-price').fill('650');
-  await page.locator('#c-color').fill('بيبي بلو، بني');
-  await page.locator('#c-color').blur();
-  await expect(page.locator('[data-rm-color]')).toHaveCount(2);
-  await page.locator('#c-one-size').click();
   await page.locator('[data-create]').click();
   await expect(page).toHaveURL(/#\/products\/SS-9876$/);
-  await expect(page.locator('#tabbody')).toContainText('ارفعي صور');
+  await expect(page.locator('#tabbody')).toContainText('الألوان والمقاسات والصور');
   await expect(page.getByText('كمّلي الموديل في ٣ خطوات')).toBeVisible();
   const creates = ops.filter(x => x.op === 'products.create');
   expect(creates).toHaveLength(1);
   expect(creates[0].args.title).toBe('بلوفر شتوي');
   expect(ops.filter(x => x.op === 'products.set_price')[0].args.amount_minor).toBe(65000);
-  expect(ops.filter(x => x.op === 'products.structure' && x.args.change.op === 'create_variants')).toHaveLength(1);
+  expect(ops.filter(x => x.op === 'products.structure')).toHaveLength(0);
   expect(ops.filter(x => x.op === 'products.set_shipping_profile')).toHaveLength(1);
 
   await page.locator('[data-pub]').click();

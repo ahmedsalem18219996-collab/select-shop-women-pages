@@ -125,3 +125,29 @@
 .variant-price-cell [data-price-feedback]{display:block;line-height:1.5;min-height:1em;font-size:11px;color:var(--primary)}
 /* Selected filters and segmented controls use the mauve action colour, not ink. */
 :root:not([data-theme="dark"]) .chip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* Colour model editor (2026-11-05): colour cards, per-colour photos, customer preview */
+.note{margin:0;padding:10px 12px;border-radius:12px;background:var(--wash,#F3E8EB);color:var(--ink);font-size:13px;line-height:1.6}
+.swatch{display:inline-block;inline-size:22px;block-size:22px;border-radius:50%;background:var(--sw);border:1px solid var(--line);flex:none;vertical-align:middle}
+.swatch[data-unknown]{background:repeating-linear-gradient(45deg,var(--surface-2) 0 4px,var(--line) 4px 8px)}
+.colour-card.retired{opacity:.6}
+.thumbs{display:flex;gap:8px;overflow-x:auto;padding-block:4px;scroll-snap-type:x proximity}
+.thumbs>*{flex:none;scroll-snap-align:start}
+.thumb{position:relative;margin:0;inline-size:96px}
+.thumb img{inline-size:96px;block-size:120px;object-fit:cover;border-radius:10px;display:block;background:var(--surface-2)}
+.thumb.hidden img{opacity:.4}
+.thumb .badge{position:absolute;inset-block-start:6px;inset-inline-start:6px;font-size:10.5px}
+.thumb .icon-btn{position:absolute;inset-block-end:6px;inset-inline-end:6px;background:var(--surface)}
+.thumb-add{display:grid;place-items:center;gap:4px;block-size:120px;border:1.5px dashed var(--line);border-radius:10px;cursor:pointer;font-size:12px;text-align:center;color:var(--muted)}
+.thumb-add:hover{border-color:var(--primary);color:var(--primary)}
+.thumb-add svg{inline-size:22px;block-size:22px;stroke:currentColor;fill:none;stroke-width:1.6}
+.thumbs .media{inline-size:96px}
+.cost-box summary{cursor:pointer;min-block-size:36px;display:flex;align-items:center;font-weight:600}
+[data-profit][data-kind="loss"]{color:var(--danger);font-weight:600}
+[data-profit][data-kind="incomplete"]{color:var(--warn)}
+.swatch-chip{display:inline-flex;align-items:center;gap:6px}
+.swatch-chip .swatch{inline-size:16px;block-size:16px}
+.preview-shop{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:720px){.preview-shop{grid-template-columns:minmax(0,320px) 1fr}}
+.preview-gallery>img{inline-size:100%;aspect-ratio:4/5;object-fit:cover;border-radius:14px;background:var(--surface-2)}
+.preview-gallery .thumbs img{inline-size:56px;block-size:70px;object-fit:cover;border-radius:8px}

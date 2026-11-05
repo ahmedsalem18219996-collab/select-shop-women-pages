@@ -55,6 +55,8 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 .lp-opt input{position:absolute;width:1px;height:1px;margin:-1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
 .lp-opt span{display:inline-grid;place-items:center;min-width:54px;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:22px;background:#fff}
 .lp-opt input:focus-visible+span{outline:2px solid var(--mauve);outline-offset:2px}
+.lp-opt .sw{display:inline-block;width:14px;height:14px;border-radius:50%;margin-inline-end:6px;border:1px solid rgba(48,38,48,.18)}
+.lp-opt span:has(.sw){display:inline-flex;align-items:center}
 .lp-opt input:disabled+span{border-style:dashed;color:#9A8E97;text-decoration:line-through;cursor:not-allowed}
 .one{display:inline-grid;place-items:center;min-height:44px;padding:0 18px;border:1px solid var(--ink);border-radius:22px;background:#fff;box-shadow:inset 0 -2px 0 var(--gold);font-size:14px}
 #lpStatus{margin:-8px 0 0;font-size:14px;min-height:22px}
@@ -246,6 +248,6 @@ h1{font-size:44px}.price{font-size:28px}
 <script type="application/json" id="lp-data">{"auto":true}</script>
 <script src="/js/catalog-thumbs.js"></script>
 <script id="lp-hero">(()=>{const w=window,l=w.__lp;if(!l||!l.product)return;l.product.then(r=>r.ok?r.clone().json():null).then(d=>{const m=((d&&d.product&&d.product.media)||[]).filter(x=>/^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[0-9a-f]{32}\.(jpg|png|webp)$/.test(x.url||"")).sort((a,b)=>(b.isPrimary===true)-(a.isPrimary===true)||a.position-b.position)[0],img=document.querySelector("#lpHero img");if(!m||!img||img.src)return;const f=m.url.split("/").pop(),b="/assets/catalog-thumbs/"+f;img.fetchPriority="high";if(new Set(w.SELECT_THUMBNAILS||[]).has(f)){img.sizes="(min-width: 900px) 560px, 100vw";img.srcset=b+".w400.webp 400w, "+b+".webp 559w";img.src=b+".webp"}else img.src=m.url}).catch(()=>{})})()</script>
-<script type="module" src="/lp/runtime.js?v=20261030-4"></script>
+<script type="module" src="/lp/runtime.js?v=20261030-4-models1105"></script>
 </body>
 </html>

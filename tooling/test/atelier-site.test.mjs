@@ -41,7 +41,7 @@ test("Atelier preserves storefront controls, legacy checkout and the isolated ad
   assert.match(checkout, /id="placeOrder"/);
   assert.match(done, /id="orderCode"/);
   assert.match(admin, /id="app"/);
-  assert.match(admin, /css\/atelier-admin\.css\?v=20261105-soft/);
+  assert.match(admin, /css\/atelier-admin\.css\?v=20261105-models/);
   assert.match(admin, /script-src 'self'/);
   assert.match(await source("admin/css/atelier-admin.css"), /:root\[data-theme="dark"\]/);
   assert.match(checkout, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);

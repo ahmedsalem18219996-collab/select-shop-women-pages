@@ -109,6 +109,8 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 .lp-opt input{position:absolute;width:1px;height:1px;margin:-1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
 .lp-opt span{display:inline-grid;place-items:center;min-width:54px;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:22px;background:#fff}
 .lp-opt input:focus-visible+span{outline:2px solid var(--mauve);outline-offset:2px}
+.lp-opt .sw{display:inline-block;width:14px;height:14px;border-radius:50%;margin-inline-end:6px;border:1px solid rgba(48,38,48,.18)}
+.lp-opt span:has(.sw){display:inline-flex;align-items:center}
 .lp-opt input:disabled+span{border-style:dashed;color:#9A8E97;text-decoration:line-through;cursor:not-allowed}
 .one{display:inline-grid;place-items:center;min-height:44px;padding:0 18px;border:1px solid var(--ink);border-radius:22px;background:#fff;box-shadow:inset 0 -2px 0 var(--gold);font-size:14px}
 #lpStatus{margin:-8px 0 0;font-size:14px;min-height:22px}
@@ -344,7 +346,7 @@ ${o.video}
 <footer><strong dir="ltr">SELECT SHOP WOMEN</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
-${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}"></script>
+${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}-models1105"></script>
 </body>
 </html>
 `;

@@ -77,6 +77,27 @@ export function sellableValues(/** @type {any} */ product, /** @type {number} */
   return set;
 }
 
+/** Values of option `i` that can still be bought together with the other choices already made (-1 = not chosen),
+ *  so a colour shows only its own real sizes. */
+export function openValues(/** @type {any} */ product, /** @type {number[]} */ chosen, /** @type {number} */ i) {
+  const set = new Set();
+  for (const v of product.variants || []) if (v.purchasable === true && v.selection.every((/** @type {Pick} */ s, /** @type {number} */ k) => k === i || !(chosen[k] >= 0) || s.valuePosition === chosen[k])) set.add(v.selection[i]?.valuePosition);
+  return set;
+}
+
+/** Index of the colour option ("اللون" / colour), or -1. */
+export const colourIndex = (/** @type {any} */ product) => (product.options || []).findIndex((/** @type {any} */ o) => /لون|colou?r/i.test(String(o?.name || "")));
+
+/** Photos for one colour: its own (colour- or Variant-tagged) photos first, then the untagged ones.
+ *  Empty when the colour has none, so the caller keeps what is shown rather than another colour's shade. */
+export function colourMedia(/** @type {any[]} */ media, /** @type {number} */ optionPosition, /** @type {number} */ valuePosition) {
+  const t = (/** @type {any} */ m) => m?.target;
+  const tagged = (/** @type {any} */ m) => t(m) && t(m).kind !== "product";
+  const own = media.filter(m => t(m)?.kind === "value" ? t(m).optionPosition === optionPosition && t(m).valuePosition === valuePosition
+    : t(m)?.kind === "variant" && Array.isArray(t(m).selection) && t(m).selection.some((/** @type {Pick} */ s) => s.optionPosition === optionPosition && s.valuePosition === valuePosition));
+  return own.length ? [...own, ...media.filter(m => !tagged(m))] : [];
+}
+
 export const egp = (/** @type {number} */ minor) => new Intl.NumberFormat("ar-EG").format(minor / 100);
 const okMinor = (/** @type {unknown} */ m) => typeof m === "number" && Number.isSafeInteger(m) && m > 0;
 const minorOf = (/** @type {any} */ m) => m && m.currency === "EGP" && Number.isSafeInteger(m.amountMinor) && m.amountMinor >= 0 ? m.amountMinor : null;
@@ -237,23 +258,34 @@ function lazyVideo() {
   }, { once: true }));
 }
 
+/** Store photos of the live product, cover first. */
+const liveMedia = (/** @type {any} */ p) => (p.media || []).filter((/** @type {any} */ m) => MEDIA.test(m?.url || ""))
+  .sort((/** @type {any} */ a, /** @type {any} */ b) => Number(b.isPrimary === true) - Number(a.isPrimary === true) || a.position - b.position);
+
+/** Hero + gallery from live photos (responsive thumbnails when the build has them). */
+function paintPhotos(/** @type {any[]} */ list, /** @type {string} */ alt) {
+  const media = list.slice(0, 4);
+  const local = new Set(Array.isArray(/** @type {any} */ (window).SELECT_THUMBNAILS) ? /** @type {any} */ (window).SELECT_THUMBNAILS : []);
+  const pic = document.getElementById("lpHero");
+  const img = /** @type {HTMLImageElement|null} */ (pic && pic.querySelector("img"));
+  const hero = media[0] && photoSet(media[0].url, local);
+  if (!img || !hero) return;
+  pic?.querySelectorAll("source").forEach(x => x.remove()); // a curated <picture> must not override the live colour photo
+  img.fetchPriority = "high";
+  img.srcset = hero.srcset; img.sizes = hero.srcset ? "(min-width: 900px) 560px, 100vw" : "";
+  img.src = hero.src; img.alt = alt;
+  document.getElementById("lpGallery")?.replaceChildren(...media.slice(1).map((/** @type {any} */ m) =>
+    Object.assign(document.createElement("img"), { src: photoSet(m.url, local)?.small || "", alt, width: 320, height: 400, loading: "lazy", decoding: "async" })));
+}
+
 /** Automatic page: fill the pre-rendered layout from the live product (title, photos, description). */
 function fillFromProduct(/** @type {any} */ p) {
   const title = String(p.title || "").trim().slice(0, 200);
   document.title = title + " · SELECT SHOP WOMEN";
   /** @type {HTMLElement} */ (document.getElementById("lpTitle")).textContent = title;
-  const local = new Set(Array.isArray(/** @type {any} */ (window).SELECT_THUMBNAILS) ? /** @type {any} */ (window).SELECT_THUMBNAILS : []);
-  const media = (p.media || []).filter((/** @type {any} */ m) => MEDIA.test(m?.url || ""))
-    .sort((/** @type {any} */ a, /** @type {any} */ b) => Number(b.isPrimary === true) - Number(a.isPrimary === true) || a.position - b.position).slice(0, 4);
-  const img = /** @type {HTMLImageElement} */ (document.querySelector("#lpHero img"));
-  const hero = media[0] && photoSet(media[0].url, local);
-  if (hero) {
-    img.fetchPriority = "high";
-    if (hero.srcset) { img.srcset = hero.srcset; img.sizes = "(min-width: 900px) 560px, 100vw"; }
-    img.src = hero.src; img.alt = title;
-  }
-  /** @type {HTMLElement} */ (document.getElementById("lpGallery")).replaceChildren(...media.slice(1).map((/** @type {any} */ m) =>
-    Object.assign(document.createElement("img"), { src: photoSet(m.url, local)?.small || "", alt: title, width: 320, height: 400, loading: "lazy", decoding: "async" })));
+  // Before a colour is picked, show the photos shared by every colour (all photos when none are shared).
+  const all = liveMedia(p), shared = all.filter((/** @type {any} */ m) => !m.target || m.target.kind === "product");
+  paintPhotos(shared.length ? shared : all, title);
   const lines = String(p.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
   /** @type {HTMLElement} */ (document.getElementById("lpDesc")).textContent = lines[0] || "";
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
@@ -520,9 +552,29 @@ async function init() {
     cartBtn.disabled = mixMode || !lineNow() || cartBusy;
     void requote();
   };
+  // After a choice in option `from`: the other options keep only values still buyable with it (a colour's own sizes),
+  // a lone remaining value is picked for her, and a chosen colour brings its own photos.
+  const narrow = (/** @type {number} */ from) => {
+    product.options.forEach((/** @type {any} */ _, /** @type {number} */ i) => {
+      if (i === from) return;
+      const open = openValues(product, chosen, i);
+      holder.querySelectorAll(`input[name="opt${i}"]`).forEach(el => {
+        const r = /** @type {HTMLInputElement} */ (el), v = Number(r.value);
+        r.disabled = !open.has(v);
+        if (r.disabled && r.checked) { r.checked = false; chosen[i] = -1; }
+      });
+      if (chosen[i] < 0 && open.size === 1) { chosen[i] = [...open][0]; const r = /** @type {HTMLInputElement|null} */ (holder.querySelector(`input[name="opt${i}"][value="${chosen[i]}"]`)); if (r) r.checked = true; }
+    });
+    const ci = colourIndex(product);
+    if (from === ci && chosen[ci] >= 0) {
+      const own = colourMedia(liveMedia(product), product.options[ci].position, chosen[ci]);
+      if (own.length) paintPhotos(own, String(product.title || "") + " - " + (product.options[ci].values.find((/** @type {any} */ v) => v.position === chosen[ci])?.value || ""));
+    }
+  };
   const renderOptions = () => {
     holder.replaceChildren();
     chosen = product.options.map(() => -1);
+    const ci = colourIndex(product);
     if (!product.options.length) {
       const box = document.createElement("div"); box.className = "lp-opt";
       const one = document.createElement("span"); one.className = "one"; one.textContent = "مقاس واحد";
@@ -538,12 +590,17 @@ async function init() {
         const label = document.createElement("label");
         const input = document.createElement("input");
         Object.assign(input, { type: "radio", name: "opt" + i, value: String(val.position), disabled: !ok.has(val.position) });
-        input.addEventListener("change", () => { chosen[i] = val.position; say(""); choose(); });
+        input.addEventListener("change", () => { chosen[i] = val.position; say(""); narrow(i); choose(); });
         const span = document.createElement("span"); span.textContent = val.value;
+        if (i === ci) { const dot = document.createElement("i"); dot.className = "sw"; dot.dataset.name = val.value; dot.setAttribute("aria-hidden", "true"); span.prepend(dot); }
         label.append(input, span); box.append(label);
       }
       holder.append(box);
     });
+    if (ci >= 0) void import("../js/colour-palette.js").then(m => holder.querySelectorAll("i.sw").forEach(dot => {
+      const hx = m.hexOf(/** @type {HTMLElement} */ (dot).dataset.name || "");
+      if (hx) /** @type {HTMLElement} */ (dot).style.background = hx; else dot.remove();
+    })).catch(() => holder.querySelectorAll("i.sw").forEach(dot => dot.remove()));
     // A single sellable value per option is pre-selected so one-size pieces need no tap.
     product.options.forEach((/** @type {any} */ _, /** @type {number} */ i) => {
       const ok = [...sellableValues(product, i)];
@@ -721,7 +778,7 @@ async function init() {
     $("#lpDoneCode").textContent = code;
     const total = minorOf(q.grandTotal);
     const summary = lines.map(l =>
-      (colors.find(c => c.code === l.publicCode)?.name || l.publicCode) + " × " +
+      (colors.find(c => c.code === l.publicCode)?.name || (lines.length === 1 && product?.options.length && sizeText()) || l.publicCode) + " × " +
       new Intl.NumberFormat("ar-EG").format(l.quantity)).join("، ");
     $("#lpDoneText").textContent = (total !== null ? "هتدفعي " + egp(total) + " ج عند الاستلام. " : "") +
       (summary ? "الألوان المطلوبة: " + summary + ". " : "") +
