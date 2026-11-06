@@ -72,6 +72,8 @@ test("new Admin model: two colours and distinct sizes in one COD order (isolated
   await expect(page.locator("#lpTotal")).toHaveText("١٬٢٢٠ ج");
   await page.locator("#lpOrder").click();
   await expect(page.locator("#lpDone")).toBeVisible();
+  await expect(page.locator("#lpDoneText")).toContainText("بيبي بلو");
+  await expect(page.locator("#lpDoneText")).toContainText("بني");
   const orders = (await mockLog(request)).orders;
   expect(orders.length - before).toBe(1);
   expect(orders.at(-1).lines).toEqual([
