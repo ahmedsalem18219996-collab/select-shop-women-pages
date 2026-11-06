@@ -6,7 +6,7 @@ import { call, uploadProductImage, mediaUrl } from './api.js';
 import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from './image-optimize.js';
 import { variantChoices } from './quick-variants.js';
 import { statusAction, prepublishHints, STATUS_LABELS } from './product-lifecycle.js';
-import { hexOf } from '../../js/colour-palette.js';
+import { hexOf } from '../../js/colour-palette.js?v=20261106-colourpicker';
 
 const safeHex = (x) => /^#[\da-fA-F]{6}$/.test(x || '') ? x : '#777777';
 const safeImage = (x) => {
