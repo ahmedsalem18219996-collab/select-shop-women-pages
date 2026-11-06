@@ -105,6 +105,7 @@ window.SelectStore = (() => {
         ...primary.product,
         name: family.name,
         sw: members.map(color => color.hex),
+        swatchNames: members.map(color => color.name),
         isNew: members.some(color => color.product.isNew),
         purchasable: members.some(color => color.product.purchasable),
         url: SECURE_CHECKOUT_ORIGIN + family.path,
@@ -170,6 +171,12 @@ window.SelectStore = (() => {
         }
         if (typeof brand.instagramUrl === "string" && /^https:\/\/(www\.)?instagram\.com\//.test(brand.instagramUrl))
           window.SELECT_CONFIG.links.instagram = brand.instagramUrl;
+        // Only public, real colour names provided by WOMEN catalog; future models work automatically.
+        const palette = data.items.some(item => Array.isArray(item?.colours) && item.colours.length)
+          ? await import("./colour-palette.js").catch(() => null) : null;
+        const colourNames = item => Array.isArray(item.colours) ? [...new Set(item.colours
+          .filter(name => typeof name === "string" && name.trim() && name.length <= 60)
+          .map(name => name.trim()))].slice(0, 24) : [];
         const products = data.items.filter(item =>
           item && /^SS-\d{4,19}$/.test(String(item.publicCode || "")) &&
           Number.isSafeInteger(item.priceMinor) && item.priceMinor > 0 &&
@@ -179,7 +186,8 @@ window.SelectStore = (() => {
             cat: visibleSet.has(item.category) ? item.category : (visibleSet.has("أخرى") ? "أخرى" : ""),
             price: item.priceMinor / 100,
             c: "#ECE8E5",
-            sw: [],
+            sw: colourNames(item).map(name => palette?.hexOf(name) || "#B9BCC8"),
+            swatchNames: colourNames(item),
             out: [],
             one: false,
             isNew: item.isNew === true,
