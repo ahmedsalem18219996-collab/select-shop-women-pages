@@ -164,3 +164,18 @@ test("under 375px the header drops only what the tab bar or buy bar already offe
   await page.goto("/cart/");
   await expect(page.locator('.hdr-tools a[href="/cart/"]')).toBeVisible();
 });
+
+
+test("saved Light theme survives browser Back and Forward navigation", async ({ page }) => {
+  await saveLight(page);
+  await page.goto("/");
+  await page.locator("#feed .card").first().waitFor();
+  await page.goto("/cart/");
+  await page.locator("main").waitFor();
+  await page.goBack();
+  await page.locator("#feed .card").first().waitFor();
+  expect((await themeOf(page)).theme).toBe("light");
+  await page.goForward();
+  await page.locator("main").waitFor();
+  expect((await themeOf(page)).theme).toBe("light");
+});
