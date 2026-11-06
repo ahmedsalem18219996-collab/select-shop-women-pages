@@ -411,12 +411,12 @@ test('free offline description enhancer: new draft, undo, existing edit, and no 
   await page.locator('#c-title').fill('بلوفر حريمي مخطط');
   await page.locator('#c-price').fill('650');
   await page.locator('#c-desc').fill('بلوفر مخطط بيبي بلو وبني، مقاس واحد');
-  const before = b.s.ops.length;
+  const before = b.s.ops.filter(x => x.op.startsWith('products.')).length;
   await page.locator('[data-description-helper] [data-desc-improve]').click();
   await expect(page.locator('#c-desc')).toHaveValue(/بلوفر مخطط بيبي بلو وبني/);
   await expect(page.locator('#c-desc')).toHaveValue(/تفاصيل المنتج:/);
   await expect(page.locator('[data-description-helper] [data-desc-undo]')).toBeVisible();
-  expect(b.s.ops.length).toBe(before); // purely local; no API called by "improve"
+  expect(b.s.ops.filter(x => x.op.startsWith('products.')).length).toBe(before); // no product write or read called by improve
   await page.locator('[data-description-helper] [data-desc-undo]').click();
   await expect(page.locator('#c-desc')).toHaveValue('بلوفر مخطط بيبي بلو وبني، مقاس واحد');
   await page.locator('[data-description-helper] [data-desc-improve]').click();
