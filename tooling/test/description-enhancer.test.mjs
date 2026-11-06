@@ -30,7 +30,7 @@ test('blank and already polished descriptions do not fabricate details or add du
 });
 
 test('oversized text is rejected rather than silently truncated or losing factual claims', () => {
-  const huge='الموديل '+('خامة '+ 'حرف'.repeat(15)+'، ').repeat(160);
+  const huge='الموديل '+Array.from({length:230}, (_,i)=>'خامة '+i+' '+ 'حرف'.repeat(15)).join('، ');
   const result=improveProductDescription({title:'بلوفر',description:huge});
   assert.equal(result.ok,false);
   assert.match(result.message,/طويل/);
