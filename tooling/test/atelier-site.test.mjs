@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 const storeRoutes = [
-  ["index.html", 'href="css/atelier-site.css?v=20261106-theme"', 'class="atelier-home"'],
+  ["index.html", 'href="css/atelier-site.css?v=20261106-card-colours"', 'class="atelier-home"'],
   ["p/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-product"'],
   ["cart/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-cart"'],
   ["checkout/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-checkout"'],
@@ -60,7 +60,7 @@ test("public product cards link to direct COD, old product links redirect withou
  assert.match(html,/id="women-direct-order-redirect"/);
  assert.match(html,/location\.replace\("\/lp\/\?p="/);
  assert.match(html,/q\.delete\("code"\)/);
- assert.match(home,/store-adapter\.js\?v=direct-order-20261030/);
+ assert.match(home,/store-adapter\.js\?v=20261106-card-colours/);
 });
 
 test("Landing-page Atelier remains independently generated", async () => {
@@ -69,4 +69,17 @@ test("Landing-page Atelier remains independently generated", async () => {
   assert.match(page, /id="lpOrder"/);
   assert.match(page, /الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل/);
   assert.doesNotMatch(page, /css\/atelier-site\.css/);
+});
+
+test("all existing and future Admin models display catalog-driven colour names on cards", async () => {
+ const adapter = await source("js/store-adapter.js");
+ const app = await source("js/app.js");
+ const css = await source("css/atelier-site.css");
+ assert.match(adapter, /colourNames\(item\)/);
+ assert.match(adapter, /swatchNames: colourNames\(item\)/);
+ assert.match(adapter, /palette\?\.hexOf\(name\)/);
+ assert.match(app, /card-colour-names/);
+ assert.match(app, /esc\(p\.swatchNames\.join/);
+ assert.match(css, /\.card \.card-colour-names/);
+ assert.doesNotMatch(adapter, /SS-1052/, "no hardcoded new model");
 });
