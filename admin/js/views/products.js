@@ -4,6 +4,7 @@ import { call, deleteProductImage, mediaUrl } from '../api.js';
 import { previewTile } from '../image-optimize.js';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js';
 import { coloursTab, previewTab } from './model-colours.js?v=20261106-colourpicker';
+import { mountDescriptionEnhancer } from '../description-enhancer.js';
 import { saveCost, profitText, COST_OPS_MISSING } from '../profit.js';
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
@@ -357,12 +358,20 @@ function createSheet(ctx) {
     ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هتحدده مسؤولة التسعير بعد الحفظ.</p>` : ''}
     ${ctx.can('owner') ? html`<label class="field"><span>تكلفة المورد (اختياري، للمالكة بس)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعميلات ولا في المتجر.</small></label>` : ''}
     <label class="field"><span>${t('create.description')} (اختياري)</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
+    <div class="desc-helper" data-description-helper>
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        <button type="button" class="btn btn-soft" data-desc-improve>✨ تحسين الوصف مجانًا</button>
+        <button type="button" class="btn btn-ghost" data-desc-undo hidden>رجوع للوصف الأصلي</button>
+      </div>
+      <p class="muted" data-desc-message role="status" aria-live="polite">اكتبي وصف بسيط، وخلّينا ننظّمه بشكل تسويقي. مفيش معلومات بتتبعت لخدمة خارجية.</p>
+    </div>
     ${ctx.can('media.manage') ? html`<div class="field"><span>الصورة الرئيسية (اختياري)</span><div class="thumbs" id="c-photos"><label class="thumb thumb-add" id="c-photo-add">${icon('upload')}<span>اختاري صورة</span><input type="file" accept="image/jpeg,image/png,image/webp" class="sr" id="c-photo"></label></div><small>صورة عامة للموديل. صور كل لون هترفعيها في الخطوة الجاية.</small></div>` : ''}
     <label class="switch"><input type="checkbox" id="c-new" checked><i></i>${t('create.isNew')}</label>
     <p class="err" id="c-error" role="alert" aria-live="polite" hidden></p>
     <ol class="blockers" id="c-steps" hidden></ol>`,
     foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>احفظي المسودة وكمّلي الألوان</button>` });
-  $$('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
+  $('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
+  mountDescriptionEnhancer(box, { textarea: '#c-desc', titleInput: '#c-title' });
   const catSel = $('#c-cat', box);
   const createButton = $('[data-create]', box);
   createButton.disabled = true;
@@ -582,6 +591,13 @@ const TABS = {
       <form class="card stack" id="f-text"><div class="card-head"><h3>${t('editor.details')}</h3></div>
         <label class="field"><span>${t('editor.title')}</span><input class="input" id="e-title" value="${p.title}" maxlength="200" ${can('products.edit') ? '' : 'disabled'}></label>
         <label class="field"><span>${t('editor.description')}</span><textarea class="textarea" id="e-desc" maxlength="10000" ${can('products.edit') ? '' : 'disabled'}>${p.description || ''}</textarea></label>
+        ${can('products.edit') ? html`<div class="desc-helper" data-description-helper>
+          <div class="row" style="flex-wrap:wrap;gap:8px">
+            <button type="button" class="btn btn-soft" data-desc-improve>✨ تحسين الوصف مجانًا</button>
+            <button type="button" class="btn btn-ghost" data-desc-undo hidden>رجوع للوصف الأصلي</button>
+          </div>
+          <p class="muted" data-desc-message role="status" aria-live="polite">راجعي الوصف المحسّن قبل حفظ التعديل. مفيش نشر تلقائي.</p>
+        </div>` : ''}
         ${can('products.edit') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary">${t('app.save')}</button></div>` : ''}</form>
       <section class="card stack"><div class="card-head"><h3>${t('editor.display')}</h3></div>
         <div class="grid2"><label class="field"><span>${t('editor.category')}</span><select class="select" id="e-cat" ${can('products.edit') ? '' : 'disabled'}>${categories.map((c) => html`<option ${c.name === d.card.category ? 'selected' : ''}>${c.name}</option>`)}</select></label>
@@ -590,6 +606,7 @@ const TABS = {
         <label class="field"><span>${t('editor.shipping')}</span><select class="select" id="e-ship" ${can('shipping.manage') ? '' : 'disabled'}>
           <option value="">${t('editor.shippingNone')}</option>${(d.shipping_profiles || []).map((s) => html`<option value="${s.key}" ${p.shipping_profile?.key === s.key ? 'selected' : ''}>${s.name}</option>`)}</select></label>
         ${can('products.edit') || can('products.price') || can('shipping.manage') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-display>${t('app.save')}</button></div>` : ''}</section></div>`);
+    if (can('products.edit')) mountDescriptionEnhancer(body, { textarea: '#e-desc', titleInput: '#e-title' });
     $('#f-text', body).addEventListener('submit', async (e) => {
       e.preventDefault();
       const res = await withBusy($('button', e.currentTarget), () => call('products.update_text', { code, title: $('#e-title', body).value.trim(), description: $('#e-desc', body).value.trim(), updated_at: p.updated_at }));
