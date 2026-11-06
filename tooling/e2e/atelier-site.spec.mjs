@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 // No order POST, Supabase write, or production-side requests.
 test("Atelier storefront + admin route styles are served", async ({ request }) => {
   const routes = [
-    ["/", "/css/atelier-site.css?v=20261106-theme"],
+    ["/", "/css/atelier-site.css?v=20261106-card-colours"],
     ["/p/?code=SS-1011", "/css/atelier-site.css?v=20261106-theme"],
     ["/cart/", "/css/atelier-site.css?v=20261106-theme"],
     ["/checkout/", "/css/atelier-site.css?v=20261106-theme"],
