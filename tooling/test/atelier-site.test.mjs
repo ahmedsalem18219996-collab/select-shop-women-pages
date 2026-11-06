@@ -44,7 +44,7 @@ test("Atelier preserves storefront controls, legacy checkout and the isolated ad
   assert.match(checkout, /id="placeOrder"/);
   assert.match(done, /id="orderCode"/);
   assert.match(admin, /id="app"/);
-  assert.match(admin, /css\/atelier-admin\.css\?v=20261107-description/);
+  assert.match(admin, /css\/atelier-admin\.css\?v=20261107-supplier/);
   assert.match(admin, /script-src 'self'/);
   assert.match(await source("admin/css/atelier-admin.css"), /:root\[data-theme="dark"\]/);
   assert.match(checkout, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);
@@ -94,7 +94,7 @@ test("WOMEN Admin and storefront share the Dark Luxury palette without touching 
   assert.match(admin, /--bg:#F7F3EC/);
   assert.match(admin, /\.btn-primary:hover:not\(:disabled\)\{background:#AE00B8/);
   assert.match(html, /data-theme="dark"/);
-  assert.match(html, /atelier-admin\.css\?v=20261107-description/);
+  assert.match(html, /atelier-admin\.css\?v=20261107-supplier/);
   assert.match(app, /\|\| 'dark'/);
   assert.match(app, /localStorage\.getItem\('wa\.theme'\)/); // retain staff preference
 });

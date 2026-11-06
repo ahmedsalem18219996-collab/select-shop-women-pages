@@ -205,3 +205,10 @@
 .desc-helper [data-desc-message]{margin:0;font-size:12px;line-height:1.5}
 
 .desc-helper [hidden]{display:none!important}
+
+/* WOMEN Admin-only supplier capture, never included in public catalog. */
+.supplier-field{display:grid;gap:8px;min-width:0}
+.supplier-field .select,.supplier-field .input{width:100%;min-height:44px}
+.supplier-field label{font-weight:600}
+.supplier-field p{margin:0;font-size:12px;line-height:1.55}
+[data-private-supplier] select{min-height:44px}

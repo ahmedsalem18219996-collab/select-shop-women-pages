@@ -5,6 +5,7 @@ import { previewTile } from '../image-optimize.js';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js';
 import { coloursTab, previewTab } from './model-colours.js?v=20261106-colourpicker';
 import { mountDescriptionEnhancer } from '../description-enhancer.js';
+import { initSupplierPicker, supplierChoice, createSupplierIfNeeded } from '../supplier-field.js';
 import { saveCost, profitText, COST_OPS_MISSING } from '../profit.js';
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
@@ -86,6 +87,7 @@ async function renderList(ctx) {
           <a class="catalog-mobile-open" href="#/products/${p.public_code}" aria-label="افتحي تفاصيل ${p.title}">
             <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
+            ${p.supplier_name ? html`<span class="muted" data-supplier-label>المورد: ${p.supplier_name}</span>` : ''}
             ${p.stock_low ? html`<span class="badge warn">${t('products.lowStock')}</span>` : ''}</span></span>
             <span class="row-end"><b class="num">${priceText(p)}</b>${statusBadge(p.status)}</span>
           </a>
@@ -120,7 +122,7 @@ async function renderList(ctx) {
           }
           return html`<tr data-code="${p.public_code}">
           <td><div class="cell-main"><span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-            <div class="row-main"><a class="rowlink" href="#/products/${p.public_code}">${p.title}</a><span class="row-meta"><span class="code">${p.public_code}</span>${p.is_new ? html`<span class="badge info plain">${t('products.isNew')}</span>` : ''}</span></div></div></td>
+            <div class="row-main"><a class="rowlink" href="#/products/${p.public_code}">${p.title}</a><span class="row-meta"><span class="code">${p.public_code}</span>${p.supplier_name ? html`<span class="muted" data-supplier-label>المورد: ${p.supplier_name}</span>` : ''}${p.is_new ? html`<span class="badge info plain">${t('products.isNew')}</span>` : ''}</span></div></div></td>
           <td>${can('products.edit') ? html`<select class="select" data-cat style="min-width:140px;min-height:36px" aria-label="${t('products.category')}">${categories.map((c) => html`<option ${c.name === p.category ? 'selected' : ''}>${c.name}</option>`)}</select>` : p.category}</td>
           <td class="num">${can('products.price') ? html`<button class="btn btn-ghost btn-sm" data-price title="${t('products.quickPrice')}">${priceText(p)}</button>` : priceText(p)}</td>
           <td class="num">${p.stock_total === null ? html`<span class="muted">—</span>` : html`${fmtNum(p.stock_total)}${p.stock_low ? html` <span class="badge warn">${t('products.lowStock')}</span>` : ''}`}</td>
@@ -357,6 +359,13 @@ function createSheet(ctx) {
     </div>
     ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هتحدده مسؤولة التسعير بعد الحفظ.</p>` : ''}
     ${ctx.can('owner') ? html`<label class="field"><span>تكلفة المورد (اختياري، للمالكة بس)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعميلات ولا في المتجر.</small></label>` : ''}
+    <div class="field supplier-field" data-private-supplier>
+      <label for="c-supplier">المورد اللي المنتج جاي منه (داخل الإدارة فقط)</label>
+      <select class="select" id="c-supplier"><option value="">تحميل الموردين…</option></select>
+      ${ctx.can('owner') ? html`<label for="c-supplier-new" class="muted">مورد جديد؟ اكتبي اسمه هنا بدل ما تختاري من القائمة</label>
+        <input class="input" id="c-supplier-new" maxlength="200" placeholder="اسم المورد الجديد (اختياري)" autocomplete="off">` : ''}
+      <p class="muted" id="c-supplier-note" role="status" aria-live="polite">جار تحميل الموردين…</p>
+    </div>
     <label class="field"><span>${t('create.description')} (اختياري)</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
     <div class="desc-helper" data-description-helper>
       <div class="row" style="flex-wrap:wrap;gap:8px">
@@ -379,6 +388,7 @@ function createSheet(ctx) {
     const hint = feature?.querySelector('[data-desc-message]');
     if (hint) hint.textContent = 'اكتبي الوصف واحفظيه عادي؛ التحسين المجاني مش متاح دلوقتي.';
   }
+  const supplierState = initSupplierPicker({ root: box, selectId: '#c-supplier', statusId: '#c-supplier-note', call, isOwner: ctx.can('owner') });
   const catSel = $('#c-cat', box);
   const createButton = $('[data-create]', box);
   createButton.disabled = true;
@@ -427,6 +437,13 @@ function createSheet(ctx) {
     const costText = costIn?.value.trim() || '';
     const cost = costText ? toMinor(costText) : null;
     if (costText && (cost === null || cost < 1)) { message('تكلفة المورد لازم تكون رقم بالجنيه، زي 350، أو سيبيها فاضية.', costIn); return; }
+    await supplierState.ready;
+    const chosenSupplier = supplierChoice({
+      selected: $('#c-supplier', box)?.disabled ? '' : $('#c-supplier', box)?.value || '',
+      newName: $('#c-supplier-new', box)?.value || '', suppliers: supplierState.items,
+      owner: ctx.can('owner')
+    });
+    if (!chosenSupplier.ok) { message(chosenSupplier.error, $('#c-supplier-new', box) || $('#c-supplier', box)); return; }
     // Staff without price permission may still draft the catalogue; a price manager finishes it.
     $('#c-title', box).removeAttribute('aria-invalid');
     $('#c-price', box)?.removeAttribute('aria-invalid');
@@ -434,7 +451,7 @@ function createSheet(ctx) {
     const step = (label) => { const li = document.createElement('li'); li.textContent = `… ${label}`; steps.append(li); return li; };
     await withBusy(e.currentTarget, async () => {
       let li = step(t('create.steps.create'));
-      const r = await call('products.create', { idempotency_key: key, title, description: $('#c-desc', box).value.trim(), category: catSel.value || null, is_new: $('#c-new', box).checked });
+      const r = await call('products.create', { idempotency_key: key, title, description: $('#c-desc', box).value.trim(), category: catSel.value || null, is_new: $('#c-new', box).checked, ...(chosenSupplier.id ? { supplier_id: chosenSupplier.id } : {}) });
       if (!['created', 'existing'].includes(r.outcome)) { fail(r); li.remove(); return; }
       li.textContent = '✓ ' + t('create.steps.create');
       const code = r.code;
@@ -448,6 +465,16 @@ function createSheet(ctx) {
         // A timed-out first attempt may have created only part of the draft: never overwrite or claim success.
         goToDraft('details', 'المسودة كانت اتحفظت بالفعل. راجعي السعر والألوان والصور قبل النشر؛ مش هنكرر الإنشاء.');
         return;
+      }
+      let supplierIssue = '';
+      if (chosenSupplier.create && ctx.can('owner')) {
+        li = step('تسجيل المورد');
+        const created = await createSupplierIfNeeded({ call, choice: chosenSupplier });
+        if (created.ok) {
+          const assigned = await call('suppliers.assign', { code, supplier_id: created.id }).catch(() => ({ outcome: 'network' }));
+          li.textContent = assigned.outcome === 'saved' ? '✓ المورد اتحفظ واتربط بالمنتج' : '✗ تعذّر ربط المورد';
+          if (assigned.outcome !== 'saved') supplierIssue = 'المورد اتسجل لكن ربطه بالمنتج محتاج مراجعة في تبويب البيانات.';
+        } else { li.textContent = '✗ المورد محتاج مراجعة'; supplierIssue = created.error; }
       }
       if (price) {
         li = step(t('create.steps.price'));
@@ -489,7 +516,8 @@ function createSheet(ctx) {
       }
       closeLayer();
       sessionStorage.setItem('wa.ptab', 'colours');
-      done(shippingReady ? 'المسودة محفوظة. الخطوة ٢: ضيفي الألوان، وكل لون بمقاساته وصوره.' :
+      if (supplierIssue) island('error', supplierIssue);
+      else done(shippingReady ? 'المسودة محفوظة. الخطوة ٢: ضيفي الألوان، وكل لون بمقاساته وصوره.' :
         'المسودة محفوظة. ضيفي الألوان، وطريقة الشحن لسه محتاجة تتحدد من موظفة عندها صلاحية الشحن قبل النشر.');
       ctx.go('products/' + code);
     });
@@ -606,6 +634,15 @@ const TABS = {
           <p class="muted" data-desc-message role="status" aria-live="polite">راجعي الوصف المحسّن قبل حفظ التعديل. مفيش نشر تلقائي.</p>
         </div>` : ''}
         ${can('products.edit') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-text>${t('app.save')}</button></div>` : ''}</form>
+      <section class="card stack" data-private-supplier>
+        <div class="card-head"><h3>المورد</h3><span class="muted">داخل لوحة الإدارة فقط</span></div>
+        <label class="field" for="e-supplier"><span>المنتج جاي من مورد إيه؟</span>
+          <select class="select" id="e-supplier" ${can('owner') && p.status !== 'archived' ? '' : 'disabled'}><option value="">تحميل الموردين…</option></select></label>
+        ${can('owner') && p.status !== 'archived' ? html`<label class="field" for="e-supplier-new"><span>أو اكتبي اسم مورد جديد</span>
+          <input class="input" id="e-supplier-new" maxlength="200" placeholder="اسم المورد (اختياري)" autocomplete="off"></label>
+          <div class="row"><button type="button" class="btn btn-primary" data-save-supplier>احفظي المورد</button></div>` : ''}
+        <p class="muted" id="e-supplier-note" role="status" aria-live="polite">جار تحميل الموردين…</p>
+      </section>
       <section class="card stack"><div class="card-head"><h3>${t('editor.display')}</h3></div>
         <div class="grid2"><label class="field"><span>${t('editor.category')}</span><select class="select" id="e-cat" ${can('products.edit') ? '' : 'disabled'}>${categories.map((c) => html`<option ${c.name === d.card.category ? 'selected' : ''}>${c.name}</option>`)}</select></label>
           <label class="field"><span>${t('editor.basePrice')}</span><div class="input-money"><input id="e-price" inputmode="decimal" value="${p.base_price ? (p.base_price.amount_minor / 100) : ''}" ${can('products.price') ? '' : 'disabled'}><span>EGP</span></div></label></div>
@@ -613,6 +650,25 @@ const TABS = {
         <label class="field"><span>${t('editor.shipping')}</span><select class="select" id="e-ship" ${can('shipping.manage') ? '' : 'disabled'}>
           <option value="">${t('editor.shippingNone')}</option>${(d.shipping_profiles || []).map((s) => html`<option value="${s.key}" ${p.shipping_profile?.key === s.key ? 'selected' : ''}>${s.name}</option>`)}</select></label>
         ${can('products.edit') || can('products.price') || can('shipping.manage') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-display>${t('app.save')}</button></div>` : ''}</section></div>`);
+    const supplierState = initSupplierPicker({ root: body, selectId: '#e-supplier', statusId: '#e-supplier-note',
+      call, currentId: d.supplier_id, isOwner: can('owner'), editable: can('owner') && p.status !== 'archived' });
+    const saveSupplier = $('[data-save-supplier]', body);
+    if (saveSupplier) saveSupplier.addEventListener('click', async e => {
+      await supplierState.ready;
+      const choice = supplierChoice({
+        selected: $('#e-supplier', body)?.value || '', newName: $('#e-supplier-new', body)?.value || '',
+        suppliers: supplierState.items, owner: can('owner')
+      });
+      if (!choice.ok) { island('error', choice.error); return; }
+      if (!choice.create && (choice.id || null) === (d.supplier_id || null)) { done('المورد متسجل بالفعل.'); return; }
+      await withBusy(e.currentTarget, async () => {
+        const resolved = await createSupplierIfNeeded({ call, choice });
+        if (!resolved.ok) { island('error', resolved.error); return; }
+        const result = await call('suppliers.assign', { code, supplier_id: resolved.id }).catch(() => ({ outcome: 'network' }));
+        if (result.outcome === 'saved') { done('المورد اتحفظ للمنتج.'); reload(); }
+        else island('error', 'تعذّر ربط المورد. بيانات المنتج زي ما هي، جرّبي تاني.');
+      });
+    });
     if (can('products.edit')) {
       try { mountDescriptionEnhancer(body, { textarea: '#e-desc', titleInput: '#e-title' }); }
       catch {
