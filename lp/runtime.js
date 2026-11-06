@@ -600,6 +600,16 @@ async function init() {
     }
   });
 
+  // Legacy model colours use separate codes; new Admin model colours share a code
+  // and must be identified by their exact canonical option selection.
+  const labelForLine = (/** @type {Line} */ line, fallbackSize = false) => {
+    const key = line.publicCode + "@" + line.selection.map(s => s.optionPosition + "." + s.valuePosition).join(",");
+    return variantMixChoices.find(c => c.key === key)?.name
+      || colors.find(c => c.code === line.publicCode)?.name
+      || (fallbackSize && product?.options.length ? sizeText() : "")
+      || line.publicCode;
+  };
+
   /** Paints price, quantity, totals and the sticky bar from the verified product and the last server quote only. */
   const paint = () => {
     const unit = product ? priceLabel(product, variant) : "—";
@@ -619,7 +629,7 @@ async function init() {
     $("#lpBarPrice").textContent = total !== null ? egp(total) + " ج" : unit === "—" ? "—" : unit + " ج";
     if (choiceEl && product) choiceEl.textContent = mixMode
       ? (currentLines().length ? currentLines().map(l =>
-          (colors.find(c => c.code === l.publicCode)?.name || l.publicCode) + " × " + l.quantity).join("، ") : "حددي عدد كل لون")
+          labelForLine(l) + " × " + l.quantity).join("، ") : "حددي عدد كل لون")
       : total !== null ? "الإجمالي شامل الشحن" : (current.name ? current.name + " · " : "") + sizeText();
     repaintMix();
   };
@@ -880,7 +890,7 @@ async function init() {
     $("#lpDoneCode").textContent = code;
     const total = minorOf(q.grandTotal);
     const summary = lines.map(l =>
-      (colors.find(c => c.code === l.publicCode)?.name || (lines.length === 1 && product?.options.length && sizeText()) || l.publicCode) + " × " +
+      labelForLine(l, lines.length === 1) + " × " +
       new Intl.NumberFormat("ar-EG").format(l.quantity)).join("، ");
     $("#lpDoneText").textContent = (total !== null ? "هتدفعي " + egp(total) + " ج عند الاستلام. " : "") +
       (summary ? "الألوان المطلوبة: " + summary + ". " : "") +
