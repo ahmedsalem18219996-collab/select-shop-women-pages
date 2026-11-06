@@ -1,7 +1,7 @@
 // Staff-friendly colour picker for the product wizard.
 // Pure DOM enhancement: the existing data-d-name input remains the source of truth for draft saves.
 // A pair like "أسود × أبيض" is ONE colour value and ONE photo group, not two separate SKUs.
-import { PALETTE, normName, namedColour, splitColourPair, pairName } from '../../js/colour-palette.js';
+import { PALETTE, normName, namedColour, splitColourPair, pairName } from '../../js/colour-palette.js?v=20261106-colourpicker';
 
 const groups = [...new Set(PALETTE.map((c) => c.group))];
 
