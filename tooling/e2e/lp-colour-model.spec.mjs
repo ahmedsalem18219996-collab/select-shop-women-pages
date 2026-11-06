@@ -51,3 +51,41 @@ test("choosing a colour switches to its photos, shows only its real sizes and it
   expect(orders.at(-1).lines).toEqual([{ publicCode: "SS-9101", structureVersion: 7, quantity: 1, selection: [{ optionPosition: 0, valuePosition: 0 }, { optionPosition: 1, valuePosition: 2 }] }]);
   if (test.info().project.name === "mobile") await page.screenshot({ path: test.info().outputPath("lp-colour-model.png") });
 });
+
+test("new Admin model: two colours and distinct sizes in one COD order (isolated mock)", async ({ page, request }) => {
+  const before = (await mockLog(request)).orders.length;
+  await page.goto("/lp/?p=SS-9101");
+  await expect(page.locator("#lpMixToggle")).toBeVisible();
+  await page.locator("#lpMixToggle").click();
+  await expect(page.locator("#lpMixRows .lp-mix-row")).toHaveCount(4); // blue S/M/L + brown One Size, no sold-out pink
+  await expect(page.locator("#lpOrder")).toBeDisabled();
+  await page.locator('#lpMixRows [data-mix-code="SS-9101@0.0,1.0"][data-delta="1"]').click();
+  await page.locator('#lpMixRows [data-mix-code="SS-9101@0.1,1.3"][data-delta="1"]').click();
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  await expect(page.locator("#lpBarChoice")).toContainText("بيبي بلو");
+  await expect(page.locator("#lpBarChoice")).toContainText("بني");
+  await page.fill("[name=name]", "اختبار آلي");
+  await page.fill("[name=phone]", "01012345678");
+  await page.locator("[name=region]").selectOption("cairo");
+  await page.fill("[name=address]", "عنوان اختبار فقط");
+  await expect(page.locator("#lpSub")).toHaveText("١٬١٥٠ ج");
+  await expect(page.locator("#lpTotal")).toHaveText("١٬٢٢٠ ج");
+  await page.locator("#lpOrder").click();
+  await expect(page.locator("#lpDone")).toBeVisible();
+  const orders = (await mockLog(request)).orders;
+  expect(orders.length - before).toBe(1);
+  expect(orders.at(-1).lines).toEqual([
+    { publicCode: "SS-9101", structureVersion: 7, quantity: 1, selection: [{ optionPosition: 0, valuePosition: 0 }, { optionPosition: 1, valuePosition: 0 }] },
+    { publicCode: "SS-9101", structureVersion: 7, quantity: 1, selection: [{ optionPosition: 0, valuePosition: 1 }, { optionPosition: 1, valuePosition: 3 }] },
+  ]);
+});
+
+test("new model mixed mode excludes unavailable colour and disables empty orders", async ({ page }) => {
+  await page.goto("/lp/?p=SS-9101");
+  await page.locator("#lpMixToggle").click();
+  await expect(page.locator("#lpMixRows")).not.toContainText("بينك");
+  await expect(page.locator('#lpMixRows [data-mix-count="SS-9101@0.0,1.0"]')).toHaveText("٠");
+  await page.locator('#lpMixRows [data-mix-code="SS-9101@0.0,1.0"][data-delta="1"]').click();
+  await page.locator('#lpMixRows [data-mix-code="SS-9101@0.0,1.0"][data-delta="-1"]').click();
+  await expect(page.locator("#lpOrder")).toBeDisabled();
+});
