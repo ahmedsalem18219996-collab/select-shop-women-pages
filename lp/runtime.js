@@ -88,6 +88,25 @@ export function openValues(/** @type {any} */ product, /** @type {number[]} */ c
 /** Index of the colour option ("اللون" / colour), or -1. */
 export const colourIndex = (/** @type {any} */ product) => (product.options || []).findIndex((/** @type {any} */ o) => /لون|colou?r/i.test(String(o?.name || "")));
 
+/** Distinct buyable colour × size selections for a new Admin model (one public product code).
+ *  Each selection becomes its own order line, never a combined/ambiguous quantity.
+ */
+export function variantColourChoices(/** @type {any} */ p) {
+  const ci = colourIndex(p);
+  if (ci < 0) return [];
+  const choices = (p.variants || [])
+    .filter((/** @type {any} */ v) => v.purchasable === true && v.unitPrice?.currency === "EGP" && okMinor(v.unitPrice.amountMinor))
+    .map((/** @type {any} */ v) => {
+      const names = p.options.map((/** @type {any} */ option) => {
+        const position = v.selection.find((/** @type {Pick} */ s) => s.optionPosition === option.position)?.valuePosition;
+        return option.values.find((/** @type {any} */ value) => value.position === position)?.value || "";
+      });
+      return { key: p.publicCode + "@" + v.selection.map((/** @type {Pick} */ s) => s.optionPosition + "." + s.valuePosition).join(","),
+        name: names.filter(Boolean).join(" · "), colorName: names[ci], product: p, variant: v };
+    }).filter((/** @type {any} */ choice) => choice.colorName);
+  return new Set(choices.map((/** @type {any} */ choice) => choice.colorName)).size > 1 ? choices : [];
+}
+
 /** Photos for one colour: its own (colour- or Variant-tagged) photos first, then the untagged ones.
  *  Empty when the colour has none, so the caller keeps what is shown rather than another colour's shade. */
 export function colourMedia(/** @type {any[]} */ media, /** @type {number} */ optionPosition, /** @type {number} */ valuePosition) {
@@ -454,10 +473,12 @@ async function init() {
   let mixBusy = false;
   /** @type {Map<string,{product:any,variant:any,quantity:number}>} */
   const mixEntries = new Map();
+  /** @type {(ReturnType<typeof variantColourChoices>[number] & {hex?:string})[]} */
+  let variantMixChoices = [];
   const mixBox = document.createElement("section");
   mixBox.id = "lpMix";
   mixBox.className = "lp-mix";
-  mixBox.hidden = colors.length < 2;
+  mixBox.hidden = true; // enable only when multiple purchasable colours are confirmed
   const mixToggle = document.createElement("button");
   mixToggle.type = "button"; mixToggle.id = "lpMixToggle";
   mixToggle.textContent = "عايزة أكتر من لون؟ حددي كمية كل لون";
@@ -471,7 +492,7 @@ async function init() {
   mixHint.hidden = true;
   mixBox.append(mixToggle, mixHint, mixRows);
   // Lightweight CSS is attached only on model pages with multiple colours.
-  if (colors.length > 1) {
+  {
     const style = document.createElement("style");
     style.id = "lpMixStyle";
     style.textContent = `
@@ -490,7 +511,7 @@ async function init() {
     `;
     document.head.append(style);
   }
-  if (colors.length > 1) form.querySelector(".qty")?.before(mixBox);
+  form.querySelector(".qty")?.before(mixBox);
   const singleQtyBox = /** @type {HTMLElement|null} */ (form.querySelector(".qty"));
   const itemLine = (/** @type {{product:any,variant:any,quantity:number}} */ e) => ({
     publicCode: e.product.publicCode, structureVersion: e.product.structureVersion,
@@ -503,7 +524,9 @@ async function init() {
   const repaintMix = () => {
     if (!mixMode) return;
     mixRows.replaceChildren();
-    for (const color of colors) {
+    const choices = variantMixChoices.length
+      ? variantMixChoices.map(c => ({ code: c.key, name: c.name, hex: c.hex })) : colors;
+    for (const color of choices) {
       const entry = mixEntries.get(color.code);
       const count = entry?.quantity || 0;
       const row = document.createElement("div"); row.className = "lp-mix-row";
@@ -699,7 +722,16 @@ async function init() {
     if (!p || p.publicCode !== c.code || !Array.isArray(p.variants) || !Array.isArray(p.options)) { unavailable("القطعة دي مش متاحة دلوقتي."); return false; }
     if (page.auto) fillFromProduct(p);
     if (p.purchasable !== true || priceLabel(p, null) === "—") { unavailable(colors.length > 1 ? "اللون ده خلص حاليًا، اختاري لون تاني." : "القطعة دي خلصت حاليًا."); return false; }
-    product = p; renderOptions(); choose();
+    product = p;
+    variantMixChoices = page.auto ? variantColourChoices(p) : [];
+    mixBox.hidden = !(colors.length > 1 || variantMixChoices.length > 1);
+    if (variantMixChoices.length) {
+      void import('../js/colour-palette.js').then(m => {
+        for (const choice of variantMixChoices) choice.hex = m.hexOf(choice.colorName) || undefined;
+        repaintMix();
+      }).catch(() => {});
+    }
+    renderOptions(); choose();
     return true;
   };
 
@@ -729,12 +761,14 @@ async function init() {
   mixToggle.addEventListener("click", () => {
     if (busy || mixBusy || !product) return;
     if (!mixMode) {
-      if (!variant || product.options.length) {
+      if (!variantMixChoices.length && (!variant || product.options.length)) {
         say("اختاري مقاس القطعة الأول، أو استخدمي الشنطة للمنتجات بمقاسات مختلفة.", true);
         return;
       }
       mixEntries.clear();
-      mixEntries.set(product.publicCode, { product, variant, quantity: qty });
+      if (variantMixChoices.length) {
+        for (const choice of variantMixChoices) mixEntries.set(choice.key, { product: choice.product, variant: choice.variant, quantity: 0 });
+      } else mixEntries.set(product.publicCode, { product, variant, quantity: qty });
       mixMode = true;
       mixRows.hidden = false; mixHint.hidden = false;
       mixToggle.setAttribute("aria-expanded", "true");
@@ -788,7 +822,7 @@ async function init() {
     const entry = mixEntries.get(code);
     if (!entry) return;
     entry.quantity = Math.max(0, Math.min(MAX_QTY, entry.quantity + delta));
-    if (entry.quantity === 0) mixEntries.delete(code);
+    if (entry.quantity === 0 && !variantMixChoices.length) mixEntries.delete(code);
     say("");
     void requote();
   });
