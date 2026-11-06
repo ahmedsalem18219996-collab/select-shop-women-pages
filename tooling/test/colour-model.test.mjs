@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { colourModel, checkDrafts, planNewModel, planAddColour, planSizes, planColourPrice, planColourAvailability, photoTarget, runSteps, VIRTUAL_QTY } from "../../admin/js/colour-model.js";
-import { hexOf, normName } from "../../js/colour-palette.js";
+import { PALETTE, hexOf, normName, colourKey, pairName, splitColourPair } from "../../js/colour-palette.js";
 
 // Shapes as returned by products.get (admin_product_detail + admin media snapshot).
 const product = {
@@ -133,6 +133,27 @@ test("runner sends the latest structure token and stops at the first refusal", a
 test("palette names ignore Arabic spelling variants", () => {
   assert.equal(normName("أوف  وايت"), normName("اوف وايت"));
   assert.equal(hexOf("بنى"), "#6E4B3A", "common spelling of بني");
-  assert.equal(hexOf("فوشيا"), null, "an unknown name gets no swatch");
+  assert.equal(hexOf("فوشيا"), "#D52987", "expanded colour catalogue includes fuchsia");
+  assert.equal(hexOf("لون غير معروف"), null, "an unknown name gets no swatch");
   assert.equal(hexOf("بيبى بلو"), "#A9C8E8");
+});
+
+test("expanded palette keeps legacy colours stable and supports two-tone garments as one choice", () => {
+  assert.ok(PALETTE.length >= 60);
+  assert.ok(new Set(PALETTE.map((p) => normName(p.name))).size === PALETTE.length);
+  assert.equal(hexOf("أسود"), "#1F1B1E");
+  assert.equal(hexOf("بيبي بلو"), "#A9C8E8");
+  assert.equal(hexOf("بني"), "#6E4B3A");
+  assert.equal(pairName("أسود", "أبيض"), "أسود × أبيض");
+  assert.deepEqual(splitColourPair("اسود × ابيض"), {
+    first: "أسود", second: "أبيض", firstHex: "#1F1B1E", secondHex: "#F7F4EE",
+  });
+  assert.match(hexOf("أسود × أبيض"), /linear-gradient\(90deg, #1F1B1E 0 50%, #F7F4EE 50% 100%\)/);
+  assert.equal(colourKey("أسود × أبيض"), colourKey("أبيض × أسود"));
+  assert.match(checkDrafts([
+    { name: "أسود × أبيض", sizes: ["S"], priceMinor: null },
+    { name: "أبيض × أسود", sizes: ["M"], priceMinor: null },
+  ]), /نفس الاسم/);
+  assert.match(checkDrafts([{ name: "أسود × أسود", sizes: ["S"], priceMinor: null }]), /مختلفين/);
+  assert.equal(checkDrafts([{ name: "أسود × أبيض", sizes: ["S"], priceMinor: null }]), "");
 });
