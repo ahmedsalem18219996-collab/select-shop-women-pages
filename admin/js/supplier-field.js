@@ -16,7 +16,7 @@ export function supplierChoice({ selected = '', newName = '', suppliers = [], ow
   return { ok: true, id: selected, create: '' };
 }
 
-export function initSupplierPicker({ root, selectId, statusId, currentId = null, call, isOwner = false } = {}) {
+export function initSupplierPicker({ root, selectId, statusId, currentId = null, call, isOwner = false, editable = true } = {}) {
   const select = root?.querySelector(selectId);
   const status = root?.querySelector(statusId);
   const state = { items: [], loaded: false };
@@ -42,8 +42,7 @@ export function initSupplierPicker({ root, selectId, statusId, currentId = null,
         : isOwner ? 'مفيش موردين مسجلين. اكتبي اسم مورد جديد في الخانة الجاية.'
           : 'مفيش مورد متاح لحسابك. ارفعي مسودة وخلّي المالك يحدد المورد.';
       state.loaded = true;
-      select.disabled = !isOwner && hidden;
-      if (!hidden) select.disabled = false;
+      select.disabled = !editable || (!isOwner && hidden);
     } catch {
       if (root.contains(select)) {
         if (status) status.textContent = 'تعذّر تحميل الموردين. تقدري تكمّلي المنتج كمسودة من غير مورد.';
