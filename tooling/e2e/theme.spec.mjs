@@ -11,7 +11,29 @@ const saveLight = (page) => page.addInitScript(k => { try { if (!sessionStorage.
 test.beforeEach(async ({ page }) => {
   await page.route(u => u.hostname !== "127.0.0.1", r => r.abort());
   // What the very first frame sees: the theme must already be on <html> before anything paints.
-  await page.addInitScript(() => { requestAnimationFrame(() => { window.__firstFrameTheme = document.documentElement.dataset.theme; }); });
+  await page.addInitScript(() => {
+    window.__firstFrameTheme = null;
+    const install = () => {
+      const root = document.documentElement;
+      if (!root) return false;
+      const capture = () => {
+        if (window.__firstFrameTheme === null && root.dataset.theme) {
+          window.__firstFrameTheme = root.dataset.theme;
+          observer.disconnect();
+        }
+      };
+      const observer = new MutationObserver(capture);
+      observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+      capture();
+      return true;
+    };
+    if (!install()) {
+      const rootObserver = new MutationObserver((_, observer) => {
+        if (install()) observer.disconnect();
+      });
+      rootObserver.observe(document, { childList: true, subtree: true });
+    }
+  });
 });
 
 test("Dark by default; the Sun/Moon switch works from the keyboard, instantly, and is remembered", async ({ page }) => {
@@ -87,9 +109,11 @@ test("Light cart and checkout show the server quote; nothing is ordered", async 
   await saveLight(page);
   await page.goto("/lp/ss-1008/");
   await page.locator("#lpAddCart:enabled").click();
+  await expect(page.locator("#lpCartCount")).toHaveText("1"); // wait for the async cart write before navigating
   await page.goto("/cart/");
-  await page.locator("#toCheckout").click();
-  await page.waitForURL("**/checkout/");
+  await expect(page.locator("#toCheckout")).toBeEnabled();
+  await Promise.all([page.waitForURL("**/checkout/"), page.locator("#toCheckout").click()]);
+  await expect(page.locator("#region")).toBeVisible();
   await page.locator("#region").selectOption({ index: 1 });
   await expect(page.locator("#grandTotal")).toHaveText(/[0-9٠-٩]/);
   await expect(page.locator("#placeOrder")).toHaveCSS("background-color", "rgb(209, 0, 209)");
@@ -136,6 +160,7 @@ test("under 375px the header drops only what the tab bar or buy bar already offe
   // cart and product: the bag is the الشنطة tab (same link and count); the one-tap catalog link stays in the header
   await page.goto("/lp/ss-1008/");
   await page.locator("#lpAddCart:enabled").click();
+  await expect(page.locator("#lpCartCount")).toHaveText("1"); // ensure the cart is persisted before opening another page
   for (const url of ["/cart/", "/p/?code=SS-1008&legacy=1"]) {
     await page.goto(url);
     await page.locator(".tabbar").waitFor();
