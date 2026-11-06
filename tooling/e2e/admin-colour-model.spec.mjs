@@ -335,7 +335,7 @@ test('unsaved guard: browser back and reload ask; no prompt without typing, for 
   await page.locator('[data-create]').click();
   await expect(page).toHaveURL(/#\/products\/SS-9101$/);
   expect(asked).toEqual([]); // saving never asks
-  await page.locator('[data-draft] [data-d-name], input:visible').first().fill('بيج');
+  await page.locator('[data-draft] [data-d-name]').first().fill('بيج');
   await page.goBack();
   await expect.poll(() => asked.length).toBe(1);
   expect(asked[0]).toBe('confirm');
@@ -345,4 +345,59 @@ test('unsaved guard: browser back and reload ask; no prompt without typing, for 
   await page.reload();
   await expect.poll(() => asked.length).toBe(2);
   expect(asked[1]).toBe('beforeunload');
+});
+
+
+test('staff picker searches colours and saves a two-tone garment as one option with its own photos', async ({ page }) => {
+  const b = backend();
+  await open(page, b, owner);
+  await page.locator('a[href="#/products"]:visible').first().click();
+  await page.locator('button[data-new]:visible').first().click();
+  await page.locator('#c-title').fill('بلوفر بألوان مزدوجة');
+  await page.locator('#c-price').fill('650');
+  await page.locator('[data-create]').click();
+  await expect(page).toHaveURL(/SS-9101$/);
+
+  const drafts = page.locator('[data-draft]');
+  const first = drafts.first();
+  await expect(first.locator('[data-colour-picker-slot]')).toBeVisible();
+  await first.locator('[aria-label="ابحثي عن اللون"]').fill('بيب');
+  await expect(first.locator('[aria-label="اختاري لون المنتج من القائمة"] option')).toHaveCount(2);
+  await first.locator('[aria-label="اختاري لون المنتج من القائمة"]').selectOption('بيبي بلو');
+  await expect(first.locator('[data-d-name]')).toHaveValue('بيبي بلو');
+  await first.locator('[data-d-size="S"]').click();
+
+  await page.locator('[data-add-draft]').click();
+  const second = drafts.nth(1);
+  await second.locator('[data-colour-mode]').selectOption('pair');
+  await second.getByLabel('اللون الأول', { exact: true }).selectOption('بني');
+  await second.getByLabel('اللون الثاني', { exact: true }).selectOption('بني');
+  await expect(second.locator('[data-d-name]')).toHaveValue('بني × بني');
+  await expect(second.locator('[role="alert"]')).toContainText('اختاري لونين مختلفين');
+  await page.locator('[data-save-drafts]').click();
+  await expect(page.locator('[data-draft-error]')).toContainText('مختلفين');
+  expect(b.s.ops.filter((o) => o.op === 'products.structure')).toHaveLength(0);
+  await second.getByLabel('اللون الثاني', { exact: true }).selectOption('بيج');
+  await expect(second.locator('[data-d-name]')).toHaveValue('بني × بيج');
+  await second.locator('[data-d-size="One Size"]').click();
+  await page.locator('[data-save-drafts]').click();
+
+  const cards = page.locator('[data-colour]');
+  await expect(cards).toHaveCount(2);
+  expect(b.s.product.options[0].values.map((v) => v.value)).toEqual(['بيبي بلو', 'بني × بيج']);
+  expect(b.s.product.variants).toHaveLength(2);
+  await cards.nth(0).locator('[data-upload]').setInputFiles([photo('blue.png', [169, 200, 232])]);
+  await expect(cards.nth(0).locator('.thumb img')).toHaveCount(1);
+  await cards.nth(1).locator('[data-upload]').setInputFiles([photo('brown-beige.png', [110, 75, 58])]);
+  await expect(cards.nth(1).locator('.thumb img')).toHaveCount(1);
+  await expect(cards.nth(0).locator('.thumb img')).toHaveCount(1);
+  expect(b.s.uploads.map((x) => x.variant_position)).toEqual(['0', '1']);
+  expect(b.s.uploads.every((x) => !x.option_position)).toBe(true);
+
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await page.goto(target + '#/products/SS-9101');
+  await expect(page.locator('[data-colour]')).toHaveCount(2);
+  await expect(page.locator('[data-colour]').nth(1)).toContainText('بني × بيج');
+  await expect(page.locator('[data-colour]').nth(1).locator('.thumb img')).toHaveCount(1);
+  await expect(page.locator('[data-colour]').first().locator('.thumb img')).toHaveCount(1);
 });

@@ -3,7 +3,7 @@
 // Database rules the plans respect (product_structure_foundation): options can only be added while the
 // draft has NO Variants (PS009); values and Variants can be added later; nothing is deleted, a colour or
 // size is retired with set_value_active / set_variant_active. New value / Variant positions are max + 1.
-import { hexOf, isColourName, isSizeName, normName } from '../../js/colour-palette.js';
+import { hexOf, isColourName, isSizeName, normName, colourKey } from '../../js/colour-palette.js?v=20261106-colourpicker';
 
 export const ONE_SIZE = 'One Size';
 export const COLOUR_OPTION = 'اللون';
@@ -58,7 +58,12 @@ export function checkDrafts(drafts, { needName = true } = {}) {
   if (!drafts.length) return 'ضيفي لون واحد على الأقل، أو لون واحد من غير اسم لو الموديل لون واحد.';
   const named = drafts.filter((d) => d.name.trim());
   if (needName && named.length !== drafts.length && !(drafts.length === 1 && !named.length)) return 'كل لون محتاج اسم، زي «بيبي بلو».';
-  if (uniq(named.map((d) => d.name.trim())).length !== named.length) return 'فيه لونين بنفس الاسم. غيّري اسم واحد منهم.';
+  if (new Set(named.map((d) => colourKey(d.name))).size !== named.length) return 'فيه لونين بنفس الاسم، أو نفس اللونين بترتيب مختلف. غيّري اختيار واحد منهم.';
+  const duplicateTone = named.find((d) => {
+    const parts = d.name.split(/\s*×\s*/);
+    return parts.length === 2 && normName(parts[0]) === normName(parts[1]);
+  });
+  if (duplicateTone) return 'اللون المزدوج لازم يكون فيه لونين مختلفين.';
   const empty = drafts.find((d) => !d.sizes.length);
   if (empty) return `حددي مقاس واحد على الأقل للون «${empty.name || 'الموديل'}»، أو اختاري One Size.`;
   const bad = drafts.find((d) => d.priceMinor !== null && !(Number.isInteger(d.priceMinor) && d.priceMinor >= 100));
