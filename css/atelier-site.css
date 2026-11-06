@@ -72,7 +72,8 @@ html,body{background:var(--bg);color:var(--ink)}
 .hero--brand .btn-solid{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 28px;background:var(--accent);color:#fff;font:500 14px/1.4 var(--f-body);border:1px solid var(--accent);border-radius:0;transition:background .2s,color .2s}
 .hero--brand .btn-solid:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
 .hero--brand .hero-lead{grid-area:lead;margin:0;padding:10px max(20px,var(--gr)) 20px max(20px,var(--gl));max-width:62ch;text-align:start;color:var(--dust);font-size:13px;line-height:1.8}
-.hero--brand .hero-trust{grid-area:trust;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--hair);background:color-mix(in srgb,var(--chalk) 74%,transparent)}
+.hero--brand .hero-trust{grid-area:trust;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--hair);background:rgba(11,23,48,.74)}
+:root[data-theme="light"] .hero--brand .hero-trust{background:rgba(255,253,248,.74)}
 .hero--brand .hero-trust li{display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 6px;font:400 11px/1.5 var(--f-body);text-align:center;color:var(--ink)}
 .hero--brand .hero-trust li+li{border-inline-start:1px solid var(--hair)}
 .hero--brand .hero-trust li::before{content:"";width:5px;height:5px;flex:none;transform:rotate(45deg);background:var(--gold)}
@@ -153,7 +154,8 @@ html,body{background:var(--bg);color:var(--ink)}
 .commerce-card{background:var(--chalk);border:1px solid var(--hair);border-radius:0;box-shadow:none}
 .commerce-grid{gap:clamp(16px,4vw,48px)}
 .commerce-photo-frame,.commerce-image{background:var(--surface);border-radius:0}
-.commerce-photo-label{background:color-mix(in srgb,var(--bg) 88%,transparent);color:var(--ink);border-radius:0}
+.commerce-photo-label{background:rgba(5,11,28,.88);color:var(--ink);border-radius:0}
+:root[data-theme="light"] .commerce-photo-label{background:rgba(247,243,236,.88)}
 .commerce-price{color:var(--ink);font-family:var(--f-num);font-weight:600}
 .commerce-field :is(input,select,textarea){background:var(--elev);border:1px solid var(--field);border-radius:0;color:var(--ink)}
 .commerce-field :is(input,select,textarea):focus{outline:2px solid var(--cyan);outline-offset:1px}
