@@ -6,9 +6,9 @@
 import { html, render, $, $$, icon, money, toMinor, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js';
-import { colourModel, checkDrafts, planNewModel, planAddColour, planSizes, planColourPrice, planColourAvailability, photoTarget, runSteps, ONE_SIZE } from '../colour-model.js';
+import { colourModel, checkDrafts, planNewModel, planAddColour, planSizes, planColourPrice, planColourAvailability, photoTarget, runSteps, ONE_SIZE } from '../colour-model.js?v=20261106-colourpicker';
 import { loadCosts, saveCost, costOf, profitText } from '../profit.js';
-import { PALETTE, hexOf, normName, colourKey } from '../../../js/colour-palette.js';
+import { PALETTE, hexOf, normName, colourKey } from '../../../js/colour-palette.js?v=20261106-colourpicker';
 import { mountDraftColourPickers } from '../colour-picker.js';
 
 const COMMON_SIZES = ['S', 'M', 'L', 'XL', 'XXL', ONE_SIZE];
