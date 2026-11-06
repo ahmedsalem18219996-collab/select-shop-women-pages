@@ -12,13 +12,28 @@
  --f-num:"Readex Pro",ui-sans-serif,system-ui,sans-serif;
  color-scheme:dark;
 }
+/* theme:shared (2026-11-06) Light mode + the Sun/Moon switch. tooling/build-lp.mjs copies this block verbatim into every landing page,
+   so storefront and LPs share one set of tokens. Dark stays the default; the inline THEME_BOOT script sets <html data-theme> before paint.
+   Light: ivory grounds, deep navy text, same neon purple buy buttons (white text 4.5:1), a deeper cyan so links and selection stay AA on ivory. */
+:root{--glass:rgba(5,11,28,.97);--ring:rgba(255,255,255,.4);--off:rgba(170,181,200,.45)}
+:root[data-theme="light"]{--bg:#F7F3EC;--mirror:#F7F3EC;--paper:#FFFDF8;--chalk:#FFFDF8;--wash:#FFFDF8;--tape:#FFFDF8;--elev:#F0EBE2;--surface:#F4F6FA;
+ --ink:#0B1730;--pin:#0B1730;--muted:#535D72;--dust:#535D72;--hair:#DED6C8;--line:#DED6C8;--rose:#DED6C8;--field:#7A7468;
+ --accent:#D100D1;--accent-hover:#AE00B8;--mauve:#D100D1;--cyan:#00727A;--gold:#00727A;--danger:#B42318;
+ --glass:rgba(247,243,236,.97);--ring:rgba(11,23,48,.28);--off:rgba(83,93,114,.5);color-scheme:light}
+.theme-toggle{display:inline-grid;place-items:center;flex:none;width:44px;height:44px;min-width:44px;padding:0;border:0;border-radius:0;background:transparent;color:var(--ink);cursor:pointer}
+.theme-toggle svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+.theme-toggle:hover{color:var(--cyan)}
+.theme-toggle:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+.theme-toggle .moon,:root[data-theme="light"] .theme-toggle .sun{display:none}
+:root[data-theme="light"] .theme-toggle .moon{display:block}
+/* /theme:shared */
 html,body{background:var(--bg);color:var(--ink)}
 .app{background:var(--mirror)}
 .app :focus-visible,:is(.atelier-checkout,.atelier-success) :focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:0}
 .storefront-owner-announcement{border-bottom:1px solid var(--rose);background:var(--wash);color:var(--cyan);font:400 11px/1.9 var(--f-body);letter-spacing:.14em;padding:7px 16px}
 
 /* ---------- header: centred wordmark on phones ---------- */
-.hdr{background:rgba(5,11,28,.97);border-bottom:1px solid var(--hair);backdrop-filter:none;-webkit-backdrop-filter:none}
+.hdr{background:var(--glass);border-bottom:1px solid var(--hair);backdrop-filter:none;-webkit-backdrop-filter:none}
 .hdr-in{min-height:58px}
 .logo{display:grid;justify-items:center;gap:0;line-height:1}
 .logo b{direction:ltr;font:600 21px/1 var(--f-body);letter-spacing:.34em;margin-inline-end:-.34em;text-transform:uppercase;color:var(--ink)}
@@ -32,12 +47,22 @@ html,body{background:var(--bg);color:var(--ink)}
  .hdr-in{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
  .hdr-tools{display:contents}
  .logo{grid-column:2}
- .hdr-tools>a.ibtn{grid-column:1;grid-row:1;justify-self:start}
- .hdr-tools>[data-open-bag]{grid-column:3;grid-row:1;justify-self:end}
+ /* phones: [switch][browse] · wordmark · [bag]; saved/account live in the bottom tab bar */
+ .hdr-tools>*{grid-row:1}
+ .hdr-tools>.theme-toggle{grid-column:1;justify-self:start}
+ .hdr-tools>a.ibtn[href$="#shop"]{grid-column:1;justify-self:start;margin-inline-start:46px}
+ .hdr-tools>a.ibtn[data-guest-panel-link]{display:none}
+ .hdr-tools>:is([data-open-bag],a.ibtn[href="/cart/"]){grid-column:3;justify-self:end}
+}
+/* under 375px only three header icons fit beside the wordmark; each page hides the one its bottom tab bar already offers:
+   home hides "browse" (= the الأقسام tab, same #shop link), cart and product hide the bag (= the الشنطة tab, same link and count) */
+@media(max-width:374px){
+ .hdr-tools>a.ibtn[href="#shop"],.hdr-tools>a.ibtn[href="/cart/"]{display:none}
+ .hdr-tools>a.ibtn[href="/#shop"]{grid-column:3;justify-self:end;margin-inline-start:0}
 }
 
 /* ---------- brand-only hero: no hard-coded jacket, fast first paint ---------- */
-.hero--brand{display:grid;grid-template-areas:"copy" "lead" "trust";background:linear-gradient(122deg,#0B1730 0%,#050B1C 56%,#111F3A 100%);border-block:1px solid var(--hair);margin:0;max-width:none;padding:0;overflow:hidden}
+.hero--brand{display:grid;grid-template-areas:"copy" "lead" "trust";background:linear-gradient(122deg,var(--chalk) 0%,var(--bg) 56%,var(--elev) 100%);border-block:1px solid var(--hair);margin:0;max-width:none;padding:0;overflow:hidden}
 .hero--brand .hero-copy{grid-area:copy;position:relative;display:grid;justify-items:start;gap:14px;padding:24px max(20px,var(--gr)) 4px max(20px,var(--gl));color:var(--ink)}
 .hero--brand .hero-kicker{font:500 10px/1.5 var(--f-body);letter-spacing:.25em;color:var(--cyan);text-transform:uppercase}
 .hero--brand h1{margin:0;font:300 clamp(33px,8.4vw,54px)/1.2 var(--f-body);letter-spacing:-.025em;color:var(--ink);max-width:18ch;text-wrap:balance}
@@ -48,6 +73,7 @@ html,body{background:var(--bg);color:var(--ink)}
 .hero--brand .btn-solid:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
 .hero--brand .hero-lead{grid-area:lead;margin:0;padding:10px max(20px,var(--gr)) 20px max(20px,var(--gl));max-width:62ch;text-align:start;color:var(--dust);font-size:13px;line-height:1.8}
 .hero--brand .hero-trust{grid-area:trust;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--hair);background:rgba(11,23,48,.74)}
+:root[data-theme="light"] .hero--brand .hero-trust{background:rgba(255,253,248,.74)}
 .hero--brand .hero-trust li{display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 6px;font:400 11px/1.5 var(--f-body);text-align:center;color:var(--ink)}
 .hero--brand .hero-trust li+li{border-inline-start:1px solid var(--hair)}
 .hero--brand .hero-trust li::before{content:"";width:5px;height:5px;flex:none;transform:rotate(45deg);background:var(--gold)}
@@ -93,7 +119,7 @@ html,body{background:var(--bg);color:var(--ink)}
 .card .pr{color:var(--ink);font-family:var(--f-body);font-weight:600;font-size:14px}
 .card .pr.off{color:var(--cyan)}
 .swatches{gap:4px}
-.swatches i{width:10px;height:10px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}
+.swatches i{width:10px;height:10px;box-shadow:inset 0 0 0 1px var(--ring)}
 
 /* ---------- promises + footer: full-bleed ink bands ---------- */
 .promises{margin-top:56px;padding-block:30px;background:var(--wash);color:var(--ink);box-shadow:0 0 0 100vmax var(--wash);clip-path:inset(0 -100vmax)}
@@ -104,7 +130,7 @@ html,body{background:var(--bg);color:var(--ink)}
 .foot{margin-top:0;border-top:1px solid var(--hair);background:var(--chalk);color:var(--muted);box-shadow:0 0 0 100vmax var(--chalk);clip-path:inset(0 -100vmax)}
 .foot nav a{color:var(--ink)}
 .foot nav a:hover{color:var(--cyan)}
-.tabbar{background:rgba(5,11,28,.97);border-color:var(--hair);backdrop-filter:none}
+.tabbar{background:var(--glass);border-color:var(--hair);backdrop-filter:none}
 .tabbar a,.tabbar button{color:var(--dust)}
 .tabbar .on,.tabbar a[aria-current="page"]{color:var(--ink)}
 .tabbar .on::before{background:var(--cyan);border-radius:0;height:2px}
@@ -129,6 +155,7 @@ html,body{background:var(--bg);color:var(--ink)}
 .commerce-grid{gap:clamp(16px,4vw,48px)}
 .commerce-photo-frame,.commerce-image{background:var(--surface);border-radius:0}
 .commerce-photo-label{background:rgba(5,11,28,.88);color:var(--ink);border-radius:0}
+:root[data-theme="light"] .commerce-photo-label{background:rgba(247,243,236,.88)}
 .commerce-price{color:var(--ink);font-family:var(--f-num);font-weight:600}
 .commerce-field :is(input,select,textarea){background:var(--elev);border:1px solid var(--field);border-radius:0;color:var(--ink)}
 .commerce-field :is(input,select,textarea):focus{outline:2px solid var(--cyan);outline-offset:1px}
@@ -139,12 +166,14 @@ html,body{background:var(--bg);color:var(--ink)}
 .commerce .commerce-btn--ghost,.commerce .commerce-btn--ghost.commerce-btn:not(:disabled):is(:hover,:active){background:transparent!important;border-color:var(--cyan)!important;color:var(--ink)!important}
 .commerce-thumbs button[aria-pressed="true"]{border-color:var(--cyan)}
 .commerce-quick-links a{background:var(--chalk);border:1px solid var(--hair);border-radius:0}
+.commerce-quick-links a[aria-current="page"]{background:var(--chalk);color:var(--ink);border-color:var(--cyan)}
 .commerce-summary{border-color:var(--hair)}
 .commerce-yellow-mark::before{background:var(--cyan);height:.1em;bottom:0}
 .commerce-mobile-buybar,.commerce-mobile-buybar:not([hidden]){background:var(--chalk);border-top:1px solid var(--hair);box-shadow:none}
 .commerce-mobile-buybar button{background:var(--accent);color:#fff;border-radius:0}
 .commerce-mobile-buybar button:disabled{background:var(--elev);color:var(--muted)}
 .atelier-checkout .top>a:last-child,.atelier-success .top>a:last-child{color:var(--cyan)}
+:is(.atelier-checkout,.atelier-success) .top>.theme-toggle{margin-inline-start:auto;margin-inline-end:6px}
 .atelier-checkout .top,.atelier-success .top{max-width:640px;padding:18px 22px;border-bottom:1px solid var(--hair)}
 .atelier-checkout .mark,.atelier-success .mark{color:var(--ink);font-size:20px;letter-spacing:.34em}
 .atelier-checkout .mark::after,.atelier-success .mark::after{background:var(--gold)}
@@ -169,6 +198,7 @@ html,body{background:var(--bg);color:var(--ink)}
  .promises{margin-top:40px}
  .commerce-card{padding:16px}
  .atelier-checkout .wrap,.atelier-success .wrap{padding-inline:16px}
+ .atelier-checkout .confirm{margin-inline:-16px;padding-inline:16px} /* bleed matches the 16px phone padding (was -20px: 4px sideways scroll at 320) */
 }
 @media(max-width:359px){.hero-trust li{font-size:10.5px;padding-inline:3px}}
 

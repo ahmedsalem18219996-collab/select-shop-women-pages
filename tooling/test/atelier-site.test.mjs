@@ -4,11 +4,11 @@ import { readFile } from "node:fs/promises";
 
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 const storeRoutes = [
-  ["index.html", 'href="css/atelier-site.css?v=20261106-dark"', 'class="atelier-home"'],
-  ["p/index.html", 'href="../css/atelier-site.css?v=20261106-dark"', 'class="atelier-product"'],
-  ["cart/index.html", 'href="../css/atelier-site.css?v=20261106-dark"', 'class="atelier-cart"'],
-  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261106-dark"', 'class="atelier-checkout"'],
-  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261106-dark"', 'class="atelier-success"'],
+  ["index.html", 'href="css/atelier-site.css?v=20261106-theme"', 'class="atelier-home"'],
+  ["p/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-product"'],
+  ["cart/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-cart"'],
+  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-checkout"'],
+  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-success"'],
 ];
 
 test("Atelier shared style loads on every public storefront step", async () => {
