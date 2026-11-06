@@ -3,7 +3,7 @@
 // Database rules the plans respect (product_structure_foundation): options can only be added while the
 // draft has NO Variants (PS009); values and Variants can be added later; nothing is deleted, a colour or
 // size is retired with set_value_active / set_variant_active. New value / Variant positions are max + 1.
-import { hexOf, isColourName, isSizeName, normName, colourKey } from '../../js/colour-palette.js';
+import { hexOf, isColourName, isSizeName, normName, colourKey } from '../../js/colour-palette.js?v=20261106-colourpicker';
 
 export const ONE_SIZE = 'One Size';
 export const COLOUR_OPTION = 'اللون';
