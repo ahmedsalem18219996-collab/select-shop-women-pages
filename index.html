@@ -9,6 +9,7 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://selectshopeg.com/">
 <meta name="theme-color" content="#050B1C">
+<script id="theme-boot">(()=>{const d=document.documentElement,K="ssw.theme.v1";let t="dark";const read=()=>{try{return localStorage.getItem(K)==="light"?"light":"dark"}catch(e){return"dark"}},set=x=>{t=x;d.dataset.theme=x;const m=document.querySelector('meta[name="theme-color"]'),l=x==="light"?"التحويل للوضع الداكن":"التحويل للوضع الفاتح";if(m)m.content=x==="light"?"#F7F3EC":"#050B1C";for(const b of document.querySelectorAll("[data-theme-toggle]")){b.setAttribute("aria-label",l);b.title=l}};set(read());document.addEventListener("click",e=>{const b=e.target instanceof Element&&e.target.closest("[data-theme-toggle]");if(!b)return;set(t==="light"?"dark":"light");try{localStorage.setItem(K,t)}catch(e){}});document.addEventListener("DOMContentLoaded",()=>set(t));addEventListener("pageshow",e=>{if(e.persisted)set(read())})})()</script>
 <title>Select Shop Woman</title>
 <meta name="description" content="متجر SELECT SHOP WOMEN، موديلات حريمي بصور وتفاصيل مؤكدة.">
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
@@ -562,7 +563,7 @@ body{background:var(--mirror)}
   .seg{height:41px}
 }
 </style>
-<link rel="stylesheet" href="css/atelier-site.css?v=20261106-dark">
+<link rel="stylesheet" href="css/atelier-site.css?v=20261106-theme">
 <script>
 /* Begin the public catalog request during HTML parsing instead of waiting for the UI bundle. */
 // Include only our isolated QA server so GitHub Lighthouse measures the same
@@ -596,6 +597,7 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
       <a href="#top" class="logo" aria-label="Select Shop Woman — الرئيسية"><b>select</b><small>shop woman</small></a>
       <nav class="hdr-links" aria-label="الأقسام"></nav>
       <div class="hdr-tools">
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="التحويل للوضع الفاتح" title="التحويل للوضع الفاتح"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
         <a class="ibtn" href="#shop" aria-label="تصفحي المنتجات" title="كل المنتجات"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></a>
         <button type="button" class="ibtn hdr-desktop-action" data-open-saved aria-label="المحفوظة" title="المحفوظة"><svg class="i" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span class="dot savedot" hidden>0</span></button>
         <button type="button" class="ibtn hdr-desktop-action" data-open-account aria-label="حسابي" title="حسابي"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></button>
