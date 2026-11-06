@@ -9,6 +9,12 @@
   const fmt = n => Number(n).toLocaleString('en-US');
   const esc = v => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const cssColor = v => /^#[0-9a-f]{3,8}$/i.test(v || '') ? v : '#B9BCC8';
+  // Two-tone backgrounds originate only from trusted named colour palette HEX values.
+  const cssSwatch = v => {
+    if (/^#[0-9a-f]{6}$/i.test(v || '')) return v;
+    const pair = /^linear-gradient\(90deg, (#[0-9a-f]{6}) 0 50%, (#[0-9a-f]{6}) 50% 100%\)$/i.exec(v || '');
+    return pair ? `linear-gradient(90deg, ${pair[1]} 0 50%, ${pair[2]} 50% 100%)` : '#B9BCC8';
+  };
   const cssUrl = u => `url("${String(u).replace(/["\\\n\r]/g, '')}")`;
   const CUR = CFG.currencyShort || 'ج', CUR_L = CFG.currencyLong || 'جنيه';
   /* Arabic counting: قطعة واحدة / قطعتين / 3–10 قطع / 11+ قطعة */
@@ -394,8 +400,9 @@
         <h3><a href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}">${esc(p.name)}</a></h3>
         <div class="card-row">
           <span class="pr ${p.was ? 'off' : ''}">${fmt(p.price)} ${CUR}${p.was ? `<s>${fmt(p.was)}</s>` : ''}</span>
-          <span class="swatches">${(p.sw || []).map(s => `<i style="--s:${cssColor(s)}"></i>`).join('')}</span>
+          <span class="swatches" aria-hidden="true">${(p.sw || []).map(s => `<i style="--s:${cssSwatch(s)}"></i>`).join('')}</span>
         </div>
+        ${p.swatchNames?.length ? `<p class="card-colour-names" title="${esc(p.swatchNames.join('، '))}" aria-label="ألوان الموديل: ${esc(p.swatchNames.join('، '))}">الألوان: ${esc(p.swatchNames.slice(0, 3).join(' · '))}${p.swatchNames.length > 3 ? ` · +${p.swatchNames.length - 3}` : ''}</p>` : ''}
       </article>`).join('') : `<p class="empty">مفيش قطع في القسم ده دلوقتي. اسحبي الشريط لقسم تاني.</p>`;
   }
   // Native image errors do not bubble; capture and retry with the already-validated original once.

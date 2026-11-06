@@ -68,3 +68,27 @@ test("legacy cart remains isolated behind explicit legacy=1", async ({ page, req
   expect(after.at(-1).publicCode).toBe("SS-1008");
   expect(after.at(-1).selection).toEqual([]);
 });
+
+test("new multi-colour Admin product automatically shows names and palette dots below its home card", async ({ page }) => {
+  await page.route("**/women-store-bridge/catalog", async route => {
+    const upstream = await route.fetch();
+    const body = await upstream.json();
+    const base = body.items.find(item => item.publicCode === "SS-1011");
+    expect(base).toBeTruthy();
+    body.items.push({ ...base, publicCode: "SS-1052", title: "سويت شيرت", priceMinor: 65000, colours: ["بطيخي", "فوشيا"] });
+    body.items.push({ ...base, publicCode: "SS-1053", title: "منتج جديد", colours: ["أسود × أبيض"] });
+    await route.fulfill({ response: upstream, json: body });
+  });
+  await page.goto("/");
+  const sweatshirt = page.locator("#feed .card").filter({ has: page.locator('[data-name="SS-1052"]') });
+  await expect(sweatshirt).toHaveCount(1);
+  await expect(sweatshirt.locator(".card-colour-names")).toContainText("بطيخي · فوشيا");
+  await expect(sweatshirt.locator(".swatches i")).toHaveCount(2);
+  await expect(sweatshirt.locator(".shot-link")).toHaveAttribute("href", /\/lp\/\?p=SS-1052$/);
+  const twoTone = page.locator("#feed .card").filter({ has: page.locator('[data-name="SS-1053"]') });
+  await expect(twoTone.locator(".card-colour-names")).toContainText("أسود × أبيض");
+  await expect(twoTone.locator(".swatches i")).toHaveCount(1);
+  await expect(twoTone.locator(".swatches i")).toHaveCSS("background-image", /linear-gradient/);
+  await expect(page.locator("#feed .card").first().locator(".card-colour-names")).toContainText("بني · أسود");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

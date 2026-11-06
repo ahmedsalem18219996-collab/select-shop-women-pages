@@ -215,3 +215,9 @@ html,body{background:var(--bg);color:var(--ink)}
 @media(prefers-reduced-motion:reduce){
  .look,.card,.seg,.cta,.commerce-btn,.btn-solid,.btn-line{animation:none!important;transition:none!important}
 }
+
+/* Public catalog cards: names are provided by the published WOMEN color options.
+   Preserve color authenticity, with neutral fallback for unknown palette labels. */
+.card .swatches{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.card .swatches i{width:14px;height:14px;border:1px solid var(--ring);border-radius:50%;background:var(--s,#B9BCC8);box-shadow:none;flex:none}
+.card .card-colour-names{margin:4px 0 0;color:var(--dust);font:400 11px/1.6 var(--f-body);overflow-wrap:anywhere;text-align:start}
