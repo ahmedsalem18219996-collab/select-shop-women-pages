@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
-import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet, photoFiles, openValues, colourIndex, colourMedia } from "../../lp/runtime.js";
+import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet, photoFiles, openValues, colourIndex, colourMedia, variantColourChoices } from "../../lp/runtime.js";
 import { render, renderShell, shellRoutes, photos, esc, AB_SNIPPET, PREFETCH, colorsOf, colorData, readexFaces } from "../build-lp.mjs";
 
 test("landing copy states availability is pending and makes no inspection promise", () => {
@@ -219,4 +219,15 @@ test("a chosen colour keeps only its own buyable sizes, and brings its own photo
   assert.deepEqual(urls(colourMedia(product.media, 0, 1)), ["c1c1", "aaaa"]);
   assert.deepEqual(colourMedia(product.media, 0, 2), [], "no photo of pink: keep what is shown");
   assert.equal(colourIndex({ options: [{ name: "المقاس" }] }), -1);
+});
+
+test("new Admin model: colour and size choices share a public code but never a variant selection", async () => {
+  const { product } = JSON.parse(await readFile(new URL("../fixtures/SS-9101.product.json", import.meta.url), "utf8"));
+  const choices = variantColourChoices(product);
+  assert.equal(choices.length, 4);
+  assert.equal(new Set(choices.map(c => c.key)).size, 4);
+  assert.deepEqual([...new Set(choices.map(c => c.colorName))], ["بيبي بلو", "بني"]);
+  assert.ok(choices.every(c => c.product.publicCode === "SS-9101" && c.variant.purchasable));
+  assert.deepEqual(choices[3].variant.selection, [{ optionPosition: 0, valuePosition: 1 }, { optionPosition: 1, valuePosition: 3 }]);
+  assert.deepEqual(variantColourChoices({ ...product, options: [] }), []);
 });
