@@ -203,3 +203,5 @@
 .desc-helper [data-desc-improve]:hover{border-color:var(--tape);background:var(--surface-2)}
 .desc-helper [data-desc-undo]{color:var(--tape);border-color:var(--line-2)}
 .desc-helper [data-desc-message]{margin:0;font-size:12px;line-height:1.5}
+
+.desc-helper [hidden]{display:none!important}
