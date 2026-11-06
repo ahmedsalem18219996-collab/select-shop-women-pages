@@ -371,6 +371,12 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   const second = drafts.nth(1);
   await second.locator('[data-colour-mode]').selectOption('pair');
   await second.getByLabel('اللون الأول', { exact: true }).selectOption('بني');
+  await second.getByLabel('اللون الثاني', { exact: true }).selectOption('بني');
+  await expect(second.locator('[data-d-name]')).toHaveValue('بني × بني');
+  await expect(second.locator('[role="alert"]')).toContainText('اختاري لونين مختلفين');
+  await page.locator('[data-save-drafts]').click();
+  await expect(page.locator('[data-draft-error]')).toContainText('مختلفين');
+  expect(b.s.ops.filter((o) => o.op === 'products.structure')).toHaveLength(0);
   await second.getByLabel('اللون الثاني', { exact: true }).selectOption('بيج');
   await expect(second.locator('[data-d-name]')).toHaveValue('بني × بيج');
   await second.locator('[data-d-size="One Size"]').click();
