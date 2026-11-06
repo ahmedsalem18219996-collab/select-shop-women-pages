@@ -40,3 +40,12 @@ test('source is local only and does not request external AI or persist without e
   assert.doesNotMatch(js,/fetch\s*\(|XMLHttpRequest|navigator\.sendBeacon|localStorage\s*\.|sendTo\w+\s*\(/);
   assert.doesNotMatch(js,/products\.publish|products\.update_text|products\.create/);
 });
+
+test('free helper never breaks essential new product initialization or close handlers', async () => {
+  const src = await readFile(new URL('../../admin/js/views/products.js', import.meta.url), 'utf8');
+  const closeHandlers = src.split('\n').filter(line => line.includes("[data-close]") && line.includes(".forEach"));
+  assert.ok(closeHandlers.length >= 2);
+  for (const line of closeHandlers) assert.ok(line.includes("$$("), "Close handlers must receive a node list, not a single element");
+  assert.match(src, /const catSel = \$\('#c-cat', box\)/);
+  assert.match(src, /if \(btn\) btn\.disabled = true/);
+});
