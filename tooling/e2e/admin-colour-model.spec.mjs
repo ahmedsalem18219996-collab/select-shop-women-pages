@@ -22,7 +22,7 @@ const svg = (hex) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="htt
 
 // ---- in-memory WOMEN backend
 function backend(seed) {
-  const s = { version: 1, product: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], costsLive: true, ...seed };
+  const s = { version: 1, product: null, suppliers: [], productSupplierId: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], costsLive: true, ...seed };
   const P = () => s.product;
   const next = (l) => l.reduce((m, x) => Math.max(m, x.position), -1) + 1;
   const bump = () => ({ outcome: 'applied', structure_version: ++s.version });
@@ -65,9 +65,23 @@ function backend(seed) {
     switch (op) {
       case 'session.get': return { outcome: 'ok', data: session };
       case 'products.list': return { outcome: 'ok', data: [] };
+      case 'suppliers.list': return { outcome: 'ok', data: s.suppliers.filter(x => x.active !== false) };
+      case 'suppliers.create': {
+        if (session.role !== 'owner') return { outcome: 'forbidden' };
+        const id = String(s.suppliers.length + 1).padStart(8,'0') + '-1111-4111-8111-111111111111';
+        s.suppliers.push({ id, name: a.name, active: true });
+        return { outcome: 'created', supplier_id: id };
+      }
+      case 'suppliers.assign': {
+        if (session.role !== 'owner') return { outcome: 'forbidden' };
+        if (a.supplier_id && !s.suppliers.some(x => x.id === a.supplier_id)) return { outcome: 'invalid', field: 'supplier_id' };
+        s.productSupplierId = a.supplier_id || null;
+        return { outcome: 'saved' };
+      }
       case 'categories.list': return { outcome: 'ok', data: [{ name: 'فساتين', visible: true }] };
       case 'shipping.get': return { outcome: 'ok', data: { profiles: [{ key: 'women_standard', active: true, name: 'شحن عادي' }] } };
       case 'products.create':
+        s.productSupplierId = a.supplier_id || null;
         s.product = { public_code: 'SS-9101', title: a.title, description: a.description, status: 'draft', created_at: now, updated_at: now, base_price: null, options: [], variants: [], shipping_profile: null, publish_blockers: [] };
         return { outcome: 'created', code: 'SS-9101', structure_version: s.version };
       case 'products.set_price': p.base_price = { amount_minor: a.amount_minor }; p.variants.filter((v) => v.price_source === 'base').forEach((v) => { v.amount_minor = a.amount_minor; }); return { outcome: 'saved' };
@@ -88,6 +102,7 @@ function backend(seed) {
         else s.costs.variants = [...s.costs.variants.filter((v) => v.position !== a.position), { position: a.position, cost_minor: a.cost_minor }];
         return { outcome: 'saved' };
       case 'products.get': return { outcome: 'ok', data: {
+        supplier_id: s.productSupplierId,
         product: { ...p, structure_version: s.version, variants: p.variants.map((v) => ({ ...v, blockers: [] })) },
         card: { category: 'فساتين', is_new: true, image: null }, stock: s.stock,
         shipping_profiles: [{ key: 'women_standard', name: 'شحن عادي', active: true }],
@@ -440,4 +455,50 @@ test('free offline description enhancer: new draft, undo, existing edit, and no 
   await expect.poll(() => b.s.product.description).toContain('خامة قطن');
   expect(b.s.product.status).toBe('draft');
   expect(b.s.ops.some(x => x.op === 'products.publish')).toBe(false);
+});
+
+test('owner creates a new supplier within product draft and changes it from the Admin without publishing', async ({ page }) => {
+  const b = backend();
+  await open(page, b, owner);
+  await page.locator('a[href="#/products"]:visible').first().click();
+  await page.locator('button[data-new]:visible').first().click();
+  await expect(page.locator('#c-supplier-note')).toContainText('مفيش موردين مسجلين');
+  await page.locator('#c-title').fill('جاكيت جديد');
+  await page.locator('#c-price').fill('650');
+  await page.locator('#c-supplier-new').fill('مورد وسط البلد');
+  await page.locator('[data-create]').click();
+  await expect(page).toHaveURL(/#\/products\/SS-9101$/);
+  expect(b.s.product.status).toBe('draft');
+  expect(b.s.suppliers.map(x => x.name)).toEqual(['مورد وسط البلد']);
+  expect(b.s.productSupplierId).toBe(b.s.suppliers[0].id);
+  expect(b.s.ops.some(x => x.op === 'products.publish')).toBe(false);
+  await page.locator('[data-v="details"]').click();
+  await expect(page.locator('#e-supplier')).toHaveValue(b.s.productSupplierId);
+  await page.locator('#e-supplier-new').fill('مورد الهرم');
+  await page.locator('[data-save-supplier]').click();
+  await expect.poll(() => b.s.suppliers.length).toBe(2);
+  await expect.poll(() => b.s.productSupplierId).toBe(b.s.suppliers[1].id);
+  expect(b.s.product.status).toBe('draft');
+  expect(b.s.ops.some(x => x.op === 'products.publish')).toBe(false);
+});
+
+test('staff selects an existing permitted supplier, but cannot create or reassign one', async ({ page }) => {
+  const supplier = {id:'aaaaaaaa-1111-4111-8111-111111111111',name:'مورد معروف',active:true};
+  const b = backend({suppliers:[supplier]});
+  const staff = {role:'staff',email:'qa-staff@example.test',permissions:['products.view','products.edit','dashboard.view']};
+  await open(page,b,staff);
+  await page.locator('a[href="#/products"]:visible').first().click();
+  await page.locator('button[data-new]:visible').first().click();
+  await expect(page.locator('#c-supplier option')).toHaveCount(2);
+  await expect(page.locator('#c-supplier-new')).toHaveCount(0);
+  await page.locator('#c-title').fill('بلوزة جديدة');
+  await page.locator('#c-supplier').selectOption(supplier.id);
+  await page.locator('[data-create]').click();
+  await expect(page).toHaveURL(/#\/products\/SS-9101$/);
+  expect(b.s.productSupplierId).toBe(supplier.id);
+  await page.locator('[data-v="details"]').click();
+  await expect(page.locator('#e-supplier')).toHaveValue(supplier.id);
+  await expect(page.locator('#e-supplier')).toBeDisabled();
+  await expect(page.locator('[data-save-supplier]')).toHaveCount(0);
+  expect(b.s.ops.some(x => x.op === 'suppliers.create' || x.op === 'suppliers.assign')).toBe(false);
 });
