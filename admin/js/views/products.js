@@ -87,6 +87,7 @@ async function renderList(ctx) {
           <a class="catalog-mobile-open" href="#/products/${p.public_code}" aria-label="افتحي تفاصيل ${p.title}">
             <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
+            ${p.supplier_name ? html`<span class="muted" data-supplier-label>المورد: ${p.supplier_name}</span>` : ''}
             ${p.stock_low ? html`<span class="badge warn">${t('products.lowStock')}</span>` : ''}</span></span>
             <span class="row-end"><b class="num">${priceText(p)}</b>${statusBadge(p.status)}</span>
           </a>
@@ -121,7 +122,7 @@ async function renderList(ctx) {
           }
           return html`<tr data-code="${p.public_code}">
           <td><div class="cell-main"><span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-            <div class="row-main"><a class="rowlink" href="#/products/${p.public_code}">${p.title}</a><span class="row-meta"><span class="code">${p.public_code}</span>${p.is_new ? html`<span class="badge info plain">${t('products.isNew')}</span>` : ''}</span></div></div></td>
+            <div class="row-main"><a class="rowlink" href="#/products/${p.public_code}">${p.title}</a><span class="row-meta"><span class="code">${p.public_code}</span>${p.supplier_name ? html`<span class="muted" data-supplier-label>المورد: ${p.supplier_name}</span>` : ''}${p.is_new ? html`<span class="badge info plain">${t('products.isNew')}</span>` : ''}</span></div></div></td>
           <td>${can('products.edit') ? html`<select class="select" data-cat style="min-width:140px;min-height:36px" aria-label="${t('products.category')}">${categories.map((c) => html`<option ${c.name === p.category ? 'selected' : ''}>${c.name}</option>`)}</select>` : p.category}</td>
           <td class="num">${can('products.price') ? html`<button class="btn btn-ghost btn-sm" data-price title="${t('products.quickPrice')}">${priceText(p)}</button>` : priceText(p)}</td>
           <td class="num">${p.stock_total === null ? html`<span class="muted">—</span>` : html`${fmtNum(p.stock_total)}${p.stock_low ? html` <span class="badge warn">${t('products.lowStock')}</span>` : ''}`}</td>
@@ -650,7 +651,7 @@ const TABS = {
           <option value="">${t('editor.shippingNone')}</option>${(d.shipping_profiles || []).map((s) => html`<option value="${s.key}" ${p.shipping_profile?.key === s.key ? 'selected' : ''}>${s.name}</option>`)}</select></label>
         ${can('products.edit') || can('products.price') || can('shipping.manage') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-display>${t('app.save')}</button></div>` : ''}</section></div>`);
     const supplierState = initSupplierPicker({ root: body, selectId: '#e-supplier', statusId: '#e-supplier-note',
-      call, currentId: d.supplier_id, isOwner: can('owner') });
+      call, currentId: d.supplier_id, isOwner: can('owner'), editable: can('owner') && p.status !== 'archived' });
     const saveSupplier = $('[data-save-supplier]', body);
     if (saveSupplier) saveSupplier.addEventListener('click', async e => {
       await supplierState.ready;
