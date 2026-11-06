@@ -6,7 +6,6 @@ import { call, uploadProductImage, mediaUrl } from './api.js';
 import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from './image-optimize.js';
 import { variantChoices } from './quick-variants.js';
 import { statusAction, prepublishHints, STATUS_LABELS } from './product-lifecycle.js';
-import { hexOf } from '../../js/colour-palette.js?v=20261106-colourpicker';
 
 const safeHex = (x) => /^#[\da-fA-F]{6}$/.test(x || '') ? x : '#777777';
 const safeImage = (x) => {
@@ -37,7 +36,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       item.append(img);
     }
     const dot = document.createElement('span');
-    dot.className = 'quick-dot'; dot.style.background = hexOf(member.color?.name) || safeHex(member.color?.hex);
+    dot.className = 'quick-dot'; dot.style.background = safeHex(member.color?.hex);
     const title = document.createElement('b');
     title.textContent = member.color?.name || member.product.title || member.product.public_code;
     item.append(dot, title);
@@ -83,7 +82,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     panel.innerHTML = [
       '<div class="quick-section">',
       '<div class="quick-header"><b>٢. اختاري اللون والمقاس</b><span class="code">' + esc(code) + '</span></div>',
-      hasColourOption ? '<label class="field"><span>اللون (ممكن لونين مع بعض)</span><select class="select" data-quick-internal-colour-select aria-label="اختاري لون المنتج من القائمة">' + colourOptions.map(c => '<option value="' + esc(c) + '"' + (c === selectedColour ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select></label><div class="quick-sizes" role="group" aria-label="اختاري لون المنتج">' + colourButtons + '</div>' : '',
+      hasColourOption ? '<span class="muted">لون الاختيار:</span><div class="quick-sizes" role="group" aria-label="اختاري لون المنتج">' + colourButtons + '</div>' : '',
       '<span class="muted">المقاس:</span><div class="quick-sizes" role="group" aria-label="اختاري مقاس المنتج">' + sizeOptions + '</div>',
       hasUnspecifiedSize ? '<p class="muted quick-help">المنتج ده مش متسجل له مقاسات مختلفة. المعروض حاليًا اختيار واحد فقط؛ مش هنخترع مقاسات ممكن توصل غلط للعميلة.</p>' : '',
       '</div>',
@@ -120,11 +119,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     $$('[data-quick-position]', panel).forEach(button => button.addEventListener('click', () => {
       position = Number(button.dataset.quickPosition); show(detail);
     }));
-    $('[data-quick-internal-colour-select]', panel)?.addEventListener('change', (event) => {
-      const target = rows.find(r => r.colour === event.target.value);
-      if (target) { position = target.position; show(detail); }
-    });
-    $('[data-quick-internal-colour]', panel).forEach(button => button.addEventListener('click', () => {
+    $$('[data-quick-internal-colour]', panel).forEach(button => button.addEventListener('click', () => {
       const target = rows.find(r => r.colour === button.dataset.quickInternalColour);
       if (target) { position = target.position; show(detail); }
     }));
