@@ -413,7 +413,7 @@ test('free offline description enhancer: new draft, undo, existing edit, and no 
   await page.locator('#c-desc').fill('بلوفر مخطط بيبي بلو وبني، مقاس واحد');
   const before = b.s.ops.length;
   await page.locator('[data-description-helper] [data-desc-improve]').click();
-  await expect(page.locator('#c-desc')).toContainText('بلوفر مخطط بيبي بلو وبني');
+  await expect(page.locator('#c-desc')).toHaveValue(/بلوفر مخطط بيبي بلو وبني/);
   await expect(page.locator('#c-desc')).toHaveValue(/تفاصيل المنتج:/);
   await expect(page.locator('[data-description-helper] [data-desc-undo]')).toBeVisible();
   expect(b.s.ops.length).toBe(before); // purely local; no API called by "improve"
@@ -436,7 +436,7 @@ test('free offline description enhancer: new draft, undo, existing edit, and no 
   await expect(page.locator('#e-desc')).toHaveValue(/• خامة قطن/);
   // Editing the local textarea never persists until the staff explicitly clicks Save.
   expect(b.s.product.description).toBe(improved);
-  await page.locator('#f-text button[type="submit"], #f-text button:not([type])').last().click();
+  await page.locator('#f-text [data-save-text]').click();
   await expect.poll(() => b.s.product.description).toContain('خامة قطن');
   expect(b.s.product.status).toBe('draft');
   expect(b.s.ops.some(x => x.op === 'products.publish')).toBe(false);
