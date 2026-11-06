@@ -51,3 +51,20 @@ test("variant cost falls back to the model default, else unknown", () => {
   assert.equal(costOf(costs, 0), 35000);
   assert.equal(costOf({ variants: [] }, 0), null);
 });
+
+// Characterisation, NOT a policy change: pins what the dashboard counts today for every order stage. The server
+// (profit.summary in the private backend) sends confirmed orders only: pending and cancelled never arrive; its stage
+// mapping is delivered|return_requested → "delivered", returned → returned=true, anything else → "confirmed".
+test("profit per order stage, as implemented today", () => {
+  const row = (order_code, stage) => ({ order_code, quantity: 1, line_total_minor: 100000, unit_cost_minor: 60000,
+    status: ["delivered", "return_requested"].includes(stage) ? "delivered" : "confirmed", returned: stage === "returned" });
+  const counted = (stage) => summarizeLines([row("X", stage)]).orders === 1;
+  assert.equal(counted(null), true);              // confirmed, not started
+  assert.equal(counted("preparing"), true);
+  assert.equal(counted("shipped"), true);
+  assert.equal(counted("delivered"), true);
+  assert.equal(counted("return_requested"), true); // open owner decision: still counted until the return completes
+  assert.equal(counted("returned"), false);
+  // A cancelled or pending order is never sent by the server; if one ever arrived it would not be counted either.
+  assert.equal(summarizeLines([{ ...row("C", null), status: "cancelled" }, { ...row("P", null), status: "pending" }]).orders, 0);
+});

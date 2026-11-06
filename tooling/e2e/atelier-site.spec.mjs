@@ -4,11 +4,11 @@ import { test, expect } from "@playwright/test";
 // No order POST, Supabase write, or production-side requests.
 test("Atelier storefront + admin route styles are served", async ({ request }) => {
   const routes = [
-    ["/", "/css/atelier-site.css?v=20261105-soft"],
-    ["/p/?code=SS-1011", "/css/atelier-site.css?v=20261105-soft"],
-    ["/cart/", "/css/atelier-site.css?v=20261105-soft"],
-    ["/checkout/", "/css/atelier-site.css?v=20261105-soft"],
-    ["/order-success/", "/css/atelier-site.css?v=20261105-soft"],
+    ["/", "/css/atelier-site.css?v=20261106-dark"],
+    ["/p/?code=SS-1011", "/css/atelier-site.css?v=20261106-dark"],
+    ["/cart/", "/css/atelier-site.css?v=20261106-dark"],
+    ["/checkout/", "/css/atelier-site.css?v=20261106-dark"],
+    ["/order-success/", "/css/atelier-site.css?v=20261106-dark"],
     ["/admin/", "/admin/css/atelier-admin.css?v=20261105-models"],
   ];
   for (const [url, stylesheet] of routes) {
@@ -18,6 +18,7 @@ test("Atelier storefront + admin route styles are served", async ({ request }) =
     expect(html, url + " stylesheet").toContain(url === "/admin/" ? stylesheet.replace(/^\/admin\//, "") : stylesheet.replace(/^\//, ""));
     const css = await request.get(stylesheet);
     expect(css.ok(), stylesheet + " status").toBe(true);
-    expect(await css.text()).toContain("#765268");
+    // The admin keeps its own Soft Luxury sheet; the storefront is Dark Luxury (neon purple buy buttons).
+    expect(await css.text()).toContain(url === "/admin/" ? "#765268" : "#D100D1");
   }
 });

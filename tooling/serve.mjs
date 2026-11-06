@@ -15,7 +15,8 @@ const ORIGIN = `http://127.0.0.1:${PORT}`;
 const PROD = "https://byluoipdunralsurwebt.supabase.co";
 const DELAY = Number(process.env.MOCK_DELAY_MS || 0);
 // Shipping per governorate (piastres), like the Owner-managed shipping table.
-const REGIONS = [{ key: "cairo", label: "القاهرة", fee: 7000 }, { key: "giza", label: "الجيزة", fee: 8000 }, { key: "aswan", label: "أسوان", fee: 12000 }];
+// Same order as production (alphabetical, Aswan first): the pages must lift Cairo and Giza themselves.
+const REGIONS = [{ key: "aswan", label: "أسوان", fee: 12000 }, { key: "cairo", label: "القاهرة", fee: 7000 }, { key: "giza", label: "الجيزة", fee: 8000 }];
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".webp": "image/webp", ".avif": "image/avif",
   ".jpg": "image/jpeg", ".png": "image/png", ".woff2": "font/woff2", ".txt": "text/plain" };

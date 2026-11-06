@@ -102,7 +102,8 @@
   }
 
   /* ---------- config-driven bits ---------- */
-  if (CFG.demo) $('#demoNote').hidden = false;
+  // The sample-data label exists only on the ?design-preview=1 comparison page, never in the live HTML.
+  if (CFG.demo) { const n = $('#demoNote'); n.textContent = 'معاينة · منتجات وأسعار تجريبية'; n.hidden = false; }
   // No dead '#' links on a public store: hide unresolved destinations.
   // Owner-provided contact info from WOMEN Supabase can re-enable these links.
   $$('[data-wa]').forEach(a => {
@@ -383,7 +384,7 @@
       <article class="card" style="--k:${k}">
         <div class="shot" style="--c:${cssColor(p.c)}">
           <a class="shot-link" href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}" aria-label="افتحي تفاصيل ${esc(p.name)}">
-            ${p.image ? `<img src="${esc(p.image)}" ${p.smallImage ? `srcset="${esc(p.smallImage)} 400w, ${esc(p.image)} 560w" sizes="(max-width: 699px) calc((100vw - 60px) / 2), (max-width: 979px) calc((100vw - 80px) / 3), 300px"` : ""} alt="${esc(p.name)}" width="600" height="800" data-fallback="${esc(p.originalImage && p.originalImage !== p.image ? p.originalImage : "")}" loading="lazy" decoding="async">` : '<span class="ph">صورة المنتج</span>'}
+            ${p.image ? `<img src="${esc(p.image)}" ${p.smallImage ? `srcset="${esc(p.smallImage)} 400w, ${esc(p.image)} 560w" sizes="(max-width: 699px) calc((100vw - 60px) / 2), (max-width: 979px) calc((100vw - 80px) / 3), 300px"` : ""} alt="${esc(p.name)}" width="600" height="800" data-fallback="${esc(p.originalImage && p.originalImage !== p.image ? p.originalImage : "")}" ${k < 2 ? `loading="eager"${k === 0 ? ' fetchpriority="high"' : ''}` : 'loading="lazy"'} decoding="async">` : '<span class="ph">صورة المنتج</span>'}
             <span class="shot-link-label">شوفي التفاصيل ↗</span>
           </a>
           ${p.was ? `<span class="badge">خصم ${Math.round((1 - p.price / p.was) * 100)}%</span>` : p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}

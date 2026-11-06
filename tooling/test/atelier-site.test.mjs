@@ -4,22 +4,25 @@ import { readFile } from "node:fs/promises";
 
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 const storeRoutes = [
-  ["index.html", 'href="css/atelier-site.css?v=20261105-soft"', 'class="atelier-home"'],
-  ["p/index.html", 'href="../css/atelier-site.css?v=20261105-soft"', 'class="atelier-product"'],
-  ["cart/index.html", 'href="../css/atelier-site.css?v=20261105-soft"', 'class="atelier-cart"'],
-  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261105-soft"', 'class="atelier-checkout"'],
-  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261105-soft"', 'class="atelier-success"'],
+  ["index.html", 'href="css/atelier-site.css?v=20261106-dark"', 'class="atelier-home"'],
+  ["p/index.html", 'href="../css/atelier-site.css?v=20261106-dark"', 'class="atelier-product"'],
+  ["cart/index.html", 'href="../css/atelier-site.css?v=20261106-dark"', 'class="atelier-cart"'],
+  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261106-dark"', 'class="atelier-checkout"'],
+  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261106-dark"', 'class="atelier-success"'],
 ];
 
 test("Atelier shared style loads on every public storefront step", async () => {
   const sheet = await source("css/atelier-site.css");
-  assert.match(sheet, /--ink:#302630/);
-  assert.match(sheet, /--accent:#765268/);
-  assert.match(sheet, /--mirror:#F8F5F2/);
+  assert.match(sheet, /--ink:#FFFFFF/);
+  assert.match(sheet, /--accent:#D100D1/);
+  assert.match(sheet, /--mirror:#050B1C/);
+  assert.match(sheet, /--cyan:#2ED9D1/);
+  assert.match(sheet, /--surface:#F4F6FA/); // product photo canvas stays light: true garment colours
   for (const [path, href, klass] of storeRoutes) {
     const html = await source(path);
     assert.ok(html.includes(href), path + " lacks Atelier stylesheet");
     assert.ok(html.includes(klass), path + " lacks its route scope");
+    assert.ok(html.includes('<meta name="theme-color" content="#050B1C">'), path + " theme-color is not Midnight Navy");
     assert.doesNotMatch(html, /المعاينة متاحة عند الاستلام/, path + " has an unverified promise");
   }
 });

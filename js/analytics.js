@@ -2,8 +2,19 @@
  * Measurement ID sourced from SELECT SHOP's archived GA4 setup.
  * No user phone, shipping details, order identifiers or form values are sent.
  */
+/* Owner/QA opt-out, this browser only: open any page with ?notrack=1 before a test order so it never reaches GA4 or
+ * the Meta Pixel (a fake Purchase would skew ad learning); ?notrack=0 turns tracking back on. */
+window.__womenNoTrack = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get("notrack");
+    if (q === "1") localStorage.setItem("women.notrack", "1");
+    if (q === "0") localStorage.removeItem("women.notrack");
+    return localStorage.getItem("women.notrack") === "1";
+  } catch { return false; } // storage blocked (some in-app browsers): normal tracking
+})();
 (() => {
   "use strict";
+  if (window.__womenNoTrack) return;
   const measurementId = "G-NB8PZCX35Z";
   const host = location.hostname.toLowerCase();
   if (host !== "selectshopeg.com" && host !== "www.selectshopeg.com") return;
@@ -34,6 +45,7 @@
  */
 (() => {
   "use strict";
+  if (window.__womenNoTrack) return;
   if (!["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase())) return;
   if (new URLSearchParams(location.search).get("design-preview") === "1") return;
   if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname) && !location.pathname.startsWith("/lp/")) return;

@@ -6,11 +6,12 @@ import vm from "node:vm";
 // js/analytics.js only runs on the production host; run it in a sandbox that pretends to be selectshopeg.com and
 // record what GA4 and the Meta Pixel would receive. No network: the injected <script> tags are only collected.
 const SOURCE = await readFile(new URL("../../js/analytics.js", import.meta.url), "utf8");
-function run(url) {
+function run(url, store = new Map()) {
   const u = new URL(url);
   const scripts = [];
   const window = { location: u };
-  const context = { window, location: u, URL, URLSearchParams, Set, Array, Number, Date,
+  const localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+  const context = { window, location: u, localStorage, URL, URLSearchParams, Set, Array, Number, Date,
     document: { createElement: () => ({}), head: { appendChild: (s) => scripts.push(s.src) } } };
   window.document = context.document;
   vm.runInNewContext(SOURCE, context);
@@ -43,4 +44,15 @@ test("GA4 page location keeps marketing parameters and drops everything else", (
   const r = run("https://selectshopeg.com/lp/?p=SS-1008&utm_id=9&phone=01012345678#x");
   assert.equal(r.ga, true);
   assert.equal(r.gaLocation, "https://selectshopeg.com/lp/?p=SS-1008&utm_id=9");
+});
+
+test("?notrack=1 keeps this browser's test orders out of GA4 and the Pixel on every later page; ?notrack=0 undoes it", () => {
+  const store = new Map();
+  const off = run("https://selectshopeg.com/lp/ss-1008/?notrack=1", store);
+  assert.equal(off.ga || off.pixel || off.scripts.length > 0, false);
+  const later = run("https://selectshopeg.com/lp/ss-1008/?fbclid=abc", store); // same browser, next page
+  assert.equal(later.ga || later.pixel, false);
+  const back = run("https://selectshopeg.com/lp/ss-1008/?notrack=0", store);
+  assert.equal(back.ga, true);
+  assert.equal(run("https://selectshopeg.com/lp/ss-1008/?fbclid=abc", store).pixel, true);
 });

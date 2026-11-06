@@ -200,6 +200,8 @@ addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLow
 let navSeq = 0;
 async function route() {
   if (!state.session) return;
+  if ((dirty || layerDirty) && location.hash !== shownHash && !leaveUnsaved()) { history.replaceState(null, '', shownHash); return; }
+  dirty = layerDirty = false; shownHash = location.hash;
   const nav = ++navSeq;
   const [pathPart, query = ''] = location.hash.replace(/^#\/?/, '').split('?');
   const [name, ...rest] = pathPart.split('/');
@@ -219,7 +221,8 @@ async function route() {
   state.view?.destroy?.();
   state.view = mod;
   try {
-    await mod.render({ el, params: rest, query: new URLSearchParams(query), session: state.session, can, go, setTitle: (x) => { $('#page-title', app).textContent = x; } });
+    // A view moves on (go) only after its own save, so that is never "leaving unsaved changes".
+    await mod.render({ el, params: rest, query: new URLSearchParams(query), session: state.session, can, go: (path) => { dirty = layerDirty = false; go(path); }, setTitle: (x) => { $('#page-title', app).textContent = x; } });
   } catch (err) {
     console.error(err);
     render(el, html`<div class="empty">${icon('alert')}<b>${t('err.server')}</b><button class="btn btn-ghost" data-retry>${t('app.retry')}</button></div>`);
@@ -228,6 +231,26 @@ async function route() {
   if (!rest.length) scrollTo({ top: 0 });
 }
 addEventListener('hashchange', route);
+
+// ---------- unsaved changes ----------
+// Typing in a screen or sheet marks it unsaved; any success message clears it. Leaving the screen or closing
+// the tab with unsaved typing asks first, so a half-filled model is not lost by a stray tap.
+// A sheet (like the new-model form) counts on its own: closing it by the X, Escape or a tap outside asks too.
+let dirty = false, layerDirty = false, shownHash = location.hash;
+const leaveUnsaved = () => confirm(getLang() === 'en' ? 'You have unsaved changes. Leave without saving?' : 'فيه تعديلات لسه ما اتحفظتش. تسيبي الصفحة من غير حفظ؟');
+const tracked = (f) => f instanceof Element && f.matches('input,textarea,select') && !f.matches('[type=search],[type=file],[data-nodirty]')
+  && !f.closest('.toolbar,.searchbox,.chips');
+document.addEventListener('input', (e) => {
+  if (!state.session || !tracked(e.target)) return;
+  if (e.target.closest('#layer')) layerDirty = true; else if (e.target.closest('#view')) dirty = true;
+}, true);
+const islandEl = document.getElementById('island'), layerEl = document.getElementById('layer');
+if (islandEl) new MutationObserver(() => { if (islandEl.classList.contains('ok')) dirty = layerDirty = false; }).observe(islandEl, { attributes: true, attributeFilter: ['class'] });
+if (layerEl) new MutationObserver(() => { layerDirty = false; }).observe(layerEl, { childList: true }); // a sheet opened or closed
+const holdSheet = (e) => { if (layerDirty && !leaveUnsaved()) { e.preventDefault(); e.stopImmediatePropagation(); } };
+document.addEventListener('click', (e) => { if (e.target instanceof Element && e.target.closest('#layer [data-close]')) holdSheet(e); }, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && e.target instanceof Element && e.target.closest('#layer')) holdSheet(e); }, true);
+addEventListener('beforeunload', (e) => { if (dirty || layerDirty) { e.preventDefault(); e.returnValue = ''; } });
 
 // ---------- boot ----------
 async function boot() {

@@ -15,6 +15,7 @@ async function recordAnonymousProductView(code) {
   if (!validCode(code)) return;
   try {
     if (navigator.globalPrivacyControl === true || navigator.doNotTrack === "1") return;
+    if (localStorage.getItem("women.notrack") === "1") return; // owner test browser (?notrack=1, js/analytics.js)
     let visitorKey = localStorage.getItem(PRODUCT_VIEW_KEY);
     if (!/^[0-9a-f]{64}$/.test(visitorKey || "")) {
       const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -394,7 +395,9 @@ async function showCheckout(){
     items:lines.map(l=>({item_id:l.publicCode, quantity:l.quantity}))});
   try{
     const regions=await api("/regions");
-    regions.regions.forEach(r=>{const op=make("option",r.label);op.value=r.key;select.append(op);});
+    // Cairo and Giza first, like the product page.
+    const first=r=>r.label.trim()==="القاهرة"?0:r.label.trim()==="الجيزة"?1:2;
+    regions.regions.sort((a,b)=>first(a)-first(b)).forEach(r=>{const op=make("option",r.label);op.value=r.key;select.append(op);});
   }catch(e){status(msg(e),true);return;}
   const refresh=async()=>{
     quote=null;btn.disabled=true;
