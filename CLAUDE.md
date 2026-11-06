@@ -28,9 +28,11 @@ Live storefront + admin for SELECT SHOP WOMEN (women's clothing, Egypt, Cash on 
 11. Ads: never create, start or resume a campaign, and never change a budget, until a Production end-to-end test has passed and the owner approves. Any new campaign is created Paused.
 12. This repo is public. Internal operational or security details (DB internals, permission gaps, troubleshooting of production) go to the private backend repo, not here.
 
-## Design system (Soft Luxury)
-Ivory #F8F5F2 · Mauve #765268 · Dusty Rose #D4A4AF · Champagne #C3A582 · Ink Plum #302630 text.
-Egyptian Arabic, RTL, mobile-first, tap targets ≥ 44px, readable contrast. Product photos matter more than decoration.
+## Design system (Dark Luxury, storefront + LP since 2026-11-06)
+Midnight Navy #050B1C ground · Deep Navy #0B1730 cards · Elevated #111F3A inputs · White #FFFFFF text · Muted #AAB5C8 · Border #253452.
+Neon Purple #D100D1 (hover #AE00B8) for buy buttons only · Electric Cyan #2ED9D1 for selection, links and focus · product photos on #F4F6FA.
+Tokens live in `css/atelier-site.css` and the "Dark Luxury" block of `tooling/build-lp.mjs`. Admin keeps its own Soft Luxury sheet. `js/colour-palette.js` = real garment colours, never theme.
+Egyptian Arabic, RTL, mobile-first, tap targets ≥ 44px, readable contrast, no heavy glow. Product photos matter more than decoration.
 
 ## Quality gate before any PR
 ```
