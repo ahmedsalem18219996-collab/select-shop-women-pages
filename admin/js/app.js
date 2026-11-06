@@ -11,7 +11,7 @@ const state = { session: null, route: null, view: null };
 // ---------- theme ----------
 function applyTheme(next) {
   const theme = next || (() => { try { return localStorage.getItem('wa.theme'); } catch { return null; } })()
-    || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    || 'dark'; // Same dark-first default as the storefront; preserve explicit saved light theme
   document.documentElement.dataset.theme = theme;
   try { if (next) localStorage.setItem('wa.theme', next); } catch { /* ignore */ }
 }
