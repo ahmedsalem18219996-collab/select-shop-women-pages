@@ -598,7 +598,7 @@ const TABS = {
           </div>
           <p class="muted" data-desc-message role="status" aria-live="polite">راجعي الوصف المحسّن قبل حفظ التعديل. مفيش نشر تلقائي.</p>
         </div>` : ''}
-        ${can('products.edit') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary">${t('app.save')}</button></div>` : ''}</form>
+        ${can('products.edit') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-text>${t('app.save')}</button></div>` : ''}</form>
       <section class="card stack"><div class="card-head"><h3>${t('editor.display')}</h3></div>
         <div class="grid2"><label class="field"><span>${t('editor.category')}</span><select class="select" id="e-cat" ${can('products.edit') ? '' : 'disabled'}>${categories.map((c) => html`<option ${c.name === d.card.category ? 'selected' : ''}>${c.name}</option>`)}</select></label>
           <label class="field"><span>${t('editor.basePrice')}</span><div class="input-money"><input id="e-price" inputmode="decimal" value="${p.base_price ? (p.base_price.amount_minor / 100) : ''}" ${can('products.price') ? '' : 'disabled'}><span>EGP</span></div></label></div>
@@ -609,7 +609,7 @@ const TABS = {
     if (can('products.edit')) mountDescriptionEnhancer(body, { textarea: '#e-desc', titleInput: '#e-title' });
     $('#f-text', body).addEventListener('submit', async (e) => {
       e.preventDefault();
-      const res = await withBusy($('button', e.currentTarget), () => call('products.update_text', { code, title: $('#e-title', body).value.trim(), description: $('#e-desc', body).value.trim(), updated_at: p.updated_at }));
+      const res = await withBusy($('[data-save-text]', e.currentTarget), () => call('products.update_text', { code, title: $('#e-title', body).value.trim(), description: $('#e-desc', body).value.trim(), updated_at: p.updated_at }));
       if (res.outcome === 'updated') { done(); reload(); } else if (res.outcome === 'unchanged') done(t('settings.unchanged'));
       else if (res.outcome === 'conflict') { island('error', t('editor.conflict')); reload(); } else fail(res);
     });
