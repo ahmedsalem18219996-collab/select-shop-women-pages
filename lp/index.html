@@ -223,14 +223,46 @@ body:not([data-campaign]) .head{position:relative;z-index:1;margin:-16px 12px 0;
 h1{font-size:44px}.price{font-size:28px}
 .info{gap:22px}
 }
+/* Product gallery (2026-11-06): the whole garment stays visible (3:4 photos shown with contain, never cropped or covered),
+   one colour's photos at a time, thumbnails under the photo (beside it on desktop), arrows, swipe and a 1/4 counter.
+   Id selectors win over the older layered skins above (hero heights, 4:5 boxes, the floating card). */
+#lpStage{position:relative;min-width:0;touch-action:pan-y}
+#lpStage [hidden]{display:none!important}
+#lpHero{display:block;width:100%;height:auto;aspect-ratio:3/4;margin:0;border-radius:0;overflow:hidden;background:var(--surface)}
+#lpHero img{width:100%;height:100%;object-fit:contain;object-position:50% 50%;border-radius:0}
+#lpStage .nav{position:absolute;top:50%;translate:0 -50%;z-index:1;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid rgba(255,255,255,.3);border-radius:0;background:rgba(5,11,28,.6);color:#fff;cursor:pointer}
+#lpStage .nav:hover{background:rgba(5,11,28,.85)}
+#lpPrev{inset-inline-start:8px}#lpNext{inset-inline-end:8px}
+#lpCount{position:absolute;top:10px;inset-inline-end:10px;z-index:1;padding:2px 10px;background:rgba(5,11,28,.72);color:#fff;font:500 12px/1.7 var(--f);font-variant-numeric:tabular-nums;letter-spacing:.08em;pointer-events:none}
+#lpGallery{order:0;display:flex;gap:8px;margin:0;padding:0}
+#lpGallery:empty{display:none}
+#lpGallery button{flex:none;width:48px;aspect-ratio:3/4;padding:0;border:1px solid var(--line);border-radius:0;background:var(--surface);cursor:pointer;overflow:hidden}
+#lpGallery button[aria-current="true"]{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan)}
+#lpGallery img{width:100%;height:100%;aspect-ratio:auto;object-fit:contain;border-radius:0;cursor:pointer;vertical-align:top;background:none}
+@media(max-width:899px){
+#lpStage{order:0;margin-inline:-16px}
+#lpGallery{margin-top:-6px}
+body:not([data-campaign]) .atelier-heading,body:not([data-campaign]) .head{margin:0;padding:0;border:0}
+}
+@media(min-width:560px) and (max-width:899px){#lpStage,#lpGallery{width:min(100%,520px);align-self:center;margin-inline:auto}}
+@media(min-width:900px){
+.media{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:start}
+#lpStage{grid-column:2;grid-row:1}
+#lpGallery{grid-column:1;grid-row:1;flex-direction:column}
+#lpGallery button{width:56px}
+#lpHero{max-height:calc(100dvh - 110px)}
+}
 </style>
 </head>
 <body>
 <header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a class="jump" href="#lpForm">اطلبي إطلالتك</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a></header>
 <main class="page">
 <div class="media">
-<picture class="hero" id="lpHero"><img alt="" width="800" height="1000" decoding="async" onload="document.documentElement.classList.add('hl')" onerror="document.documentElement.classList.add('hl')"></picture>
-<div class="gallery" id="lpGallery"></div>
+<div class="stage" id="lpStage">
+<picture class="hero" id="lpHero"><img alt="" width="800" height="1067" decoding="async" onload="document.documentElement.classList.add('hl')" onerror="document.documentElement.classList.add('hl')"></picture>
+<button type="button" class="nav" id="lpPrev" aria-label="الصورة السابقة" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button><button type="button" class="nav" id="lpNext" aria-label="الصورة التالية" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button><span class="count" id="lpCount" dir="ltr" aria-live="polite" hidden>1/0</span>
+</div>
+<div class="gallery" id="lpGallery" aria-label="صور القطعة"></div>
 </div>
 <div class="info">
 <p class="atelier-heading">تفاصيل تكمّل إطلالتك</p>
@@ -262,6 +294,6 @@ h1{font-size:44px}.price{font-size:28px}
 <script type="application/json" id="lp-data">{"auto":true}</script>
 <script src="/js/catalog-thumbs.js"></script>
 <script id="lp-hero">(()=>{const w=window,l=w.__lp;if(!l||!l.product)return;l.product.then(r=>r.ok?r.clone().json():null).then(d=>{const m=((d&&d.product&&d.product.media)||[]).filter(x=>/^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[0-9a-f]{32}\.(jpg|png|webp)$/.test(x.url||"")).sort((a,b)=>(b.isPrimary===true)-(a.isPrimary===true)||a.position-b.position)[0],img=document.querySelector("#lpHero img");if(!m||!img||img.src)return;const f=m.url.split("/").pop(),b="/assets/catalog-thumbs/"+f;img.fetchPriority="high";if(new Set(w.SELECT_THUMBNAILS||[]).has(f)){img.sizes="(min-width: 900px) 560px, 100vw";img.srcset=b+".w400.webp 400w, "+b+".webp 559w";img.src=b+".webp"}else img.src=m.url}).catch(()=>{})})()</script>
-<script type="module" src="/lp/runtime.js?v=20261030-4-models1105"></script>
+<script type="module" src="/lp/runtime.js?v=20261030-4-gallery1106"></script>
 </body>
 </html>

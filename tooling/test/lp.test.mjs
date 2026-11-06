@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
-import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet, openValues, colourIndex, colourMedia } from "../../lp/runtime.js";
+import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet, photoFiles, openValues, colourIndex, colourMedia } from "../../lp/runtime.js";
 import { render, renderShell, shellRoutes, photos, esc, AB_SNIPPET, PREFETCH, colorsOf, colorData, readexFaces } from "../build-lp.mjs";
 
 test("landing copy states availability is pending and makes no inspection promise", () => {
@@ -98,8 +98,28 @@ test("model colours: legacy single code, validation, per-colour image paths", ()
   assert.throws(() => colorsOf({ id: "t", colors: [{ code: "SS-9001", name: "a", hex: "#000000" }, { code: "SS-9002", name: "b", hex: "red" }] }), /needs a name/);
   assert.throws(() => colorsOf({ id: "t", colors: [{ code: "SS-9001", name: "a", hex: "#000000" }, { code: "SS-9001", name: "b", hex: "#111111" }] }), /duplicate/);
   const [c] = colorData({ id: "t", code: "SS-9001" }, { "SS-9001": { ...sized, media: [media(1, true), media(2, false)] } });
-  assert.equal(c.hero.src, "img/SS-9001/0-800.webp");
-  assert.deepEqual(c.gallery, ["img/SS-9001/1-320.webp"]);
+  assert.equal(c.dir, "img/SS-9001/");
+  assert.equal(c.zoom.length, 2); // one original per gallery photo, same order
+  assert.deepEqual(photoFiles(c.dir, 0), { src: "img/SS-9001/0-800.webp", thumb: "img/SS-9001/0-320.webp",
+    avif: "img/SS-9001/0-480.avif 480w, img/SS-9001/0-800.avif 800w", webp: "img/SS-9001/0-480.webp 480w, img/SS-9001/0-800.webp 800w" });
+  assert.deepEqual(photoFiles(c.dir, 1), { src: "img/SS-9001/1-800.webp", thumb: "img/SS-9001/1-320.webp" });
+  // reused colour pages point at the original page's photos
+  assert.equal(colorData({ id: "m", reuse_images: true, colors: [{ code: "SS-9001", name: "a", hex: "#000000" }, { code: "SS-9002", name: "b", hex: "#111111" }] },
+    { "SS-9001": { ...sized, media: [media(1, true)] }, "SS-9002": { ...sized, media: [media(2, true)] } })[1].dir, "../ss-9002/img/SS-9002/");
+});
+
+test("gallery markup: one photo has no arrows, counter or thumbnails; several photos get all three, first one current", () => {
+  const page = { id: "t", code: "SS-9001", benefits: ["x"], video: null };
+  const one = render(page, { "SS-9001": { ...sized, media: [media(1, true)] } });
+  assert.match(one, /id="lpPrev"[^>]* hidden/);
+  assert.match(one, /id="lpCount"[^>]* hidden>1\/1</);
+  assert.match(one, /<div class="gallery" id="lpGallery" aria-label="صور القطعة"><\/div>/);
+  const many = render(page, { "SS-9001": { ...sized, media: [media(1, true), media(2, false), media(3, false)] } });
+  assert.doesNotMatch(many, /id="lpPrev"[^>]* hidden/);
+  assert.match(many, /id="lpCount" dir="ltr" aria-live="polite">1\/3</);
+  assert.equal((many.match(/<button type="button" data-i="/g) || []).length, 3);
+  assert.match(many, /data-i="0" aria-label="اعرضي الصورة 1 من 3" aria-current="true"><img src="img\/SS-9001\/0-320.webp"/);
+  assert.match(many, /<img src="img\/SS-9001\/0-800.webp"[^>]* width="800" height="1067"/); // 3:4, the uncropped photo shape
 });
 
 test("generator: escapes text, primary photo first, refuses missing price, inlines only Readex", () => {

@@ -208,6 +208,7 @@ async function showProduct() {
         else zoomed.removeAttribute("src");
         zoomed.alt=src.altText||p.title;
         $("#photoCount").textContent="الصورة "+(currentPhoto+1)+" من "+photos.length;
+        const mainCount=$("#photoMainCount");if(mainCount)mainCount.textContent=(currentPhoto+1)+"/"+photos.length;
         thumbs.querySelectorAll("button").forEach((b,i)=>b.setAttribute("aria-pressed",String(i===currentPhoto)));
       };
       photos.forEach((im,i)=>{
@@ -218,6 +219,22 @@ async function showProduct() {
         thumbs.append(b);
       });
       show(0);openZoom.disabled=false;
+      // Main photo: arrows, 1/4 and swipe (RTL: a finger moving right brings in the next photo, like ArrowLeft).
+      const frame=document.querySelector(".commerce-photo-frame");
+      if(photos.length>1&&frame){
+        ["#photoMainPrev","#photoMainNext","#photoMainCount"].forEach(s=>{const n=$(s);if(n)n.hidden=false;});
+        $("#photoMainPrev")?.addEventListener("click",()=>show(currentPhoto-1));
+        $("#photoMainNext")?.addEventListener("click",()=>show(currentPhoto+1));
+        let sx=NaN,sy=0,swipedAt=-1e9;
+        frame.addEventListener("pointerdown",e=>{if(e.pointerType!=="mouse"){sx=e.clientX;sy=e.clientY;}});
+        frame.addEventListener("pointercancel",()=>{sx=NaN;});
+        frame.addEventListener("pointerup",e=>{
+          const dx=e.clientX-sx,dy=e.clientY-sy;sx=NaN;
+          if(Math.abs(dx)>40&&Math.abs(dx)>1.5*Math.abs(dy)){swipedAt=e.timeStamp;show(currentPhoto+(dx>0?1:-1));}
+        });
+        // A swipe is not a tap: the full-size viewer must not open at the end of it.
+        frame.addEventListener("click",e=>{if(e.timeStamp-swipedAt<350){e.stopPropagation();e.preventDefault();}},true);
+      }
       openZoom.addEventListener("click",()=>{
         if(!viewer.open){zoomed.src=photos[currentPhoto].url;viewer.showModal();history.pushState({...(history.state||{}),womenPhotoViewer:true},"");$("#photoClose").focus();}
       });
@@ -232,7 +249,7 @@ async function showProduct() {
       viewer.addEventListener("pointerup",e=>{
         if(!touchStart)return;
         const dx=e.clientX-touchStart.x,dy=e.clientY-touchStart.y;touchStart=null;
-        if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.3)show(currentPhoto+(dx>0?-1:1));
+        if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.3)show(currentPhoto+(dx>0?1:-1));
       });
       addEventListener("popstate",()=>{if(viewer.open)viewer.close();});
       viewer.addEventListener("close",()=>{

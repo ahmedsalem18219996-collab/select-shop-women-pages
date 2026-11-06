@@ -32,7 +32,9 @@ test("choosing a colour switches to its photos, shows only its real sizes and it
 
   await page.locator('label:has(input[name="opt0"][value="0"])').click();       // بيبي بلو
   await expect(hero(page)).toHaveAttribute("src", /b1b1/);
-  await expect(page.locator("#lpGallery img")).toHaveCount(2);                  // its 2nd photo + the shared one
+  await expect(page.locator("#lpGallery button")).toHaveCount(3);               // its 2 photos + the shared one
+  await expect(page.locator("#lpCount")).toHaveText("1/3");                     // back to this colour's first photo
+  for (const src of await page.locator("#lpGallery img").evaluateAll(i => i.map(x => x.src))) expect(src).not.toMatch(/c1c1/); // never the brown photos
   await expect(page.locator('input[name="opt1"][value="3"]')).toBeDisabled();
   await page.locator('label:has(input[name="opt1"][value="2"])').click();       // L
   await expect(page.locator("#lpPrice")).toHaveText("٥٥٠");
