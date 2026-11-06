@@ -44,7 +44,7 @@ test("Atelier preserves storefront controls, legacy checkout and the isolated ad
   assert.match(checkout, /id="placeOrder"/);
   assert.match(done, /id="orderCode"/);
   assert.match(admin, /id="app"/);
-  assert.match(admin, /css\/atelier-admin\.css\?v=20261105-models/);
+  assert.match(admin, /css\/atelier-admin\.css\?v=20261106-brand-parity/);
   assert.match(admin, /script-src 'self'/);
   assert.match(await source("admin/css/atelier-admin.css"), /:root\[data-theme="dark"\]/);
   assert.match(checkout, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);
@@ -82,4 +82,19 @@ test("all existing and future Admin models display catalog-driven colour names o
  assert.match(app, /esc\(p\.swatchNames\.join/);
  assert.match(css, /\.card \.card-colour-names/);
  assert.doesNotMatch(adapter, /SS-1052/, "no hardcoded new model");
+});
+
+test("WOMEN Admin and storefront share the Dark Luxury palette without touching commerce", async () => {
+  const admin = await source("admin/css/atelier-admin.css");
+  const html = await source("admin/index.html");
+  const app = await source("admin/js/app.js");
+  for (const token of ["--bg:#050B1C", "--surface:#0B1730", "--primary:#D100D1", "--tape:#2ED9D1"]) {
+    assert.ok(admin.includes(token), token);
+  }
+  assert.match(admin, /--bg:#F7F3EC/);
+  assert.match(admin, /\.btn-primary:hover:not\(:disabled\)\{background:#AE00B8/);
+  assert.match(html, /data-theme="dark"/);
+  assert.match(html, /atelier-admin\.css\?v=20261106-brand-parity/);
+  assert.match(app, /\|\| 'dark'/);
+  assert.match(app, /localStorage\.getItem\('wa\.theme'\)/); // retain staff preference
 });

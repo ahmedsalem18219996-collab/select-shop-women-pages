@@ -9,7 +9,7 @@ test("Atelier storefront + admin route styles are served", async ({ request }) =
     ["/cart/", "/css/atelier-site.css?v=20261106-theme"],
     ["/checkout/", "/css/atelier-site.css?v=20261106-theme"],
     ["/order-success/", "/css/atelier-site.css?v=20261106-theme"],
-    ["/admin/", "/admin/css/atelier-admin.css?v=20261105-models"],
+    ["/admin/", "/admin/css/atelier-admin.css?v=20261106-brand-parity"],
   ];
   for (const [url, stylesheet] of routes) {
     const response = await request.get(url);
@@ -18,7 +18,24 @@ test("Atelier storefront + admin route styles are served", async ({ request }) =
     expect(html, url + " stylesheet").toContain(url === "/admin/" ? stylesheet.replace(/^\/admin\//, "") : stylesheet.replace(/^\//, ""));
     const css = await request.get(stylesheet);
     expect(css.ok(), stylesheet + " status").toBe(true);
-    // The admin keeps its own Soft Luxury sheet; the storefront is Dark Luxury (neon purple buy buttons).
-    expect(await css.text()).toContain(url === "/admin/" ? "#765268" : "#D100D1");
+    // Public storefront and WOMEN Admin share the same fuchsia actions.
+    expect(await css.text()).toContain("#D100D1");
   }
+});
+
+test("Admin palette defaults to the storefront navy/fuchsia/cyan and preserves accessible light mode", async ({ page }) => {
+  await page.goto("/admin/");
+  const tokens = await page.evaluate(() => {
+    const root = document.documentElement, css = getComputedStyle(root);
+    return { theme: root.dataset.theme, bg: css.getPropertyValue("--bg").trim(),
+      surface: css.getPropertyValue("--surface").trim(),
+      primary: css.getPropertyValue("--primary").trim(), cyan: css.getPropertyValue("--tape").trim() };
+  });
+  expect(tokens).toEqual({theme:"dark",bg:"#050B1C",surface:"#0B1730",primary:"#D100D1",cyan:"#2ED9D1"});
+  await page.evaluate(() => { document.documentElement.dataset.theme="light"; });
+  const light = await page.evaluate(() => {
+    const css = getComputedStyle(document.documentElement);
+    return {bg: css.getPropertyValue("--bg").trim(), primary: css.getPropertyValue("--primary").trim()};
+  });
+  expect(light).toEqual({bg:"#F7F3EC",primary:"#D100D1"});
 });
