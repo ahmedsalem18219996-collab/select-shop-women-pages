@@ -370,7 +370,7 @@ function createSheet(ctx) {
     <p class="err" id="c-error" role="alert" aria-live="polite" hidden></p>
     <ol class="blockers" id="c-steps" hidden></ol>`,
     foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>احفظي المسودة وكمّلي الألوان</button>` });
-  $('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
+  $$('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
   try { mountDescriptionEnhancer(box, { textarea: '#c-desc', titleInput: '#c-title' }); }
   catch {
     const feature = $('[data-description-helper]', box);
