@@ -8,7 +8,7 @@ import { saveCost, profitText, COST_OPS_MISSING } from '../profit.js';
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
 import { saveFamilyCategory } from '../model-category.js';
-import { mountQuickProductEditor } from '../quick-product.js?v=18';
+import { mountQuickProductEditor } from '../quick-product.js?v=17';
 import { countStatuses, PRODUCT_STATES, statusAction, prepublishHints } from '../product-lifecycle.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
