@@ -335,7 +335,7 @@ test('unsaved guard: browser back and reload ask; no prompt without typing, for 
   await page.locator('[data-create]').click();
   await expect(page).toHaveURL(/#\/products\/SS-9101$/);
   expect(asked).toEqual([]); // saving never asks
-  await page.locator('[data-draft] [data-d-name], input:visible').first().fill('بيج');
+  await page.locator('[data-draft] [data-d-name]').first().fill('بيج');
   await page.goBack();
   await expect.poll(() => asked.length).toBe(1);
   expect(asked[0]).toBe('confirm');
