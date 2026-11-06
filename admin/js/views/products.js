@@ -3,12 +3,12 @@ import { html, render, toString, $, $$, icon, money, toMinor, fmtNum, ago, date,
 import { call, deleteProductImage, mediaUrl } from '../api.js';
 import { previewTile } from '../image-optimize.js';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js';
-import { coloursTab, previewTab } from './model-colours.js?v=20261105-models';
+import { coloursTab, previewTab } from './model-colours.js?v=20261106-colourpicker';
 import { saveCost, profitText, COST_OPS_MISSING } from '../profit.js';
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
 import { saveFamilyCategory } from '../model-category.js';
-import { mountQuickProductEditor } from '../quick-product.js?v=17';
+import { mountQuickProductEditor } from '../quick-product.js?v=18';
 import { countStatuses, PRODUCT_STATES, statusAction, prepublishHints } from '../product-lifecycle.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
