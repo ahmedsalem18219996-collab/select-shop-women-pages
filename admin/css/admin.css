@@ -431,7 +431,15 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .drag-item .grip { cursor: grab; color: var(--muted); touch-action: none; }
 .drag-item .grip svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 .drag-item .name { flex: 1; min-width: 0; }
-.swatch { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line-2); padding: 0; overflow: hidden; }
+.swatch { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line-2); padding: 0; overflow: hidden; background: var(--sw, transparent); flex:none; }
+.colour-picker-slot { display:grid; gap:10px; border:1px solid var(--line-2); padding:12px; border-radius:var(--r-m); background:var(--surface-2); min-width:0; }
+.colour-picker-slot .field, .colour-picker-slot .select, .colour-picker-slot .input { min-width:0; width:100%; }
+.colour-picker-slot .colour-picker-single { display:grid; gap:8px; }
+.colour-picker-slot .colour-picker-pair { display:grid; gap:10px; }
+.colour-picker-slot [hidden] { display:none !important; }
+.colour-picker-slot .colour-picker-pair .grid2 { min-width:0; }
+.colour-picker-slot select { min-height:44px; }
+@media (max-width:380px) { .colour-picker-slot .grid2 { grid-template-columns:minmax(0,1fr); } }
 .mode-banner svg { width: 18px; height: 18px; color: var(--warn); }
 .mode-banner { display: flex; gap: 10px; align-items: center; padding: 8px 14px; border-radius: 12px; background: var(--warn-bg); color: var(--ink); font-size: 12.5px; }
 .mode-banner .btn { margin-inline-start: auto; }
