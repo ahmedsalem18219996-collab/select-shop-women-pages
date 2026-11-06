@@ -67,5 +67,10 @@ test("Light palette meets WCAG AA (text 4.5:1, borders/focus 3:1); Dark tokens u
   assert.ok(ratio(light.cyan, light.bg) >= 3, "focus ring / selection frame");
   assert.equal(light.accent, "#D100D1"); // same neon purple buy button in both modes
   const sheet = await source("css/atelier-site.css");
+  assert.doesNotMatch(sheet, /color-mix\s*\(/i, "theme CSS must not depend on color-mix in older Safari/WebKit");
+  assert.match(sheet, /\.hero--brand \.hero-trust\{[^}]*background:rgba\(11,23,48,\.74\)/);
+  assert.match(sheet, /:root\[data-theme="light"\] \.hero--brand \.hero-trust\{background:rgba\(255,253,248,\.74\)\}/);
+  assert.match(sheet, /\.commerce-photo-label\{background:rgba\(5,11,28,\.88\)/);
+  assert.match(sheet, /:root\[data-theme="light"\] \.commerce-photo-label\{background:rgba\(247,243,236,\.88\)\}/);
   assert.match(sheet, /:root\{\n --bg:#050B1C;--mirror:#050B1C;--chalk:#0B1730;--elev:#111F3A;--surface:#F4F6FA;/); // Dark default untouched
 });
