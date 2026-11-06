@@ -71,6 +71,7 @@ function backend(seed) {
         s.product = { public_code: 'SS-9101', title: a.title, description: a.description, status: 'draft', created_at: now, updated_at: now, base_price: null, options: [], variants: [], shipping_profile: null, publish_blockers: [] };
         return { outcome: 'created', code: 'SS-9101', structure_version: s.version };
       case 'products.set_price': p.base_price = { amount_minor: a.amount_minor }; p.variants.filter((v) => v.price_source === 'base').forEach((v) => { v.amount_minor = a.amount_minor; }); return { outcome: 'saved' };
+      case 'products.update_text': p.title = a.title; p.description = a.description; p.updated_at = now; return { outcome: 'updated' };
       case 'products.set_shipping_profile': p.shipping_profile = { key: a.profile_key, name: 'شحن عادي' }; return { outcome: 'saved' };
       case 'products.structure': return structure(a);
       case 'products.set_variant_price': { const v = p.variants.find((x) => x.position === a.position); v.amount_minor = a.amount_minor ?? p.base_price.amount_minor; v.price_source = a.amount_minor === null ? 'base' : 'variant_override'; return { outcome: 'saved' }; }
@@ -400,4 +401,43 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   await expect(page.locator('[data-colour]').nth(1)).toContainText('بني × بيج');
   await expect(page.locator('[data-colour]').nth(1).locator('.thumb img')).toHaveCount(1);
   await expect(page.locator('[data-colour]').first().locator('.thumb img')).toHaveCount(1);
+});
+
+test('free offline description enhancer: new draft, undo, existing edit, and no unapproved publish', async ({ page }) => {
+  const b = backend();
+  await open(page, b, owner);
+  await page.locator('a[href="#/products"]:visible').first().click();
+  await page.locator('button[data-new]:visible').first().click();
+  await page.locator('#c-title').fill('بلوفر حريمي مخطط');
+  await page.locator('#c-price').fill('650');
+  await page.locator('#c-desc').fill('بلوفر مخطط بيبي بلو وبني، مقاس واحد');
+  const before = b.s.ops.filter(x => x.op.startsWith('products.')).length;
+  await page.locator('[data-description-helper] [data-desc-improve]').click();
+  await expect(page.locator('#c-desc')).toHaveValue(/بلوفر مخطط بيبي بلو وبني/);
+  await expect(page.locator('#c-desc')).toHaveValue(/تفاصيل المنتج:/);
+  await expect(page.locator('[data-description-helper] [data-desc-undo]')).toBeVisible();
+  expect(b.s.ops.filter(x => x.op.startsWith('products.')).length).toBe(before); // no product write or read called by improve
+  await page.locator('[data-description-helper] [data-desc-undo]').click();
+  await expect(page.locator('#c-desc')).toHaveValue('بلوفر مخطط بيبي بلو وبني، مقاس واحد');
+  await page.locator('[data-description-helper] [data-desc-improve]').click();
+  const improved = await page.locator('#c-desc').inputValue();
+  expect(improved).toContain('بلوفر مخطط بيبي بلو وبني');
+  expect(improved).not.toContain('قطن');
+  expect(improved).not.toContain('100%');
+  await page.locator('[data-create]').click();
+  await expect(page).toHaveURL(/#\/products\/SS-9101$/);
+  expect(b.s.product.status).toBe('draft');
+  expect(b.s.product.description).toBe(improved);
+  expect(b.s.ops.some(x => x.op === 'products.publish')).toBe(false);
+  await page.locator('[data-v="details"]').click();
+  await expect(page.locator('#e-desc')).toHaveValue(improved);
+  await page.locator('#e-desc').fill('لون بيبي بلو، خامة قطن');
+  await page.locator('#f-text [data-desc-improve]').click();
+  await expect(page.locator('#e-desc')).toHaveValue(/• خامة قطن/);
+  // Editing the local textarea never persists until the staff explicitly clicks Save.
+  expect(b.s.product.description).toBe(improved);
+  await page.locator('#f-text [data-save-text]').click();
+  await expect.poll(() => b.s.product.description).toContain('خامة قطن');
+  expect(b.s.product.status).toBe('draft');
+  expect(b.s.ops.some(x => x.op === 'products.publish')).toBe(false);
 });

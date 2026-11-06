@@ -193,3 +193,15 @@
 .auth-art .art-copy span{color:var(--muted)}
 :root[data-theme="dark"] .auth-art{background:var(--bg);color:var(--ink)}
 :root:not([data-theme="dark"]) .auth-art{background:var(--wash);color:var(--ink)}
+
+
+/* Free description improvement: a single action directly below the draft textarea. */
+.desc-helper{display:grid;gap:6px;padding:10px 0 2px;min-width:0}
+.desc-helper .row{justify-content:flex-start}
+.desc-helper .btn{min-height:44px;white-space:normal;line-height:1.5;text-align:center}
+.desc-helper [data-desc-improve]{border:1px solid var(--line-2);color:var(--ink)}
+.desc-helper [data-desc-improve]:hover{border-color:var(--tape);background:var(--surface-2)}
+.desc-helper [data-desc-undo]{color:var(--tape);border-color:var(--line-2)}
+.desc-helper [data-desc-message]{margin:0;font-size:12px;line-height:1.5}
+
+.desc-helper [hidden]{display:none!important}
