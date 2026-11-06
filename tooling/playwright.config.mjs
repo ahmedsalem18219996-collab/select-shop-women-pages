@@ -12,5 +12,10 @@ export default defineConfig({
   projects: [
     { name: "mobile", use: { ...devices["Pixel 7"] } },
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    // Opt-in Safari-engine smoke: only the theme suite runs on WebKit; normal local/Chromium runs stay unchanged.
+    ...(process.env.PW_WEBKIT === "1" ? [
+      { name: "webkit-mobile", testMatch: /theme\.spec\.mjs$/, use: { ...devices["iPhone 13"], browserName: "webkit" } },
+      { name: "webkit-desktop", testMatch: /theme\.spec\.mjs$/, use: { ...devices["Desktop Safari"], browserName: "webkit" } },
+    ] : []),
   ],
 });
