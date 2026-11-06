@@ -371,7 +371,14 @@ function createSheet(ctx) {
     <ol class="blockers" id="c-steps" hidden></ol>`,
     foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>احفظي المسودة وكمّلي الألوان</button>` });
   $('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
-  mountDescriptionEnhancer(box, { textarea: '#c-desc', titleInput: '#c-title' });
+  try { mountDescriptionEnhancer(box, { textarea: '#c-desc', titleInput: '#c-title' }); }
+  catch {
+    const feature = $('[data-description-helper]', box);
+    const btn = feature?.querySelector('[data-desc-improve]');
+    if (btn) btn.disabled = true;
+    const hint = feature?.querySelector('[data-desc-message]');
+    if (hint) hint.textContent = 'اكتبي الوصف واحفظيه عادي؛ التحسين المجاني مش متاح دلوقتي.';
+  }
   const catSel = $('#c-cat', box);
   const createButton = $('[data-create]', box);
   createButton.disabled = true;
@@ -606,7 +613,15 @@ const TABS = {
         <label class="field"><span>${t('editor.shipping')}</span><select class="select" id="e-ship" ${can('shipping.manage') ? '' : 'disabled'}>
           <option value="">${t('editor.shippingNone')}</option>${(d.shipping_profiles || []).map((s) => html`<option value="${s.key}" ${p.shipping_profile?.key === s.key ? 'selected' : ''}>${s.name}</option>`)}</select></label>
         ${can('products.edit') || can('products.price') || can('shipping.manage') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-display>${t('app.save')}</button></div>` : ''}</section></div>`);
-    if (can('products.edit')) mountDescriptionEnhancer(body, { textarea: '#e-desc', titleInput: '#e-title' });
+    if (can('products.edit')) {
+      try { mountDescriptionEnhancer(body, { textarea: '#e-desc', titleInput: '#e-title' }); }
+      catch {
+        const btn = $('[data-desc-improve]', body);
+        if (btn) btn.disabled = true;
+        const hint = $('[data-desc-message]', body);
+        if (hint) hint.textContent = 'اكتبي الوصف واحفظيه عادي؛ التحسين المجاني مش متاح دلوقتي.';
+      }
+    }
     $('#f-text', body).addEventListener('submit', async (e) => {
       e.preventDefault();
       const res = await withBusy($('[data-save-text]', e.currentTarget), () => call('products.update_text', { code, title: $('#e-title', body).value.trim(), description: $('#e-desc', body).value.trim(), updated_at: p.updated_at }));
