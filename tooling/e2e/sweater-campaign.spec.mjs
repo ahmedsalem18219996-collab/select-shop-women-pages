@@ -48,7 +48,9 @@ test('click and keyboard open full-detail photo; Escape closes and restores focu
   await photo.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button',{name:'اقفلي الصورة'}).click();
-  await page.locator('#lpGallery img').first().click();
+  await page.locator('#lpGallery button').nth(1).click(); // a thumbnail shows that photo in place
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await photo.click();                                     // the zoom opens the original of the photo on screen
   await expect(page.locator('#lpZoomImage')).toHaveAttribute('src', /b2dbb27d0ce0494e96aa963d1f7d7e50.jpg/);
 });
 test('320px keeps full garment and confirm readable; cart remains hidden',async({page})=>{

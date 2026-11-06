@@ -138,11 +138,21 @@ body{background:var(--mirror)}
   .commerce-mobile-buybar button:disabled{background:#B9ABB7;color:#fff}
   .commerce-mobile-buybar[hidden]{display:none}
 }
+/* Product gallery (2026-11-06): the whole garment is visible (3:4 photos with contain, never cropped), arrows and a 1/4
+   counter over the photo, swipe on touch screens; the current thumbnail keeps its cyan frame. */
+.commerce-photo-frame{aspect-ratio:3/4;touch-action:pan-y}
+.commerce-photo-zoom{height:100%}
+.commerce-photo-zoom .commerce-image{height:100%;aspect-ratio:auto;object-fit:contain}
+.commerce-thumbs img{object-fit:contain;background:#F4F6FA}
+.commerce-photo-frame [hidden]{display:none}
+.commerce-photo-nav{position:absolute;top:50%;translate:0 -50%;z-index:2;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid rgba(255,255,255,.3);border-radius:0;background:rgba(5,11,28,.6);color:#fff;cursor:pointer}
+#photoMainPrev{inset-inline-start:8px}#photoMainNext{inset-inline-end:8px}
+.commerce-photo-count{position:absolute;top:10px;inset-inline-end:10px;z-index:2;padding:2px 10px;background:rgba(5,11,28,.72);color:#fff;font-size:12px;line-height:1.7;font-variant-numeric:tabular-nums;letter-spacing:.08em;pointer-events:none}
 </style>
 <link rel="stylesheet" href="../css/atelier-site.css?v=20261106-dark">
 <script src="../js/analytics.js?v=meta-20261030" defer></script>
 <script src="../js/catalog-thumbs.js?v=gallery-webp-20261025" defer></script>
-<script type="module" src="../js/commerce.js?v=product-recovery-20261024-2"></script>
+<script type="module" src="../js/commerce.js?v=gallery-20261106"></script>
 </head>
 <body class="atelier-product"><div class="app">
 <header class="hdr">
@@ -165,7 +175,7 @@ body{background:var(--mirror)}
 
 <div class="commerce-head"><div><span class="commerce-kicker">DETAILS · تفاصيل</span><div class="commerce-crumb"><a href="/">الرئيسية</a><span>‹</span><a href="/#shop">كل القطع</a><span>‹</span>تفاصيل القطعة</div></div><a class="commerce-head-link" href="/cart/"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg> شنطتك</a></div>
 <section class="commerce-grid" id="product" aria-busy="true">
-<div class="commerce-media"><div class="commerce-photo-frame"><button type="button" id="openPhoto" class="commerce-photo-zoom" aria-label="كبّري صورة المنتج" disabled><img class="commerce-image" id="productPhoto" alt="" hidden><span class="commerce-photo-hint">اضغطي لتكبير الصورة ⤢</span></button><span class="commerce-photo-label">SELECT · WOMEN</span></div><div id="productThumbs" class="commerce-thumbs" aria-label="صور القطعة"></div></div>
+<div class="commerce-media"><div class="commerce-photo-frame"><button type="button" id="openPhoto" class="commerce-photo-zoom" aria-label="كبّري صورة المنتج" disabled><img class="commerce-image" id="productPhoto" alt="" hidden><span class="commerce-photo-hint">اضغطي لتكبير الصورة ⤢</span></button><button type="button" class="commerce-photo-nav" id="photoMainPrev" aria-label="الصورة السابقة" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button><button type="button" class="commerce-photo-nav" id="photoMainNext" aria-label="الصورة التالية" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button><span class="commerce-photo-count" id="photoMainCount" dir="ltr" aria-live="polite" hidden></span><span class="commerce-photo-label">SELECT · WOMEN</span></div><div id="productThumbs" class="commerce-thumbs" aria-label="صور القطعة"></div></div>
 <div><div class="commerce-card"><h1 id="productTitle">جارٍ تحميل المنتج…</h1>
 <p id="productCode" class="commerce-note commerce-code"></p>
 <p class="commerce-price" id="productPrice"></p>

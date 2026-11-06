@@ -263,20 +263,92 @@ function lazyVideo() {
 const liveMedia = (/** @type {any} */ p) => (p.media || []).filter((/** @type {any} */ m) => MEDIA.test(m?.url || ""))
   .sort((/** @type {any} */ a, /** @type {any} */ b) => Number(b.isPrimary === true) - Number(a.isPrimary === true) || a.position - b.position);
 
-/** Hero + gallery from live photos (responsive thumbnails when the build has them). */
-function paintPhotos(/** @type {any[]} */ list, /** @type {string} */ alt) {
-  const media = list.slice(0, 4);
-  const local = new Set(Array.isArray(/** @type {any} */ (window).SELECT_THUMBNAILS) ? /** @type {any} */ (window).SELECT_THUMBNAILS : []);
-  const pic = document.getElementById("lpHero");
+/** Committed, uncropped files of photo `i` of one colour on a generated page (tooling/build-lp.mjs writes them).
+ *  Only the first photo (the LCP image) has AVIF and two widths; the others load when she flips to them. */
+export function photoFiles(/** @type {string} */ dir, /** @type {number} */ i) {
+  const thumb = `${dir}${i}-320.webp`;
+  if (i > 0) return { src: `${dir}${i}-800.webp`, thumb };
+  return { src: `${dir}0-800.webp`, thumb, avif: `${dir}0-480.avif 480w, ${dir}0-800.avif 800w`, webp: `${dir}0-480.webp 480w, ${dir}0-800.webp 800w` };
+}
+
+/* Product gallery: the photos of ONE colour at a time. Thumbnails, arrows, swipe and arrow keys swap the main photo in
+ * place (no reload); choosing a colour starts again at that colour's first photo. */
+const SIZES = "(min-width: 900px) 560px, 100vw";
+/** @typedef {{src: string, thumb: string, alt: string, srcset?: string, avif?: string, webp?: string}} Shot */
+const gallery = { /** @type {Shot[]} */ shots: [], at: 0 };
+const wrap = (/** @type {number} */ i, /** @type {number} */ n) => (i % n + n) % n;
+
+function showShot(/** @type {number} */ i, warm = false) {
+  const n = gallery.shots.length, pic = document.getElementById("lpHero");
   const img = /** @type {HTMLImageElement|null} */ (pic && pic.querySelector("img"));
-  const hero = media[0] && photoSet(media[0].url, local);
-  if (!img || !hero) return;
-  pic?.querySelectorAll("source").forEach(x => x.remove()); // a curated <picture> must not override the live colour photo
+  if (!n || !pic || !img) return;
+  const at = gallery.at = wrap(i, n), s = gallery.shots[at];
+  pic.querySelectorAll("source").forEach(x => x.remove());
+  if (s.avif && s.webp) pic.prepend(...[["image/avif", s.avif], ["image/webp", s.webp]].map(([type, srcset]) =>
+    Object.assign(document.createElement("source"), { type, srcset, sizes: SIZES })));
+  img.srcset = s.srcset || ""; img.sizes = s.srcset ? SIZES : "";
+  img.src = s.src; img.alt = s.alt; img.dataset.index = String(at);
+  const count = document.getElementById("lpCount");
+  if (count) count.textContent = `${at + 1}/${n}`;
+  document.querySelectorAll("#lpGallery button").forEach((b, j) => b.setAttribute("aria-current", String(j === at)));
+  // After she starts flipping, fetch the neighbours so the next swap is instant (photo 0 is always loaded already).
+  if (warm) for (const j of [at + 1, at - 1]) {
+    const w = gallery.shots[wrap(j, n)];
+    if (!w.avif) Object.assign(new Image(), { sizes: w.srcset ? SIZES : "", srcset: w.srcset || "", src: w.src });
+  }
+}
+
+/** One colour's photos; `paint` false = the pre-rendered markup already shows exactly these. */
+function setShots(/** @type {Shot[]} */ shots, paint = true) {
+  gallery.shots = shots.slice(0, 4); gallery.at = 0;
+  if (!paint) return;
+  const n = gallery.shots.length;
+  for (const id of ["lpPrev", "lpNext", "lpCount"]) { const el = document.getElementById(id); if (el) el.hidden = n < 2; }
+  document.getElementById("lpGallery")?.replaceChildren(...(n < 2 ? [] : gallery.shots).map((s, j) => {
+    const b = Object.assign(document.createElement("button"), { type: "button" });
+    b.dataset.i = String(j); b.setAttribute("aria-label", `اعرضي الصورة ${j + 1} من ${n}`);
+    b.append(Object.assign(document.createElement("img"), { src: s.thumb, alt: "", width: 240, height: 320, loading: "lazy", decoding: "async" }));
+    return b;
+  }));
+  showShot(0);
+}
+
+function wireGallery() {
+  document.getElementById("lpGallery")?.addEventListener("click", e => {
+    const b = /** @type {HTMLElement|null} */ (/** @type {HTMLElement} */ (e.target).closest("button[data-i]"));
+    if (b) showShot(Number(b.dataset.i), true);
+  });
+  document.getElementById("lpPrev")?.addEventListener("click", () => showShot(gallery.at - 1, true));
+  document.getElementById("lpNext")?.addEventListener("click", () => showShot(gallery.at + 1, true));
+  const stage = document.getElementById("lpStage");
+  if (!stage) return;
+  // RTL: the next photo sits to the left, so ArrowLeft and a finger moving right bring it in (like the arrow buttons).
+  stage.addEventListener("keydown", e => {
+    if (gallery.shots.length < 2 || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+    e.preventDefault(); showShot(gallery.at + (e.key === "ArrowLeft" ? 1 : -1), true);
+  });
+  let x0 = NaN, y0 = 0, swiped = -1e9;
+  stage.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse") { x0 = e.clientX; y0 = e.clientY; } });
+  stage.addEventListener("pointercancel", () => { x0 = NaN; }); // a vertical scroll, not a swipe
+  stage.addEventListener("pointerup", e => {
+    const dx = e.clientX - x0, dy = e.clientY - y0; x0 = NaN;
+    if (!(Math.abs(dx) > 40 && Math.abs(dx) > 1.5 * Math.abs(dy))) return;
+    swiped = e.timeStamp; // even with one photo: a swipe never opens the zoom
+    if (gallery.shots.length > 1) showShot(gallery.at + (dx > 0 ? 1 : -1), true);
+  });
+  // A swipe is not a tap: the photo-detail view must not open at the end of it.
+  stage.addEventListener("click", e => { if (e.timeStamp - swiped < 350) { e.stopPropagation(); e.preventDefault(); } }, true);
+}
+
+/** Main photo + thumbnails from live photos (responsive catalog thumbnails when the build has them). */
+function paintPhotos(/** @type {any[]} */ list, /** @type {string} */ alt) {
+  const local = new Set(Array.isArray(/** @type {any} */ (window).SELECT_THUMBNAILS) ? /** @type {any} */ (window).SELECT_THUMBNAILS : []);
+  const shots = list.map((/** @type {any} */ m) => photoSet(m.url, local)).filter(s => s !== null)
+    .map(s => ({ src: s.src, srcset: s.srcset, thumb: s.small, alt }));
+  const img = /** @type {HTMLImageElement|null} */ (document.querySelector("#lpHero img"));
+  if (!img || !shots.length) return;
   img.fetchPriority = "high";
-  img.srcset = hero.srcset; img.sizes = hero.srcset ? "(min-width: 900px) 560px, 100vw" : "";
-  img.src = hero.src; img.alt = alt;
-  document.getElementById("lpGallery")?.replaceChildren(...media.slice(1).map((/** @type {any} */ m) =>
-    Object.assign(document.createElement("img"), { src: photoSet(m.url, local)?.small || "", alt, width: 320, height: 400, loading: "lazy", decoding: "async" })));
+  setShots(shots); // a curated <picture> source never overrides the live colour photo: showShot replaces the sources
 }
 
 /** Automatic page: fill the pre-rendered layout from the live product (title, photos, description). */
@@ -334,8 +406,13 @@ async function init() {
   void recordView(page.code);
 
   // One page = one model. Each colour is its own real product (public code); the default colour is pre-rendered.
-  /** @type {{code:string,name:string,hex?:string,alt?:string,hero?:{avif:string,webp:string,src:string},gallery?:string[]}[]} */
+  /** @type {{code:string,name:string,hex?:string,alt?:string,dir?:string,zoom?:string[]}[]} */
   const colors = Array.isArray(page.colors) && page.colors.length ? page.colors.filter((/** @type {any} */ c) => validCode(c?.code)) : [{ code: page.code, name: "" }];
+  /** Generated pages: the colour's committed photos (never another colour's). */
+  const shotsOf = (/** @type {any} */ c) => typeof c.dir === "string" && Array.isArray(c.zoom)
+    ? c.zoom.map((/** @type {unknown} */ _, /** @type {number} */ i) => ({ ...photoFiles(c.dir, i), alt: c.alt || "" })) : [];
+  wireGallery();
+  setShots(shotsOf(colors[0]), false); // the HTML already shows the first colour's photos
   const holder = $("#lpOptions");
   const choiceEl = document.getElementById("lpBarChoice");
   /** @type {Map<string, Promise<any>>} */
@@ -635,17 +712,8 @@ async function init() {
       const label = document.getElementById(id);
       if (label) label.textContent = c.name;
     }
-    const pic = document.getElementById("lpHero");
-    if (pic && c.hero) {
-      const [avif, webp] = pic.querySelectorAll("source");
-      if (avif) avif.setAttribute("srcset", c.hero.avif);
-      if (webp) webp.setAttribute("srcset", c.hero.webp);
-      const img = pic.querySelector("img");
-      if (img) { img.src = c.hero.src; img.alt = c.alt || ""; }
-    }
-    const gallery = document.getElementById("lpGallery");
-    if (gallery && c.hero) gallery.replaceChildren(...(c.gallery || []).map(src =>
-      Object.assign(document.createElement("img"), { src, alt: c.alt || "", width: 480, height: 600, loading: "lazy", decoding: "async" })));
+    const shots = shotsOf(c);
+    if (shots.length) setShots(shots);
   };
   const viewed = new Set([page.code]);
   document.querySelectorAll("#lpColors .chip, #lpFormColors .chip").forEach(btn => btn.addEventListener("click", () => {

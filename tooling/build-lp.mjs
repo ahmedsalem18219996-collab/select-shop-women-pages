@@ -6,13 +6,16 @@
 import { readFile, writeFile, mkdir, access, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { priceLabel } from "../lp/runtime.js";
+import { priceLabel, photoFiles } from "../lp/runtime.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
 const MEDIA = /^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[0-9a-f]{32}\.(jpg|png|webp)$/;
+// Photo derivatives (names in lp/runtime.js photoFiles): photo 0 = AVIF+WebP at both widths, every other photo = one
+// 800px WebP for the main view, and every photo a 320px thumbnail. Never cropped: the 3:4 originals keep their shape.
 const HERO_WIDTHS = [480, 800];
-const GALLERY_WIDTH = 320;
+const MAIN_WIDTH = 800;
+const THUMB_WIDTH = 320;
 const MAX_GALLERY = 3;
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 
@@ -38,7 +41,10 @@ export function colorsOf(page) {
   return colors;
 }
 
-const imgSet = (code, i, ext, prefix = "") => HERO_WIDTHS.map(w => `${prefix}img/${code}/${i}-${w}.${ext} ${w}w`).join(", ");
+// Reuse the existing optimized photos of the original colour page instead of re-encoding another copy on the grouped
+// model pages (and SS-1010 on Balloon Suit). The relative sibling path resolves under /lp/ and is checked against committed assets.
+const imgPrefix = (page, code) => page.reuse_images === true ? "../ss-" + code.slice(3).toLowerCase() + "/"
+  : page.id === "ballon-suit" && code === "SS-1010" ? "../ss-1010/" : "";
 
 /** Per-colour data the runtime needs to swap photos without another request for page markup. */
 export function colorData(page, products) {
@@ -48,15 +54,9 @@ export function colorData(page, products) {
     const pics = photos(p);
     if (!pics.length) throw new Error(`${c.code}: no public photo`);
     const alt = String(p.title || "").trim().slice(0, 200) + (c.name ? " باللون " + c.name : "");
-    // Reuse the existing optimized SS-1010 photos instead of re-encoding
-    // another copy on the grouped Balloon Suit page. The relative sibling
-    // path resolves under /lp/ and is checked against committed assets.
-    const prefix = page.reuse_images === true ? "../ss-" + c.code.slice(3).toLowerCase() + "/"
-      : page.id === "ballon-suit" && c.code === "SS-1010" ? "../ss-1010/" : "";
     return { code: c.code, name: c.name, hex: c.hex, alt,
-      zoom: pics.map(m => m.url), // full-size originals, fetched only when the shopper opens a photo
-      hero: { avif: imgSet(c.code, 0, "avif", prefix), webp: imgSet(c.code, 0, "webp", prefix), src: `${prefix}img/${c.code}/0-800.webp` },
-      gallery: pics.slice(1).map((_, i) => `${prefix}img/${c.code}/${i + 1}-${GALLERY_WIDTH}.webp`) };
+      zoom: pics.map(m => m.url), // full-size originals, fetched only when the shopper opens a photo; one per gallery photo
+      dir: `${imgPrefix(page, c.code)}img/${c.code}/` };
   });
 }
 
@@ -277,8 +277,47 @@ body:not([data-campaign]) .head{position:relative;z-index:1;margin:-16px 12px 0;
 h1{font-size:44px}.price{font-size:28px}
 .info{gap:22px}
 }
+/* Product gallery (2026-11-06): the whole garment stays visible (3:4 photos shown with contain, never cropped or covered),
+   one colour's photos at a time, thumbnails under the photo (beside it on desktop), arrows, swipe and a 1/4 counter.
+   Id selectors win over the older layered skins above (hero heights, 4:5 boxes, the floating card). */
+#lpStage{position:relative;min-width:0;touch-action:pan-y}
+#lpStage [hidden]{display:none!important}
+#lpHero{display:block;width:100%;height:auto;aspect-ratio:3/4;margin:0;border-radius:0;overflow:hidden;background:var(--surface)}
+#lpHero img{width:100%;height:100%;object-fit:contain;object-position:50% 50%;border-radius:0}
+#lpStage .nav{position:absolute;top:50%;translate:0 -50%;z-index:1;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid rgba(255,255,255,.3);border-radius:0;background:rgba(5,11,28,.6);color:#fff;cursor:pointer}
+#lpStage .nav:hover{background:rgba(5,11,28,.85)}
+#lpPrev{inset-inline-start:8px}#lpNext{inset-inline-end:8px}
+#lpCount{position:absolute;top:10px;inset-inline-end:10px;z-index:1;padding:2px 10px;background:rgba(5,11,28,.72);color:#fff;font:500 12px/1.7 var(--f);font-variant-numeric:tabular-nums;letter-spacing:.08em;pointer-events:none}
+#lpGallery{order:0;display:flex;gap:8px;margin:0;padding:0}
+#lpGallery:empty{display:none}
+#lpGallery button{flex:none;width:48px;aspect-ratio:3/4;padding:0;border:1px solid var(--line);border-radius:0;background:var(--surface);cursor:pointer;overflow:hidden}
+#lpGallery button[aria-current="true"]{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan)}
+#lpGallery img{width:100%;height:100%;aspect-ratio:auto;object-fit:contain;border-radius:0;cursor:pointer;vertical-align:top;background:none}
+@media(max-width:899px){
+#lpStage{order:0;margin-inline:-16px}
+#lpGallery{margin-top:-6px}
+body:not([data-campaign]) .atelier-heading,body:not([data-campaign]) .head{margin:0;padding:0;border:0}
+}
+@media(min-width:560px) and (max-width:899px){#lpStage,#lpGallery{width:min(100%,520px);align-self:center;margin-inline:auto}}
+@media(min-width:900px){
+.media{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:start}
+#lpStage{grid-column:2;grid-row:1}
+#lpGallery{grid-column:1;grid-row:1;flex-direction:column}
+#lpGallery button{width:56px}
+#lpHero{max-height:calc(100dvh - 110px)}
+}
 `;
 
+const chevron = (d) => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
+/** Arrows and "1/4" over the main photo (RTL: previous on the right, next on the left). Hidden for a single photo;
+ *  lp/runtime.js shows them again when a colour or live product has more photos. */
+const stageControls = (n) => { const h = n > 1 ? "" : " hidden";
+  return `<button type="button" class="nav" id="lpPrev" aria-label="الصورة السابقة"${h}>${chevron("M9 5l7 7-7 7")}</button>`
+    + `<button type="button" class="nav" id="lpNext" aria-label="الصورة التالية"${h}>${chevron("M15 5l-7 7 7 7")}</button>`
+    + `<span class="count" id="lpCount" dir="ltr" aria-live="polite"${h}>1/${n}</span>`; };
+/** Same buttons lp/runtime.js setShots builds, so the first colour needs no repaint. */
+const thumbs = (c, n) => n < 2 ? "" : c.zoom.map((_, i) => `<button type="button" data-i="${i}" aria-label="اعرضي الصورة ${i + 1} من ${n}" aria-current="${i === 0}">`
+  + `<img src="${photoFiles(c.dir, i).thumb}" alt="" width="240" height="320" loading="lazy" decoding="async"></button>`).join("");
 // Gallery thumbnails stay unloaded (display:none + lazy) until the hero photo arrives, so on slow networks the
 // hero gets the whole connection instead of sharing it with photos below the fold.
 const HERO_READY = ` onload="document.documentElement.classList.add('hl')" onerror="document.documentElement.classList.add('hl')"`;
@@ -340,8 +379,11 @@ ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 <header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a class="jump" href="#lpForm">اطلبي إطلالتك</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}</header>
 <main class="page">
 <div class="media">
+<div class="stage" id="lpStage">
 <picture class="hero" id="lpHero">${o.hero}</picture>
-<div class="gallery" id="lpGallery">${o.gallery}</div>
+${stageControls(o.count)}
+</div>
+<div class="gallery" id="lpGallery" aria-label="صور القطعة">${o.gallery}</div>
 </div>
 <div class="info">
 <p class="atelier-heading">${campaign ? esc(campaign.headline) : "تفاصيل تكمّل إطلالتك"}</p>
@@ -360,7 +402,7 @@ ${o.video}
 <footer><strong dir="ltr">SELECT SHOP WOMEN</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
-${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}-models1105"></script>
+${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}-gallery1106"></script>
 </body>
 </html>
 `;
@@ -373,6 +415,7 @@ export function render(page, products, fontFaces = "") {
   if (price === "—") throw new Error(`${first.code}: no real price`);
   const title = String(page.title || product.title || "").trim().slice(0, 200);
   const sizes = "(min-width: 900px) 560px, 100vw";
+  const hero = photoFiles(first.dir, 0), count = first.zoom.length;
   const lines = String(product.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
   const oneSize = Array.isArray(product.options) && product.options.length === 0;
   const picker = colors.length > 1 ? `<fieldset class="pick" id="lpColors"><legend>اللون: <span id="lpColorName">${esc(first.name)}</span></legend><div class="row">${colors.map((c, i) =>
@@ -383,10 +426,10 @@ export function render(page, products, fontFaces = "") {
     title: `${esc(title)} · SELECT SHOP WOMEN`,
     description: `${esc(title)}. اطلبي من نفس الصفحة، الدفع عند الاستلام والشحن لكل المحافظات.`,
     canonical: `<link rel="canonical" href="https://selectshopeg.com/lp/${esc(page.id)}/">\n`,
-    preload: `<link rel="preload" as="image" type="image/avif" imagesrcset="${first.hero.avif}" imagesizes="${sizes}" fetchpriority="high">\n`,
+    preload: `<link rel="preload" as="image" type="image/avif" imagesrcset="${hero.avif}" imagesizes="${sizes}" fetchpriority="high">\n`,
     codeExpr: JSON.stringify(first.code), fontFaces,
-    hero: `<source type="image/avif" srcset="${first.hero.avif}" sizes="${sizes}"><source type="image/webp" srcset="${first.hero.webp}" sizes="${sizes}"><img src="${first.hero.src}" alt="${esc(first.alt)}" width="800" height="1000" fetchpriority="high" decoding="async"${HERO_READY}>`,
-    gallery: first.gallery.map(src => `<img src="${src}" alt="${esc(first.alt)}" width="320" height="400" loading="lazy" decoding="async">`).join(""),
+    hero: `<source type="image/avif" srcset="${hero.avif}" sizes="${sizes}"><source type="image/webp" srcset="${hero.webp}" sizes="${sizes}"><img src="${hero.src}" alt="${esc(first.alt)}" width="800" height="1067" fetchpriority="high" decoding="async"${HERO_READY}>`,
+    count, gallery: thumbs(first, count),
     h1: esc(title), price, desc: lines[0] ? esc(lines[0]) : "", picker,
     options: oneSize ? `<div class="lp-opt"><span class="one">مقاس واحد</span></div>` : "",
     choice: esc((first.name ? first.name + " · " : "") + (oneSize ? "مقاس واحد" : "اختاري المقاس")),
@@ -395,7 +438,7 @@ export function render(page, products, fontFaces = "") {
     video: page.video ? `<button type="button" class="video" data-lp-video="${esc(page.video.src)}">▶ شغّلي الفيديو</button>` : "",
     noscript: `<a href="/p/?code=${esc(first.code)}">افتحي صفحة المنتج للطلب</a>`,
     data: JSON.stringify({ id: page.id, code: first.code, colors, ...(page.campaign ? { directOnly: page.campaign.directOnly === true, campaign: true } : {}) }).replace(/</g, "\\u003c"),
-    scripts: '<script type="module" src="/lp/image-zoom.js?v=20261104-1"></script>',
+    scripts: '<script type="module" src="/lp/image-zoom.js?v=20261106-gallery"></script>',
   });
 }
 
@@ -430,7 +473,7 @@ export function renderShell(fontFaces = "", routes = {}) {
     source: " (automatic product page)", title: "SELECT SHOP WOMEN",
     description: "اطلبي من نفس الصفحة من SELECT SHOP WOMEN. الدفع عند الاستلام والشحن لكل المحافظات.",
     canonical: "", preload: "", codeExpr: code, fontFaces, route: ROUTE(routes),
-    hero: `<img alt="" width="800" height="1000" decoding="async"${HERO_READY}>`, gallery: "", h1: "", price: "—", desc: "", picker: "", options: "",
+    hero: `<img alt="" width="800" height="1067" decoding="async"${HERO_READY}>`, gallery: "", count: 0, h1: "", price: "—", desc: "", picker: "", options: "",
     choice: "اختاري المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
     noscript: `<a href="/">افتحي المتجر</a>`, data: JSON.stringify({ auto: true }),
     scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n`,
@@ -440,17 +483,17 @@ export function renderShell(fontFaces = "", routes = {}) {
 async function encodeImages(page, products) {
   const sharp = (await import("sharp")).default;
   for (const c of colorsOf(page)) {
+    if (imgPrefix(page, c.code)) continue; // photos owned (and encoded) by the original colour page
     const dir = path.join(ROOT, "lp", page.id, "img", c.code);
     await mkdir(dir, { recursive: true });
     for (const [i, m] of photos(products[c.code]).entries()) {
       const r = await fetch(m.url);
       if (!r.ok) throw new Error(`${c.code} photo ${i}: HTTP ${r.status}`);
       const buf = Buffer.from(await r.arrayBuffer());
-      for (const w of i === 0 ? HERO_WIDTHS : [GALLERY_WIDTH]) {
-        const base = sharp(buf).rotate().resize({ width: w, height: Math.round(w * 1.25), fit: "cover" });
-        await base.clone().webp({ quality: 65 }).toFile(path.join(dir, `${i}-${w}.webp`));
-        if (i === 0) await base.clone().avif({ quality: 40, effort: 6 }).toFile(path.join(dir, `${i}-${w}.avif`));
-      }
+      // Width only: the photo keeps its own shape (no crop), so the whole garment stays visible.
+      const at = (w) => sharp(buf).rotate().resize({ width: w, withoutEnlargement: true });
+      for (const w of [THUMB_WIDTH, ...(i === 0 ? HERO_WIDTHS : [MAIN_WIDTH])]) await at(w).webp({ quality: 65 }).toFile(path.join(dir, `${i}-${w}.webp`));
+      if (i === 0) for (const w of HERO_WIDTHS) await at(w).avif({ quality: 40, effort: 6 }).toFile(path.join(dir, `${i}-${w}.avif`));
     }
   }
 }
@@ -482,8 +525,11 @@ async function main() {
   }
   if (flags.includes("--images")) await encodeImages(page, products);
   const html = render(page, products, fontFaces);
-  for (const c of colorData(page, products)) for (const f of [c.hero.src, ...c.gallery, ...c.hero.avif.split(", ").map(s => s.split(" ")[0])])
-    await access(path.join(ROOT, "lp", id, f)); // every referenced image is committed
+  for (const c of colorData(page, products)) for (const i of c.zoom.keys()) {
+    const f = photoFiles(c.dir, i);
+    for (const file of [f.src, f.thumb, ...[f.avif, f.webp].flatMap(set => set ? set.split(", ").map(x => x.split(" ")[0]) : [])])
+      await access(path.join(ROOT, "lp", id, file)); // every referenced image is committed
+  }
   await output(`lp/${id}/index.html`, html, id, flags);
 }
 
