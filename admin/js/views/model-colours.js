@@ -8,7 +8,8 @@ import { call, mediaUrl } from '../api.js';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js';
 import { colourModel, checkDrafts, planNewModel, planAddColour, planSizes, planColourPrice, planColourAvailability, photoTarget, runSteps, ONE_SIZE } from '../colour-model.js';
 import { loadCosts, saveCost, costOf, profitText } from '../profit.js';
-import { PALETTE, hexOf, normName } from '../../../js/colour-palette.js';
+import { PALETTE, hexOf, normName, colourKey } from '../../../js/colour-palette.js';
+import { mountDraftColourPickers } from '../colour-picker.js';
 
 const COMMON_SIZES = ['S', 'M', 'L', 'XL', 'XXL', ONE_SIZE];
 const img = (m) => mediaUrl(/^media\//.test(m.storage_path) ? 'product-media/' + m.storage_path : m.storage_path);
@@ -36,7 +37,8 @@ function draftCard(dr, i, { canPrice }) {
     <div class="row">${swatch(hexOf(dr.name), dr.name)}<b>${dr.name || 'لون ' + (i + 1)}</b><span class="space"></span>
       <button type="button" class="btn btn-ghost btn-sm" data-drop-draft="${i}">${icon('x')}شيلي اللون ده</button></div>
     <div class="grid2">
-      <label class="field"><span>اسم اللون</span><input class="input" data-d-name value="${dr.name}" list="palette-names" maxlength="40" placeholder="مثال: بيبي بلو"><small>اختاري من القائمة علشان يظهر لون الدائرة صح للعميلة، أو اكتبي اسم جديد.</small></label>
+      <div class="colour-picker-slot" data-colour-picker-slot></div>
+      <label class="field"><span>اسم اللون / لون مخصص (اختياري)</span><input class="input" data-d-name value="${dr.name}" list="palette-names" maxlength="40" placeholder="اختاري من القائمة فوق أو اكتبي لون مخصص"><small>الاسم ده هو اللي هيتحفظ ويظهر للعميلة. لو اخترتي لونين هيتسجلوا كاختيار واحد.</small></label>
       ${canPrice ? html`<label class="field"><span>سعر خاص للون (اختياري)</span><div class="input-money"><input data-d-price inputmode="decimal" value="${dr.priceMinor ? dr.priceMinor / 100 : ''}" placeholder="فاضي = السعر الأساسي"><span>EGP</span></div></label>` : ''}
     </div>
     <div class="field"><span>المقاسات المتاحة للون ده</span>
@@ -53,6 +55,7 @@ function mountDrafts(box, drafts, { canPrice, onSave, saveText, single = false }
       <div class="row" style="flex-wrap:wrap"><button type="button" class="btn btn-soft" data-add-draft ${single && drafts.length ? 'hidden' : ''}>${icon('plus')}إضافة لون</button><span class="space"></span>
         <button type="button" class="btn btn-primary" data-save-drafts ${drafts.length ? '' : 'disabled'}>${saveText}</button></div>
       <p class="err" data-draft-error role="alert" aria-live="polite" hidden></p><ol class="blockers" data-steps hidden></ol>`);
+    mountDraftColourPickers(box);
   };
   const at = (el) => drafts[+el.closest('[data-draft]').dataset.draft];
   box.addEventListener('input', (e) => {
@@ -124,7 +127,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
         else {
           // An existing model gets one colour per save; the screen reloads with the new positions before the next.
           if (clean.length !== 1) { island('error', 'ضيفي لون واحد في المرة، احفظيه، وبعدها ضيفي اللي بعده.'); return; }
-          if (model.colours.some((c) => normName(c.name) === normName(clean[0].name))) { island('error', 'اللون ده موجود بالفعل في الموديل. لو متوقف، رجّعيه من الكارت بتاعه.'); return; }
+          if (model.colours.some((c) => colourKey(c.name) === colourKey(clean[0].name))) { island('error', 'اللون ده موجود بالفعل في الموديل. لو متوقف، رجّعيه من الكارت بتاعه.'); return; }
           steps = planAddColour(model, clean[0]);
         }
         if (await apply(steps, { ctx, p, code, list })) { done('اتحفظت الألوان. ارفعي صور كل لون من الكارت بتاعه.'); reload(); }
@@ -219,10 +222,10 @@ function colourCard(c, ci, { model, media, can, cost, costsReady }) {
     <div class="row" style="flex-wrap:wrap">${swatch(c.hex, c.name)}<h3 style="margin:0">${c.name || 'الموديل (لون واحد)'}</h3>
       <span class="badge ${!c.active ? '' : c.available ? 'ok' : 'warn'}">${!c.active ? 'متوقف' : c.available ? 'متاح عند المورد' : 'مش متاح'}</span>
       <span class="space"></span><b class="num">${sell === null ? 'السعر ناقص' : money(sell)}</b></div>
-    <div class="field"><span>صور اللون ${photos.length ? '(' + photos.length + ')' : '— لسه ناقصة'}</span>
+    <div class="field"><span>صور اختيار اللون ${photos.length ? '(' + photos.length + ')' : '— لسه ناقصة'}</span>
       <div class="thumbs">${photos.map((m, i) => html`<figure class="thumb ${m.hidden ? 'hidden' : ''}"><img src="${img(m)}" alt="${m.alt_text || c.name}" loading="lazy" width="96" height="120">
         ${i === 0 ? html`<span class="badge ok">غلاف اللون</span>` : can('media.manage') ? html`<button type="button" class="icon-btn" data-first="${m.media_id}" aria-label="اجعليها أول صورة للون" title="اجعليها أول صورة للون">${icon('star')}</button>` : ''}</figure>`)}
-        ${can('media.manage') && (c.optionPosition !== null || !model.colourOption) ? html`<label class="thumb thumb-add">${icon('upload')}<span>صور ${c.name || ''}</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" data-upload></label>` : ''}</div>
+        ${can('media.manage') && (c.optionPosition !== null || !model.colourOption) ? html`<label class="thumb thumb-add">${icon('upload')}<span>ارفعي صور ${c.name || 'الموديل'}</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" data-upload></label>` : ''}</div>
       <small>تقدري تختاري كذا صورة مرة واحدة. بنضغطها WebP بجودة تحافظ على اللون وتفاصيل القماش، وكل صورة ليها حالة رفع. لو صورة فشلت، الصور القديمة زي ما هي.</small></div>
     ${model.sizeOption && can('products.edit') && c.active ? html`<div class="field"><span>المقاسات</span>
       <div class="chips" style="flex-wrap:wrap">${sizes.map((s) => html`<button type="button" class="chip" data-c-size="${s}" aria-pressed="${live.some((v) => (v.size ?? ONE_SIZE) === s)}">${s}</button>`)}</div>
