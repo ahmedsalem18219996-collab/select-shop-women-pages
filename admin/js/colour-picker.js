@@ -128,7 +128,9 @@ export function mountDraftColourPickers(root) {
       if (firstField.select.value === secondField.select.value) {
         error.textContent = 'اختاري لونين مختلفين للقطعة.';
         error.hidden = false;
-        write('');
+        // Keep the actual invalid combination so checkDrafts blocks Save as well.
+        // Blank is allowed for a single-colour, one-size legacy model, so blank here is unsafe.
+        write(pairName(firstField.select.value, secondField.select.value));
       } else {
         error.textContent = '';
         error.hidden = true;
@@ -142,7 +144,7 @@ export function mountDraftColourPickers(root) {
     secondField.select.addEventListener('change', updatePair);
     input.addEventListener('input', () => {
       // Do not collapse the pair panel while the staff member is correcting identical colours.
-      if (mode.select.value === 'pair' && !input.value.trim()) return;
+      if (mode.select.value === 'pair' && !splitColourPair(input.value)) return;
       sync();
     });
   }
