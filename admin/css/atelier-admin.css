@@ -151,3 +151,45 @@
 @media (min-width:720px){.preview-shop{grid-template-columns:minmax(0,320px) 1fr}}
 .preview-gallery>img{inline-size:100%;aspect-ratio:4/5;object-fit:cover;border-radius:14px;background:var(--surface-2)}
 .preview-gallery .thumbs img{inline-size:56px;block-size:70px;object-fit:cover;border-radius:8px}
+
+
+/* SELECT SHOP WOMEN: shared Dark Luxury identity with the public storefront.
+   Tokens exactly match css/atelier-site.css. Visual styles only, no business logic. */
+:root:not([data-theme="dark"]){
+  --bg:#F7F3EC;--surface:#FFFDF8;--surface-2:#F0EBE2;--surface-3:#E7DFD3;
+  --ink:#0B1730;--ink-2:#253452;--muted:#535D72;
+  --line:#DED6C8;--line-2:#C9C0B2;
+  --tape:#00727A;--tape-ink:#FFFFFF;--primary:#D100D1;--accent:#D100D1;--on-primary:#FFFFFF;
+  --rose:#00727A;--wash:#FFFDF8;--spot:rgba(0,114,122,.14);
+  --danger:#B42318;--danger-bg:rgba(180,35,24,.11);
+  --ok:#176647;--ok-bg:rgba(23,102,71,.12);
+  --warn:#8A5406;--warn-bg:rgba(138,84,6,.12);
+  --info:#006B78;--info-bg:rgba(0,107,120,.12);
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#050B1C;--surface:#0B1730;--surface-2:#111F3A;--surface-3:#192A48;
+  --ink:#FFFFFF;--ink-2:#E2E8F4;--muted:#AAB5C8;
+  --line:#253452;--line-2:#384B6C;
+  --tape:#2ED9D1;--tape-ink:#050B1C;--primary:#D100D1;--accent:#D100D1;--on-primary:#FFFFFF;
+  --rose:#2ED9D1;--wash:#111F3A;--spot:rgba(46,217,209,.14);
+  --danger:#FF8A9A;--danger-bg:rgba(255,138,154,.14);
+  --ok:#64D8A3;--ok-bg:rgba(100,216,163,.14);
+  --warn:#F0C77A;--warn-bg:rgba(240,199,122,.14);
+  --info:#2ED9D1;--info-bg:rgba(46,217,209,.14);
+  color-scheme:dark;
+}
+/* Keep primary actions fuchsia, navigation/selection/focus cyan like the shop. */
+.btn-primary,.tab.plus span{background:var(--primary);color:var(--on-primary)}
+.btn-primary:hover:not(:disabled){background:#AE00B8;filter:none}
+:focus-visible,.model-open:focus-visible{outline-color:var(--tape)}
+.input:focus,.select:focus,.textarea:focus,.input-money:focus-within{border-color:var(--tape);box-shadow:0 0 0 3px var(--spot)}
+:root[data-theme="dark"] .card,:root[data-theme="dark"] .model-color-line{background:var(--surface)}
+.topbar .brand b,.sidebar .brand b{color:var(--ink)}
+.sidebar .nav a[aria-current="page"],.tab[aria-current="page"]{color:var(--tape)}
+.sidebar .nav a[aria-current="page"]::before,.tab[aria-current="page"]::before{background:var(--tape)}
+:root:not([data-theme="dark"]) .chip[aria-pressed="true"],:root[data-theme="dark"] .chip[aria-pressed="true"]{background:var(--tape);border-color:var(--tape);color:var(--tape-ink)}
+.auth-art .tape-wall{background:repeating-linear-gradient(-28deg,transparent 0 46px,var(--tape) 46px 92px,transparent 92px 180px);opacity:.1}
+.auth-art .art-copy span{color:var(--muted)}
+:root[data-theme="dark"] .auth-art{background:var(--bg);color:var(--ink)}
+:root:not([data-theme="dark"]) .auth-art{background:var(--wash);color:var(--ink)}
