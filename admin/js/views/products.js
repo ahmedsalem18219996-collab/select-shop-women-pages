@@ -355,7 +355,7 @@ function createSheet(ctx) {
       <label class="field"><span>${t('create.category')}</span><select class="select" id="c-cat" required></select></label>
       ${ctx.can('products.price') ? html`<label class="field"><span>${t('create.price')}</span><div class="input-money"><input id="c-price" inputmode="decimal" autocomplete="off" placeholder="مثال: 650"><span class="sr">سعر بيع المنتج بالجنيه المصري</span><span>EGP</span></div></label>` : ''}
     </div>
-    ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هتحدده مسؤولة التسعير بعد الحفظ.</p>` : ''}
+    ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هيحدده فريق التسعير بعد الحفظ.</p>` : ''}
     ${ctx.can('owner') ? html`<label class="field"><span>تكلفة المورد (اختياري، للإدارة فقط)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعملاء ولا في المتجر.</small></label>` : ''}
     <label class="field"><span>${t('create.description')} (اختياري)</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
     <div class="desc-helper" data-description-helper>
@@ -399,7 +399,7 @@ function createSheet(ctx) {
     ordered.forEach((c) => catSel.add(new Option(c.visible === false ? `${c.name} (${t('status.hidden')})` : c.name, c.name)));
     const firstVisible = ordered.find((c) => c.visible !== false);
     if (firstVisible) catSel.value = firstVisible.name;
-  }).catch(() => message('تعذّر تحميل الأقسام. اقفلي النافذة وجربي تاني.')).finally(() => {
+  }).catch(() => message('تعذّر تحميل الأقسام. اقفل النافذة وحاول مرة تانية.')).finally(() => {
     if (document.contains(createButton)) createButton.disabled = !catSel.value || !categories.some(c => c.name === catSel.value && c.visible !== false);
   });
   const costIn = $('#c-cost', box);
