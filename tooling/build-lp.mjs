@@ -488,7 +488,7 @@ export async function shellRoutes() {
 
 export function renderShell(fontFaces = "", routes = {}) {
   const code = `String(new URLSearchParams(location.search).get("p")||new URLSearchParams(location.search).get("code")||"").trim().toUpperCase()`;
-  return layout({
+  const markup = layout({
     source: " (automatic product page)", title: "SELECT SHOP WOMEN",
     description: "طلب مباشر من نفس الصفحة من SELECT SHOP WOMEN. الدفع عند الاستلام والشحن لكل المحافظات.",
     canonical: "", preload: "", codeExpr: code, fontFaces, route: ROUTE(routes),
@@ -497,6 +497,10 @@ export function renderShell(fontFaces = "", routes = {}) {
     noscript: `<a href="/">فتح المتجر</a>`, data: JSON.stringify({ auto: true }),
     scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n`,
   });
+  // Accessible first paint, even when JS is unavailable. Only the automatic shell
+  // gets these neutral labels; published campaigns retain their original snapshots.
+  const neutralLabels = [["اطلبي إطلالتك","طلب سريع"],["تفاصيل تكمّل إطلالتك","تفاصيل المنتج"],["اطلبي دلوقتي","طلب مباشر"],["سيبي بياناتك، والتوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب.","بيانات التوصيل مطلوبة، والتوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب."],["اختاري المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد","مصاريف الشحن والإجمالي بيظهروا بعد اختيار المحافظة"],["اختاري المحافظة","اختيار المحافظة"],["هتدفعي الإجمالي ده كاش للمندوب.","الإجمالي ده بيتدفع كاش للمندوب عند الاستلام."],["شوفي قطع تانية","عرض منتجات تانية"],["أضيفي للشنطة","إضافة للشنطة"],["افتحي المتجر","فتح المتجر"]];
+  return neutralLabels.reduce((out, [before, after]) => out.replaceAll(before, after), markup);
 }
 
 async function encodeImages(page, products) {
