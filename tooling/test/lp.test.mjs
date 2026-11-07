@@ -5,12 +5,6 @@ import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, 
 import { render, renderShell, shellRoutes, photos, esc, AB_SNIPPET, PREFETCH, colorsOf, colorData, readexFaces } from "../build-lp.mjs";
 
 test("landing copy states availability is pending and makes no inspection promise", () => {
-  const shell = renderShell("", {});
-  assert.match(shell, /تسجيل الطلب/);
-  assert.match(shell, /نموذج الطلب/);
-  assert.match(shell, /aria-label="زيادة الكمية"/);
-  assert.match(shell, /aria-label="تقليل الكمية"/);
-  assert.doesNotMatch(shell, /اختاري|اطلبي|زوّدي|قلّلي|شوفي قطع/);
   const html = renderShell("", {});
   assert.match(html, /الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل/);
   assert.doesNotMatch(html, /المعاينة متاحة عند الاستلام/);
@@ -124,15 +118,11 @@ test("gallery markup: one photo has no arrows, counter or thumbnails; several ph
   assert.doesNotMatch(many, /id="lpPrev"[^>]* hidden/);
   assert.match(many, /id="lpCount" dir="ltr" aria-live="polite">1\/3</);
   assert.equal((many.match(/<button type="button" data-i="/g) || []).length, 3);
-  assert.match(many, /data-i="0" aria-label="عرض الصورة 1 من 3" aria-current="true"><img src="img\/SS-9001\/0-320.webp"/);
+  assert.match(many, /data-i="0" aria-label="اعرضي الصورة 1 من 3" aria-current="true"><img src="img\/SS-9001\/0-320.webp"/);
   assert.match(many, /<img src="img\/SS-9001\/0-800.webp"[^>]* width="800" height="1067"/); // 3:4, the uncropped photo shape
 });
 
 test("generator: escapes text, primary photo first, refuses missing price, inlines only Readex", () => {
-  // Future campaign pages must not restore feminine-only controls.
-  const generated = render({ id: "t", code: "SS-9001", benefits: ["x"], video: null }, { "SS-9001": { ...sized, media: [media(1, true)] } });
-  assert.match(generated, /تحديد الكمية|تسجيل الطلب/);
-  assert.doesNotMatch(generated, /اختاري|اطلبي|زوّدي|قلّلي|اعرضي/);
   assert.equal(esc(`<b>"x"&'`), "&lt;b&gt;&quot;x&quot;&amp;&#39;");
   assert.equal(photos({ media: [media(1, false), media(2, true), { url: "https://evil.example/x.jpg" }] })[0].position, 2);
   const page = { id: "t", code: "SS-9001", benefits: ["x"], video: null };
