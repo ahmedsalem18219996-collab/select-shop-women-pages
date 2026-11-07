@@ -12,7 +12,7 @@ export function improveProductDescription({ title = '', description = '' } = {})
   if (raw.length < 6) {
     return { ok: false, message: 'إدخال تفاصيل بسيطة عن المنتج أولًا، مثل الخامة أو اللون أو المقاس.' };
   }
-  if (/^نقدم لك .+ من SELECT SHOP\.\n\nتفاصيل المنتج:/s.test(raw)) {
+  if (/^(?:نقدم لك|اكتشفي) .+ من SELECT SHOP\.\n\nتفاصيل المنتج:/s.test(raw)) {
     return { ok: false, message: 'الوصف متحسّن بالفعل. يمكن تعديله يدويًا أو حفظه.' };
   }
   const name = unmark(collapse(title)) || 'الموديل';
@@ -72,7 +72,7 @@ export function mountDescriptionEnhancer(root, { textarea, titleInput }) {
     generated = null;
     before = null;
     undo.hidden = true;
-    status.textContent = 'رجعنا للوصف الأصلي. التعديل مش محفوظ لحد ما تضغطي حفظ.';
+    status.textContent = 'رجعنا للوصف الأصلي. التعديل مش محفوظ لحد الضغط على حفظ.';
     field.focus();
   });
   field.addEventListener('input', () => {
