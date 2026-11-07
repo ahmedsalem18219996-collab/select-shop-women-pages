@@ -328,7 +328,7 @@ function setShots(/** @type {Shot[]} */ shots, paint = true) {
   for (const id of ["lpPrev", "lpNext", "lpCount"]) { const el = document.getElementById(id); if (el) el.hidden = n < 2; }
   document.getElementById("lpGallery")?.replaceChildren(...(n < 2 ? [] : gallery.shots).map((s, j) => {
     const b = Object.assign(document.createElement("button"), { type: "button" });
-    b.dataset.i = String(j); b.setAttribute("aria-label", `اعرضي الصورة ${j + 1} من ${n}`);
+    b.dataset.i = String(j); b.setAttribute("aria-label", `عرض الصورة ${j + 1} من ${n}`);
     b.append(Object.assign(document.createElement("img"), { src: s.thumb, alt: "", width: 240, height: 320, loading: "lazy", decoding: "async" }));
     return b;
   }));
@@ -417,6 +417,10 @@ function neutralLandingCopy() {
     if (el) el.textContent = value;
   };
   set(".top .jump", "نموذج الطلب");
+  set(".campaign-jump", "تحديد الكمية وتسجيل الطلب");
+  set(".cod", "مفيش دفع أونلاين. الإجمالي بيتدفع كاش للمندوب عند الاستلام.");
+  set(".video[data-lp-video]", "▶ تشغيل الفيديو");
+  document.querySelectorAll("#lpGallery button[data-i]").forEach((b, i, all) => b.setAttribute("aria-label", `عرض الصورة ${i + 1} من ${all.length}`));
   const orderHeading = document.querySelector(".order h2");
   if (orderHeading?.firstChild?.nodeType === 3) orderHeading.firstChild.textContent = "تسجيل الطلب";
   set(".order h2 small", "بيانات التوصيل فقط. تأكيد التوافر وميعاد الشحن بعد تسجيل الطلب.");
