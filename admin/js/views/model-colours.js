@@ -357,8 +357,13 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
           ? planColourPrice(current, price) : [];
         // An untouched switch must not turn unavailable sizes back on during a photo-only save.
         const availabilityEdited = $('[data-c-avail]', card)?.dataset.dirty === 'true';
+        // If sizes changed but the supplier switch was untouched, turn on only
+        // newly-created sizes; do not reactivate an older size intentionally unavailable.
+        const oldPositions = new Set(c.variants.map((variant) => variant.position));
         const availPlan = typeof desiredAvail === 'boolean' && can('inventory.manage') && (availabilityEdited || sizesPlan.length > 0)
-          ? planColourAvailability(current, desiredAvail) : [];
+          ? planColourAvailability(current, desiredAvail).filter((step) =>
+              availabilityEdited || !oldPositions.has(step.args.position))
+          : [];
         if ((pricePlan.length || availPlan.length) &&
           !(await apply([...pricePlan, ...availPlan], { ctx, p: latest.data.product, code, list }))) return;
         if (files.length) {
