@@ -417,6 +417,9 @@ function neutralLandingCopy() {
     if (el) el.textContent = value;
   };
   set(".top .jump", "نموذج الطلب");
+  // Preserve historical page snapshots and targeted campaign headlines.
+  const genericHeading = document.querySelector(".atelier-heading");
+  if (genericHeading?.textContent?.trim() === "تفاصيل تكمّل إطلالتك") genericHeading.textContent = "تفاصيل المنتج";
   set(".campaign-jump", "تحديد الكمية وتسجيل الطلب");
   set(".cod", "مفيش دفع أونلاين. الإجمالي بيتدفع كاش للمندوب عند الاستلام.");
   set(".video[data-lp-video]", "▶ تشغيل الفيديو");
