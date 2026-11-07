@@ -156,7 +156,7 @@ test("generated pages retain optional cart except explicitly focused direct-only
   assert.match(html, /id="lpCartLink"/);
   assert.match(html, /id="lpCartCount"/);
   assert.match(html, /id="lpOrder"/);
-  assert.match(html, /\/lp\/runtime\.js\?v=20261030-4/);
+  assert.match(html, /\/lp\/runtime\.js\?v=20261107-neutral-colours/);
   const generated = await readdir(new URL("../../lp/", import.meta.url), { withFileTypes:true });
   const dirs = generated.filter(d => d.isDirectory() && (d.name.startsWith("ss-") || d.name === "ballon-suit"));
   assert.equal(dirs.length, 39);
