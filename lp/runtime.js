@@ -930,7 +930,7 @@ async function init() {
         const v = p?.options?.length === 0 ? findVariant(p, []) : null;
         if (!p || p.publicCode !== code || p.purchasable !== true ||
             v?.purchasable !== true || !okMinor(v.unitPrice?.amountMinor)) {
-          say("اللون ده مش متاح حاليًا أو ليه مقاسات مختلفة. اختيار لون تاني.", true);
+          say("اللون ده مش متاح حاليًا أو مقاساته مختلفة. ممكن اختيار لون تاني.", true);
           return;
         }
         mixEntries.set(code, { product: p, variant: v, quantity: 0 });
