@@ -159,6 +159,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
   const cost = (pos) => (costs?.ready ? costOf(costs.data, pos) : null);
   const live = model.colours.filter((c) => c.variants.length);
   const half = p.options.length && !p.variants.length;
+  const queuedPhotos = new Map(); // only local Files, per colour card; upload happens on Save
 
   render(body, html`<div class="stack">
     <section class="card stack"><div class="card-head"><h3>الألوان والمقاسات والصور</h3><span class="muted">${live.length} لون</span></div>
@@ -238,23 +239,46 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
     });
   }
 
-  body.addEventListener('change', async (e) => {
+
+  const drawQueued = (card, colourIndex) => {
+    const grid = $('[data-c-queued]', card); if (!grid) return;
+    grid.replaceChildren();
+    (queuedPhotos.get(colourIndex) || []).forEach((file, index) => {
+      const fig = document.createElement('figure');
+      fig.className = 'thumb draft-pending-photo';
+      const photo = document.createElement('img');
+      photo.alt = file.name; photo.width = 96; photo.height = 120;
+      const url = URL.createObjectURL(file);
+      photo.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+      photo.addEventListener('error', () => URL.revokeObjectURL(url), { once: true });
+      photo.src = url;
+      const remove = document.createElement('button');
+      remove.type = 'button'; remove.className = 'icon-btn';
+      remove.dataset.cRemoveQueued = String(index);
+      remove.textContent = '×'; remove.setAttribute('aria-label', 'شيلي الصورة قبل الحفظ');
+      fig.append(photo, remove); grid.append(fig);
+    });
+    const msg = $('[data-c-queue-count]', card);
+    if (msg) msg.textContent = queuedPhotos.get(colourIndex)?.length
+      ? queuedPhotos.get(colourIndex).length + ' صورة جاهزة؛ اضغطي «احفظي اللون والصور» للرفع.'
+      : '';
+  };
+  body.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-upload]')) return;
     const card = e.target.closest('[data-colour]'); if (!card) return;
-    const c = live[+card.dataset.colour];
-    if (e.target.matches('[data-upload]')) {
-      const files = [...e.target.files]; e.target.disabled = true;
-      try {
-        const res = await uploadPhotos({ files, code, title: p.title + ' - ' + (c.name || 'الموديل'), version: d.media?.structure_version ?? p.structure_version,
-          grid: $('.thumbs', card), before: $('.thumb-add', card), fields: photoTarget(c) });
-        if (!res.total) return;
-        if (res.ok === res.total) done('اترفعت ' + res.ok + ' صورة للون ' + (c.name || 'الموديل') + '.'); else island('error', uploadSummary(res));
-        if (res.ok) reload();
-      } finally { if (document.contains(e.target)) { e.target.disabled = false; e.target.value = ''; } }
+    const colourIndex = Number(card.dataset.colour);
+    const next = [...(e.target.files || [])];
+    const accepted = next.filter((file) => checkSourceImage(file) === null);
+    if (accepted.length !== next.length) island('error', 'في صور غير مناسبة أو أكبر من 5MB؛ احتفظنا بالصور السليمة بس.');
+    const files = queuedPhotos.get(colourIndex) || [];
+    const seen = new Set(files.map((f) => [f.name, f.size, f.lastModified].join(':')));
+    for (const file of accepted) {
+      const key = [file.name, file.size, file.lastModified].join(':');
+      if (!seen.has(key)) { files.push(file); seen.add(key); }
     }
-    if (e.target.matches('[data-c-avail]')) {
-      const ok = await apply(planColourAvailability(c, e.target.checked), { ctx, p, code, list: $('[data-steps]', card) });
-      if (ok) { done(); reload(); } else e.target.checked = !e.target.checked;
-    }
+    queuedPhotos.set(colourIndex, files);
+    e.target.value = '';
+    drawQueued(card, colourIndex);
   });
 
   body.addEventListener('click', async (e) => {
@@ -267,16 +291,88 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
       b.setAttribute('aria-pressed', String(on)); return;
     }
     const run = async (steps, text) => withBusy(b, async () => { if (await apply(steps, { ctx, p, code, list })) { done(text); reload(); } });
-    if (b.matches('[data-save-sizes]')) {
-      const wanted = $$('[data-c-size][aria-pressed="true"]', card).map((x) => x.dataset.cSize);
-      const extra = $('[data-c-custom]', card).value.trim(); if (extra) wanted.push(extra);
-      if (!wanted.length) { island('error', 'سيبي مقاس واحد على الأقل للون، أو وقّفي اللون كله.'); return; }
-      await run(planSizes(model, c, wanted), 'اتحفظت مقاسات اللون.');
+
+    if (b.matches('[data-c-remove-queued]')) {
+      const queued = queuedPhotos.get(Number(card.dataset.colour)) || [];
+      queued.splice(Number(b.dataset.cRemoveQueued), 1);
+      drawQueued(card, Number(card.dataset.colour));
+      return;
     }
-    if (b.matches('[data-save-cprice]')) {
-      const v = $('[data-c-price]', card).value.trim(), amount = v ? toMinor(v) : null;
-      if (v && (amount === null || amount < 100)) { island('error', 'اكتبي السعر بالجنيه، مثلًا 650، أو سيبيه فاضي علشان ياخد السعر الأساسي.'); return; }
-      await run(planColourPrice(c, amount === model.base ? null : amount), 'اتحفظ سعر اللون.');
+    if (queuedPhotos.get(Number(card.dataset.colour))?.length &&
+      b.matches('[data-retire], [data-restore], [data-first], [data-save-cost]')) {
+      island('error', 'احفظي صور اللون المختارة الأول، علشان ما تضيعش لما الشاشة تتحدث.');
+      return;
+    }
+    if (b.matches('[data-save-colour]')) {
+      const wanted = model.sizeOption && can('products.edit') && c.active
+        ? $$('[data-c-size][aria-pressed="true"]', card).map((x) => x.dataset.cSize)
+        : c.variants.filter((v) => v.active).map((v) => v.size ?? ONE_SIZE);
+      const extra = $('[data-c-custom]', card)?.value.trim();
+      if (extra && !wanted.includes(extra)) wanted.push(extra);
+      if (!wanted.length && model.sizeOption && c.active) {
+        island('error', 'اختاري مقاس واحد على الأقل، أو وقّفي اللون نفسه.'); return;
+      }
+      const input = $('[data-c-price]', card);
+      const priceDirty = input?.dataset.dirty === 'true';
+      const raw = input?.value.trim() || '';
+      const amount = raw ? toMinor(raw) : null;
+      if (priceDirty && raw && (amount === null || amount < 100)) {
+        island('error', 'اكتبي سعر صحيح بالجنيه، مثل 650، أو امسحي السعر الخاص للرجوع للسعر الأساسي.'); input.focus(); return;
+      }
+      const desiredAvail = $('[data-c-avail]', card)?.checked;
+      const files = queuedPhotos.get(Number(card.dataset.colour)) || [];
+      await withBusy(b, async () => {
+        // Read fresh state first so repeated taps/retries never blindly repeat a
+        // partially completed structural save with an old version token.
+        let latest;
+        try { latest = await call('products.get', { code }); } catch { latest = { outcome: 'network' }; }
+        if (latest?.outcome !== 'ok') { island('error', 'تعذّر قراءة آخر نسخة من المنتج. مفيش صور اترفعت.'); return; }
+        let freshModel = colourModel(latest.data.product, latest.data.stock, latest.data.media?.media || []);
+        let current = freshModel.colours.find((x) => x.valuePosition === c.valuePosition && x.optionPosition === c.optionPosition);
+        if (!current) { island('error', 'اللون اتغير من وقت فتح الصفحة؛ حدّثي المنتج قبل الحفظ.'); return; }
+        const sizesPlan = model.sizeOption && can('products.edit') && c.active ? planSizes(freshModel, current, wanted) : [];
+        if (sizesPlan.length) {
+          if (!(await apply(sizesPlan, { ctx, p: latest.data.product, code, list }))) return;
+          try { latest = await call('products.get', { code }); } catch { latest = { outcome: 'network' }; }
+          if (latest?.outcome !== 'ok') {
+            island('error', 'اتحفظ جزء من المقاسات، لكن تعذر تحديث حالة المنتج. راجعيه قبل إعادة الحفظ.'); return;
+          }
+          freshModel = colourModel(latest.data.product, latest.data.stock, latest.data.media?.media || []);
+          current = freshModel.colours.find((x) => x.valuePosition === c.valuePosition && x.optionPosition === c.optionPosition);
+        }
+        if (!current) { island('error', 'تعذر تحديد اللون بعد تعديل المقاسات.'); return; }
+        const price = priceDirty ? (amount === freshModel.base ? null : amount) : c.priceMinor;
+        const priceNeedsSync = can('products.price') && (priceDirty || (sizesPlan.length && Number.isInteger(c.priceMinor)));
+        const pricePlan = priceNeedsSync && (priceDirty || current.priceMinor !== price)
+          ? planColourPrice(current, price) : [];
+        const availPlan = typeof desiredAvail === 'boolean' && can('inventory.manage')
+          ? planColourAvailability(current, desiredAvail) : [];
+        if ((pricePlan.length || availPlan.length) &&
+          !(await apply([...pricePlan, ...availPlan], { ctx, p: latest.data.product, code, list }))) return;
+        if (files.length) {
+          try { latest = await call('products.get', { code }); } catch { latest = { outcome: 'network' }; }
+          if (latest?.outcome !== 'ok') {
+            island('error', 'اتحفظت بيانات اللون، لكن الصور لسه ما اترفعتش. راجعي الصفحة قبل رفعهم.'); return;
+          }
+          freshModel = colourModel(latest.data.product, latest.data.stock, latest.data.media?.media || []);
+          current = freshModel.colours.find((x) => x.valuePosition === c.valuePosition && x.optionPosition === c.optionPosition);
+          if (!current?.variants.length) {
+            island('error', 'اتحفظ اللون لكن ماقدرناش نربط الصور بمقاس، فمفيش صورة اترفعت.'); return;
+          }
+          $('[data-c-queued]', card)?.replaceChildren();
+          const result = await uploadPhotos({
+            files, code, title: p.title + ' - ' + (current.name || 'الموديل'),
+            version: latest.data.media?.structure_version ?? latest.data.product.structure_version,
+            grid: $('.thumbs', card), before: $('.thumb-add', card), fields: photoTarget(current)
+          });
+          if (result.ok !== files.length) {
+            island('error', 'اتحفظ اللون واترفعت ' + result.ok + ' من ' + files.length + ' صورة. أعيدي رفع الناقص بس، مش الصور الناجحة.');
+            reload(); return;
+          }
+        }
+        done('اتحفظت بيانات اللون وصوره بنجاح.');
+        reload();
+      });
     }
     if (b.matches('[data-retire]')) {
       if (!(await confirmDialog({ title: 'وقف اللون ' + c.name, text: 'اللون هيختفي من المتجر للطلبات الجديدة. الأوردرات القديمة والصور والكود زي ما هم، وتقدري ترجّعيه بعدين.', okText: 'وقّفي اللون', danger: true }))) return;
@@ -307,6 +403,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
   });
   body.addEventListener('input', (e) => {
     if (!e.target.matches('[data-cost], [data-c-price]')) return;
+    if (e.target.matches('[data-c-price]')) e.target.dataset.dirty = 'true';
     const card = e.target.closest('[data-colour]'), c = live[+card.dataset.colour];
     const sell = toMinor($('[data-c-price]', card)?.value.trim() || '') ?? priceOf(c, model.base);
     for (const out of $$('[data-profit]', card)) {
@@ -329,17 +426,19 @@ function colourCard(c, ci, { model, media, can, cost, costsReady }) {
       <div class="thumbs">${photos.map((m, i) => html`<figure class="thumb ${m.hidden ? 'hidden' : ''}"><img src="${img(m)}" alt="${m.alt_text || c.name}" loading="lazy" width="96" height="120">
         ${i === 0 ? html`<span class="badge ok">غلاف اللون</span>` : can('media.manage') ? html`<button type="button" class="icon-btn" data-first="${m.media_id}" aria-label="اجعليها أول صورة للون" title="اجعليها أول صورة للون">${icon('star')}</button>` : ''}</figure>`)}
         ${can('media.manage') && (c.optionPosition !== null || !model.colourOption) ? html`<label class="thumb thumb-add">${icon('upload')}<span>ارفعي صور ${c.name || 'الموديل'}</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" data-upload></label>` : ''}</div>
-      <small>تقدري تختاري كذا صورة مرة واحدة. بنضغطها WebP بجودة تحافظ على اللون وتفاصيل القماش، وكل صورة ليها حالة رفع. لو صورة فشلت، الصور القديمة زي ما هي.</small></div>
+      <div class="thumbs" data-c-queued></div><small data-c-queue-count role="status"></small>
+      <small>اختاري كل صور اللون مرة واحدة، وبعدها اضغطي «احفظي اللون والصور». الصور هتترفع باللون الصحيح مع المقاسات والسعر. الصور القديمة مش هتتغير لو حصل خطأ.</small></div>
     ${model.sizeOption && can('products.edit') && c.active ? html`<div class="field"><span>المقاسات</span>
       <div class="chips" style="flex-wrap:wrap">${sizes.map((s) => html`<button type="button" class="chip" data-c-size="${s}" aria-pressed="${live.some((v) => (v.size ?? ONE_SIZE) === s)}">${s}</button>`)}</div>
-      <div class="row"><input class="input" data-c-custom maxlength="18" placeholder="مقاس تاني" style="max-width:160px"><button type="button" class="btn btn-soft btn-sm" data-save-sizes>احفظي المقاسات</button></div>
+      <div class="row"><input class="input" data-c-custom maxlength="18" placeholder="مقاس تاني" style="max-width:160px"></div>
       <small>شيل المقاس بيوقفه بس للطلبات الجديدة؛ الأوردرات القديمة زي ما هي.</small></div>`
       : html`<p class="muted" style="margin:0">المقاسات: ${live.map((v) => v.size ?? ONE_SIZE).join('، ') || '—'}</p>`}
     <div class="grid2">
-      ${can('products.price') ? html`<label class="field"><span>سعر خاص للون</span><div class="row"><div class="input-money"><input data-c-price inputmode="decimal" value="${Number.isInteger(c.priceMinor) ? c.priceMinor / 100 : ''}" placeholder="${model.base ? model.base / 100 : ''}"><span>EGP</span></div><button type="button" class="btn btn-soft btn-sm" data-save-cprice>احفظي</button></div>
+      ${can('products.price') ? html`<label class="field"><span>سعر خاص للون</span><div class="input-money"><input data-c-price inputmode="decimal" value="${Number.isInteger(c.priceMinor) ? c.priceMinor / 100 : ''}" placeholder="${model.base ? model.base / 100 : ''}"><span>EGP</span></div>
         <small>${c.priceMinor === 'mixed' ? 'المقاسات عليها أسعار مختلفة؛ الحفظ هنا هيوحّدها.' : 'فاضي = السعر الأساسي ' + (model.base ? money(model.base) : '')}</small></label>` : ''}
       ${can('inventory.manage') && c.active ? html`<label class="switch" style="align-self:center"><input type="checkbox" data-c-avail ${c.available ? 'checked' : ''}><i></i>متاح عند المورد</label>` : ''}
     </div>
+    ${(can('products.edit') || can('products.price') || can('inventory.manage') || can('media.manage')) && c.active ? html`<div class="row"><span class="space"></span><button type="button" class="btn btn-primary" data-save-colour>احفظي اللون والصور</button></div>` : ''}
     ${can('owner') && costsReady ? html`<details class="cost-box" ${live.some((v) => cost(v.position) === null) ? 'open' : ''}><summary>تكلفة المورد والربح (للمالكة بس)</summary>
       <div class="stack" style="margin-top:8px">${live.map((v) => { const k = cost(v.position); const t = profitText(v.amountMinor ?? sell, k, money); return html`<div class="row" style="flex-wrap:wrap">
         <span style="min-width:72px">${v.size ?? ONE_SIZE}</span><div class="input-money" style="max-width:140px"><input data-cost="${v.position}" inputmode="decimal" value="${k === null ? '' : k / 100}" placeholder="التكلفة" aria-label="تكلفة ${c.name} ${v.size ?? ''}"><span>EGP</span></div>
