@@ -584,7 +584,7 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
 <script src="js/data.js" defer></script>
 <script src="js/catalog-thumbs.js" defer></script>
 <script src="js/store-adapter.js?v=20261106-card-colours" defer></script>
-<script src="js/app.js?v=20261106-card-colours" defer></script>
+<script src="js/app.js?v=neutral-colours-20261107" defer></script>
 </head>
 <body class="atelier-home">
 
@@ -598,7 +598,7 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
       <nav class="hdr-links" aria-label="الأقسام"></nav>
       <div class="hdr-tools">
         <button type="button" class="theme-toggle" data-theme-toggle aria-label="التحويل للوضع الفاتح" title="التحويل للوضع الفاتح"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
-        <a class="ibtn" href="#shop" aria-label="تصفحي المنتجات" title="كل المنتجات"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></a>
+        <a class="ibtn" href="#shop" aria-label="تصفح المنتجات" title="كل المنتجات"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></a>
         <button type="button" class="ibtn hdr-desktop-action" data-open-saved aria-label="المحفوظة" title="المحفوظة"><svg class="i" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span class="dot savedot" hidden>0</span></button>
         <button type="button" class="ibtn hdr-desktop-action" data-open-account aria-label="حسابي" title="حسابي"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></button>
         <button class="ibtn" aria-label="الشنطة" data-open-bag><svg class="i" viewBox="0 0 24 24"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg><span class="dot bagdot" hidden>0</span></button>
@@ -615,12 +615,12 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
     <section class="hero hero--brand" aria-labelledby="heroTitle">
       <div class="hero-copy">
         <span class="hero-kicker">SELECT SHOP WOMEN · THE EDIT</span>
-        <h1 id="heroTitle">اختاري ستايلك <span class="hl">بطريقتك.</span></h1>
+        <h1 id="heroTitle">ستايل على مزاجك <span class="hl">بطريقتك.</span></h1>
         <div class="hero-cta">
-          <a class="btn-solid" href="#shop">تصفحي المنتجات</a>
+          <a class="btn-solid" href="#shop">تصفح المنتجات</a>
         </div>
       </div>
-      <p class="hero-lead">تصفحي الموديلات بصورها وأسعارها، واختاري القطعة اللي تحبيها. التوافر وميعاد الشحن بيتأكدوا بعد تسجيل طلبك، والدفع عند الاستلام.</p>
+      <p class="hero-lead">تصفح الموديلات بصورها وأسعارها، واختيار القطعة اللي تحبيها. التوافر وميعاد الشحن بيتأكدوا بعد تسجيل طلبك، والدفع عند الاستلام.</p>
       <ul class="hero-trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الطلب في دقيقة</li></ul>
     </section>
 
@@ -630,7 +630,7 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
       <div class="wrap shop-head">
         <div>
           <h2>كل القطع</h2>
-          <p class="hint">اختاري القسم اللي تحبيه</p>
+          <p class="hint">اختيار القسم اللي تحبيه</p>
         </div>
         <span class="num" id="countOut" aria-live="polite">جارٍ التحميل…</span>
       </div>
@@ -675,7 +675,7 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
       <span class="thumb" id="shThumb"></span>
       <div><h3 id="shTitle"></h3><span class="num" id="shPrice"></span></div>
     </div>
-    <div class="sh-label"><b>اختاري المقاس</b><span id="shNote"></span></div>
+    <div class="sh-label"><b>اختيار المقاس</b><span id="shNote"></span></div>
     <div class="sizes" id="shSizes" role="radiogroup" aria-label="المقاس"></div>
     <details class="finder" id="finder">
       <summary>مش عارفة مقاسك؟ اكتبي قياساتك</summary>
@@ -685,7 +685,7 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
         <p class="finder-out" id="fOut">هنعلّملك المقاس المناسب على الأزرار فوق.</p>
       </div>
     </details>
-    <button class="cta sh-cta" id="shAdd" disabled>اختاري المقاس الأول</button>
+    <button class="cta sh-cta" id="shAdd" disabled>اختيار المقاس الأول</button>
   </div>
 
   <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="ستوري">
