@@ -69,7 +69,7 @@ function mountDrafts(box, drafts, { canPrice, canMedia, onSave, saveText, single
 
     // File objects stay in memory while switching sizes/colours. Never upload until the
     // structure (colour + its Variants) has been saved, so no unscoped duplicate photos.
-    $('[data-draft]', box).forEach((card) => {
+    $$('[data-draft]', box).forEach((card) => {
       const draft = drafts[Number(card.dataset.draft)];
       const gallery = $('[data-d-photos]', card);
       if (!gallery) return;
