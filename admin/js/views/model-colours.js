@@ -26,7 +26,7 @@ async function apply(steps, { ctx, p, code, list }) {
   const r = await runSteps(steps, { call, code, version: p.structure_version, can: ctx.can,
     onStep: (i, s, state) => { items[i].textContent = (state === 'ok' ? '✓ ' : state === 'failed' ? '✗ ' : '… ') + s.label; } });
   if (r.ok) return true;
-  if (r.res?.outcome === 'forbidden') island('error', 'صلاحيتك مش بتسمح بالخطوة «' + r.step.label + '». اطلبي من المسؤولة تكمّلها.');
+  if (r.res?.outcome === 'forbidden') island('error', 'صلاحيتك مش بتسمح بالخطوة «' + r.step.label + '». اطلب من المسؤول عن الصلاحيات يكملها.');
   else fail(r.res);
   island('error', 'اتحفظ ' + r.at + ' من ' + steps.length + ' خطوة، ووقفنا عند «' + r.step.label + '». اللي اتحفظ ما اتلغاش؛ حدّثي الصفحة واستكمال.');
   return false;
