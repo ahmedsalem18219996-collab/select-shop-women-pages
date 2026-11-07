@@ -752,9 +752,11 @@ async function init() {
     const open = sellableValues(product, ci);
     const picked = opt.values.find((/** @type {any} */ v) => v.position === chosen[ci]);
     const intro = quick.querySelector(".lp-colour-hint");
+    const availableText = open.size === 1 ? "لون واحد" : open.size === 2 ? "لونين" : open.size + " ألوان";
+    const other = open.size - 1;
     if (intro) intro.textContent = picked
-      ? "اللون المختار: " + picked.value + (open.size > 1 ? " · فيه " + (open.size - 1) + " لون تاني" : "")
-      : "اختيار اللون · فيه " + open.size + (open.size === 1 ? " لون متاح" : " ألوان متاحة");
+      ? "اللون المختار: " + picked.value + (other === 1 ? " · فيه لون تاني" : other > 1 ? " · فيه " + other + " ألوان تانية" : "")
+      : "اختيار اللون · متوفر " + availableText;
   };
   const choose = () => {
     variant = chosen.every(x => x >= 0) ? findVariant(product, chosen) : null;
