@@ -376,8 +376,14 @@ test('cost ops not live yet: the model still saves and the owner sees a clear no
   await page.locator('#c-title').fill('طقم بيتي');
   await page.locator('#c-price').fill('400');
   await page.locator('#c-cost').fill('250');
+  // The category list and create permission load independently of the form.
+  // Wait for a real selected category before submitting so CI load does not
+  // race the async select initialization; still assert the draft was created.
+  await expect(page.locator('#c-cat')).toHaveValue('فساتين');
+  await expect(page.locator('[data-create]')).toBeEnabled();
   await page.locator('[data-create]').click();
-  await expect(page).toHaveURL(/SS-9101$/);
+  await expect.poll(() => b.s.ops.some(x => x.op === 'products.create')).toBe(true);
+  await expect(page).toHaveURL(/#\/products\/SS-9101$/, { timeout: 15000 });
   await expect(page.locator('#tabbody')).toContainText('محتاجين تفعيل من السيرفر');
 });
 
