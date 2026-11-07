@@ -84,7 +84,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       '<div class="quick-header"><b>٢. اختيار اللون والمقاس</b><span class="code">' + esc(code) + '</span></div>',
       hasColourOption ? '<span class="muted">لون الاختيار:</span><div class="quick-sizes" role="group" aria-label="اختيار لون المنتج">' + colourButtons + '</div>' : '',
       '<span class="muted">المقاس:</span><div class="quick-sizes" role="group" aria-label="اختيار مقاس المنتج">' + sizeOptions + '</div>',
-      hasUnspecifiedSize ? '<p class="muted quick-help">المنتج ده مش متسجل له مقاسات مختلفة. المعروض حاليًا اختيار واحد فقط؛ مش هنخترع مقاسات ممكن توصل غلط للعميلة.</p>' : '',
+      hasUnspecifiedSize ? '<p class="muted quick-help">المنتج ده مش متسجل له مقاسات مختلفة. المعروض حاليًا اختيار واحد فقط؛ مش هنخترع مقاسات ممكن توصل غلط للعميل.</p>' : '',
       '</div>',
       '<div class="quick-section">',
       '<div class="quick-header"><b>٣. السعر والإتاحة</b><span class="muted">' + esc(STATUS_LABELS[product.status] || 'غير منشور') + '</span></div>',
@@ -147,8 +147,8 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       question.className = 'quick-status-confirm';
       const paragraph = document.createElement('p');
       paragraph.textContent = lifecycle.op === 'products.publish'
-        ? 'اللون ده هيظهر للعملاء. اتأكدتي من الصور والسعر والمقاس والتوافر عند المورد؟'
-        : 'اللون ده هيختفي مؤقتًا من المتجر، من غير حذف الأوردرات أو الصور. موافقة؟';
+        ? 'اللون ده هيظهر للعملاء. هل الصور والسعر والمقاس والتوافر عند المورد اتراجعوا؟'
+        : 'اللون ده هيختفي مؤقتًا من المتجر، من غير حذف الأوردرات أو الصور. تأكيد الإخفاء؟';
       const controls = document.createElement('div');
       controls.className = 'row';
       const cancel = document.createElement('button');
@@ -213,7 +213,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
             if (result?.outcome !== 'saved') {
               fail(result);
               island('error', saved ? 'اتحفظ جزء من التعديلات. مراجعة ' + label + '، واللي اتغير بالفعل مش هنكرره تلقائيًا.' :
-                'ماقدرناش نحفظ ' + label + '. البيانات القديمة لسه زي ما هي، مراجعة صلاحياتك وجربي تاني.');
+                'ماقدرناش نحفظ ' + label + '. البيانات القديمة لسه زي ما هي، يرجى مراجعة الصلاحيات وإعادة المحاولة.');
               await load(code, position);
               return;
             }
@@ -295,7 +295,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     try { response = await call('products.get', { code }); } catch { response = { outcome: 'network' }; }
     if (requestId !== loadNumber || !document.contains(panel)) return;
     if (response?.outcome !== 'ok' || !response.data?.product) {
-      panel.innerHTML = '<p role="alert" class="err">تعذّر تحميل اللون ده. التأكد من الاتصال، وجربي تاني.</p>' +
+      panel.innerHTML = '<p role="alert" class="err">تعذّر تحميل اللون ده. يرجى التأكد من الاتصال وإعادة المحاولة.</p>' +
         '<button class="btn btn-soft" type="button" data-quick-retry>إعادة المحاولة</button>';
       $('[data-quick-retry]', panel).onclick = () => load(nextCode, nextPosition);
       return;
