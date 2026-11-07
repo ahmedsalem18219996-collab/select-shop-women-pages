@@ -107,16 +107,17 @@ export function variantColourChoices(/** @type {any} */ p) {
   return new Set(choices.map((/** @type {any} */ choice) => choice.colorName)).size > 1 ? choices : [];
 }
 
-/** Photos for one colour: its own (colour- or Variant-tagged) photos first, then the untagged ones.
- *  Empty when the colour has none, so the caller keeps what is shown rather than another colour's shade. */
-export function colourMedia(/** @type {any[]} */ media, /** @type {number} */ optionPosition, /** @type {number} */ valuePosition) {
+/** Photos for one colour: tagged photos only. In a multi-colour model, unscoped
+ * photos must NEVER be mistaken for a colour: a missing photo is safer than
+ * showing a different garment. Single-colour/legacy models can use shared media. */
+export function colourMedia(/** @type {any[]} */ media, /** @type {number} */ optionPosition, /** @type {number} */ valuePosition, /** @type {boolean} */ strict = false) {
   const t = (/** @type {any} */ m) => m?.target;
   const tagged = (/** @type {any} */ m) => t(m) && t(m).kind !== "product";
   const own = media.filter(m => t(m)?.kind === "value" ? t(m).optionPosition === optionPosition && t(m).valuePosition === valuePosition
     : t(m)?.kind === "variant" && Array.isArray(t(m).selection) && t(m).selection.some((/** @type {Pick} */ s) => s.optionPosition === optionPosition && s.valuePosition === valuePosition));
   // Never mix a colour's assigned images with shared or sibling-colour photos.
-  // Legacy models with no tagged media still use their shared gallery unchanged.
-  return own.length ? own : media.some(tagged) ? [] : media.filter(m => !tagged(m));
+  // Only legacy/single-colour models may fall back to their shared photos.
+  return own.length ? own : (strict || media.some(tagged)) ? [] : media.filter(m => !tagged(m));
 }
 
 export const egp = (/** @type {number} */ minor) => new Intl.NumberFormat("ar-EG").format(minor / 100);
@@ -392,7 +393,7 @@ function fillFromProduct(/** @type {any} */ p) {
   const all = liveMedia(p), ci = colourIndex(p);
   const opt = ci >= 0 ? p.options[ci] : null;
   const first = opt?.values.find((/** @type {any} */ v) => sellableValues(p, ci).has(v.position));
-  const preview = first ? colourMedia(all, opt.position, first.position) : opt ? [] : all;
+  const preview = first ? colourMedia(all, opt.position, first.position, opt.values.length > 1) : opt ? [] : all;
   paintPhotos(preview, title + (first ? " - " + first.value : ""));
   const hint = document.getElementById("lpPreviewHint");
   if (hint) {
@@ -782,7 +783,7 @@ async function init() {
     const ci = colourIndex(product);
     if (from === ci && chosen[ci] >= 0) {
       const name = product.options[ci].values.find((/** @type {any} */ v) => v.position === chosen[ci])?.value || "";
-      const own = colourMedia(liveMedia(product), product.options[ci].position, chosen[ci]);
+      const own = colourMedia(liveMedia(product), product.options[ci].position, chosen[ci], product.options[ci].values.length > 1);
       paintPhotos(own, String(product.title || "") + " - " + name);
       const hint = document.getElementById("lpPreviewHint");
       if (hint) { hint.hidden = true; hint.textContent = ""; }
