@@ -27,7 +27,7 @@ async function renderList(ctx) {
       ${can('products.edit') ? html`<div class="actions"><button class="btn btn-primary" data-new>${icon('plus')}${t('products.new')}</button></div>` : ''}</div>
     <section class="card catalog-overview" aria-label="التحكم في نشر المنتجات" style="margin-bottom:14px">
       <details class="on-demand-note" aria-label="المخزون الافتراضي"><summary><b>التوريد حسب الطلب</b> · الكميات هنا افتراضية</summary>
-        <p class="muted">كميات المخزون هنا افتراضية لتنظيم قبول الأوردرات، ومش معناها إن القطع موجودة عندك. التأكد من التوافر والسعر عند المورد قبل تأكيد كل طلب، واخفِي المنتج لو مش هممكن توفريه.</p></details>
+        <p class="muted">كميات المخزون هنا افتراضية لتنظيم الطلبات، ومش معناها إن القطع موجودة فعليًا. لازم التأكد من التوافر والسعر عند المورد قبل تأكيد كل طلب، وإخفاء المنتج لو مش متوفر.</p></details>
       <div class="catalog-state-grid">
         <a class="catalog-state" href="#/products?status=public"><strong data-product-count="public">—</strong><span>منشور للعميلات</span></a>
         <a class="catalog-state" href="#/products?status=draft"><strong data-product-count="draft">—</strong><span>مسودات للتجهيز</span></a>
@@ -155,7 +155,7 @@ async function renderList(ctx) {
     const yes = await confirmDialog({
       title: action.op === 'products.publish' ? 'نشر ' + item.title : 'إخفاء ' + item.title,
       text: action.op === 'products.publish'
-        ? 'بعد النشر المنتج هيظهر للعميلات ويقدروا يطلبوه. اتأكدتي من السعر والصور والتوافر عند المورد؟'
+        ? 'بعد النشر المنتج هيظهر للعملاء وهيقدروا يطلبوه. هل السعر والصور والتوافر عند المورد اتراجعوا؟'
         : 'المنتج هيتشال من العرض مؤقتًا، من غير ما نحذف بياناته أو الأوردرات القديمة. موافقة؟',
       okText: action.label
     });
@@ -349,7 +349,7 @@ function quickPrice(code, after) {
 // ======================================================================= create (step 1)
 function createSheet(ctx) {
   const box = sheet({ title: t('create.title'), wide: true, body: html`
-    <p class="muted" style="margin:0 0 8px"><b>الخطوة ١ من ٣:</b> البيانات الأساسية. بعد الحفظ هتإضافة الألوان، وكل لون بصوره ومقاساته وسعره. <strong>المنتج بيتحفظ مسودة ومش بيظهر للعميلات لحد ما تنشريه.</strong></p>
+    <p class="muted" style="margin:0 0 8px"><b>الخطوة ١ من ٣:</b> البيانات الأساسية. بعد الحفظ بنضيف الألوان، وكل لون بصوره ومقاساته وسعره. <strong>المنتج بيتحفظ مسودة ومش بيظهر للعملاء قبل النشر.</strong></p>
     <label class="field"><span>${t('create.name')}</span><input class="input" id="c-title" maxlength="200" required autocomplete="off" placeholder="${t('create.namePh')}"></label>
     <div class="grid2">
       <label class="field"><span>${t('create.category')}</span><select class="select" id="c-cat" required></select></label>
@@ -425,7 +425,7 @@ function createSheet(ctx) {
     }
     const costText = costIn?.value.trim() || '';
     const cost = costText ? toMinor(costText) : null;
-    if (costText && (cost === null || cost < 1)) { message('تكلفة المورد لازم تكون رقم بالجنيه، زي 350، أو سيبيها فاضية.', costIn); return; }
+    if (costText && (cost === null || cost < 1)) { message('تكلفة المورد لازم تكون رقم بالجنيه، زي 350، أو سيب الخانة فاضية.', costIn); return; }
     // Staff without price permission may still draft the catalogue; a price manager finishes it.
     $('#c-title', box).removeAttribute('aria-invalid');
     $('#c-price', box)?.removeAttribute('aria-invalid');
@@ -736,7 +736,7 @@ const TABS = {
     const valueOf = (v) => v.selections?.length ? v.selections.map((s) => p.options.find((o) => o.option_id === s.option_id)?.values.find((x) => x.value_id === s.value_id)?.value).join(' / ') : '—';
     render(body, html`<div class="stack">
       <section class="card stack variants"><div class="card-head"><h3>${t('editor.variants')}</h3><span class="muted">${fmtNum(p.variants.length)}</span></div>
-      <p class="muted" style="margin:0">المخزون هنا افتراضي: كتابة عددًا تنظيميًا موجبًا للون والمقاس اللي ممكن توفريه من المورد، وفعّلي «متاح». مراجعة المورد قبل تأكيد أي أوردر. علشان تحفظي سعر لون معين، كتابة السعر والضغط على زر «حفظ السعر» في نفس الصف. الرقم الرمادي مثال للسعر الأساسي فقط. الكمية والإتاحة بتتحفظ لما تخرجي من الخانة.</p>
+      <p class="muted" style="margin:0">المخزون هنا افتراضي: حدد كمية تنظيمية لكل لون ومقاس ممكن توفيره من المورد، وفعّل «متاح». لازم مراجعة المورد قبل تأكيد أي أوردر. لحفظ سعر لون معين، اكتب السعر واضغط زر «حفظ السعر» في نفس الصف. الرقم الرمادي مثال للسعر الأساسي فقط. الكمية والإتاحة بتتحفظ لما تخرجي من الخانة.</p>
       <button type="button" class="btn btn-primary btn-sm" data-open-quick-colours>اختيار اللون والمقاس وتعديل السعر بسهولة</button>
       ${p.variants.length ? html`<div class="table-wrap"><table class="t"><thead><tr><th>${t('editor.variant')}</th><th>${t('editor.vPrice')}</th><th title="عدد تنظيمي افتراضي، مش قطع مخزنة">كمية افتراضية</th><th>${t('editor.available')}</th><th></th></tr></thead>
         <tbody>${p.variants.map((v) => { const st = d.stock[String(v.position)]; return html`<tr data-pos="${v.position}" ${v.active ? '' : 'style="opacity:.55"'}>
