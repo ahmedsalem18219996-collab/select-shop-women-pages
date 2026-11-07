@@ -392,7 +392,7 @@ function fillFromProduct(/** @type {any} */ p) {
   const all = liveMedia(p), ci = colourIndex(p);
   const opt = ci >= 0 ? p.options[ci] : null;
   const first = opt?.values.find((/** @type {any} */ v) => sellableValues(p, ci).has(v.position));
-  const preview = first ? colourMedia(all, opt.position, first.position) : all;
+  const preview = first ? colourMedia(all, opt.position, first.position) : opt ? [] : all;
   paintPhotos(preview, title + (first ? " - " + first.value : ""));
   const hint = document.getElementById("lpPreviewHint");
   if (hint) {
