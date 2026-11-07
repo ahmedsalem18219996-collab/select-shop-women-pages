@@ -446,7 +446,7 @@ function colourCard(c, ci, { model, media, can, cost, costsReady }) {
       <span class="space"></span><b class="num">${sell === null ? 'السعر ناقص' : money(sell)}</b></div>
     <div class="field"><span>صور اختيار اللون ${photos.length ? '(' + photos.length + ')' : '— لسه ناقصة'}</span>
       <div class="thumbs">${photos.map((m, i) => html`<figure class="thumb ${m.hidden ? 'hidden' : ''}"><img src="${img(m)}" alt="${m.alt_text || c.name}" loading="lazy" width="96" height="120">
-        ${i === 0 ? html`<span class="badge ok">غلاف اللون</span>` : can('media.manage') ? html`<button type="button" class="icon-btn" data-first="${m.media_id}" aria-label="اجعليها أول صورة للون" title="اجعليها أول صورة للون">${icon('star')}</button>` : ''}</figure>`)}
+        ${i === 0 ? html`<span class="badge ok">غلاف اللون</span>` : can('media.manage') ? html`<button type="button" class="icon-btn" data-first="${m.media_id}" aria-label="تعيينها أول صورة للون" title="تعيينها أول صورة للون">${icon('star')}</button>` : ''}</figure>`)}
         ${can('media.manage') && (c.optionPosition !== null || !model.colourOption) ? html`<label class="thumb thumb-add">${icon('upload')}<span>رفع صور ${c.name || 'الموديل'}</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" data-upload></label>` : ''}</div>
       <div class="thumbs" data-c-queued></div><small data-c-queue-count role="status"></small>
       <small>اختيار كل صور اللون مرة واحدة، وبعدها الضغط على «حفظ اللون والصور». الصور هتترفع باللون الصحيح مع المقاسات والسعر. الصور القديمة مش هتتغير لو حصل خطأ.</small></div>
