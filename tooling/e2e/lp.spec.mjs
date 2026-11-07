@@ -28,6 +28,11 @@ test("one page: real product data, the order form is already open under it, stic
   await expect(page.locator("h1")).toHaveText("Leather jacket");
   await expectPrices(page, "١٬٢٠٠");
   await expect(page.locator("#lpForm")).toBeVisible(); // no button to reveal it
+  // Existing committed page snapshots get neutral copy via the shared runtime.
+  await expect(page.locator(".atelier-heading")).toHaveText("تفاصيل المنتج");
+  await expect(page.locator(".top .jump")).toHaveText("نموذج الطلب");
+  await expect(page.locator("#lpQtyUp")).toHaveAttribute("aria-label", "زيادة الكمية");
+  await expect(page.locator("#lpQtyDown")).toHaveAttribute("aria-label", "تقليل الكمية");
   for (const n of ["name", "phone", "region", "address"]) await expect(page.locator(`[name=${n}]`)).toBeVisible();
   await expect(page.locator("#lpOrder")).toHaveText("تأكيد الطلب");
   await expect(page.locator("#lpOrder")).toBeEnabled();
