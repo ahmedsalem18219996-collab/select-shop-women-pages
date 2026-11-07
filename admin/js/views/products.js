@@ -365,7 +365,6 @@ function createSheet(ctx) {
       </div>
       <p class="muted" data-desc-message role="status" aria-live="polite">اكتبي وصف بسيط، وخلّينا ننظّمه بشكل تسويقي. مفيش معلومات بتتبعت لخدمة خارجية.</p>
     </div>
-    ${ctx.can('media.manage') ? html`<div class="field"><span>الصورة الرئيسية (اختياري)</span><div class="thumbs" id="c-photos"><label class="thumb thumb-add" id="c-photo-add">${icon('upload')}<span>اختاري صورة</span><input type="file" accept="image/jpeg,image/png,image/webp" class="sr" id="c-photo"></label></div><small>صورة عامة للموديل. صور كل لون هترفعيها في الخطوة الجاية.</small></div>` : ''}
     <label class="switch"><input type="checkbox" id="c-new" checked><i></i>${t('create.isNew')}</label>
     <p class="err" id="c-error" role="alert" aria-live="polite" hidden></p>
     <ol class="blockers" id="c-steps" hidden></ol>`,
@@ -481,12 +480,6 @@ function createSheet(ctx) {
           }
         } else fail(available);
       }
-      const photo = $('#c-photo', box)?.files;
-      if (photo?.length) {
-        li = step('الصورة الرئيسية');
-        const up = await uploadPhotos({ files: photo, code, title, version: r.structure_version, grid: $('#c-photos', box), before: $('#c-photo-add', box) });
-        li.textContent = up.ok ? '✓ الصورة الرئيسية' : '✗ الصورة الرئيسية: ارفعيها تاني من تبويب الصور';
-      }
       closeLayer();
       sessionStorage.setItem('wa.ptab', 'colours');
       done(shippingReady ? 'المسودة محفوظة. الخطوة ٢: ضيفي الألوان، وكل لون بمقاساته وصوره.' :
@@ -516,7 +509,8 @@ async function renderEditor(ctx, code) {
     <div class="page-head"><div><a class="btn btn-ghost btn-sm" href="#/products">${icon(document.dir === 'rtl' ? 'chev' : 'chevBack')}${t('nav.products')}</a>
       <h2 style="margin-top:8px">${p.title}</h2><p class="row"><span class="code">${p.public_code}</span>${statusBadge(p.status)}<span class="muted">${ago(p.updated_at)}</span></p></div>
       <div class="actions"><button type="button" class="btn btn-soft" data-quick-single>تعديل سريع للمقاس والسعر والصور</button></div>
-      ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}</div>
+      ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}
+      ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} حذف المنتج</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
       <div class="card-head"><h3>كمّلي الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعميلات لحد النشر</span></div>
       <p class="muted" style="margin:0">كل لون ليه صوره ومقاساته وسعره. راجعي المعاينة زي ما العميلة هتشوفها، وبعدها انشري.</p>
@@ -550,6 +544,20 @@ async function renderEditor(ctx, code) {
       members: [{ product: { ...p, image: d.card?.image || null }, color: { name: 'المنتج', hex: '#66768B' } }],
       onChanged: reload
     });
+  });
+  $('[data-archive-editor]', el)?.addEventListener('click', async (e) => {
+    // Archive is the existing owner-only operation: never delete historical orders or reuse the code.
+    const confirmed = await confirmDialog({
+      title: 'حذف المنتج ' + code,
+      text: 'هيختفي المنتج من المتجر والقائمة النشطة، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. الأرشفة نهائية ومش ممكن ترجعي المنتج من لوحة الإدارة. متأكدة؟',
+      okText: 'تأكيد حذف المنتج', danger: true
+    });
+    if (!confirmed) return;
+    const res = await withBusy(e.currentTarget, () => call('products.archive', { code }));
+    if (['archived', 'already_archived'].includes(res?.outcome)) {
+      done('اتحذف المنتج من العرض واتحفظ تاريخ الأوردرات.');
+      ctx.go('products');
+    } else fail(res);
   });
   $('[data-pub]', el)?.addEventListener('click', async (e) => {
     const publish = p.status !== 'public';
