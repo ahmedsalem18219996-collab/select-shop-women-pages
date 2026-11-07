@@ -20,7 +20,7 @@
     return n;
   };
   const note = text => {
-    main.replaceChildren(el("p", { class: "note", text }), el("p", { class: "note" }, el("a", { href: "/", text: "شوفي كل المنتجات" })));
+    main.replaceChildren(el("p", { class: "note", text }), el("p", { class: "note" }, el("a", { href: "/", text: "عرض كل المنتجات" })));
     bar.hidden = true;
   };
   const egp = minor => (minor / 100).toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -35,7 +35,7 @@
       const r = await fetch(API, { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(12000) });
       if (!r.ok) throw new Error("http");
       data = await r.json();
-    } catch (_) { return note("مش قادرين نحمّل القطعة دلوقتي. جرّبي تاني بعد شوية."); }
+    } catch (_) { return note("مش قادرين نحمّل القطعة دلوقتي. يرجى المحاولة مرة أخرى بعد قليل."); }
 
     const brand = data.brand || {};
     if (/^\+?[1-9]\d{6,14}$/.test(brand.whatsapp || "")) {
@@ -52,7 +52,7 @@
     if (item.isNew) photo.append(el("span", { class: "tag", text: "جديد" }));
     const price = el("div", { class: "price" }, document.createTextNode(egp(item.priceMinor)), el("small", { text: "جنيه" }));
     const points = el("ul", null,
-      ...["الدفع عند الاستلام", "الشحن لكل المحافظات. تكلفته بتظهر قبل ما تأكدي الطلب", "هتختاري المقاس في الخطوة الجاية"]
+      ...["الدفع عند الاستلام", "الشحن لكل المحافظات، وتكلفته بتظهر قبل تأكيد الطلب", "اختيار المقاس في الخطوة التالية"]
         .map(t => el("li", null, el("b", { text: "✓", "aria-hidden": "true" }), el("span", { text: t }))));
     main.replaceChildren(photo, el("h1", { text: title }), price, points);
 

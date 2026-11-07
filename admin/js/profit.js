@@ -42,7 +42,7 @@ export function profitText(sellMinor, costMinor, money) {
   if (!isMoney(costMinor)) return { kind: 'incomplete', text: 'الربح غير مكتمل: تكلفة المورد مش متسجلة.' };
   const g = grossProfit(sellMinor, costMinor);
   if (!g) return { kind: 'incomplete', text: 'الربح غير مكتمل: سعر البيع مش متحدد.' };
-  if (g.belowCost) return { kind: 'loss', text: `تنبيه: سعر البيع أقل من تكلفة المورد بـ ${money(-g.grossMinor)}. السعر ما اتغيرش؛ راجعيه قبل النشر.` };
+  if (g.belowCost) return { kind: 'loss', text: `تنبيه: سعر البيع أقل من تكلفة المورد بـ ${money(-g.grossMinor)}. السعر ما اتغيرش؛ يرجى مراجعته قبل النشر.` };
   return { kind: 'ok', text: `ربح مبدئي ${money(g.grossMinor)} (${g.marginPct.toLocaleString('ar-EG')}%)` };
 }
 

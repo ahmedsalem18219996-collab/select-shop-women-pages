@@ -15,7 +15,7 @@ test('publication actions never permit archived product and hide is temporary',(
 });
 test('readiness preflight shows missing photo, shipping and purchasable variant',()=>{
  const d={product:{status:'draft',shipping_profile:null,variants:[{active:true,availability:'unavailable'}]},media:{media:[]}};
- assert.deepEqual(prepublishHints(d),['ارفعي صورة ظاهرة واحدة على الأقل','اختاري طريقة الشحن','فعّلي اختيارًا متاحًا للتوريد']);
+ assert.deepEqual(prepublishHints(d),['رفع صورة ظاهرة واحدة على الأقل','اختيار طريقة الشحن','تفعيل اختيار متاح للتوريد']);
  const good={product:{status:'hidden',shipping_profile:{key:'women_standard'},variants:[{active:true,availability:'available'}]},
  media:{media:[{storage_path:'media/test.png',hidden:false,delete_pending:false}]}};
  assert.deepEqual(prepublishHints(good),[]);

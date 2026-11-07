@@ -14,7 +14,7 @@ const cartCheckout = page('checkout/index.html');
 const success = page('order-success/index.html');
 
 test('public homepage does not claim physical stock and tells buyers about review', () => {
-  assert.match(homepage, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل طلبك/);
+  assert.match(homepage, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);
   assert.match(homepage, /الدفع عند الاستلام/);
   assert.doesNotMatch(homepage, /تصفحي الموديلات المتاحة بصورها وأسعارها الحقيقية/);
 });
@@ -29,7 +29,7 @@ test('admin shows supply-first checklist and does not auto-confirm orders', () =
   assert.match(adminOrders, /البيع حسب الطلب — بدون مخزون فعلي/);
   assert.match(adminOrders, /قبل تأكيد الأوردر/);
   assert.match(adminOrders, /مراجعة طلب جديد حسب الطلب/);
-  assert.match(adminOrders, /اتأكدتي من بيانات العميلة/);
+  assert.match(adminOrders, /هل تمت مراجعة بيانات العميل وتوافر اللون والمقاس والسعر عند المورد/);
   assert.match(adminOrders, /orders\.transition/);
   assert.match(adminOrders, /o\.status === 'pending'/);
 });
@@ -37,7 +37,7 @@ test('admin shows supply-first checklist and does not auto-confirm orders', () =
 test('admin does not pass synthetic inventory numbers off as physical stock', () => {
   assert.match(adminProducts, /كميات المخزون هنا افتراضية/);
   assert.match(adminProducts, /كمية افتراضية/);
-  assert.match(adminProducts, /اتأكدي من التوافر والسعر عند المورد/);
+  assert.match(adminProducts, /يرجى مراجعة التوافر والسعر عند المورد/);
 });
 
 test('on-demand UI copies do not introduce any new order API or auto-purchasing flow', () => {

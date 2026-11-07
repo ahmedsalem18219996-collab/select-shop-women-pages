@@ -15,12 +15,12 @@ export function statusAction(status) {
   return null;
 }
 export function prepublishHints(d) {
-  if(!d||!d.product) return ['تعذّر تحميل المنتج، افتحيه من لوحة الإدارة أولًا'];
+  if(!d||!d.product) return ['تعذّر تحميل المنتج؛ فتحه من لوحة الإدارة أولًا'];
   const hints=[];
   const photos=(d.media?.media||[]).filter(m=>!m.hidden&&!m.delete_pending);
-  if(!photos.length) hints.push('ارفعي صورة ظاهرة واحدة على الأقل');
-  if(!d.product.shipping_profile) hints.push('اختاري طريقة الشحن');
+  if(!photos.length) hints.push('رفع صورة ظاهرة واحدة على الأقل');
+  if(!d.product.shipping_profile) hints.push('اختيار طريقة الشحن');
   const p=d.product;
-  if(!p.variants?.some(v=>v.active&&v.availability==='available')) hints.push('فعّلي اختيارًا متاحًا للتوريد');
+  if(!p.variants?.some(v=>v.active&&v.availability==='available')) hints.push('تفعيل اختيار متاح للتوريد');
   return hints; // Backend still validates all official publish_blockers.
 }

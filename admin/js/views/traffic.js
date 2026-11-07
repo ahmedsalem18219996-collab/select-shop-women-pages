@@ -37,8 +37,8 @@ function showFunnel(slot,{steps,conversion}){
     bar.style.width=(top&&s.count!==null?Math.min(100,Math.round(s.count/top*100)):0)+'%';
     track.append(bar);line.append(row,track);list.append(line);
   });
-  slot.append(list,create('b','',conversion===null?'النسبة: محتاجة view_item وpurchase في الملف':'نسبة أحداث الشراء إلى مشاهدة المنتج: '+fmt(Math.round(conversion*1000)/10)+'%'),
-    create('p','muted traffic-note','أرقام مقاسة من GA4 في المتصفح، وبتقل لو العميلة رافضة الكوكيز أو عندها مانع إعلانات. عدد الطلبات الحقيقي من صفحة الطلبات، مش من الملف ده.'));
+  slot.append(list,create('b','',conversion===null?'النسبة غير متاحة: يلزم وجود view_item وpurchase في الملف':'نسبة أحداث الشراء إلى مشاهدة المنتج: '+fmt(Math.round(conversion*1000)/10)+'%'),
+    create('p','muted traffic-note','أرقام مقاسة من GA4 في المتصفح، وقد تقل عند رفض المستخدم للكوكيز أو استخدام مانع إعلانات. عدد الطلبات الحقيقي من صفحة الطلبات، مش من الملف ده.'));
 }
 function showReport(slot,report){
   slot.replaceChildren();
@@ -64,24 +64,24 @@ export default {
   async render({el}){
     // Static markup only. All CSV-provided data is inserted with textContent.
     el.innerHTML = [
-      '<div class="page"><div class="page-head"><div><h2>المحافظات ومصادر الزيارات</h2><p>اكتشفي الناس دخلت منين قبل تحديد ميزانية الإعلان.</p></div></div>',
+      '<div class="page"><div class="page-head"><div><h2>المحافظات ومصادر الزيارات</h2><p>مصادر الزيارات حسب المحافظة والقناة قبل تحديد ميزانية الإعلان.</p></div></div>',
       '<section class="card stack"><div class="card-head"><h3>تقرير Google Analytics 4</h3></div>',
       '<p style="margin:0">الموقع بيستخدم GA4: <b>G-NB8PZCX35Z</b>. لكن بيانات زوار المتجر المحفوظة حاليًا مش فيها محافظة، ومش هنخترع أرقام. GA4 يقدر يعرض Region تقديريًا من عنوان الإنترنت.</p>',
       '<div class="row" style="flex-wrap:wrap;gap:9px">',
-      '<a class="btn btn-primary" target="_blank" rel="noopener noreferrer" href="'+ANALYTICS+'">افتحي Google Analytics</a>',
+      '<a class="btn btn-primary" target="_blank" rel="noopener noreferrer" href="'+ANALYTICS+'">فتح Google Analytics</a>',
       '<a class="btn btn-soft" target="_blank" rel="noopener noreferrer" href="'+CONNECT+'">توصيل GA4 لـChatGPT (اختياري)</a></div>',
-      '<p class="muted" style="margin:0;font-size:12px">من GA4: Reports → User attributes → Demographic details → Region، وبعدها Country = Egypt، وحددي الفترة. اختاري Export → CSV. ربط GA4 بـChatGPT لا يملأ لوحة الإدارة تلقائيًا؛ علشان تشوفي الأرقام هنا ارفعي ملف CSV.</p></section>',
+      '<p class="muted" style="margin:0;font-size:12px">من GA4: Reports → User attributes → Demographic details → Region، وبعدها Country = Egypt، ثم تحديد الفترة واختيار Export → CSV. ربط GA4 بـChatGPT لا يملأ لوحة الإدارة تلقائيًا؛ لعرض الأرقام هنا، يلزم رفع ملف CSV.</p></section>',
       '<section class="card stack"><div class="card-head"><h3>الزيارات حسب المحافظة</h3><span class="muted">Region من GA4</span></div>',
-      '<label class="field"><span>اختاري ملف CSV للمحافظات</span><input class="input" type="file" id="traffic-region-file" accept=".csv,text/csv"></label>',
+      '<label class="field"><span>اختيار ملف CSV للمحافظات</span><input class="input" type="file" id="traffic-region-file" accept=".csv,text/csv"></label>',
       '<div id="traffic-region-results" aria-live="polite"><p class="muted">مفيش أرقام محافظات مؤكدة قبل اختيار التقرير.</p></div></section>',
       '<section class="card stack"><div class="card-head"><h3>مصادر الزيارات</h3><span class="muted">Facebook / Instagram / Google / مباشر</span></div>',
-      '<p class="muted" style="margin:0">من GA4: Reports → Acquisition → Traffic acquisition، اختاري Session source / medium، وبعدها Export → CSV.</p>',
-      '<label class="field"><span>اختاري ملف CSV لمصادر الزيارات</span><input class="input" type="file" id="traffic-source-file" accept=".csv,text/csv"></label>',
-      '<div id="traffic-source-results" aria-live="polite"><p class="muted">ارفعي تقرير المصدر علشان تشوفي توزيع الزيارات.</p></div></section>',
-      '<section class="card stack"><div class="card-head"><h3>أحداث الشراء في GA4</h3><span class="muted">أعداد الأحداث المسجلة، مش عدد العميلات</span></div>',
+      '<p class="muted" style="margin:0">من GA4: Reports → Acquisition → Traffic acquisition، اختيار Session source / medium، وبعدها Export → CSV.</p>',
+      '<label class="field"><span>اختيار ملف CSV لمصادر الزيارات</span><input class="input" type="file" id="traffic-source-file" accept=".csv,text/csv"></label>',
+      '<div id="traffic-source-results" aria-live="polite"><p class="muted">رفع تقرير المصدر لعرض توزيع الزيارات.</p></div></section>',
+      '<section class="card stack"><div class="card-head"><h3>أحداث الشراء في GA4</h3><span class="muted">أعداد الأحداث المسجلة، وليست عدد العملاء</span></div>',
       '<p class="muted" style="margin:0">من GA4: Reports → Engagement → Events، وبعدها Export → CSV.</p>',
-      '<label class="field"><span>اختاري ملف CSV للأحداث</span><input class="input" type="file" id="traffic-events-file" accept=".csv,text/csv"></label>',
-      '<div id="traffic-events-results" aria-live="polite"><p class="muted">ارفعي تقرير الأحداث علشان تشوفي أعداد الأحداث ونسبتها بين المراحل.</p></div></section>',
+      '<label class="field"><span>اختيار ملف CSV للأحداث</span><input class="input" type="file" id="traffic-events-file" accept=".csv,text/csv"></label>',
+      '<div id="traffic-events-results" aria-live="polite"><p class="muted">رفع تقرير الأحداث لعرض أعداد الأحداث ونسبتها بين المراحل.</p></div></section>',
       '<section class="card stack"><b>الخصوصية ودقة التقرير</b><p class="muted" style="margin:0">الملف بيتقري على موبايلك/كمبيوترك من غير رفعه لسيرفر. Region تقديري وقد يكون غير معروف. ما نعتبرش الزيارات مبيعات، ولا نختار محافظات الإعلان من الزيارات لوحدها.</p></section>',
       '</div>'
     ].join('');
@@ -96,7 +96,7 @@ export default {
           if(!document.contains(slot))return;
           if(kind==='events')showFunnel(slot,parseGa4Events(text));
           else showReport(slot,parseGa4Traffic(text,kind));
-        }catch(e){if(document.contains(slot))slot.textContent=e?.message||'ملف غير صالح؛ جرّبي تصدري CSV من GA4.';}
+        }catch(e){if(document.contains(slot))slot.textContent=e?.message||'ملف غير صالح؛ يرجى تصدير CSV من GA4.';}
       });
     }
   }

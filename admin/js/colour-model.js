@@ -55,19 +55,19 @@ const uniq = (list) => list.reduce((acc, s) => (acc.some((x) => normName(x) === 
 
 /** Validate colour drafts [{ name, sizes[], priceMinor|null, available }] → error text or ''. */
 export function checkDrafts(drafts, { needName = true } = {}) {
-  if (!drafts.length) return 'ضيفي لون واحد على الأقل، أو لون واحد من غير اسم لو الموديل لون واحد.';
+  if (!drafts.length) return 'إضافة لون واحد على الأقل، أو لون واحد من غير اسم إذا كان الموديل بلون واحد.';
   const named = drafts.filter((d) => d.name.trim());
   if (needName && named.length !== drafts.length && !(drafts.length === 1 && !named.length)) return 'كل لون محتاج اسم، زي «بيبي بلو».';
-  if (new Set(named.map((d) => colourKey(d.name))).size !== named.length) return 'فيه لونين بنفس الاسم، أو نفس اللونين بترتيب مختلف. غيّري اختيار واحد منهم.';
+  if (new Set(named.map((d) => colourKey(d.name))).size !== named.length) return 'فيه لونين بنفس الاسم، أو نفس اللونين بترتيب مختلف. يرجى تغيير أحد الاختيارين.';
   const duplicateTone = named.find((d) => {
     const parts = d.name.split(/\s*×\s*/);
     return parts.length === 2 && normName(parts[0]) === normName(parts[1]);
   });
   if (duplicateTone) return 'اللون المزدوج لازم يكون فيه لونين مختلفين.';
   const empty = drafts.find((d) => !d.sizes.length);
-  if (empty) return `حددي مقاس واحد على الأقل للون «${empty.name || 'الموديل'}»، أو اختاري One Size.`;
+  if (empty) return `اختيار مقاس واحد على الأقل للون «${empty.name || 'الموديل'}»، أو اختيار One Size.`;
   const bad = drafts.find((d) => d.priceMinor !== null && !(Number.isInteger(d.priceMinor) && d.priceMinor >= 100));
-  if (bad) return `السعر الخاص للون «${bad.name}» لازم يكون رقم بالجنيه، أو سيبيه فاضي علشان ياخد السعر الأساسي.`;
+  if (bad) return `السعر الخاص للون «${bad.name}» لازم يكون رقم بالجنيه، أو تركه فارغًا لاستخدام السعر الأساسي.`;
   if (drafts.reduce((n, d) => n + d.sizes.length, 0) > 200) return 'الألوان والمقاسات أكتر من ٢٠٠ اختيار. قلّلي العدد.';
   return '';
 }

@@ -100,7 +100,7 @@ test("A/B: ?lpv pins the variant and the bucket is remembered", async ({ page })
 test("direct COD order: server shipping per governorate, quantity, one order on double tap, confirmation in page", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
   await page.goto(LP);
-  await expect(page.locator("#lpShip")).toHaveText("اختاري المحافظة");
+  await expect(page.locator("#lpShip")).toHaveText("اختيار المحافظة");
   await expect(page.locator("#lpTotal")).toHaveText("—");
   await fillBuyer(page, "cairo");
   await expect(page.locator("#lpShip")).toHaveText("٧٠ ج");
@@ -248,7 +248,7 @@ test("multi-size product: size required, sold-out disabled, prices follow the si
   await fillBuyer(page);
   expect(sent).toEqual([]); // no quote without a size
   await page.locator("#lpOrder").click();
-  await expect(page.locator("#lpStatus")).toHaveText("اختاري المقاس الأول.");
+  await expect(page.locator("#lpStatus")).toHaveText("اختيار المقاس الأول.");
   const chip = page.getByText("M", { exact: true });
   expect((await chip.boundingBox()).height).toBeGreaterThanOrEqual(44); // comfortable tap target
   // Interaction latency (INP proxy) of the size tap alone, measured by the browser's Event Timing API.

@@ -144,7 +144,7 @@ test('owner builds a 3-colour model: own photos, sizes, prices and cost; saved, 
   await expect(page.locator('#c-photo')).toHaveCount(0); // photos picked with each colour only
   await page.locator('[data-create]').click();
   await expect(page).toHaveURL(/#\/products\/SS-9101$/);
-  await expect(page.locator('#tabbody')).toContainText('ابدئي بأول لون');
+  await expect(page.locator('#tabbody')).toContainText('بداية بأول لون');
   expect(b.s.costs.product_cost_minor).toBe(35000);
 
   // Step 2: three colours, each with its own sizes, price and supply
@@ -481,9 +481,9 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   const drafts = page.locator('[data-draft]');
   const first = drafts.first();
   await expect(first.locator('[data-colour-picker-slot]')).toBeVisible();
-  await first.locator('[aria-label="ابحثي عن اللون"]').fill('بيب');
-  await expect(first.locator('[aria-label="اختاري لون المنتج من القائمة"] option')).toHaveCount(2);
-  await first.locator('[aria-label="اختاري لون المنتج من القائمة"]').selectOption('بيبي بلو');
+  await first.locator('[aria-label="البحث عن اللون"]').fill('بيب');
+  await expect(first.locator('[aria-label="اختيار لون المنتج من القائمة"] option')).toHaveCount(2);
+  await first.locator('[aria-label="اختيار لون المنتج من القائمة"]').selectOption('بيبي بلو');
   await expect(first.locator('[data-d-name]')).toHaveValue('بيبي بلو');
   await first.locator('[data-d-size="S"]').click();
 
@@ -493,7 +493,7 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   await second.getByLabel('اللون الأول', { exact: true }).selectOption('بني');
   await second.getByLabel('اللون الثاني', { exact: true }).selectOption('بني');
   await expect(second.locator('[data-d-name]')).toHaveValue('بني × بني');
-  await expect(second.locator('[role="alert"]')).toContainText('اختاري لونين مختلفين');
+  await expect(second.locator('[role="alert"]')).toContainText('اختيار لونين مختلفين');
   await page.locator('[data-save-drafts]').click();
   await expect(page.locator('[data-draft-error]')).toContainText('مختلفين');
   expect(b.s.ops.filter((o) => o.op === 'products.structure')).toHaveLength(0);

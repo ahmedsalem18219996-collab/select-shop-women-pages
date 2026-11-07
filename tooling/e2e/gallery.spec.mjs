@@ -55,7 +55,7 @@ test("several photos: thumbnails, arrows (RTL), keys, swipe and counter swap the
   await page.waitForTimeout(400); // past the 350ms that swallow a swipe's trailing click
   await hero(page).click(); // a real tap opens the original of the photo on screen
   await expect(page.getByRole("dialog", { name: "تفاصيل الصورة" })).toBeVisible();
-  await page.getByRole("button", { name: "اقفلي الصورة" }).click();
+  await page.getByRole("button", { name: "إغلاق الصورة" }).click();
   expect(page.url()).toBe(url); // no navigation or reload while flipping
   // every photo shown and every thumbnail is a real, distinct, loaded image
   const t = await page.locator("#lpGallery img").evaluateAll(imgs => imgs.map(i => ({ src: new URL(i.src).pathname, ok: i.complete && i.naturalWidth > 0 })));

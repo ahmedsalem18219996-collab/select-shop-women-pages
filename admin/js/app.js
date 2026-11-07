@@ -237,7 +237,7 @@ addEventListener('hashchange', route);
 // the tab with unsaved typing asks first, so a half-filled model is not lost by a stray tap.
 // A sheet (like the new-model form) counts on its own: closing it by the X, Escape or a tap outside asks too.
 let dirty = false, layerDirty = false, shownHash = location.hash;
-const leaveUnsaved = () => confirm(getLang() === 'en' ? 'You have unsaved changes. Leave without saving?' : 'فيه تعديلات لسه ما اتحفظتش. تسيبي الصفحة من غير حفظ؟');
+const leaveUnsaved = () => confirm(getLang() === 'en' ? 'You have unsaved changes. Leave without saving?' : 'فيه تعديلات لسه ما اتحفظتش. مغادرة الصفحة من غير حفظ التعديلات؟');
 const tracked = (f) => f instanceof Element && f.matches('input,textarea,select') && !f.matches('[type=search],[type=file],[data-nodirty]')
   && !f.closest('.toolbar,.searchbox,.chips');
 document.addEventListener('input', (e) => {

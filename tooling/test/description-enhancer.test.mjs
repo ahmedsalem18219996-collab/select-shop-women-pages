@@ -8,7 +8,7 @@ const { improveProductDescription } = await import('data:text/javascript;base64,
 test('free polishing only rearranges confirmed staff facts and never invents clothing attributes', () => {
   const product = improveProductDescription({ title:'بلوفر حريمي مخطط', description:'لون بيبي بلو وبني، مقاس واحد' });
   assert.equal(product.ok, true);
-  assert.match(product.text, /اكتشفي بلوفر حريمي مخطط/);
+  assert.match(product.text, /نقدم لك بلوفر حريمي مخطط/);
   assert.match(product.text, /• لون بيبي بلو وبني\n• مقاس واحد/);
   for (const unverified of ['قطن','مريح','خامة ناعمة','مستورد','100%']) assert.doesNotMatch(product.text, new RegExp(unverified));
   assert.ok(product.text.length < 10000);

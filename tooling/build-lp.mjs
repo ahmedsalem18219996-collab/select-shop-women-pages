@@ -340,29 +340,29 @@ const thumbs = (c, n) => n < 2 ? "" : c.zoom.map((_, i) => `<button type="button
 // hero gets the whole connection instead of sharing it with photos below the fold.
 const HERO_READY = ` onload="document.documentElement.classList.add('hl')" onerror="document.documentElement.classList.add('hl')"`;
 
-const DEFAULT_BENEFITS = ["الدفع عند الاستلام، من غير دفع مقدم", "اختاري المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد", "الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل"];
+const DEFAULT_BENEFITS = ["الدفع عند الاستلام، من غير دفع مقدم", "اختيار المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد", "الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل"];
 
 // Starts the product and governorate reads while the runtime module downloads; lp/runtime.js picks them up once.
 export const PREFETCH = (codeExpr) => `(()=>{try{if(window.__lpGo)return;const A="${API}",c=${codeExpr};if(!/^SS-\\d{4,19}$/.test(c)){location.replace("/");return}const g=p=>fetch(A+p,{cache:"no-store",headers:{Accept:"application/json"}});window.__lp={code:c,product:g("/product/"+c),regions:g("/regions")}}catch(e){}})()`;
 
 const field = (name, label, control) => `<label class="f"><span>${label}</span>${control}<small id="lpErr-${name}" aria-live="polite"></small></label>`;
 const ORDER_FORM = `<form class="order" id="lpForm" novalidate>
-<h2>اطلبي دلوقتي<small>سيبي بياناتك، والتوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب.</small></h2>
+<h2>تسجيل الطلب<small>يرجى إدخال البيانات؛ ويتم تأكيد التوافر وميعاد الشحن بعد تسجيل الطلب.</small></h2>
 <div class="qty"><span id="lpQtyLabel">الكمية</span><div class="step" role="group" aria-labelledby="lpQtyLabel"><button type="button" id="lpQtyUp" data-q="1" aria-label="زوّدي واحدة">+</button><output id="lpQty" aria-live="polite">١</output><button type="button" id="lpQtyDown" data-q="-1" aria-label="قلّلي واحدة" disabled>−</button></div></div>
 ${field("name", "الاسم", `<input name="name" autocomplete="name" maxlength="200" enterkeyhint="next" required>`)}
 ${field("phone", "رقم الموبايل", `<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="01xxxxxxxxx" dir="ltr" enterkeyhint="next" required>`)}
-${field("region", "المحافظة", `<select name="region" autocomplete="address-level1" required><option value="">اختاري المحافظة</option></select>`)}
+${field("region", "المحافظة", `<select name="region" autocomplete="address-level1" required><option value="">اختيار المحافظة</option></select>`)}
 ${field("address", "العنوان بالتفصيل", `<textarea name="address" rows="2" autocomplete="street-address" maxlength="860" placeholder="المنطقة، الشارع، رقم العمارة والدور" enterkeyhint="done" required></textarea>`)}
-<dl class="totals"><div><dt>سعر القطع</dt><dd id="lpSub">—</dd></div><div><dt>الشحن</dt><dd id="lpShip">اختاري المحافظة</dd></div><div class="total"><dt>الإجمالي</dt><dd id="lpTotal">—</dd></div></dl>
+<dl class="totals"><div><dt>سعر القطع</dt><dd id="lpSub">—</dd></div><div><dt>الشحن</dt><dd id="lpShip">اختيار المحافظة</dd></div><div class="total"><dt>الإجمالي</dt><dd id="lpTotal">—</dd></div></dl>
 <p class="cod">مفيش دفع أونلاين. هتدفعي الإجمالي ده كاش للمندوب.</p>
 </form>
-<section class="done" id="lpDone" tabindex="-1" hidden><span class="tick" aria-hidden="true">✓</span><h2>تم تسجيل طلبك</h2><p>رقم الطلب</p><strong id="lpDoneCode" dir="ltr"></strong><p id="lpDoneText"></p><a href="/">شوفي قطع تانية</a></section>`;
+<section class="done" id="lpDone" tabindex="-1" hidden><span class="tick" aria-hidden="true">✓</span><h2>تم تسجيل طلبك</h2><p>رقم الطلب</p><strong id="lpDoneCode" dir="ltr"></strong><p id="lpDoneText"></p><a href="/">عرض قطع أخرى</a></section>`;
 
 /** One layout for both kinds of page. `o` holds already-escaped HTML fragments. */
 function layout(o) {
   const campaign = o.campaign;
   // Keep the exact same colour choices visible when a shopper jumps straight
-  // from "اطلبي إطلالتك" to the COD form; the first picker remains by the photo.
+  // from "تسجيل الطلب" to the COD form; the first picker remains by the photo.
   const checkoutPicker = o.picker
     ? o.picker.replace('id="lpColors"', 'id="lpFormColors"')
       .replace('id="lpColorName"', 'id="lpFormColorName"')
@@ -395,7 +395,7 @@ ${o.fontFaces}
 ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
 <body${campaign ? ' data-campaign="focused"' : ""}>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a class="jump" href="#lpForm">اطلبي إطلالتك</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}${THEME_TOGGLE}</header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}${THEME_TOGGLE}</header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">
@@ -409,9 +409,9 @@ ${stageControls(o.count)}
 <div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p></div>
 ${campaign ? "" : `<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>\n`}${o.picker}
 <div id="lpOptions">${o.options}</div>
-${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · الشحن واضح قبل التأكيد</p><a class="campaign-jump" href="#lpForm">اختاري الكمية واطلبي دلوقتي</a>\n` : ""}${orderForm}
+${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · الشحن واضح قبل التأكيد</p><a class="campaign-jump" href="#lpForm">اختيار الكمية وتسجيل الطلب</a>\n` : ""}${orderForm}
 <p id="lpStatus" role="status" aria-live="polite"></p>
-<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="button" id="lpAddCart"${campaign?.directOnly ? " hidden" : ""} disabled>أضيفي للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
+<div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="button" id="lpAddCart"${campaign?.directOnly ? " hidden" : ""} disabled>إضافة للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
 <h2 class="reassurance">طلبك واضح من البداية</h2>
 <ul class="notes">${o.benefits.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
 <div class="desc" id="lpMore">${o.more}</div>
@@ -443,7 +443,7 @@ export function render(page, products, fontFaces = "") {
     campaign: page.campaign,
     source: ` from tooling/pages/${esc(page.id)}.json`,
     title: `${esc(title)} · SELECT SHOP WOMEN`,
-    description: `${esc(title)}. اطلبي من نفس الصفحة، الدفع عند الاستلام والشحن لكل المحافظات.`,
+    description: `${esc(title)}. يمكن تسجيل الطلب من نفس الصفحة، مع الدفع عند الاستلام والشحن لكل المحافظات.`,
     canonical: `<link rel="canonical" href="https://selectshopeg.com/lp/${esc(page.id)}/">\n`,
     preload: `<link rel="preload" as="image" type="image/avif" imagesrcset="${hero.avif}" imagesizes="${sizes}" fetchpriority="high">\n`,
     codeExpr: JSON.stringify(first.code), fontFaces,
@@ -451,11 +451,11 @@ export function render(page, products, fontFaces = "") {
     count, gallery: thumbs(first, count),
     h1: esc(title), price, desc: lines[0] ? esc(lines[0]) : "", picker,
     options: oneSize ? `<div class="lp-opt"><span class="one">مقاس واحد</span></div>` : "",
-    choice: esc((first.name ? first.name + " · " : "") + (oneSize ? "مقاس واحد" : "اختاري المقاس")),
+    choice: esc((first.name ? first.name + " · " : "") + (oneSize ? "مقاس واحد" : "اختيار المقاس")),
     benefits: page.benefits || DEFAULT_BENEFITS,
     more: page.campaign?.colourNote ? `<p>${esc(page.campaign.colourNote)}</p>` : lines.slice(1).map(l => `<p>${esc(l)}</p>`).join(""),
     video: page.video ? `<button type="button" class="video" data-lp-video="${esc(page.video.src)}">▶ شغّلي الفيديو</button>` : "",
-    noscript: `<a href="/p/?code=${esc(first.code)}">افتحي صفحة المنتج للطلب</a>`,
+    noscript: `<a href="/p/?code=${esc(first.code)}">فتح صفحة المنتج لإتمام الطلب</a>`,
     data: JSON.stringify({ id: page.id, code: first.code, colors, ...(page.campaign ? { directOnly: page.campaign.directOnly === true, campaign: true } : {}) }).replace(/</g, "\\u003c"),
     scripts: '<script type="module" src="/lp/image-zoom.js?v=20261106-theme"></script>',
   });
@@ -490,11 +490,11 @@ export function renderShell(fontFaces = "", routes = {}) {
   const code = `String(new URLSearchParams(location.search).get("p")||new URLSearchParams(location.search).get("code")||"").trim().toUpperCase()`;
   return layout({
     source: " (automatic product page)", title: "SELECT SHOP WOMEN",
-    description: "اطلبي من نفس الصفحة من SELECT SHOP WOMEN. الدفع عند الاستلام والشحن لكل المحافظات.",
+    description: "يمكن تسجيل الطلب من نفس الصفحة عبر SELECT SHOP WOMEN، مع الدفع عند الاستلام والشحن لكل المحافظات.",
     canonical: "", preload: "", codeExpr: code, fontFaces, route: ROUTE(routes),
     hero: `<img alt="" width="800" height="1067" decoding="async"${HERO_READY}>`, gallery: "", count: 0, h1: "", price: "—", desc: "", picker: "", options: "",
-    choice: "اختاري المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
-    noscript: `<a href="/">افتحي المتجر</a>`, data: JSON.stringify({ auto: true }),
+    choice: "اختيار المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
+    noscript: `<a href="/">فتح المتجر</a>`, data: JSON.stringify({ auto: true }),
     scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n`,
   });
 }
@@ -556,7 +556,13 @@ async function output(rel, html, id, flags) {
   const out = path.join(ROOT, rel);
   if (flags.includes("--check")) {
     const current = await readFile(out, "utf8").catch(() => "");
-    if (current !== html) { console.error(`STALE: ${rel} differs from its generator output; run node build-lp.mjs ${id}`); process.exit(1); }
+    if (current !== html) {
+      let at = 0;
+      while (at < Math.min(current.length, html.length) && current[at] === html[at]) at++;
+      const excerpt = (value) => JSON.stringify(value.slice(Math.max(0, at - 100), at + 180));
+      console.error(`STALE: ${rel} differs from its generator output at offset ${at}; current: ${excerpt(current)}; generated: ${excerpt(html)}; run node build-lp.mjs ${id}`);
+      process.exit(1);
+    }
     console.log(`OK ${rel} is up to date`);
     return;
   }

@@ -193,7 +193,13 @@ test("automatic shell: same form and runtime, no product data baked in, committe
   assert.ok(html.includes('id="lpForm"') && html.includes('"auto":true') && html.includes("/js/catalog-thumbs.js"));
   assert.ok(!html.includes('"code":') && html.includes('<h1 id="lpTitle"></h1>'), "no product baked into the shell");
   const faces = readexFaces(await readFile(new URL("../../css/fonts.css", import.meta.url), "utf8"));
-  assert.equal(await readFile(new URL("../../lp/index.html", import.meta.url), "utf8"), renderShell(faces, await shellRoutes()));
+  const committed = await readFile(new URL("../../lp/index.html", import.meta.url), "utf8");
+  const generated = renderShell(faces, await shellRoutes());
+  let firstDifference = 0;
+  while (firstDifference < Math.min(committed.length, generated.length)
+    && committed[firstDifference] === generated[firstDifference]) firstDifference++;
+  assert.ok(committed === generated,
+    `committed shell differs from generator at offset ${firstDifference}; committed: ${JSON.stringify(committed.slice(Math.max(0, firstDifference - 100), firstDifference + 180))}; generated: ${JSON.stringify(generated.slice(Math.max(0, firstDifference - 100), firstDifference + 180))}`);
 });
 
 test("every generated product page: zoomable original photos, trust strip, in-form colours under the form heading", async () => {

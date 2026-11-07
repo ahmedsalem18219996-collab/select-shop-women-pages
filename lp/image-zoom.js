@@ -5,7 +5,7 @@ if (data) {
   const dialog = document.createElement('dialog');
   dialog.id = 'lpZoom';
   dialog.setAttribute('aria-label', 'تفاصيل الصورة');
-  dialog.innerHTML = '<div class="zoom-tools"><button type="button" id="lpZoomClose" aria-label="اقفلي الصورة">إغلاق ×</button><button type="button" id="lpZoomToggle">تكبير أكتر</button></div><div class="zoom-scroll"><img id="lpZoomImage" alt=""></div>';
+  dialog.innerHTML = '<div class="zoom-tools"><button type="button" id="lpZoomClose" aria-label="إغلاق الصورة">إغلاق ×</button><button type="button" id="lpZoomToggle">تكبير أكتر</button></div><div class="zoom-scroll"><img id="lpZoomImage" alt=""></div>';
   const style = document.createElement('style');
   style.textContent = '#lpZoom{width:min(96vw,1200px);max-width:96vw;height:92dvh;max-height:92dvh;padding:0;border:0;background:var(--chalk,#0B1730);color:var(--ink,#fff)}#lpZoom::backdrop{background:rgba(0,0,0,.8)}.zoom-tools{display:flex;justify-content:space-between;gap:12px;padding:12px}.zoom-tools button{min-height:44px;padding:8px 16px;background:transparent;color:var(--ink,#fff);border:1px solid var(--cyan,#2ED9D1);font:inherit;cursor:pointer}.zoom-scroll{height:calc(100% - 68px);overflow:auto;direction:ltr;overscroll-behavior:contain;background:var(--surface,#F4F6FA)}#lpZoomImage{display:block;width:100%;height:100%;object-fit:contain;margin:auto}#lpZoomImage.zoomed{width:max(1100px,100%);max-width:none;height:auto;object-fit:initial}';
   document.head.append(style);
@@ -16,7 +16,7 @@ if (data) {
   let opener;
   const decorate = () => document.querySelectorAll('#lpHero img').forEach(img => {
     img.setAttribute('role', 'button'); img.setAttribute('tabindex', '0');
-    img.setAttribute('aria-label', 'كبّري الصورة: ' + (img.alt || 'البلوفر'));
+    img.setAttribute('aria-label', 'تكبير الصورة: ' + (img.alt || 'البلوفر'));
     img.setAttribute('aria-haspopup', 'dialog');
   });
   const open = (img) => {
