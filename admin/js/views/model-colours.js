@@ -28,7 +28,7 @@ async function apply(steps, { ctx, p, code, list }) {
   if (r.ok) return true;
   if (r.res?.outcome === 'forbidden') island('error', 'صلاحيتك مش بتسمح بالخطوة «' + r.step.label + '». اطلب من المسؤول عن الصلاحيات يكملها.');
   else fail(r.res);
-  island('error', 'اتحفظ ' + r.at + ' من ' + steps.length + ' خطوة، ووقفنا عند «' + r.step.label + '». اللي اتحفظ ما اتلغاش؛ حدّثي الصفحة واستكمال.');
+  island('error', 'اتحفظ ' + r.at + ' من ' + steps.length + ' خطوة، ووقفنا عند «' + r.step.label + '». اللي اتحفظ ما اتلغاش؛ يرجى تحديث الصفحة واستكمال الخطوات.');
   return false;
 }
 
@@ -53,7 +53,7 @@ function draftCard(dr, i, { canPrice, canMedia }) {
     </div>` : ''}
     <div class="field"><span>المقاسات المتاحة للون ده</span>
       <div class="chips" style="flex-wrap:wrap">${[...new Set([...COMMON_SIZES, ...dr.sizes])].map((s) => html`<button type="button" class="chip" data-d-size="${s}" aria-pressed="${dr.sizes.includes(s)}">${s}</button>`)}</div>
-      <input class="input" data-d-custom maxlength="18" placeholder="مقاس تاني؟ كتابةه والضغط على Enter (مثال: 38)"></div>
+      <input class="input" data-d-custom maxlength="18" placeholder="مقاس تاني؟ اكتب المقاس واضغط Enter (مثال: 38)"></div>
     <label class="switch"><input type="checkbox" data-d-avail ${dr.available ? 'checked' : ''}><i></i>متاح عند المورد</label>
   </article>`;
 }
@@ -195,7 +195,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
 
         if (!(await apply(steps, { ctx, p, code, list }))) return;
         const batches = clean.map((draft, i) => ({ draft, i })).filter(({ draft }) => draft.files?.length);
-        if (!batches.length) { done('اتحفظت الألوان والمقاسات. ممكن تإضافة الصور من نفس كارت اللون.'); reload(); return; }
+        if (!batches.length) { done('اتحفظت الألوان والمقاسات. ممكن إضافة الصور من نفس كارت اللون.'); reload(); return; }
         // Fetch the newly assigned Variant positions. Never guess positions from a draft,
         // and never upload a photo as shared/product media when a named colour is missing.
         let latest;
@@ -345,7 +345,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
           if (!(await apply(sizesPlan, { ctx, p: latest.data.product, code, list }))) return;
           try { latest = await call('products.get', { code }); } catch { latest = { outcome: 'network' }; }
           if (latest?.outcome !== 'ok') {
-            island('error', 'اتحفظ جزء من المقاسات، لكن تعذر تحديث حالة المنتج. مراجعةه قبل إعادة الحفظ.'); return;
+            island('error', 'اتحفظ جزء من المقاسات، لكن تعذر تحديث حالة المنتج. يرجى مراجعته قبل إعادة الحفظ.'); return;
           }
           freshModel = colourModel(latest.data.product, latest.data.stock, latest.data.media?.media || []);
           current = freshModel.colours.find((x) => x.valuePosition === c.valuePosition && x.optionPosition === c.optionPosition);
@@ -484,7 +484,7 @@ export function previewTab(body, { ctx, d, p, code }) {
     !colours.length && 'مفيش لون فيه مقاس شغال.',
     ...colours.filter((c) => c.available && !c.media.some((m) => !m.hidden) && !shared.length).map((c) => `اللون «${c.name || 'الموديل'}» مالوش صور.`),
     ...colours.filter((c) => c.available && priceOf(c, model.base) === null).map((c) => `اللون «${c.name || 'الموديل'}» مالوش سعر.`),
-    !colours.some((c) => c.available) && 'ولا لون متاح عند المورد، فالعميل مش هتقدر تطلب.',
+    !colours.some((c) => c.available) && 'ولا لون متاح عند المورد، فمش هيكون فيه طلب متاح للعملاء.',
     !p.shipping_profile && 'طريقة الشحن مش محددة.',
   ].filter(Boolean);
   let pick = Math.max(0, colours.findIndex((c) => c.available));
@@ -498,10 +498,10 @@ export function previewTab(body, { ctx, d, p, code }) {
       <div class="stack"><h3 style="margin:0">${p.title}</h3><b class="num">${c && priceOf(c, model.base) !== null ? money(priceOf(c, model.base)) : '—'}</b>
         ${model.colourOption ? html`<div><small class="muted">اللون: ${c?.name || ''}</small><div class="chips" role="radiogroup" aria-label="اللون" style="flex-wrap:wrap">${colours.map((x, i) => html`<button type="button" class="chip swatch-chip" role="radio" data-pick="${i}" aria-checked="${i === pick}" aria-pressed="${i === pick}" ${x.available ? '' : 'disabled'}>${swatch(x.hex, x.name)}${x.name}</button>`)}</div></div>` : ''}
         <div><small class="muted">المقاس</small><div class="chips" style="flex-wrap:wrap">${sizes.length ? sizes.map((s, i) => html`<button type="button" class="chip" aria-pressed="${i === 0}">${s}</button>`) : html`<span class="muted">مفيش مقاس متاح للون ده</span>`}</div></div>
-        <p class="muted" style="margin:0;font-size:12px">العميل بتشوف الصور والمقاسات والسعر الخاص باللون اللي تم اختياره بس، وبتطلب الدفع عند الاستلام أو تضيف للسلة.</p></div></div>`);
+        <p class="muted" style="margin:0;font-size:12px">العميل بيشوف الصور والمقاسات والسعر الخاص باللون اللي تم اختياره بس، وبتطلب الدفع عند الاستلام أو تضيف للسلة.</p></div></div>`);
   };
   render(body, html`<div class="stack">
-    <section class="card stack"><div class="card-head"><h3>معاينة زي ما العميل هتشوفه</h3><span class="muted">${colours.length} لون</span></div><div data-shop></div></section>
+    <section class="card stack"><div class="card-head"><h3>معاينة ظهور المنتج للعميل</h3><span class="muted">${colours.length} لون</span></div><div data-shop></div></section>
     <section class="card stack"><div class="card-head"><h3>مراجعة الألوان والصور والأسعار</h3></div>
       <div class="table-wrap"><table class="t"><thead><tr><th>اللون</th><th>المقاسات</th><th>السعر</th><th>الصور</th><th>المورد</th></tr></thead><tbody>
       ${colours.map((c) => html`<tr><td>${swatch(c.hex, c.name)} ${c.name || 'الموديل'}</td><td>${c.variants.filter((v) => v.active).map((v) => v.size ?? ONE_SIZE).join('، ')}</td>
