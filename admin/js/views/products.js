@@ -512,7 +512,7 @@ async function renderEditor(ctx, code) {
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}
       ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} حذف المنتج</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
-      <div class="card-head"><h3>استكمال الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعميلات لحد النشر</span></div>
+      <div class="card-head"><h3>استكمال الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعملاء لحد النشر</span></div>
       <p class="muted" style="margin:0">كل لون ليه صوره ومقاساته وسعره. مراجعة المعاينة زي ما العميل هتشوفها، وبعدها نشر.</p>
       <div class="row" style="flex-wrap:wrap">
         <button type="button" class="btn btn-soft btn-sm" data-setup-tab="details">١. البيانات (${p.base_price ? 'السعر متحدد' : 'السعر ناقص'}${p.shipping_profile ? '' : '، الشحن ناقص'})</button>
