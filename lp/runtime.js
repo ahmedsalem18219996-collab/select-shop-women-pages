@@ -663,7 +663,7 @@ async function init() {
   cartBtn.addEventListener("click", async () => {
     if (cartBusy || busy) return;
     const line = lineNow();
-    if (!line || !lineOk(line)) { say('اختيار اللون والمقاس الأول.', true); return; }
+    if (!line || !lineOk(line)) { say('يرجى اختيار اللون والمقاس أولًا.', true); return; }
     cartBusy = true; cartBtn.disabled = true; cartBtn.textContent = 'بنضيف…';
     try {
       // Server validates options and availability. It does not create an order.
@@ -680,9 +680,9 @@ async function init() {
       funnel('add_to_cart', { currency: 'EGP',
         ...(okMinor(variant.unitPrice?.amountMinor) ? { value: variant.unitPrice.amountMinor * line.quantity / 100 } : {}),
         items: [{ item_id: line.publicCode, item_variant: variantLabel(), quantity: line.quantity }] });
-      say('اتضافت للشنطة ✓ استكمال تسوق أو فتح الشنطة من فوق.');
+      say('اتضافت للشنطة ✓ ممكن متابعة التسوق أو فتح الشنطة من فوق.');
     } catch (e) {
-      say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة وصلت للحد الأقصى. فتح الشنطة لتعديلها.' :
+      say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة وصلت للحد الأقصى. يرجى فتح الشنطة لتعديلها.' :
         'مش قادرين نضيف للشنطة دلوقتي. ممكن تطلبي مباشرة من نفس الصفحة.', true);
     } finally {
       cartBusy = false; cartBtn.textContent = 'إضافة للشنطة'; cartBtn.disabled = !lineNow() || busy;
@@ -740,7 +740,7 @@ async function init() {
     } catch (e) {
       if (mine !== quoteTicket) return;
       quoteError = true;
-      say(/** @type {any} */ (e)?.message === "checkout_not_purchasable" ? "الكمية دي مش متاحة حاليًا، قللي العدد أو اختيار مقاس تاني." : "مش قادرين نحسب الشحن دلوقتي. إعادة المحاولة.", true);
+      say(/** @type {any} */ (e)?.message === "checkout_not_purchasable" ? "الكمية دي مش متاحة حاليًا. ممكن تقليل العدد أو اختيار مقاس تاني." : "مش قادرين نحسب الشحن دلوقتي. إعادة المحاولة.", true);
     } finally { if (mine === quoteTicket) { quoting = false; paint(); } }
   };
 
@@ -887,7 +887,7 @@ async function init() {
     if (busy || mixBusy || !product) return;
     if (!mixMode) {
       if (!variantMixChoices.length && (!variant || product.options.length)) {
-        say("اختيار مقاس القطعة الأول، أو استخدمي الشنطة للمنتجات بمقاسات مختلفة.", true);
+        say("يرجى تحديد مقاس القطعة أولًا، أو استخدام الشنطة لو المقاسات مختلفة.", true);
         return;
       }
       mixEntries.clear();
@@ -1067,12 +1067,12 @@ async function init() {
       }
       else if (error?.message === "checkout_not_purchasable" || error?.message === "unavailable" || error?.message === "selection_changed") {
         cache.delete(current.code);
-        void show(current).then(() => say("الكمية أو المقاس ده مش متاح دلوقتي. غيّري الاختيار وتأكيد تاني.", true));
+        void show(current).then(() => say("الكمية أو المقاس ده مش متاح دلوقتي. يرجى تعديل الاختيار وإعادة التأكيد.", true));
       } else if (error?.message === "invalid_request" && data.fields && typeof data.fields === "object") {
         const map = /** @type {Record<string,string>} */ ({ name: "name", phone: "phone", area: "region", address: "address" });
-        for (const [k, problem] of Object.entries(data.fields)) if (map[k]) markField(map[k], problem === "too_long" ? "النص طويل، اختصريه." : "مراجعة الخانة دي.");
+        for (const [k, problem] of Object.entries(data.fields)) if (map[k]) markField(map[k], problem === "too_long" ? "النص طويل؛ يرجى اختصاره." : "مراجعة الخانة دي.");
         say("مراجعة البيانات المظللة.", true);
-      } else if (error?.message === "rate_limited") say("محاولات كتير ورا بعض. استني دقيقة وإعادة المحاولة.", true);
+      } else if (error?.message === "rate_limited") say("محاولات كتير ورا بعض. يرجى الانتظار دقيقة قبل إعادة المحاولة.", true);
       // Order taking switched off by the store, or the server could not verify the request: nothing was saved.
       else if (error?.message === "orders_not_enabled" || error?.message === "source_unavailable") say("استقبال الطلبات متوقف مؤقتًا، ومفيش طلب اتسجل. إعادة المحاولة بعد شوية.", true);
       // Unknown outcome (timeout, network, 5xx): the SAME key is reused on retry, so the server returns the same order.
