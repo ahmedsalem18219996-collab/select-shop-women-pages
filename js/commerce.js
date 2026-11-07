@@ -149,11 +149,11 @@ const msg = e => ({
   idempotency_conflict:"فيه طلب سابق مرتبط بنفس عملية الشراء. يرجى مراجعة رقمه قبل المحاولة.",
   rate_limited:"تم تجاوز الحد المسموح لمحاولات الطلب. حاولي لاحقًا أو تواصلي مع خدمة العملاء.",
   captcha_required:"يرجى إكمال التحقق من الأمان قبل إرسال الطلب.",
-  captcha_invalid:"تعذر التحقق من الأمان. أعيدي المحاولة.",
+  captcha_invalid:"تعذر التحقق من الأمان. يرجى إعادة المحاولة.",
   invalid_request:"يرجى مراجعة البيانات والمقاسات المدخلة.",
   service_unavailable:"الخدمة مؤقتًا تحت التجهيز.",
-  internal:"حصلت مشكلة اتصال، جربي مرة تانية.",
-})[e?.message] || "الخدمة مؤقتًا مش متاحة. جربي مرة تانية.";
+  internal:"حصلت مشكلة في الاتصال. يرجى المحاولة تاني.",
+})[e?.message] || "الخدمة مؤقتًا مش متاحة. يرجى المحاولة تاني.";
 function selectedVariant(product, fields) {
   const values=[...fields].map((f)=>Number(f.value));
   return product.variants.find(v=>v.selection.every((x,i)=>x.valuePosition===values[i]));
@@ -324,7 +324,7 @@ async function showProduct() {
       ? "المنتج غير متاح حاليًا. ممكن تتصفح باقي الموديلات."
       : offline
         ? "الإنترنت فصل. أول ما يرجع هنحاول نحمّل المنتج تلقائيًا."
-        : "الاتصال بتفاصيل المنتج اتعطل مؤقتًا. جربي إعادة المحاولة.", true);
+        : "الاتصال بتفاصيل المنتج اتعطل مؤقتًا. يرجى إعادة المحاولة.", true);
     if (!missing) {
       const retry = make("button","إعادة المحاولة","commerce-btn commerce-btn--ghost");
       retry.type = "button";
