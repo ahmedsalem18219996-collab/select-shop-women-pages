@@ -83,7 +83,7 @@
       freshNote.hidden = P.length > 0 && !CFG.loadError;
       $('#shop .shop-head')?.after(freshNote);
       freshNote.textContent = CFG.loadError
-        ? 'تعذّر تحميل المنتجات حاليًا. البيانات التجريبية مش معروضة، جربي تحديث الصفحة.'
+        ? 'تعذّر تحميل المنتجات حاليًا. البيانات التجريبية مش معروضة، يرجى تحديث الصفحة.'
         : P.length ? 'من صفحة المنتج يمكن اختيار اللون والمقاس وإكمال الطلب.'
           : 'متجر WOMEN قيد التجهيز · لا توجد طلبات شراء مفعّلة حاليًا';
     }
@@ -403,7 +403,7 @@
           <span class="swatches" aria-hidden="true">${(p.sw || []).map(s => `<i style="--s:${cssSwatch(s)}"></i>`).join('')}</span>
         </div>
         ${p.swatchNames?.length ? `<p class="card-colour-names" title="${esc(p.swatchNames.join('، '))}" aria-label="ألوان الموديل: ${esc(p.swatchNames.join('، '))}">الألوان: ${esc(p.swatchNames.slice(0, 3).join(' · '))}${p.swatchNames.length > 3 ? ` · +${p.swatchNames.length - 3}` : ''}</p>` : ''}
-      </article>`).join('') : `<p class="empty">مفيش قطع في القسم ده دلوقتي. اسحبي الشريط لقسم تاني.</p>`;
+      </article>`).join('') : `<p class="empty">مفيش قطع في القسم ده دلوقتي. ممكن استخدام شريط الأقسام للانتقال لقسم تاني.</p>`;
   }
   // Native image errors do not bubble; capture and retry with the already-validated original once.
   feed.addEventListener('error', event => {
@@ -482,7 +482,7 @@
     addBtn.disabled = true;
     const r = await window.SelectStore.addToBag(items.map(p => ({ productId: p.id, size: p.one ? 'ONE' : pick })));
     addBtn.disabled = false;
-    if (!r.ok) { say(r.message || 'مقدرناش نضيفها للشنطة. جربي تاني.'); return; }
+    if (!r.ok) { say(r.message || 'مقدرناش نضيفها للشنطة. يرجى المحاولة مرة تانية.'); return; }
     bagCount = r.count; setDots('.bagdot', bagCount);
     say(ctx.look ? `اتضاف ${ctx.look.name} (${pieces(items.length)}) للشنطة` : `اتضافت للشنطة: ${ctx.item.name}${pick !== 'ONE' ? ' · ' + pick : ''}`);
     buzz([10, 40, 10]); closeSheet();
