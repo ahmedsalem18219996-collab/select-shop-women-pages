@@ -434,7 +434,9 @@ function neutralLandingCopy() {
   set("#lpQtyDown", "−");
   document.querySelector("#lpQtyUp")?.setAttribute("aria-label", "زيادة الكمية");
   document.querySelector("#lpQtyDown")?.setAttribute("aria-label", "تقليل الكمية");
-  set(".notes li:nth-child(2)", "مصاريف الشحن والإجمالي بتظهر بعد اختيار المحافظة.");
+  // Keep campaign-specific benefit claims unchanged; only rewrite the old default wording.
+  const shippingNote = document.querySelector(".notes li:nth-child(2)");
+  if (shippingNote && /اختاري المحافظة/.test(shippingNote.textContent || "")) shippingNote.textContent = "مصاريف الشحن والإجمالي بتظهر بعد اختيار المحافظة.";
   set(".done a", "تصفح منتجات تانية");
   set("#lpBarChoice", "اختيار اللون والمقاس");
 }
