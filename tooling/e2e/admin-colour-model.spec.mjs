@@ -218,6 +218,36 @@ test('owner builds a 3-colour model: own photos, sizes, prices and cost; saved, 
 
 
 
+test('photo-only Save preserves disabled sizes inside an otherwise available colour', async ({ page }) => {
+  const b = backend({ version: 6 });
+  b.s.product = { public_code: 'SS-9101', title: 'بلوفر', description: '', status: 'draft',
+    created_at: now, updated_at: now, base_price: { amount_minor: 70000 }, shipping_profile: null, publish_blockers: [],
+    options: [
+      { option_id: 'o0', name: 'اللون', position: 0, values: [{ value_id: 'o0v0', value: 'أسود', position: 0, active: true }] },
+      { option_id: 'o1', name: 'المقاس', position: 1, values: [
+        { value_id: 'o1v0', value: 'M', position: 0, active: true },
+        { value_id: 'o1v1', value: 'L', position: 1, active: true }
+      ] }
+    ],
+    variants: [
+      { position: 0, active: true, availability: 'available', amount_minor: 70000, price_source: 'base',
+        selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v0' }] },
+      { position: 1, active: true, availability: 'unavailable', amount_minor: 70000, price_source: 'base',
+        selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v1' }] }
+    ] };
+  b.s.stock = { 0: { quantity: 20 }, 1: { quantity: 0 } };
+  await open(page, b, owner);
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await page.goto(target + '#/products/SS-9101');
+  const card = page.locator('[data-colour]').first();
+  await card.locator('[data-upload]').setInputFiles([photo('black.png', [33, 34, 35])]);
+  await card.locator('[data-save-colour]').click();
+  await expect(card.locator('.thumb img')).toHaveCount(1);
+  expect(b.s.product.variants[0].availability).toBe('available');
+  expect(b.s.product.variants[1].availability).toBe('unavailable');
+  expect(b.s.ops.filter((x) => x.op === 'products.set_availability' || x.op === 'products.set_stock')).toHaveLength(0);
+});
+
 test('one colour Save combines new size, special price, supplier availability and queued photo', async ({ page }) => {
   const b = backend({ version: 6 });
   b.s.product = { public_code: 'SS-9101', title: 'سويت شيرت', description: '', status: 'draft',
