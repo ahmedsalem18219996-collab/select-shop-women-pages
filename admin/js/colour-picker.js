@@ -65,7 +65,7 @@ export function mountDraftColourPickers(root) {
     const search = element('input', 'input');
     search.type = 'search';
     search.placeholder = 'كتابة جزء من اسم اللون — مثال: بيبي';
-    search.setAttribute('aria-label', 'ابحث عن اللون');
+    search.setAttribute('aria-label', 'البحث عن اللون');
     const singleField = field('اختيار لون المنتج من القائمة');
     one.append(search, singleField.wrap);
 
