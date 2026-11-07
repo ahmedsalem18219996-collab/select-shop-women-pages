@@ -100,7 +100,7 @@ test("A/B: ?lpv pins the variant and the bucket is remembered", async ({ page })
 test("direct COD order: server shipping per governorate, quantity, one order on double tap, confirmation in page", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
   await page.goto(LP);
-  await expect(page.locator("#lpShip")).toHaveText("اختاري المحافظة");
+  await expect(page.locator("#lpShip")).toHaveText("اختيار المحافظة");
   await expect(page.locator("#lpTotal")).toHaveText("—");
   await fillBuyer(page, "cairo");
   await expect(page.locator("#lpShip")).toHaveText("٧٠ ج");
