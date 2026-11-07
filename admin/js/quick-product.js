@@ -94,7 +94,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       '</div>',
       '<label class="quick-check"><input type="checkbox" data-quick-available ' + (chosen.availability ? 'checked ' : '') + (canQty ? '' : 'disabled') +
       '> <span>متاح للتوريد من المورد</span></label>',
-      '<p class="muted quick-help">الكمية افتراضية مش مخزون عندك. قبل تأكيد الأوردر لازم تمراجعة اللون والمقاس والسعر عند المورد.</p>',
+      '<p class="muted quick-help">الكمية افتراضية مش مخزون عندك. قبل تأكيد الأوردر لازم مراجعة اللون والمقاس والسعر عند المورد.</p>',
       (canPrice || canQty ? '<button type="button" class="btn btn-primary quick-save" data-quick-save>حفظ تعديل الاختيار ده</button>' : '<p class="muted">حسابك للعرض فقط. مسؤول التسعير أو الإتاحة تقدر تحفظ التعديلات.</p>'),
       '</div>',
       '<div class="quick-section">',
