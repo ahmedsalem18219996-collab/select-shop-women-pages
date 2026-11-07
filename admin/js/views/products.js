@@ -230,7 +230,7 @@ async function renderList(ctx) {
       }
       const allMembers = g.family.colors.map(color => byCode.get(color.code));
       if (allMembers.some(m => !m)) {
-        island('error', 'الموديل فيه لون مؤرشف أو غير متاح، مراجعةه قبل تغيير القسم.');
+        island('error', 'الموديل فيه لون مؤرشف أو غير متاح، ويرجى مراجعته قبل تغيير القسم.');
         return;
       }
       if (!categories.length) await loadCategories();
@@ -445,7 +445,7 @@ function createSheet(ctx) {
       };
       if (r.outcome === 'existing') {
         // A timed-out first attempt may have created only part of the draft: never overwrite or claim success.
-        goToDraft('details', 'المسودة كانت اتحفظت بالفعل. مراجعة السعر والألوان والصور قبل النشر؛ مش هنكرر الإنشاء.');
+        goToDraft('details', 'المسودة اتحفظت بالفعل. يرجى مراجعة السعر والألوان والصور قبل النشر؛ مش هنكرر الإنشاء.');
         return;
       }
       if (price) {
@@ -513,7 +513,7 @@ async function renderEditor(ctx, code) {
       ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} حذف المنتج</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
       <div class="card-head"><h3>استكمال الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعملاء لحد النشر</span></div>
-      <p class="muted" style="margin:0">كل لون ليه صوره ومقاساته وسعره. مراجعة المعاينة زي ما العميل هتشوفها، وبعدها نشر.</p>
+      <p class="muted" style="margin:0">كل لون ليه صوره ومقاساته وسعره. راجع شكل المنتج في المعاينة قبل النشر.</p>
       <div class="row" style="flex-wrap:wrap">
         <button type="button" class="btn btn-soft btn-sm" data-setup-tab="details">١. البيانات (${p.base_price ? 'السعر متحدد' : 'السعر ناقص'}${p.shipping_profile ? '' : '، الشحن ناقص'})</button>
         <button type="button" class="btn btn-soft btn-sm" data-setup-tab="colours">٢. الألوان والصور (${visiblePhotos.length ? visiblePhotos.length + ' صورة' : 'الصور ناقصة'}${hasVirtualAvailability ? '' : '، التوافر ناقص'})</button>
