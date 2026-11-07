@@ -678,7 +678,7 @@ const TABS = {
     if (!canEdit) return;
     let uploading = false;
     const upload = async (files) => {
-      if (uploading) { island('busy', 'فيه صور بتترفع بالفعل؛ متضغطيش رفع تاني قبل ما تخلص.'); return; }
+      if (uploading) { island('busy', 'فيه صور بتترفع بالفعل؛ يرجى عدم بدء رفع جديد قبل انتهاء الرفع الحالي.'); return; }
       uploading = true;
       const uploadField = $('#file', body);
       if (uploadField) uploadField.disabled = true;
