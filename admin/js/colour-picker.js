@@ -29,7 +29,7 @@ function setOptions(select, current = '', filter = '') {
     const previous = namedColour(selected);
     if (previous) filtered.unshift(previous);
   }
-  const first = element('option', '', filtered.length ? 'اختاري اللون' : 'مفيش نتيجة — اكتبي لون مخصص');
+  const first = element('option', '', filtered.length ? 'اختيار اللون' : 'مفيش نتيجة — كتابة لون مخصص');
   first.value = '';
   select.replaceChildren(first);
   for (const group of groups) {
@@ -53,7 +53,7 @@ export function mountDraftColourPickers(root) {
     const slot = card.querySelector('[data-colour-picker-slot]');
     if (!input || !slot) continue;
 
-    const mode = field('نوع اللون', 'اختاري لون واحد أو لونين مع بعض');
+    const mode = field('نوع اللون', 'اختيار لون واحد أو لونين مع بعض');
     mode.select.dataset.colourMode = '1';
     for (const [value, label] of [['single', 'لون واحد'], ['pair', 'لونين مع بعض (لون مزدوج)']]) {
       const option = element('option', '', label);
@@ -64,13 +64,13 @@ export function mountDraftColourPickers(root) {
     const one = element('div', 'colour-picker-single');
     const search = element('input', 'input');
     search.type = 'search';
-    search.placeholder = 'اكتبي جزء من اسم اللون — مثال: بيبي';
+    search.placeholder = 'كتابة جزء من اسم اللون — مثال: بيبي';
     search.setAttribute('aria-label', 'ابحثي عن اللون');
-    const singleField = field('اختاري لون المنتج من القائمة');
+    const singleField = field('اختيار لون المنتج من القائمة');
     one.append(search, singleField.wrap);
 
     const pair = element('div', 'colour-picker-pair');
-    const pairHelp = element('p', 'muted', 'اختاري اللونين الموجودين في نفس القطعة. صورها هتتربط بالتركيبة دي كاختيار واحد.');
+    const pairHelp = element('p', 'muted', 'اختيار اللونين الموجودين في نفس القطعة. صورها هتتربط بالتركيبة دي كاختيار واحد.');
     const pairGrid = element('div', 'grid2');
     const firstField = field('اللون الأول');
     const secondField = field('اللون الثاني');
@@ -126,7 +126,7 @@ export function mountDraftColourPickers(root) {
     });
     const updatePair = () => {
       if (firstField.select.value === secondField.select.value) {
-        error.textContent = 'اختاري لونين مختلفين للقطعة.';
+        error.textContent = 'اختيار لونين مختلفين للقطعة.';
         error.hidden = false;
         // Keep the actual invalid combination so checkDrafts blocks Save as well.
         // Blank is allowed for a single-colour, one-size legacy model, so blank here is unsafe.
