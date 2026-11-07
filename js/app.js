@@ -84,7 +84,7 @@
       $('#shop .shop-head')?.after(freshNote);
       freshNote.textContent = CFG.loadError
         ? 'تعذّر تحميل المنتجات حاليًا. البيانات التجريبية مش معروضة، جربي تحديث الصفحة.'
-        : P.length ? 'اختيار الموديل، واستكمال المقاس والطلب من صفحة المنتج الآمنة.'
+        : P.length ? 'من صفحة المنتج يمكن اختيار اللون والمقاس وإكمال الطلب.'
           : 'متجر WOMEN قيد التجهيز · لا توجد طلبات شراء مفعّلة حاليًا';
     }
     const storySection = $('#stories')?.parentElement;
@@ -186,10 +186,10 @@
     const ids = window.SelectStore.savedIds();
     utilityTitle.textContent = 'المحفوظة';
     if (!ids.length) {
-      utilityBody.innerHTML = `<div class="utility-empty"><span class="utility-empty-icon">♡</span><h3>لسه مفيش قطع محفوظة</h3><p>الضغط على على علامة القلب جنب أي موديل، وهتلاقيه هنا حتى بعد ما تقفلي الصفحة وفتحها تاني على نفس الجهاز.</p><button type="button" class="utility-main-btn" data-utility-shop>تصفح الموديلات</button></div>`;
+      utilityBody.innerHTML = `<div class="utility-empty"><span class="utility-empty-icon">♡</span><h3>لسه مفيش قطع محفوظة</h3><p>الضغط على علامة القلب جنب أي موديل بيحفظه هنا على نفس الجهاز، حتى بعد إغلاق الصفحة وفتحها تاني.</p><button type="button" class="utility-main-btn" data-utility-shop>تصفح الموديلات</button></div>`;
       return;
     }
-    utilityBody.innerHTML = `<p class="utility-intro">${pieces(ids.length)} محفوظة على الجهاز ده. فتح القطعة أو إزالةها من القائمة.</p>
+    utilityBody.innerHTML = `<p class="utility-intro">${pieces(ids.length)} محفوظة على الجهاز ده. ممكن فتح أي قطعة أو إزالتها من القائمة.</p>
       <div class="utility-items">${ids.map(id => {
         const p = byId(id);
         const picture = p?.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">` : '<span class="utility-photo-fallback">♡</span>';
@@ -209,7 +209,7 @@
     utilityBody.innerHTML = `<div class="utility-account">
       <div class="utility-avatar" aria-hidden="true">♡</div>
       <h3>أهلًا بيكي في SELECT SHOP</h3>
-      <p>ممكن ترجعي للموديلات اللي حفظتيها وفتح الشنطة على نفس الجهاز.</p>
+      <p>الموديلات المحفوظة والشنطة متاحين من نفس الجهاز.</p>
       <p class="utility-account-note">حساب العملاء وتسجيل الدخول ومتابعة الطلبات الشخصية لسه مش متاحين؛ المفضلة هنا محلية ومش مرتبطة بحساب أو رقم موبايل.</p>
       <button type="button" class="utility-account-action" data-account-saved>♡ <span>المفضلة</span><strong>${savedCount}</strong></button>
       <button type="button" class="utility-account-action" data-account-bag>◫ <span>الشنطة</span><b>عرض الشنطة</b></button>
@@ -273,7 +273,7 @@
       if (card) {
         card.closest('.card')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
         card.focus({ preventScroll: true });
-      } else say('الموديل مش ظاهر في القسم الحالي؛ اختيار كل القطع.');
+      } else say('الموديل مش ظاهر في القسم الحالي؛ اعرض كل القطع.');
     }
   });
   addEventListener('women-saved-changed', syncSaved);
@@ -502,7 +502,7 @@
     if (!b || !w) { out.textContent = 'هنعلّملك المقاس المناسب على الأزرار فوق.'; return; }
     const bi = chart.findIndex(r => b <= r[1]), wi = chart.findIndex(r => w <= r[2]);
     if (b < chartMin.bust || w < chartMin.waist) { out.textContent = 'القياسات أصغر من جدول المقاسات. التواصل على واتساب للمساعدة في الاختيار.'; return; }
-    if (bi < 0 || wi < 0) { out.textContent = 'قياساتك أكبر من جدولنا العادي. اسألي على واتساب عن المقاسات الخاصة.'; return; }
+    if (bi < 0 || wi < 0) { out.textContent = 'القياسات أكبر من جدول المقاسات العادي. التواصل على واتساب للاستفسار عن المقاسات الخاصة.'; return; }
     const z = chart[Math.max(bi, wi)][0], btn = $(`#shSizes .size[data-z="${z}"]`);
     if (btn) btn.classList.add('rec');
     if (btn && !btn.disabled) { choose(z); out.textContent = `مقاسك ${z}${bi !== wi ? ` (اخترناه على ${bi > wi ? 'الصدر' : 'الوسط'})` : ''}. اخترناهولك فوق.`; }
@@ -514,7 +514,7 @@
   $$('[data-open-bag]').forEach(b => b.addEventListener('click', () => {
     // Cart must open at the same origin as checkout so its persisted selections survive.
     if (!CFG.demo && window.SelectStore.cartUrl) location.assign(window.SelectStore.cartUrl);
-    else say(bagCount ? `في الشنطة ${pieces(bagCount)}` : 'الشنطة فاضية. الضغط على + على أي قطعة');
+    else say(bagCount ? `في الشنطة ${pieces(bagCount)}` : 'الشنطة فاضية. علامة + على أي قطعة بتضيفها للشنطة.');
   }));
 
 })();
