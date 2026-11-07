@@ -524,7 +524,7 @@ export function previewTab(body, { ctx, d, p, code }) {
       const live = m.colours.filter((c) => c.active && c.variants.some((v) => v.active));
       const text = `✓ اتأكدنا من السيرفر: المنتج مسودة محفوظة بـ ${live.length} لون، ${live.reduce((n, c) => n + c.variants.filter((v) => v.active).length, 0)} مقاس، ${live.reduce((n, c) => n + c.media.length, 0) + m.shared.length} صورة. `
         + live.map((c) => `${c.name || 'الموديل'}: ${priceOf(c, m.base) === null ? 'من غير سعر' : c.priceMinor === 'mixed' ? 'أسعار مختلفة' : money(priceOf(c, m.base))}`).join(' · ');
-      $('[data-verified]', body).textContent = text; done('المسودة محفوظة ومالتأكدن منها.');
+      $('[data-verified]', body).textContent = text; done('المسودة محفوظة وتم التأكد من بياناتها.');
     }
     if (b.matches('[data-publish]')) document.querySelector('[data-pub]')?.click();
   });
