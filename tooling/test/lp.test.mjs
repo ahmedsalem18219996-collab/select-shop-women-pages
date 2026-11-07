@@ -226,7 +226,11 @@ test("a chosen colour keeps only its own buyable sizes, and brings its own photo
   const urls = (list) => list.map((m) => m.url.split("/").pop().slice(0, 4));
   assert.deepEqual(urls(colourMedia(product.media, 0, 0)), ["b1b1", "b2b2"], "do not mix shared media into a colour gallery");
   assert.deepEqual(urls(colourMedia(product.media, 0, 1)), ["c1c1"]);
-  assert.deepEqual(colourMedia(product.media, 0, 2), [], "no photo of pink: keep what is shown");
+  assert.deepEqual(colourMedia(product.media, 0, 2), [], "no photo of pink: never show a different shade");
+  const unscoped = product.media.map(m => ({ ...m, target: { kind: "product" } }));
+  assert.equal(colourMedia(unscoped, 0, 0, true).length, 0, "multi-colour: no tagged photos must show a missing-photo notice, not mixed images");
+  assert.equal(colourMedia(unscoped, 0, 1, true).length, 0, "switching colour cannot inherit another shade from an unscoped gallery");
+  assert.equal(colourMedia(unscoped, 0, 0).length, unscoped.length, "single-colour legacy product still uses shared photos");
   assert.equal(colourIndex({ options: [{ name: "المقاس" }] }), -1);
 });
 
