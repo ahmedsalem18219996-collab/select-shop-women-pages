@@ -6,6 +6,7 @@
 import { html, render, $, $$, icon, money, toMinor, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js';
+import { checkSourceImage } from '../image-optimize.js';
 import { colourModel, checkDrafts, planNewModel, planAddColour, planSizes, planColourPrice, planColourAvailability, photoTarget, runSteps, ONE_SIZE } from '../colour-model.js?v=20261106-colourpicker';
 import { loadCosts, saveCost, costOf, profitText } from '../profit.js';
 import { PALETTE, hexOf, normName, colourKey } from '../../../js/colour-palette.js?v=20261106-colourpicker';
@@ -32,7 +33,7 @@ async function apply(steps, { ctx, p, code, list }) {
 }
 
 // ---------------------------------------------------------------- drafts (new model or one more colour)
-function draftCard(dr, i, { canPrice }) {
+function draftCard(dr, i, { canPrice, canMedia }) {
   return html`<article class="card stack colour-card" data-draft="${i}">
     <div class="row">${swatch(hexOf(dr.name), dr.name)}<b>${dr.name || 'لون ' + (i + 1)}</b><span class="space"></span>
       <button type="button" class="btn btn-ghost btn-sm" data-drop-draft="${i}">${icon('x')}شيلي اللون ده</button></div>
@@ -41,6 +42,15 @@ function draftCard(dr, i, { canPrice }) {
       <label class="field"><span>اسم اللون / لون مخصص (اختياري)</span><input class="input" data-d-name value="${dr.name}" list="palette-names" maxlength="40" placeholder="اختاري من القائمة فوق أو اكتبي لون مخصص"><small>الاسم ده هو اللي هيتحفظ ويظهر للعميلة. لو اخترتي لونين هيتسجلوا كاختيار واحد.</small></label>
       ${canPrice ? html`<label class="field"><span>سعر خاص للون (اختياري)</span><div class="input-money"><input data-d-price inputmode="decimal" value="${dr.priceMinor ? dr.priceMinor / 100 : ''}" placeholder="فاضي = السعر الأساسي"><span>EGP</span></div></label>` : ''}
     </div>
+
+    ${canMedia ? html`<div class="field"><span>صور اللون — ارفعيها مرة واحدة مع اللون</span>
+      <div class="thumbs draft-colour-photos" data-d-photos>
+        <label class="thumb thumb-add" data-d-photo-add>${icon('upload')}<span>اختاري صور اللون</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" data-d-files aria-label="ارفعي صور اللون"></label>
+      </div>
+      <small data-d-photo-count>${dr.files?.length ? dr.files.length + ' صورة جاهزة للحفظ (أول صورة هي الغلاف)' : 'ممكن تختاري عدة صور مرة واحدة، وهتترفع تلقائيًا بعد حفظ اللون.'}</small>
+      <div class="thumbs" data-d-upload-progress aria-live="polite"></div>
+    </div>` : ''}
     <div class="field"><span>المقاسات المتاحة للون ده</span>
       <div class="chips" style="flex-wrap:wrap">${[...new Set([...COMMON_SIZES, ...dr.sizes])].map((s) => html`<button type="button" class="chip" data-d-size="${s}" aria-pressed="${dr.sizes.includes(s)}">${s}</button>`)}</div>
       <input class="input" data-d-custom maxlength="18" placeholder="مقاس تاني؟ اكتبيه واضغطي Enter (مثال: 38)"></div>
@@ -48,14 +58,47 @@ function draftCard(dr, i, { canPrice }) {
   </article>`;
 }
 
-function mountDrafts(box, drafts, { canPrice, onSave, saveText, single = false }) {
+function mountDrafts(box, drafts, { canPrice, canMedia, onSave, saveText, single = false }) {
   const paint = () => {
     render(box, html`<datalist id="palette-names">${PALETTE.map((c) => html`<option value="${c.name}"></option>`)}</datalist>
-      <div class="stack">${drafts.map((dr, i) => draftCard(dr, i, { canPrice }))}</div>
+      <div class="stack">${drafts.map((dr, i) => draftCard(dr, i, { canPrice, canMedia }))}</div>
       <div class="row" style="flex-wrap:wrap"><button type="button" class="btn btn-soft" data-add-draft ${single && drafts.length ? 'hidden' : ''}>${icon('plus')}إضافة لون</button><span class="space"></span>
         <button type="button" class="btn btn-primary" data-save-drafts ${drafts.length ? '' : 'disabled'}>${saveText}</button></div>
       <p class="err" data-draft-error role="alert" aria-live="polite" hidden></p><ol class="blockers" data-steps hidden></ol>`);
     mountDraftColourPickers(box);
+
+    // File objects stay in memory while switching sizes/colours. Never upload until the
+    // structure (colour + its Variants) has been saved, so no unscoped duplicate photos.
+    $('[data-draft]', box).forEach((card) => {
+      const draft = drafts[Number(card.dataset.draft)];
+      const gallery = $('[data-d-photos]', card);
+      if (!gallery) return;
+      const add = $('[data-d-photo-add]', gallery);
+      (draft.files || []).forEach((file, i) => {
+        const figure = document.createElement('figure');
+        figure.className = 'thumb draft-pending-photo';
+        const image = document.createElement('img');
+        image.alt = file.name;
+        image.width = 96; image.height = 120;
+        const url = URL.createObjectURL(file);
+        image.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+        image.addEventListener('error', () => URL.revokeObjectURL(url), { once: true });
+        image.src = url;
+        const remove = document.createElement('button');
+        remove.type = 'button'; remove.className = 'icon-btn';
+        remove.dataset.dRemovePhoto = String(i);
+        remove.setAttribute('aria-label', 'شيلي الصورة ' + (i + 1) + ' من اللون قبل الحفظ');
+        remove.textContent = '×';
+        figure.append(image);
+        if (i === 0) {
+          const cover = document.createElement('span');
+          cover.className = 'badge ok'; cover.textContent = 'الغلاف';
+          figure.append(cover);
+        }
+        figure.append(remove);
+        gallery.insertBefore(figure, add);
+      });
+    });
   };
   const at = (el) => drafts[+el.closest('[data-draft]').dataset.draft];
   box.addEventListener('input', (e) => {
@@ -63,6 +106,22 @@ function mountDrafts(box, drafts, { canPrice, onSave, saveText, single = false }
     if (e.target.matches('[data-d-name]')) { dr.name = e.target.value; const sw = $('.swatch', e.target.closest('[data-draft]')); const hex = hexOf(dr.name); sw.style.setProperty('--sw', hex || 'transparent'); sw.toggleAttribute('data-unknown', !hex); }
     if (e.target.matches('[data-d-price]')) { const v = e.target.value.trim(); dr.priceMinor = v ? (toMinor(v) ?? -1) : null; }
     if (e.target.matches('[data-d-avail]')) dr.available = e.target.checked;
+  });
+
+  box.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-d-files]')) return;
+    const draft = at(e.target);
+    const chosen = [...(e.target.files || [])];
+    const valid = chosen.filter((file) => checkSourceImage(file) === null);
+    if (valid.length !== chosen.length) island('error', 'بعض الصور مش JPG/PNG/WebP أو أكبر من 5MB؛ هنحتفظ بالصور السليمة بس.');
+    const existing = draft.files || [];
+    const keys = new Set(existing.map((file) => [file.name, file.size, file.lastModified].join(':')));
+    for (const file of valid) {
+      const key = [file.name, file.size, file.lastModified].join(':');
+      if (!keys.has(key)) { existing.push(file); keys.add(key); }
+    }
+    draft.files = existing;
+    paint();
   });
   box.addEventListener('keydown', (e) => {
     if (!e.target.matches('[data-d-custom]') || e.key !== 'Enter') return;
@@ -72,7 +131,8 @@ function mountDrafts(box, drafts, { canPrice, onSave, saveText, single = false }
   });
   box.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.matches('[data-add-draft]')) { drafts.push({ name: '', sizes: [], priceMinor: null, available: true }); paint(); $$('[data-d-name]', box).at(-1)?.focus(); return; }
+    if (b.matches('[data-d-remove-photo]')) { const dr = at(b); dr.files.splice(Number(b.dataset.dRemovePhoto), 1); paint(); return; }
+    if (b.matches('[data-add-draft]')) { drafts.push({ name: '', sizes: [], priceMinor: null, available: true, files: [] }); paint(); $$('[data-d-name]', box).at(-1)?.focus(); return; }
     if (b.matches('[data-drop-draft]')) { drafts.splice(+b.dataset.dropDraft, 1); paint(); return; }
     if (b.matches('[data-d-size]')) {
       const dr = at(b), s = b.dataset.dSize;
@@ -115,9 +175,9 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
   const draftsBox = $('[data-drafts]', body);
   if (draftsBox) {
     const fresh = !p.variants.length;
-    const drafts = fresh ? [{ name: '', sizes: [], priceMinor: null, available: true }] : [];
+    const drafts = fresh ? [{ name: '', sizes: [], priceMinor: null, available: true, files: [] }] : [];
     mountDrafts(draftsBox, drafts, {
-      canPrice: can('products.price'),
+      canPrice: can('products.price'), canMedia: can('media.manage'),
       saveText: fresh ? 'احفظي الألوان والمقاسات' : 'احفظي اللون الجديد',
       single: !fresh,
       onSave: async (list) => {
@@ -130,7 +190,50 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
           if (model.colours.some((c) => colourKey(c.name) === colourKey(clean[0].name))) { island('error', 'اللون ده موجود بالفعل في الموديل. لو متوقف، رجّعيه من الكارت بتاعه.'); return; }
           steps = planAddColour(model, clean[0]);
         }
-        if (await apply(steps, { ctx, p, code, list })) { done('اتحفظت الألوان. ارفعي صور كل لون من الكارت بتاعه.'); reload(); }
+
+        if (!(await apply(steps, { ctx, p, code, list }))) return;
+        const batches = clean.map((draft, i) => ({ draft, i })).filter(({ draft }) => draft.files?.length);
+        if (!batches.length) { done('اتحفظت الألوان والمقاسات. تقدري تضيفي الصور من نفس كارت اللون.'); reload(); return; }
+        // Fetch the newly assigned Variant positions. Never guess positions from a draft,
+        // and never upload a photo as shared/product media when a named colour is missing.
+        let latest;
+        try { latest = await call('products.get', { code }); } catch { latest = { outcome: 'network' }; }
+        if (latest?.outcome !== 'ok') {
+          island('error', 'الألوان والمقاسات اتحفظت، لكن تعذر تحميل ربط الصور. افتحي اللون من نفس الشاشة وارفعي صوره؛ مفيش صور اتكررت.');
+          reload(); return;
+        }
+        let uploaded = 0;
+        let failed = 0;
+        const total = batches.reduce((n, { draft }) => n + draft.files.length, 0);
+        for (const [index, { draft, i }] of batches.entries()) {
+          const current = colourModel(latest.data.product, latest.data.stock, latest.data.media?.media || []);
+          const match = current.colours.find((colour) => colourKey(colour.name) === colourKey(draft.name));
+          if (!match || !match.variants.length) {
+            failed += draft.files.length;
+            island('error', 'اللون «' + (draft.name || 'الموديل') + '» اتحفظ، لكن الصور محتاجة رفع من الكارت بتاعه بعد التحديث.');
+          } else {
+            const card = $('[data-draft="' + i + '"]', draftsBox);
+            const grid = $('[data-d-upload-progress]', card);
+            const up = await uploadPhotos({
+              files: draft.files, code, title: p.title + ' - ' + (draft.name || 'الموديل'),
+              version: latest.data.media?.structure_version ?? latest.data.product.structure_version,
+              grid, before: null, fields: photoTarget(match)
+            });
+            uploaded += up.ok;
+            failed += draft.files.length - up.ok;
+            if (up.ok !== up.total) island('error', uploadSummary(up));
+          }
+          if (index < batches.length - 1) {
+            try { latest = await call('products.get', { code }); } catch { latest = { outcome: 'network' }; }
+            if (latest?.outcome !== 'ok') {
+              failed += batches.slice(index + 1).reduce((n, b) => n + b.draft.files.length, 0);
+              break;
+            }
+          }
+        }
+        if (failed) island('error', 'اتحفظت الألوان واترفعت ' + uploaded + ' من ' + total + ' صورة. الصور الناقصة تتضاف من كارت اللون؛ متعيديش رفع الصور الناجحة.');
+        else done('اتحفظت الألوان واترفعت كل الصور (' + uploaded + ') وربطناها بألوانها.');
+        reload();
       },
     });
   }
