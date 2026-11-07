@@ -217,8 +217,8 @@ test("a chosen colour keeps only its own buyable sizes, and brings its own photo
   assert.deepEqual([...openValues(product, [0, -1], 1)].sort(), [0, 1, 2], "baby blue: S, M, L");
   assert.deepEqual([...openValues(product, [-1, 1], 0)], [0], "size M: pink is not purchasable");
   const urls = (list) => list.map((m) => m.url.split("/").pop().slice(0, 4));
-  assert.deepEqual(urls(colourMedia(product.media, 0, 0)), ["b1b1", "b2b2", "aaaa"]);
-  assert.deepEqual(urls(colourMedia(product.media, 0, 1)), ["c1c1", "aaaa"]);
+  assert.deepEqual(urls(colourMedia(product.media, 0, 0)), ["b1b1", "b2b2"], "do not mix shared media into a colour gallery");
+  assert.deepEqual(urls(colourMedia(product.media, 0, 1)), ["c1c1"]);
   assert.deepEqual(colourMedia(product.media, 0, 2), [], "no photo of pink: keep what is shown");
   assert.equal(colourIndex({ options: [{ name: "المقاس" }] }), -1);
 });
