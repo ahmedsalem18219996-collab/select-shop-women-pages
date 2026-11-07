@@ -372,7 +372,7 @@ function layout(o) {
     : ORDER_FORM;
   // Refresh the browser-cached runtime only on affected grouped and legacy
   // product pages. Unrelated generated LPs retain their exact original HTML.
-  const choiceVersion = campaign ? "20261031-sweater-3" : /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
+  const choiceVersion = o.source === " (automatic product page)" ? "20261107-neutral-colours" : campaign ? "20261031-sweater-3" : /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
     ? "20261030-7" : checkoutPicker ? "20261030-5" : "20261030-4";
   return `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -490,11 +490,11 @@ export function renderShell(fontFaces = "", routes = {}) {
   const code = `String(new URLSearchParams(location.search).get("p")||new URLSearchParams(location.search).get("code")||"").trim().toUpperCase()`;
   return layout({
     source: " (automatic product page)", title: "SELECT SHOP WOMEN",
-    description: "اطلبي من نفس الصفحة من SELECT SHOP WOMEN. الدفع عند الاستلام والشحن لكل المحافظات.",
+    description: "طلب مباشر من نفس الصفحة من SELECT SHOP WOMEN. الدفع عند الاستلام والشحن لكل المحافظات.",
     canonical: "", preload: "", codeExpr: code, fontFaces, route: ROUTE(routes),
     hero: `<img alt="" width="800" height="1067" decoding="async"${HERO_READY}>`, gallery: "", count: 0, h1: "", price: "—", desc: "", picker: "", options: "",
-    choice: "اختاري المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
-    noscript: `<a href="/">افتحي المتجر</a>`, data: JSON.stringify({ auto: true }),
+    choice: "اختيار اللون والمقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
+    noscript: `<a href="/">فتح المتجر</a>`, data: JSON.stringify({ auto: true }),
     scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n`,
   });
 }
