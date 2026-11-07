@@ -114,7 +114,9 @@ export function colourMedia(/** @type {any[]} */ media, /** @type {number} */ op
   const tagged = (/** @type {any} */ m) => t(m) && t(m).kind !== "product";
   const own = media.filter(m => t(m)?.kind === "value" ? t(m).optionPosition === optionPosition && t(m).valuePosition === valuePosition
     : t(m)?.kind === "variant" && Array.isArray(t(m).selection) && t(m).selection.some((/** @type {Pick} */ s) => s.optionPosition === optionPosition && s.valuePosition === valuePosition));
-  return own.length ? [...own, ...media.filter(m => !tagged(m))] : [];
+  // Never mix a colour's assigned images with shared or sibling-colour photos.
+  // Legacy models with no tagged media still use their shared gallery unchanged.
+  return own.length ? own : media.some(tagged) ? [] : media.filter(m => !tagged(m));
 }
 
 export const egp = (/** @type {number} */ minor) => new Intl.NumberFormat("ar-EG").format(minor / 100);
@@ -365,7 +367,17 @@ function paintPhotos(/** @type {any[]} */ list, /** @type {string} */ alt) {
   const shots = list.map((/** @type {any} */ m) => photoSet(m.url, local)).filter(s => s !== null)
     .map(s => ({ src: s.src, srcset: s.srcset, thumb: s.small, alt }));
   const img = /** @type {HTMLImageElement|null} */ (document.querySelector("#lpHero img"));
-  if (!img || !shots.length) return;
+  if (!img) return;
+  const missing = document.getElementById("lpPhotoMissing");
+  if (!shots.length) {
+    // A colour with no assigned photos must not inherit the previous colour's image.
+    img.hidden = true; img.removeAttribute("src"); img.removeAttribute("srcset");
+    setShots([]);
+    if (missing) missing.hidden = false;
+    return;
+  }
+  img.hidden = false;
+  if (missing) missing.hidden = true;
   img.fetchPriority = "high";
   setShots(shots); // a curated <picture> source never overrides the live colour photo: showShot replaces the sources
 }
@@ -375,9 +387,20 @@ function fillFromProduct(/** @type {any} */ p) {
   const title = String(p.title || "").trim().slice(0, 200);
   document.title = title + " · SELECT SHOP WOMEN";
   /** @type {HTMLElement} */ (document.getElementById("lpTitle")).textContent = title;
-  // Before a colour is picked, show the photos shared by every colour (all photos when none are shared).
-  const all = liveMedia(p), shared = all.filter((/** @type {any} */ m) => !m.target || m.target.kind === "product");
-  paintPhotos(shared.length ? shared : all, title);
+  // Preview only the first AVAILABLE colour. Never expose an unsorted gallery of
+  // other colours before the buyer has made a selection.
+  const all = liveMedia(p), ci = colourIndex(p);
+  const opt = ci >= 0 ? p.options[ci] : null;
+  const first = opt?.values.find((/** @type {any} */ v) => sellableValues(p, ci).has(v.position));
+  const preview = first ? colourMedia(all, opt.position, first.position) : all;
+  paintPhotos(preview, title + (first ? " - " + first.value : ""));
+  const hint = document.getElementById("lpPreviewHint");
+  if (hint) {
+    hint.hidden = !(first && opt.values.length > 1);
+    hint.textContent = first && opt.values.length > 1
+      ? "معاينة لون " + first.value + " · اختار اللون المناسب من الخيارات بالأسفل"
+      : "";
+  }
   const lines = String(p.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
   /** @type {HTMLElement} */ (document.getElementById("lpDesc")).textContent = lines[0] || "";
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
@@ -434,6 +457,44 @@ async function init() {
   setShots(shotsOf(colors[0]), false); // the HTML already shows the first colour's photos
   const holder = $("#lpOptions");
   const choiceEl = document.getElementById("lpBarChoice");
+  // One authoritative colour radio group sits DIRECTLY below the photo, not a
+  // second independently managed picker. Product sizes stay next to the order.
+  const quick = document.createElement("section");
+  quick.id = "lpQuickColors";
+  quick.className = "lp-quick-colours";
+  quick.hidden = true;
+  quick.setAttribute("aria-label", "اختيار لون المنتج");
+  const mediaStage = document.getElementById("lpStage");
+  if (page.auto && mediaStage?.parentElement) {
+    const missing = document.createElement("p");
+    missing.id = "lpPhotoMissing"; missing.hidden = true;
+    missing.className = "lp-photo-missing";
+    missing.textContent = "صور اللون ده مش متاحة حاليًا";
+    mediaStage.append(missing);
+    const previewHint = document.createElement("p");
+    previewHint.id = "lpPreviewHint"; previewHint.hidden = true;
+    previewHint.className = "lp-preview-hint";
+    mediaStage.insertAdjacentElement("afterend", previewHint);
+    previewHint.insertAdjacentElement("afterend", quick);
+  }
+  if (page.auto && !document.getElementById("lpColourQuickStyle")) {
+    const css = document.createElement("style");
+    css.id = "lpColourQuickStyle";
+    css.textContent = `
+      #lpQuickColors[hidden],#lpPreviewHint[hidden],#lpPhotoMissing[hidden]{display:none!important}
+      #lpQuickColors{padding:16px;margin:10px 0;background:var(--paper);border:1px solid var(--line);display:grid;gap:10px;min-width:0}
+      #lpQuickColors .lp-opt{display:flex;gap:9px;flex-wrap:wrap}
+      #lpQuickColors .lp-opt legend{font-size:18px;font-weight:700;margin-bottom:8px}
+      #lpQuickColors .lp-opt span{min-height:50px;padding:9px 13px;font-size:15px;white-space:normal;text-align:center}
+      #lpQuickColors .lp-opt input:checked+span{background:var(--elev);outline:2px solid var(--cyan);outline-offset:0}
+      #lpQuickColors .lp-colour-hint{margin:0;color:var(--cyan);font-size:13px;line-height:1.6}
+      #lpPreviewHint{font-size:12px;color:var(--muted);margin:8px 12px}
+      #lpPhotoMissing{position:absolute;inset:25% 10%;display:grid;place-items:center;text-align:center;color:#0B1730;font-size:16px;background:var(--surface)}
+      @media(max-width:899px){#lpQuickColors{order:0;margin:8px 0 0}#lpPreviewHint{order:0}}
+      @media(min-width:900px){#lpQuickColors{grid-column:1/-1;grid-row:2;margin:0}#lpPreviewHint{grid-column:2;grid-row:3}}
+    `;
+    document.head.append(css);
+  }
   /** @type {Map<string, Promise<any>>} */
   const cache = new Map();
   const load = (/** @type {string} */ code) => {
@@ -460,7 +521,8 @@ async function init() {
 
   const sizeText = () => {
     if (!product.options.length) return "مقاس واحد";
-    if (!variant) return "اختاري المقاس";
+    if (!variant) return colourIndex(product) >= 0 && chosen[colourIndex(product)] < 0
+      ? "اختيار اللون أولًا" : "اختيار المقاس";
     return product.options.map((/** @type {any} */ o, /** @type {number} */ i) => o.values.find((/** @type {any} */ x) => x.position === chosen[i])?.value || "").join(" · ");
   };
   // GA4 item_variant: the chosen option values (e.g. "M"), never customer data.
@@ -656,9 +718,22 @@ async function init() {
   };
 
   const unavailable = (/** @type {string} */ text) => { product = null; variant = null; quote = null; paint(); cta.disabled = true; cartBtn.disabled = true; cta.textContent = "غير متاح حاليًا"; say(text, true); };
+  const updateColourHint = () => {
+    if (quick.hidden || !product) return;
+    const ci = colourIndex(product);
+    if (ci < 0) return;
+    const opt = product.options[ci];
+    const open = sellableValues(product, ci);
+    const picked = opt.values.find((/** @type {any} */ v) => v.position === chosen[ci]);
+    const intro = quick.querySelector(".lp-colour-hint");
+    if (intro) intro.textContent = picked
+      ? "اللون المختار: " + picked.value + (open.size > 1 ? " · فيه " + (open.size - 1) + " لون تاني" : "")
+      : "اختيار اللون · فيه " + open.size + (open.size === 1 ? " لون متاح" : " ألوان متاحة");
+  };
   const choose = () => {
     variant = chosen.every(x => x >= 0) ? findVariant(product, chosen) : null;
-    cta.disabled = mixMode ? currentLines().length === 0 : false;
+    cta.disabled = mixMode ? currentLines().length === 0 : !lineNow();
+    updateColourHint();
     cta.textContent = ctaText;
     cartBtn.disabled = mixMode || !lineNow() || cartBusy;
     void requote();
@@ -669,21 +744,25 @@ async function init() {
     product.options.forEach((/** @type {any} */ _, /** @type {number} */ i) => {
       if (i === from) return;
       const open = openValues(product, chosen, i);
-      holder.querySelectorAll(`input[name="opt${i}"]`).forEach(el => {
+      document.querySelectorAll(`#lpOptions input[name="opt${i}"], #lpQuickColors input[name="opt${i}"]`).forEach(el => {
         const r = /** @type {HTMLInputElement} */ (el), v = Number(r.value);
         r.disabled = !open.has(v);
         if (r.disabled && r.checked) { r.checked = false; chosen[i] = -1; }
       });
-      if (chosen[i] < 0 && open.size === 1) { chosen[i] = [...open][0]; const r = /** @type {HTMLInputElement|null} */ (holder.querySelector(`input[name="opt${i}"][value="${chosen[i]}"]`)); if (r) r.checked = true; }
+      if (chosen[i] < 0 && open.size === 1) { chosen[i] = [...open][0]; const r = /** @type {HTMLInputElement|null} */ (document.querySelector(`#lpOptions input[name="opt${i}"][value="${chosen[i]}"], #lpQuickColors input[name="opt${i}"][value="${chosen[i]}"]`)); if (r) r.checked = true; }
     });
     const ci = colourIndex(product);
     if (from === ci && chosen[ci] >= 0) {
+      const name = product.options[ci].values.find((/** @type {any} */ v) => v.position === chosen[ci])?.value || "";
       const own = colourMedia(liveMedia(product), product.options[ci].position, chosen[ci]);
-      if (own.length) paintPhotos(own, String(product.title || "") + " - " + (product.options[ci].values.find((/** @type {any} */ v) => v.position === chosen[ci])?.value || ""));
+      paintPhotos(own, String(product.title || "") + " - " + name);
+      const hint = document.getElementById("lpPreviewHint");
+      if (hint) { hint.hidden = true; hint.textContent = ""; }
     }
   };
   const renderOptions = () => {
     holder.replaceChildren();
+    quick.replaceChildren(); quick.hidden = true;
     chosen = product.options.map(() => -1);
     const ci = colourIndex(product);
     if (!product.options.length) {
@@ -696,7 +775,9 @@ async function init() {
       const ok = sellableValues(product, i);
       const box = document.createElement("fieldset");
       box.className = "lp-opt";
-      const legend = document.createElement("legend"); legend.textContent = o.name || "المقاس"; box.append(legend);
+      const legend = document.createElement("legend");
+      legend.textContent = i === ci ? "اختار اللون" : (o.name || "المقاس");
+      box.append(legend);
       for (const val of o.values) {
         const label = document.createElement("label");
         const input = document.createElement("input");
@@ -706,16 +787,21 @@ async function init() {
         if (i === ci) { const dot = document.createElement("i"); dot.className = "sw"; dot.dataset.name = val.value; dot.setAttribute("aria-hidden", "true"); span.prepend(dot); }
         label.append(input, span); box.append(label);
       }
-      holder.append(box);
+      if (i === ci && page.auto && o.values.length > 1) {
+        quick.hidden = false;
+        const intro = document.createElement("p");
+        intro.className = "lp-colour-hint";
+        quick.append(box, intro);
+      } else holder.append(box);
     });
-    if (ci >= 0) void import("../js/colour-palette.js").then(m => holder.querySelectorAll("i.sw").forEach(dot => {
+    if (ci >= 0) void import("../js/colour-palette.js").then(m => document.querySelectorAll("#lpOptions i.sw, #lpQuickColors i.sw").forEach(dot => {
       const hx = m.hexOf(/** @type {HTMLElement} */ (dot).dataset.name || "");
       if (hx) /** @type {HTMLElement} */ (dot).style.background = hx; else dot.remove();
-    })).catch(() => holder.querySelectorAll("i.sw").forEach(dot => dot.remove()));
+    })).catch(() => document.querySelectorAll("#lpOptions i.sw, #lpQuickColors i.sw").forEach(dot => dot.remove()));
     // A single sellable value per option is pre-selected so one-size pieces need no tap.
     product.options.forEach((/** @type {any} */ _, /** @type {number} */ i) => {
       const ok = [...sellableValues(product, i)];
-      if (ok.length === 1) { chosen[i] = ok[0]; const r = /** @type {HTMLInputElement|null} */ (holder.querySelector(`input[name="opt${i}"][value="${ok[0]}"]`)); if (r) r.checked = true; }
+      if (ok.length === 1) { chosen[i] = ok[0]; const r = /** @type {HTMLInputElement|null} */ (document.querySelector(`#lpOptions input[name="opt${i}"][value="${ok[0]}"], #lpQuickColors input[name="opt${i}"][value="${ok[0]}"]`)); if (r) r.checked = true; }
     });
   };
   const show = async (/** @type {typeof colors[number]} */ c) => {
@@ -909,8 +995,8 @@ async function init() {
     if (busy || !product) return;
     const lines = currentLines();
     if (!lines.length || !lines.every(lineOk) || mixBusy) {
-      say(mixMode ? "اختاري لون واحد على الأقل وحددي عدد القطع." : "اختاري المقاس الأول.", true);
-      (mixMode ? mixBox : holder).scrollIntoView({ behavior: "smooth", block: "center" });
+      say(mixMode ? "لازم تحديد لون واحد على الأقل وعدد القطع." : "اختيار اللون والمقاس مطلوب قبل تأكيد الطلب.", true);
+      (mixMode ? mixBox : !quick.hidden && colourIndex(product) >= 0 && chosen[colourIndex(product)] < 0 ? quick : holder).scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     const intent = JSON.stringify(lines);
@@ -963,7 +1049,7 @@ async function init() {
       // Unknown outcome (timeout, network, 5xx): the SAME key is reused on retry, so the server returns the same order.
       else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. اضغطي «تأكيد الطلب» تاني، مش هيتكرر.", true);
     } finally { busy = false; }
-    cta.disabled = !product || (mixMode && !currentLines().length);
+    cta.disabled = !product || (mixMode ? !currentLines().length : !lineNow());
     cartBtn.disabled = mixMode || !lineNow() || cartBusy;
     cta.textContent = product ? ctaText : "غير متاح حاليًا";
   });
