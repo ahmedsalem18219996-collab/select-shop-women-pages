@@ -217,6 +217,37 @@ test('owner builds a 3-colour model: own photos, sizes, prices and cost; saved, 
 });
 
 
+
+test('one colour Save combines new size, special price, supplier availability and queued photo', async ({ page }) => {
+  const b = backend({ version: 6 });
+  b.s.product = { public_code: 'SS-9101', title: 'سويت شيرت', description: '', status: 'draft',
+    created_at: now, updated_at: now, base_price: { amount_minor: 70000 },
+    shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: [],
+    options: [
+      { option_id: 'o0', name: 'اللون', position: 0, values: [{ value_id: 'o0v0', value: 'أسود', position: 0, active: true }] },
+      { option_id: 'o1', name: 'المقاس', position: 1, values: [{ value_id: 'o1v0', value: 'M', position: 0, active: true }] }
+    ],
+    variants: [{ position: 0, active: true, availability: 'available', amount_minor: 70000,
+      price_source: 'base', selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v0' }] }] };
+  b.s.stock = { 0: { quantity: 20 } };
+  await open(page, b, owner);
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await page.goto(target + '#/products/SS-9101');
+  const card = page.locator('[data-colour]').first();
+  await card.locator('[data-c-size="XL"]').click();
+  await card.locator('[data-c-price]').fill('750');
+  await card.locator('[data-upload]').setInputFiles([photo('black.png', [34, 35, 42])]);
+  await expect(card.locator('[data-c-queued] img')).toHaveCount(1);
+  expect(b.s.uploads).toHaveLength(0);
+  await card.locator('[data-save-colour]').click();
+  await expect.poll(() => b.s.product.variants.length).toBe(2);
+  expect(b.s.product.variants.map((v) => [v.position, v.amount_minor, v.availability]))
+    .toEqual([[0, 75000, 'available'], [1, 75000, 'available']]);
+  expect(b.s.uploads).toHaveLength(1);
+  expect(b.s.uploads[0].variant_position).toBe('0');
+  await expect(page.locator('[data-colour]').first().locator('.thumb img')).toHaveCount(1);
+});
+
 test('owner archives from inside product editor only after explicit confirmation', async ({ page }) => {
   const b = backend({ version: 4 });
   b.s.product = { public_code: 'SS-9101', title: 'بلوفر أسود', description: '', status: 'draft',
