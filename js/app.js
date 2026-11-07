@@ -501,12 +501,12 @@
     const b = +$('#fBust').value, w = +$('#fWaist').value, out = $('#fOut');
     if (!b || !w) { out.textContent = 'هنعلّملك المقاس المناسب على الأزرار فوق.'; return; }
     const bi = chart.findIndex(r => b <= r[1]), wi = chart.findIndex(r => w <= r[2]);
-    if (b < chartMin.bust || w < chartMin.waist) { out.textContent = 'قياساتك أصغر من جدولنا. كلمينا على واتساب ونرشحلك.'; return; }
+    if (b < chartMin.bust || w < chartMin.waist) { out.textContent = 'القياسات أصغر من جدول المقاسات. التواصل على واتساب للمساعدة في الاختيار.'; return; }
     if (bi < 0 || wi < 0) { out.textContent = 'قياساتك أكبر من جدولنا العادي. اسألي على واتساب عن المقاسات الخاصة.'; return; }
     const z = chart[Math.max(bi, wi)][0], btn = $(`#shSizes .size[data-z="${z}"]`);
     if (btn) btn.classList.add('rec');
     if (btn && !btn.disabled) { choose(z); out.textContent = `مقاسك ${z}${bi !== wi ? ` (اخترناه على ${bi > wi ? 'الصدر' : 'الوسط'})` : ''}. اخترناهولك فوق.`; }
-    else out.textContent = `مقاسك ${z} بس خلص في القطعة دي. فعّلي تنبيه لما يرجع من صفحة المنتج.`;
+    else out.textContent = `مقاسك ${z} بس خلص في القطعة دي. ممكن تفعيل تنبيه لما يرجع من صفحة المنتج.`;
   }
   $('#fBust').addEventListener('input', fit); $('#fWaist').addEventListener('input', fit);
 
