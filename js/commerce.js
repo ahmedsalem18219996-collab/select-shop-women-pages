@@ -141,16 +141,16 @@ const addressKey = x => x.publicCode + "@" + x.structureVersion + ":" +
   x.selection.map(y=>y.optionPosition+"."+y.valuePosition).join(",");
 const msg = e => ({
   unavailable:"الموديل مش متاح دلوقتي.",
-  selection_changed:"المقاس اتغير، فتح المنتج من جديد.",
-  checkout_changed:"السعر أو الشحن اتغير؛ مراجعة الإجمالي الأول.",
+  selection_changed:"المقاس اتغير. يرجى فتح المنتج من جديد.",
+  checkout_changed:"السعر أو الشحن اتغير. يرجى مراجعة الإجمالي الأول.",
   checkout_not_purchasable:"فيه قطعة مش متاحة حاليًا.",
-  orders_not_enabled:"بنجهز استقبال الطلبات بشكل آمن. إعادة المحاولة تاني قريب.",
-  write_unconfirmed:"تعذر تأكيد حالة الطلب. متعيديش طلب جديد؛ أعيدي المحاولة بنفس الصفحة.",
-  idempotency_conflict:"فيه طلب سابق مرتبط بنفس عملية الشراء. مراجعة رقمه قبل المحاولة.",
+  orders_not_enabled:"استقبال الطلبات قيد التجهيز. يرجى المحاولة لاحقًا.",
+  write_unconfirmed:"تعذر تأكيد حالة الطلب. ما تسجلش طلب جديد؛ أعد المحاولة من نفس الصفحة.",
+  idempotency_conflict:"فيه طلب سابق مرتبط بنفس عملية الشراء. يرجى مراجعة رقمه قبل المحاولة.",
   rate_limited:"تم تجاوز الحد المسموح لمحاولات الطلب. حاولي لاحقًا أو تواصلي مع خدمة العملاء.",
-  captcha_required:"استكمال التحقق من الأمان قبل إرسال الطلب.",
+  captcha_required:"يرجى إكمال التحقق من الأمان قبل إرسال الطلب.",
   captcha_invalid:"تعذر التحقق من الأمان. أعيدي المحاولة.",
-  invalid_request:"مراجعة البيانات والمقاسات المدخلة.",
+  invalid_request:"يرجى مراجعة البيانات والمقاسات المدخلة.",
   service_unavailable:"الخدمة مؤقتًا تحت التجهيز.",
   internal:"حصلت مشكلة اتصال، جربي مرة تانية.",
 })[e?.message] || "الخدمة مؤقتًا مش متاحة. جربي مرة تانية.";
@@ -288,7 +288,7 @@ async function showProduct() {
     mobileButton?.addEventListener("click",()=>{if(!btn.disabled) btn.click();});
     btn.addEventListener("click",async()=>{
       const v=selectedVariant(p,fields),quantity=Number($("#quantity").value);
-      if(!v||!v.purchasable||!Number.isInteger(quantity)||quantity<1||quantity>99){status("اختيار المقاس والكمية الصح.",true);return;}
+      if(!v||!v.purchasable||!Number.isInteger(quantity)||quantity<1||quantity>99){status("يرجى اختيار المقاس والكمية الصحيحة.",true);return;}
       const line={publicCode:p.publicCode,structureVersion:p.structureVersion,selection:v.selection,quantity};
       btn.disabled=true;if(mobileButton) mobileButton.disabled=true;
       status("بنضيف القطعة للشنطة…");
@@ -380,7 +380,7 @@ async function showCart(){
   const holder=$("#cartItems"),go=$("#toCheckout"),sum=$("#subtotal");
   const refresh=async()=>{
     const lines=cart();holder.replaceChildren();
-    if(!lines.length){holder.append(make("p","الشنطة فاضية. اختيار اللي يعجبك من المتجر."));sum.textContent="—";go.setAttribute("aria-disabled","true");go.style.pointerEvents="none";return;}
+    if(!lines.length){holder.append(make("p","الشنطة فاضية. ممكن إضافة منتجات من المتجر."));sum.textContent="—";go.setAttribute("aria-disabled","true");go.style.pointerEvents="none";return;}
     try{
       const data=await api("/cart/resolve","POST",{lines});
       data.lines.forEach(l=>holder.append(cartRow(l,(_item,change)=>{
@@ -392,7 +392,7 @@ async function showCart(){
       })));
       sum.textContent=money(data.subtotal);
       go.setAttribute("aria-disabled",String(!data.checkoutReady));go.style.pointerEvents=data.checkoutReady?"auto":"none";
-      status(data.checkoutReady?"مراجعة بيانات التوصيل في الخطوة الجاية.":"فيه قطعة مش متاحة، مراجعة المقاسات.",!data.checkoutReady);
+      status(data.checkoutReady?"الخطوة الجاية: بيانات التوصيل.":"فيه قطعة مش متاحة. يرجى مراجعة المقاسات.",!data.checkoutReady);
     }catch(e){holder.append(make("p","تعذر تحديث الشنطة."));go.setAttribute("aria-disabled","true");go.style.pointerEvents="none";status(msg(e),true);}
   };
   await refresh();
@@ -407,7 +407,7 @@ async function showCheckout(){
     const cfg=await api("/checkout-config");
     orderReady=cfg.enabled===true && cfg.mode==="internal";
   } catch { /* Fail closed. */ }
-  if(!lines.length){status("الشنطة فاضية، ارجعي واختيار منتجاتك.",true);return;}
+  if(!lines.length){status("الشنطة فاضية. يرجى الرجوع للمتجر واختيار المنتجات.",true);return;}
   if(orderReady) gaEvent("begin_checkout", {currency:"EGP",
     items:lines.map(l=>({item_id:l.publicCode, quantity:l.quantity}))});
   try{
@@ -438,7 +438,7 @@ async function showCheckout(){
   await refresh();
   form.addEventListener("submit",async(e)=>{
     e.preventDefault();if(!quote||!orderReady||!form.reportValidity())return;
-    if(!crypto?.randomUUID){status("المتصفح لا يدعم الطلب الآمن. فتح الموقع من متصفح أحدث.",true);return;}
+    if(!crypto?.randomUUID){status("المتصفح لا يدعم الطلب الآمن. يرجى فتح الموقع من متصفح أحدث.",true);return;}
     let key=sessionStorage.getItem(ORDER_KEY);
     if(!key){key=crypto.randomUUID().replace(/-/g,"");sessionStorage.setItem(ORDER_KEY,key);}
     const data=new FormData(form);
