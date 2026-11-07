@@ -27,7 +27,7 @@ async function renderList(ctx) {
       ${can('products.edit') ? html`<div class="actions"><button class="btn btn-primary" data-new>${icon('plus')}${t('products.new')}</button></div>` : ''}</div>
     <section class="card catalog-overview" aria-label="التحكم في نشر المنتجات" style="margin-bottom:14px">
       <details class="on-demand-note" aria-label="المخزون الافتراضي"><summary><b>التوريد حسب الطلب</b> · الكميات هنا افتراضية</summary>
-        <p class="muted">كميات المخزون هنا افتراضية لتنظيم قبول الأوردرات، ومش معناها إن القطع موجودة عندك. اتأكدي من التوافر والسعر عند المورد قبل تأكيد كل طلب، واخفِي المنتج لو مش هتقدري توفريه.</p></details>
+        <p class="muted">كميات المخزون هنا افتراضية لتنظيم الطلبات، ومش معناها إن القطع موجودة فعليًا. لازم التأكد من التوافر والسعر عند المورد قبل تأكيد كل طلب، وإخفاء المنتج لو مش متوفر.</p></details>
       <div class="catalog-state-grid">
         <a class="catalog-state" href="#/products?status=public"><strong data-product-count="public">—</strong><span>منشور للعميلات</span></a>
         <a class="catalog-state" href="#/products?status=draft"><strong data-product-count="draft">—</strong><span>مسودات للتجهيز</span></a>
@@ -81,9 +81,9 @@ async function renderList(ctx) {
         const minModelPrice = pricesOnModel.length ? Math.min(...pricesOnModel) : null;
         return g.family ? html`<div class="row-card model-summary" style="--k:${k}">
           <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-          <span class="row-main"><button class="model-open" type="button" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختاري اللون والمقاس وعدّلي بسهولة</span><span class="model-state-summary">${g.members.filter(m => m.product.status === 'public').length} من ${g.members.length} ألوان منشورة</span>${minModelPrice !== null ? html`<span class="model-price">السعر من ${money(minModelPrice)}</span>` : ''} </button></span>
+          <span class="row-main"><button class="model-open" type="button" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m => html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختيار اللون والمقاس وتعديل بسهولة</span><span class="model-state-summary">${g.members.filter(m => m.product.status === 'public').length} من ${g.members.length} ألوان منشورة</span>${minModelPrice !== null ? html`<span class="model-price">السعر من ${money(minModelPrice)}</span>` : ''} </button></span>
         </div>` : html`<div class="row-card catalog-mobile-product" style="--k:${k}" data-mobile-product="${p.public_code}">
-          <a class="catalog-mobile-open" href="#/products/${p.public_code}" aria-label="افتحي تفاصيل ${p.title}">
+          <a class="catalog-mobile-open" href="#/products/${p.public_code}" aria-label="فتح تفاصيل ${p.title}">
             <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
             ${p.stock_low ? html`<span class="badge warn">${t('products.lowStock')}</span>` : ''}</span></span>
@@ -109,7 +109,7 @@ async function renderList(ctx) {
             const views = g.members.reduce((n,m)=>n+(Number(m.product.views_30d)||0),0);
             return html`<tr data-family="${g.key}" class="model-group-row">
               <td><div class="cell-main"><span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
-                <div class="row-main"><button type="button" class="model-open" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m=>html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختاري اللون والمقاس وعدّلي بسهولة</span></button></div></div></td>
+                <div class="row-main"><button type="button" class="model-open" data-manage-model="${g.key}" aria-label="تعديل ${g.name} واختيار اللون"><b>${g.name}</b><span class="row-meta">${g.members.length} ألوان <span class="model-dots">${g.members.map(m=>html`<i style="background:${m.color.hex}" title="${m.color.name}"></i>`)}</span></span><span class="model-edit-hint">اختيار اللون والمقاس وتعديل بسهولة</span></button></div></div></td>
               <td>${p.category}</td>
               <td class="num">${low === null || high === null ? '—' : low === high ? money(low) : html`${money(low)} – ${money(high)}`}</td>
               <td class="num">${stock === null ? '—' : fmtNum(stock)}</td>
@@ -139,7 +139,7 @@ async function renderList(ctx) {
     if (!can('products.publish')) return;
     const item = visibleProduct(code);
     const action = statusAction(item?.status);
-    if (!item || !action) { island('error', 'المنتج مش ظاهر في القائمة، اعملي تحديث وجربي تاني.'); return; }
+    if (!item || !action) { island('error', 'المنتج مش ظاهر في القائمة، يرجى تحديث القائمة والمحاولة مرة تانية.'); return; }
     // A product can have stale listing metadata: use the authenticated detail and
     // never publish based on client-side guesses about readiness.
     if (action.op === 'products.publish') {
@@ -155,8 +155,8 @@ async function renderList(ctx) {
     const yes = await confirmDialog({
       title: action.op === 'products.publish' ? 'نشر ' + item.title : 'إخفاء ' + item.title,
       text: action.op === 'products.publish'
-        ? 'بعد النشر المنتج هيظهر للعميلات ويقدروا يطلبوه. اتأكدتي من السعر والصور والتوافر عند المورد؟'
-        : 'المنتج هيتشال من العرض مؤقتًا، من غير ما نحذف بياناته أو الأوردرات القديمة. موافقة؟',
+        ? 'بعد النشر المنتج هيظهر للعملاء وهيقدروا يطلبوه. هل السعر والصور والتوافر عند المورد اتراجعوا؟'
+        : 'المنتج هيتشال من العرض مؤقتًا، من غير ما نحذف بياناته أو الأوردرات القديمة. تأكيد الإخفاء؟',
       okText: action.label
     });
     if (!yes) return;
@@ -170,11 +170,11 @@ async function renderList(ctx) {
   };
   const openQuickMobile = (code) => {
     const product = visibleProduct(code);
-    if (!product) { island('error', 'المنتج اتغير، اعملي تحديث وجربي تاني.'); return; }
+    if (!product) { island('error', 'المنتج اتغير، يرجى تحديث القائمة والمحاولة مرة تانية.'); return; }
     const box = sheet({
       title: product.title + ' · تعديل سريع',
       wide: true,
-      body: html`<div class="stack"><p class="muted">اختاري اللون والمقاس وعدّلي السعر والإتاحة والصور، أو ارجعي لبيانات المنتج المتقدمة.</p>
+      body: html`<div class="stack"><p class="muted">اختيار اللون والمقاس وتعديل السعر والإتاحة والصور، أو ارجعي لبيانات المنتج المتقدمة.</p>
         <div class="quick-colors" data-quick-colors role="group" aria-label="اللون"></div>
         <div data-quick-panel aria-live="polite"></div></div>`,
       foot: html`<button class="btn btn-ghost" data-close type="button">إغلاق</button>`
@@ -189,7 +189,7 @@ async function renderList(ctx) {
     const s = e.target.closest('[data-cat]'); if (!s) return;
     const code = s.closest('tr[data-code]')?.dataset.code;
     const original = listedGroups.flatMap(g => g.members).find(m => m.product.public_code === code)?.product;
-    if (!original) { island('error', 'المنتج اتغير، حدّثي الصفحة وجربي تاني.'); await load(); return; }
+    if (!original) { island('error', 'المنتج اتغير، يرجى تحديث الصفحة والمحاولة مرة تانية.'); await load(); return; }
     if (s.value === original.category) return;
     s.disabled = true;
     const r = await call('products.set_display', { code, category: s.value, is_new: original.is_new === true });
@@ -213,7 +213,7 @@ async function renderList(ctx) {
           catch { return { color, result: { outcome: 'network' } }; }
         }));
         if (fetched.some(x => x.result.outcome !== 'ok')) {
-          island('error', 'مش قادرين نحمل كل ألوان الموديل. مفيش أي تغيير حصل — حدّثي القائمة وجربي تاني.');
+          island('error', 'مش قادرين نحمل كل ألوان الموديل. مفيش أي تغيير حصل — يرجى تحديث القائمة والمحاولة مرة تانية.');
           return;
         }
         for (const {color, result} of fetched) {
@@ -230,7 +230,7 @@ async function renderList(ctx) {
       }
       const allMembers = g.family.colors.map(color => byCode.get(color.code));
       if (allMembers.some(m => !m)) {
-        island('error', 'الموديل فيه لون مؤرشف أو غير متاح، راجعيه قبل تغيير القسم.');
+        island('error', 'الموديل فيه لون مؤرشف أو غير متاح، ويرجى مراجعته قبل تغيير القسم.');
         return;
       }
       if (!categories.length) await loadCategories();
@@ -240,15 +240,15 @@ async function renderList(ctx) {
         title: g.name + ' · تعديل سهل',
         wide: true,
         body: html`<div class="stack">
-          <p class="muted">اختاري لون الموديل من الصور، وبعدها المقاس؛ عدّلي السعر والإتاحة والصور من نفس الشاشة. كل تغيير بيخص اللون اللي اخترتيه فقط.</p>
-          <div class="quick-colors" data-quick-colors role="group" aria-label="اختاري لون الموديل"></div>
+          <p class="muted">اختيار لون الموديل من الصور، وبعدها المقاس؛ تعديل السعر والإتاحة والصور من نفس الشاشة. كل تغيير بيخص اللون المختار فقط.</p>
+          <div class="quick-colors" data-quick-colors role="group" aria-label="اختيار لون الموديل"></div>
           <div data-quick-panel aria-live="polite"></div>
           <details class="quick-advanced"><summary>تغيير القسم لكل الألوان (اختياري)</summary>
           <p class="muted">القسم هنا بيتغير لكل الألوان الموجودة، من غير ما يلمس الأوردرات القديمة.</p>
           ${can('products.edit') ? html`<div class="model-category-editor">
             <label class="field"><span>القسم الخاص بالموديل (${allMembers.length} ألوان)</span>
-              <select class="select" id="model-category" aria-label="اختاري قسم الموديل">
-                ${categoryNames.length !== 1 ? html`<option value="" selected disabled>أقسام مختلفة — اختاري قسم موحّد</option>` : ''}
+              <select class="select" id="model-category" aria-label="اختيار قسم الموديل">
+                ${categoryNames.length !== 1 ? html`<option value="" selected disabled>أقسام مختلفة — اختيار قسم موحّد</option>` : ''}
                 ${categories.map(c => html`<option value="${c.name}" ${c.name === currentCategory ? 'selected' : ''}>${c.name}${c.visible === false ? ' (مخفي)' : ''}</option>`)}
               </select>
             </label>
@@ -257,7 +257,7 @@ async function renderList(ctx) {
           </div>` : html`<p class="muted">تعديل القسم يحتاج صلاحية تعديل المنتجات.</p>`}
           </details>
           <details class="quick-advanced"><summary>روابط تعديل إضافية للمستخدم المتقدم</summary>
-          <p class="muted">لو عايزة تعديل بيانات المنتج القديمة بالتفصيل افتحي اللون. إضافة لون جديد للموديل أو مقاس جديد لمنتج منشور محتاجة ربط خادم آمن مش موجود حاليًا.</p>
+          <p class="muted">لتعديل بيانات المنتج القديم بالتفصيل، افتح صفحة اللون الخاصة بيه. إضافة لون جديد للموديل أو مقاس جديد لمنتج منشور محتاجة ربط خادم آمن مش موجود حاليًا.</p>
           ${allMembers.map(m => html`<div class="model-color-line">
             <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="model-dot" style="background:${m.color.hex}"></span>
@@ -279,8 +279,8 @@ async function renderList(ctx) {
         const select = $('#model-category', box);
         const feedback = $('#model-category-feedback', box);
         const category = select?.value;
-        if (!category || !categories.some(c => c.name === category)) { feedback.textContent = 'اختاري قسم صحيح الأول.'; return; }
-        if (allMembers.some(m => m.product.status === 'archived')) { feedback.textContent = 'فيه لون مؤرشف؛ مينفعش نغيّر القسم لكل الألوان. عدّلي الألوان النشطة منفصلة.'; return; }
+        if (!category || !categories.some(c => c.name === category)) { feedback.textContent = 'اختيار قسم صحيح الأول.'; return; }
+        if (allMembers.some(m => m.product.status === 'archived')) { feedback.textContent = 'فيه لون مؤرشف؛ مينفعش نغيّر القسم لكل الألوان. تعديل الألوان النشطة منفصلة.'; return; }
         if (allMembers.every(m => m.product.category === category)) { feedback.textContent = 'الموديل بالفعل في القسم ده.'; return; }
         select.disabled = true;
         await withBusy(button, async () => {
@@ -349,26 +349,26 @@ function quickPrice(code, after) {
 // ======================================================================= create (step 1)
 function createSheet(ctx) {
   const box = sheet({ title: t('create.title'), wide: true, body: html`
-    <p class="muted" style="margin:0 0 8px"><b>الخطوة ١ من ٣:</b> البيانات الأساسية. بعد الحفظ هتضيفي الألوان، وكل لون بصوره ومقاساته وسعره. <strong>المنتج بيتحفظ مسودة ومش بيظهر للعميلات لحد ما تنشريه.</strong></p>
+    <p class="muted" style="margin:0 0 8px"><b>الخطوة ١ من ٣:</b> البيانات الأساسية. بعد الحفظ بنضيف الألوان، وكل لون بصوره ومقاساته وسعره. <strong>المنتج بيتحفظ مسودة ومش بيظهر للعملاء قبل النشر.</strong></p>
     <label class="field"><span>${t('create.name')}</span><input class="input" id="c-title" maxlength="200" required autocomplete="off" placeholder="${t('create.namePh')}"></label>
     <div class="grid2">
       <label class="field"><span>${t('create.category')}</span><select class="select" id="c-cat" required></select></label>
       ${ctx.can('products.price') ? html`<label class="field"><span>${t('create.price')}</span><div class="input-money"><input id="c-price" inputmode="decimal" autocomplete="off" placeholder="مثال: 650"><span class="sr">سعر بيع المنتج بالجنيه المصري</span><span>EGP</span></div></label>` : ''}
     </div>
-    ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هتحدده مسؤولة التسعير بعد الحفظ.</p>` : ''}
-    ${ctx.can('owner') ? html`<label class="field"><span>تكلفة المورد (اختياري، للمالكة بس)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعميلات ولا في المتجر.</small></label>` : ''}
+    ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هيحدده فريق التسعير بعد الحفظ.</p>` : ''}
+    ${ctx.can('owner') ? html`<label class="field"><span>تكلفة المورد (اختياري، للإدارة فقط)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعملاء ولا في المتجر.</small></label>` : ''}
     <label class="field"><span>${t('create.description')} (اختياري)</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
     <div class="desc-helper" data-description-helper>
       <div class="row" style="flex-wrap:wrap;gap:8px">
         <button type="button" class="btn btn-soft" data-desc-improve>✨ تحسين الوصف مجانًا</button>
         <button type="button" class="btn btn-ghost" data-desc-undo hidden>رجوع للوصف الأصلي</button>
       </div>
-      <p class="muted" data-desc-message role="status" aria-live="polite">اكتبي وصف بسيط، وخلّينا ننظّمه بشكل تسويقي. مفيش معلومات بتتبعت لخدمة خارجية.</p>
+      <p class="muted" data-desc-message role="status" aria-live="polite">كتابة وصف بسيط، وخلّينا ننظّمه بشكل تسويقي. مفيش معلومات بتتبعت لخدمة خارجية.</p>
     </div>
     <label class="switch"><input type="checkbox" id="c-new" checked><i></i>${t('create.isNew')}</label>
     <p class="err" id="c-error" role="alert" aria-live="polite" hidden></p>
     <ol class="blockers" id="c-steps" hidden></ol>`,
-    foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>احفظي المسودة وكمّلي الألوان</button>` });
+    foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>حفظ المسودة واستكمال الألوان</button>` });
   $$('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
   try { mountDescriptionEnhancer(box, { textarea: '#c-desc', titleInput: '#c-title' }); }
   catch {
@@ -376,7 +376,7 @@ function createSheet(ctx) {
     const btn = feature?.querySelector('[data-desc-improve]');
     if (btn) btn.disabled = true;
     const hint = feature?.querySelector('[data-desc-message]');
-    if (hint) hint.textContent = 'اكتبي الوصف واحفظيه عادي؛ التحسين المجاني مش متاح دلوقتي.';
+    if (hint) hint.textContent = 'كتابة الوصف وحفظه عادي؛ التحسين المجاني مش متاح دلوقتي.';
   }
   const catSel = $('#c-cat', box);
   const createButton = $('[data-create]', box);
@@ -392,21 +392,21 @@ function createSheet(ctx) {
   };
   (categories.length ? Promise.resolve(categories) : loadCategories()).then((cs) => {
     if (!cs.some(c => c.visible !== false)) {
-      message('مفيش قسم ظاهر متاح. خلي المسؤولة عن الأقسام تفعّل قسم الأول، أو راجعي الاتصال بالسيرفر.');
+      message('مفيش قسم ظاهر متاح. خلي مسؤول الأقسام تفعّل قسم الأول، أو مراجعة الاتصال بالسيرفر.');
       return;
     }
     const ordered = [...cs].sort((a, b) => Number(b.visible !== false) - Number(a.visible !== false));
     ordered.forEach((c) => catSel.add(new Option(c.visible === false ? `${c.name} (${t('status.hidden')})` : c.name, c.name)));
     const firstVisible = ordered.find((c) => c.visible !== false);
     if (firstVisible) catSel.value = firstVisible.name;
-  }).catch(() => message('تعذّر تحميل الأقسام. اقفلي النافذة وجربي تاني.')).finally(() => {
+  }).catch(() => message('تعذّر تحميل الأقسام. يرجى إغلاق النافذة والمحاولة مرة تانية.')).finally(() => {
     if (document.contains(createButton)) createButton.disabled = !catSel.value || !categories.some(c => c.name === catSel.value && c.visible !== false);
   });
   const costIn = $('#c-cost', box);
   const profitLine = () => {
     const out = $('[data-c-profit]', box); if (!out) return;
     const cost = costIn.value.trim() ? toMinor(costIn.value.trim()) : null, sell = toMinor($('#c-price', box)?.value.trim() || '');
-    out.textContent = cost === null ? 'التكلفة مش بتظهر للعميلات ولا في المتجر.' : profitText(sell, cost, money).text;
+    out.textContent = cost === null ? 'التكلفة مش بتظهر للعملاء ولا في المتجر.' : profitText(sell, cost, money).text;
   };
   costIn?.addEventListener('input', profitLine);
   $('#c-price', box)?.addEventListener('input', profitLine);
@@ -414,18 +414,18 @@ function createSheet(ctx) {
   $('[data-create]', box).onclick = async (e) => {
     message('');
     const title = $('#c-title', box).value.trim();
-    if (title.length < 2) { message('اكتبي اسم موديل واضح من حرفين على الأقل.', $('#c-title', box)); return; }
+    if (title.length < 2) { message('كتابة اسم موديل واضح من حرفين على الأقل.', $('#c-title', box)); return; }
     if (!catSel.value || !categories.some(c => c.name === catSel.value && c.visible !== false)) {
-      message('اختاري قسم ظاهر صحيح قبل حفظ المنتج.', catSel); return;
+      message('اختيار قسم ظاهر صحيح قبل حفظ المنتج.', catSel); return;
     }
     const priceIn = $('#c-price', box)?.value.trim();
     const price = priceIn ? toMinor(priceIn) : null;
     if ($('#c-price', box) && (price === null || price < 100)) {
-      message('اكتبي سعر البيع بالجنيه، زي 650. السعر مطلوب علشان فريقك يقدر يجهز المنتج للنشر.', $('#c-price', box)); return;
+      message('كتابة سعر البيع بالجنيه، زي 650. السعر مطلوب علشان فريقك يقدر يجهز المنتج للنشر.', $('#c-price', box)); return;
     }
     const costText = costIn?.value.trim() || '';
     const cost = costText ? toMinor(costText) : null;
-    if (costText && (cost === null || cost < 1)) { message('تكلفة المورد لازم تكون رقم بالجنيه، زي 350، أو سيبيها فاضية.', costIn); return; }
+    if (costText && (cost === null || cost < 1)) { message('تكلفة المورد لازم تكون رقم بالجنيه، زي 350، أو سيب الخانة فاضية.', costIn); return; }
     // Staff without price permission may still draft the catalogue; a price manager finishes it.
     $('#c-title', box).removeAttribute('aria-invalid');
     $('#c-price', box)?.removeAttribute('aria-invalid');
@@ -445,7 +445,7 @@ function createSheet(ctx) {
       };
       if (r.outcome === 'existing') {
         // A timed-out first attempt may have created only part of the draft: never overwrite or claim success.
-        goToDraft('details', 'المسودة كانت اتحفظت بالفعل. راجعي السعر والألوان والصور قبل النشر؛ مش هنكرر الإنشاء.');
+        goToDraft('details', 'المسودة اتحفظت بالفعل. يرجى مراجعة السعر والألوان والصور قبل النشر؛ مش هنكرر الإنشاء.');
         return;
       }
       if (price) {
@@ -454,7 +454,7 @@ function createSheet(ctx) {
         if (pr.outcome !== 'saved') {
           li.textContent = '✗ ' + t('create.steps.price');
           fail(pr);
-          goToDraft('details', 'الموديل اتحفظ مسودة، لكن السعر محتاج مراجعة. كمّلي السعر من تبويب البيانات، ومتنشريهوش قبل التحقق.');
+          goToDraft('details', 'الموديل اتحفظ مسودة، لكن السعر محتاج مراجعة. استكمال السعر من تبويب البيانات، ومتنشريهوش قبل التحقق.');
           return;
         }
         li.textContent = '✓ ' + t('create.steps.price');
@@ -482,8 +482,8 @@ function createSheet(ctx) {
       }
       closeLayer();
       sessionStorage.setItem('wa.ptab', 'colours');
-      done(shippingReady ? 'المسودة محفوظة. الخطوة ٢: ضيفي الألوان، وكل لون بمقاساته وصوره.' :
-        'المسودة محفوظة. ضيفي الألوان، وطريقة الشحن لسه محتاجة تتحدد من موظفة عندها صلاحية الشحن قبل النشر.');
+      done(shippingReady ? 'المسودة محفوظة. الخطوة ٢: إضافة الألوان، وكل لون بمقاساته وصوره.' :
+        'المسودة محفوظة. إضافة الألوان، وطريقة الشحن لسه محتاجة تتحدد من شخص من الفريق عنده صلاحية الشحن قبل النشر.');
       ctx.go('products/' + code);
     });
   };
@@ -512,8 +512,8 @@ async function renderEditor(ctx, code) {
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}
       ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} حذف المنتج</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
-      <div class="card-head"><h3>كمّلي الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعميلات لحد النشر</span></div>
-      <p class="muted" style="margin:0">كل لون ليه صوره ومقاساته وسعره. راجعي المعاينة زي ما العميلة هتشوفها، وبعدها انشري.</p>
+      <div class="card-head"><h3>استكمال الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعملاء لحد النشر</span></div>
+      <p class="muted" style="margin:0">كل لون ليه صوره ومقاساته وسعره. المعاينة بتعرض شكل المنتج للعميل قبل النشر.</p>
       <div class="row" style="flex-wrap:wrap">
         <button type="button" class="btn btn-soft btn-sm" data-setup-tab="details">١. البيانات (${p.base_price ? 'السعر متحدد' : 'السعر ناقص'}${p.shipping_profile ? '' : '، الشحن ناقص'})</button>
         <button type="button" class="btn btn-soft btn-sm" data-setup-tab="colours">٢. الألوان والصور (${visiblePhotos.length ? visiblePhotos.length + ' صورة' : 'الصور ناقصة'}${hasVirtualAvailability ? '' : '، التوافر ناقص'})</button>
@@ -533,7 +533,7 @@ async function renderEditor(ctx, code) {
       title: p.title + ' · تعديل سريع',
       wide: true,
       body: html`<div class="stack">
-        <p class="muted">اختاري المقاس وعدّلي السعر والإتاحة والصور من نفس الشاشة. المقاسات غير المسجلة هتظهر بوضوح.</p>
+        <p class="muted">اختيار المقاس وتعديل السعر والإتاحة والصور من نفس الشاشة. المقاسات غير المسجلة هتظهر بوضوح.</p>
         <div class="quick-colors" data-quick-colors role="group" aria-label="المنتج"></div>
         <div data-quick-panel aria-live="polite"></div>
       </div>`,
@@ -549,7 +549,7 @@ async function renderEditor(ctx, code) {
     // Archive is the existing owner-only operation: never delete historical orders or reuse the code.
     const confirmed = await confirmDialog({
       title: 'حذف المنتج ' + code,
-      text: 'هيختفي المنتج من المتجر والقائمة النشطة، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. الأرشفة نهائية ومش ممكن ترجعي المنتج من لوحة الإدارة. متأكدة؟',
+      text: 'هيختفي المنتج من المتجر والقائمة النشطة، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. الأرشفة نهائية ومش ممكن استرجاع المنتج من لوحة الإدارة. تأكيد الأرشفة؟',
       okText: 'تأكيد حذف المنتج', danger: true
     });
     if (!confirmed) return;
@@ -562,12 +562,12 @@ async function renderEditor(ctx, code) {
   $('[data-pub]', el)?.addEventListener('click', async (e) => {
     const publish = p.status !== 'public';
     if (publish && !visiblePhotos.length) {
-      island('error', 'المنتج لسه مالوش صور ظاهرة. ارفعي صورة واحدة على الأقل قبل النشر.');
+      island('error', 'المنتج لسه مالوش صور ظاهرة. رفع صورة واحدة على الأقل قبل النشر.');
       $('[data-v="media"]', el)?.click();
       return;
     }
     if (publish && !p.shipping_profile) {
-      island('error', 'طريقة الشحن مش محددة. اختاري طريقة الشحن من تبويب البيانات قبل النشر.');
+      island('error', 'طريقة الشحن مش محددة. اختيار طريقة الشحن من تبويب البيانات قبل النشر.');
       $('[data-v="details"]', el)?.click();
       return;
     }
@@ -611,7 +611,7 @@ const TABS = {
             <button type="button" class="btn btn-soft" data-desc-improve>✨ تحسين الوصف مجانًا</button>
             <button type="button" class="btn btn-ghost" data-desc-undo hidden>رجوع للوصف الأصلي</button>
           </div>
-          <p class="muted" data-desc-message role="status" aria-live="polite">راجعي الوصف المحسّن قبل حفظ التعديل. مفيش نشر تلقائي.</p>
+          <p class="muted" data-desc-message role="status" aria-live="polite">مراجعة الوصف المحسّن قبل حفظ التعديل. مفيش نشر تلقائي.</p>
         </div>` : ''}
         ${can('products.edit') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-text>${t('app.save')}</button></div>` : ''}</form>
       <section class="card stack"><div class="card-head"><h3>${t('editor.display')}</h3></div>
@@ -627,7 +627,7 @@ const TABS = {
         const btn = $('[data-desc-improve]', body);
         if (btn) btn.disabled = true;
         const hint = $('[data-desc-message]', body);
-        if (hint) hint.textContent = 'اكتبي الوصف واحفظيه عادي؛ التحسين المجاني مش متاح دلوقتي.';
+        if (hint) hint.textContent = 'كتابة الوصف وحفظه عادي؛ التحسين المجاني مش متاح دلوقتي.';
       }
     }
     $('#f-text', body).addEventListener('submit', async (e) => {
@@ -659,8 +659,8 @@ const TABS = {
     const options = d.product?.options || [];
     const variantName = (v) => (v.selections || []).map(s => options.find(o=>o.option_id===s.option_id)?.values.find(x=>x.value_id===s.value_id)?.value || '?').join(' / ') || 'مقاس واحد';
     render(body, html`<section class="card stack"><div class="card-head"><h3>${t('editor.media')}</h3><span class="muted">${fmtNum(media.length)}</span></div>
-      <p class="muted" style="margin:0;font-size:12.5px">${t('editor.uploadHint')} ممكن تختاري أكتر من صورة مرة واحدة؛ النظام بيضغط الصور قبل الرفع. أول صورة ظاهرة بتكون الغلاف. <strong>لو المنتج ليه ألوان مختلفة، اختاري اللون والمقاس المناسب من القائمة قبل الرفع.</strong></p>
-      ${canEdit && variants.length ? html`<label class="field"><span>الصور تخص أنهي لون ومقاس؟</span><select class="select" id="m-variant"><option value="">صور عامة للمنتج</option>${variants.map(v=>html`<option value="${v.position}">${variantName(v)}</option>`)}</select><small>اختاري اللون/المقاس قبل رفع الصور. الصور العامة لكل الاختيارات.</small></label>` : ""}
+      <p class="muted" style="margin:0;font-size:12.5px">${t('editor.uploadHint')} ممكن تختاري أكتر من صورة مرة واحدة؛ النظام بيضغط الصور قبل الرفع. أول صورة ظاهرة بتكون الغلاف. <strong>لو المنتج ليه ألوان مختلفة، اختيار اللون والمقاس المناسب من القائمة قبل الرفع.</strong></p>
+      ${canEdit && variants.length ? html`<label class="field"><span>الصور تخص أنهي لون ومقاس؟</span><select class="select" id="m-variant"><option value="">صور عامة للمنتج</option>${variants.map(v=>html`<option value="${v.position}">${variantName(v)}</option>`)}</select><small>اختيار اللون/المقاس قبل رفع الصور. الصور العامة لكل الاختيارات.</small></label>` : ""}
       <div class="media-grid">
         ${media.map((m, i) => html`<figure class="media ${m.hidden ? 'hidden' : ''}" data-id="${m.media_id}" style="margin:0">
           <img src="${imgUrl(m.storage_path)}" alt="${m.alt_text || ''}" loading="lazy">
@@ -678,7 +678,7 @@ const TABS = {
     if (!canEdit) return;
     let uploading = false;
     const upload = async (files) => {
-      if (uploading) { island('busy', 'فيه صور بتترفع بالفعل؛ متضغطيش رفع تاني قبل ما تخلص.'); return; }
+      if (uploading) { island('busy', 'فيه صور بتترفع بالفعل؛ ما ينفعش إعادة الرفع قبل اكتمال العملية الحالية.'); return; }
       uploading = true;
       const uploadField = $('#file', body);
       if (uploadField) uploadField.disabled = true;
@@ -688,7 +688,7 @@ const TABS = {
         const result = await uploadPhotos({ files, code, title: d.product.title, version: d.media?.structure_version ?? d.product.structure_version,
           grid: $('.media-grid', body), before: $('#drop', body), fields: { variant_position: variantPos } });
         if (!result.total) return;
-        if (result.ok === result.total) { done('تم رفع ' + result.ok + ' صورة. راجعي الغلاف وربط الصور بالألوان قبل النشر.'); reload(); }
+        if (result.ok === result.total) { done('تم رفع ' + result.ok + ' صورة. مراجعة الغلاف وربط الصور بالألوان قبل النشر.'); reload(); }
         else {
           if (result.ok) {
             // Show the saved photos as real media, then put the failed ones back so the retry list stays visible.
@@ -736,8 +736,8 @@ const TABS = {
     const valueOf = (v) => v.selections?.length ? v.selections.map((s) => p.options.find((o) => o.option_id === s.option_id)?.values.find((x) => x.value_id === s.value_id)?.value).join(' / ') : '—';
     render(body, html`<div class="stack">
       <section class="card stack variants"><div class="card-head"><h3>${t('editor.variants')}</h3><span class="muted">${fmtNum(p.variants.length)}</span></div>
-      <p class="muted" style="margin:0">المخزون هنا افتراضي: اكتبي عددًا تنظيميًا موجبًا للون والمقاس اللي تقدري توفريه من المورد، وفعّلي «متاح». راجعي المورد قبل تأكيد أي أوردر. علشان تحفظي سعر لون معين، اكتبي السعر واضغطي زر «حفظ السعر» في نفس الصف. الرقم الرمادي مثال للسعر الأساسي فقط. الكمية والإتاحة بتتحفظ لما تخرجي من الخانة.</p>
-      <button type="button" class="btn btn-primary btn-sm" data-open-quick-colours>اختاري اللون والمقاس وعدّلي السعر بسهولة</button>
+      <p class="muted" style="margin:0">المخزون هنا افتراضي: حدد كمية تنظيمية لكل لون ومقاس ممكن توفيره من المورد، وفعّل «متاح». لازم مراجعة المورد قبل تأكيد أي أوردر. لحفظ سعر لون معين، اكتب السعر واضغط زر «حفظ السعر» في نفس الصف. الرقم الرمادي مثال للسعر الأساسي فقط. الكمية والإتاحة بتتحفظ لما تخرجي من الخانة.</p>
+      <button type="button" class="btn btn-primary btn-sm" data-open-quick-colours>اختيار اللون والمقاس وتعديل السعر بسهولة</button>
       ${p.variants.length ? html`<div class="table-wrap"><table class="t"><thead><tr><th>${t('editor.variant')}</th><th>${t('editor.vPrice')}</th><th title="عدد تنظيمي افتراضي، مش قطع مخزنة">كمية افتراضية</th><th>${t('editor.available')}</th><th></th></tr></thead>
         <tbody>${p.variants.map((v) => { const st = d.stock[String(v.position)]; return html`<tr data-pos="${v.position}" ${v.active ? '' : 'style="opacity:.55"'}>
           <td><b>${valueOf(v)}</b>${v.blockers?.length && v.active ? html`<div class="row-meta">${v.blockers.filter((b) => b !== 'product_not_public').map((b) => html`<span>${t('blocker.' + b, b)}</span>`)}</div>` : ''}</td>
@@ -770,7 +770,7 @@ const TABS = {
       const raw = input.value.trim(), amount = raw ? toMinor(raw) : null;
       if (raw && (amount === null || amount < 100)) {
         input.setAttribute('aria-invalid', 'true');
-        feedback.textContent = 'اكتبي سعر صحيح بالجنيه، مثل 650.';
+        feedback.textContent = 'كتابة سعر صحيح بالجنيه، مثل 650.';
         island('error', feedback.textContent); return;
       }
       input.removeAttribute('aria-invalid');
@@ -780,7 +780,7 @@ const TABS = {
         const position = Number(tr.dataset.pos);
         const result = await call('products.set_variant_price', { code, version: ver(), position, amount_minor: amount });
         if (result?.outcome !== 'saved') {
-          feedback.textContent = 'السعر ما اتحفظش، راجعي الرسالة.';
+          feedback.textContent = 'السعر ما اتحفظش، مراجعة الرسالة.';
           fail(result);
           if (result?.code === 'PS002') reload();
           return;
@@ -792,7 +792,7 @@ const TABS = {
           ? variant.price_source !== 'variant_override' && variant.amount_minor === latest.base_price?.amount_minor
           : variant.amount_minor === amount);
         if (!confirmed) {
-          feedback.textContent = 'اتبعث الحفظ لكن التأكيد فشل. راجعي السعر قبل النشر.';
+          feedback.textContent = 'اتبعث الحفظ لكن التأكيد فشل. مراجعة السعر قبل النشر.';
           island('error', feedback.textContent); return;
         }
         // Keep the current editor snapshot fresh when staff switches tabs without a page reload.
@@ -803,7 +803,7 @@ const TABS = {
         done('تم حفظ السعر');
         void refreshAside().catch(() => {});
       } catch {
-        feedback.textContent = 'مشكلة اتصال: مش متأكدين إن السعر اتحفظ. حدّثي الصفحة.';
+        feedback.textContent = 'مشكلة اتصال: مش متأكدين إن السعر اتحفظ. يرجى تحديث الصفحة.';
         island('error', feedback.textContent);
       } finally { button.disabled = false; input.disabled = false; }
     };
@@ -813,7 +813,7 @@ const TABS = {
       // Price is saved only with the explicit button, so there is no silent blur-save.
       if (e.target.matches('[data-qty]')) { const q = e.target.value.trim(); if (!/^\d{1,6}$/.test(q)) {
         e.target.setAttribute('aria-invalid', 'true');
-        island('error', 'اكتبي كمية افتراضية رقم صحيح من 0 لحد 999999، من غير حروف أو كسور.');
+        island('error', 'كتابة كمية افتراضية رقم صحيح من 0 لحد 999999، من غير حروف أو كسور.');
         return;
       } res = await call('products.set_stock', { code, version: ver(), position: pos, quantity: Number(q) }); if (res.outcome === 'saved') $('[data-avail]', tr).checked = res.available; }
       if (e.target.matches('[data-avail]')) res = await call('products.set_availability', { code, version: ver(), position: pos, available: e.target.checked });

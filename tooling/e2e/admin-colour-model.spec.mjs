@@ -144,7 +144,7 @@ test('owner builds a 3-colour model: own photos, sizes, prices and cost; saved, 
   await expect(page.locator('#c-photo')).toHaveCount(0); // photos picked with each colour only
   await page.locator('[data-create]').click();
   await expect(page).toHaveURL(/#\/products\/SS-9101$/);
-  await expect(page.locator('#tabbody')).toContainText('ابدئي بأول لون');
+  await expect(page.locator('#tabbody')).toContainText('بداية بأول لون');
   expect(b.s.costs.product_cost_minor).toBe(35000);
 
   // Step 2: three colours, each with its own sizes, price and supply
@@ -175,6 +175,8 @@ test('owner builds a 3-colour model: own photos, sizes, prices and cost; saved, 
   // Exactly one upload for each file, scoped to the saved colour.
   await expect(cards.nth(0).locator('.thumb img')).toHaveCount(2);
   await expect(cards.nth(1).locator('.thumb img')).toHaveCount(1);
+  await expect(cards.nth(2)).toContainText('مفيش صور مرتبطة باللون ده');
+  await expect(cards.nth(0)).not.toContainText('مفيش صور مرتبطة باللون ده');
   expect(b.s.uploads.map((u) => u.variant_position)).toEqual(['0', '0', '3']);
   expect(b.s.uploads.every((u) => u.option_position === undefined && /image\/(webp|jpeg|png)/.test(u.type))).toBe(true);
 
@@ -376,8 +378,14 @@ test('cost ops not live yet: the model still saves and the owner sees a clear no
   await page.locator('#c-title').fill('طقم بيتي');
   await page.locator('#c-price').fill('400');
   await page.locator('#c-cost').fill('250');
+  // The category list and create permission load independently of the form.
+  // Wait for a real selected category before submitting so CI load does not
+  // race the async select initialization; still assert the draft was created.
+  await expect(page.locator('#c-cat')).toHaveValue('فساتين');
+  await expect(page.locator('[data-create]')).toBeEnabled();
   await page.locator('[data-create]').click();
-  await expect(page).toHaveURL(/SS-9101$/);
+  await expect.poll(() => b.s.ops.some(x => x.op === 'products.create')).toBe(true);
+  await expect(page).toHaveURL(/#\/products\/SS-9101$/, { timeout: 15000 });
   await expect(page.locator('#tabbody')).toContainText('محتاجين تفعيل من السيرفر');
 });
 
@@ -481,9 +489,9 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   const drafts = page.locator('[data-draft]');
   const first = drafts.first();
   await expect(first.locator('[data-colour-picker-slot]')).toBeVisible();
-  await first.locator('[aria-label="ابحثي عن اللون"]').fill('بيب');
-  await expect(first.locator('[aria-label="اختاري لون المنتج من القائمة"] option')).toHaveCount(2);
-  await first.locator('[aria-label="اختاري لون المنتج من القائمة"]').selectOption('بيبي بلو');
+  await first.locator('[aria-label="البحث عن اللون"]').fill('بيب');
+  await expect(first.locator('[aria-label="اختيار لون المنتج من القائمة"] option')).toHaveCount(2);
+  await first.locator('[aria-label="اختيار لون المنتج من القائمة"]').selectOption('بيبي بلو');
   await expect(first.locator('[data-d-name]')).toHaveValue('بيبي بلو');
   await first.locator('[data-d-size="S"]').click();
 
@@ -493,7 +501,7 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   await second.getByLabel('اللون الأول', { exact: true }).selectOption('بني');
   await second.getByLabel('اللون الثاني', { exact: true }).selectOption('بني');
   await expect(second.locator('[data-d-name]')).toHaveValue('بني × بني');
-  await expect(second.locator('[role="alert"]')).toContainText('اختاري لونين مختلفين');
+  await expect(second.locator('[role="alert"]')).toContainText('اختيار لونين مختلفين');
   await page.locator('[data-save-drafts]').click();
   await expect(page.locator('[data-draft-error]')).toContainText('مختلفين');
   expect(b.s.ops.filter((o) => o.op === 'products.structure')).toHaveLength(0);

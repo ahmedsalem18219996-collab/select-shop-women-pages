@@ -132,7 +132,7 @@ test("a sold-out colour disables ordering without a stale price; another colour 
   await page.goto(MODEL);
   await expect(page.locator("#lpOrder")).toBeEnabled();
   await page.locator("#lpColors").getByRole("button", { name: "بني" }).click();
-  await expect(page.locator("#lpStatus")).toHaveText("اللون ده خلص حاليًا، اختاري لون تاني.");
+  await expect(page.locator("#lpStatus")).toHaveText("اللون ده خلص حاليًا. فيه ألوان تانية متاحة.");
   await expect(page.locator("#lpOrder")).toBeDisabled();
   await expect(page.locator("#lpPrice")).toHaveText("—");
   await page.locator("#lpColors").getByRole("button", { name: "نبيتي" }).click();
@@ -161,7 +161,7 @@ test("short form: exactly name, mobile, governorate, address (+ quantity), chang
   await page.goto(MODEL);
   const fields = await page.locator("#lpForm :is(input,select,textarea)").evaluateAll(els => els.map(e => [e.name, e.required]));
   expect(fields).toEqual([["name", true], ["phone", true], ["region", true], ["address", true]]);
-  await expect(page.locator("[name=region] option")).toHaveText(["اختاري المحافظة", "القاهرة", "الجيزة", "أسوان"]); // most orders first
+  await expect(page.locator("[name=region] option")).toHaveText(["اختيار المحافظة", "القاهرة", "الجيزة", "أسوان"]); // most orders first
   await fillBuyer(page, "cairo");
   await expect(page.locator("#lpTotal")).toHaveText("١٬٠٧٠ ج");
   await page.locator("#lpColors").getByRole("button", { name: "أسود" }).click();

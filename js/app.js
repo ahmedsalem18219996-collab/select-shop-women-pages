@@ -58,7 +58,7 @@
     if (hero) {
       const first = hero.firstChild;
       if (first && first.nodeType === Node.TEXT_NODE)
-        first.textContent = (String(content.hero_title || 'اختاري ستايلك').slice(0, 100)) + ' ';
+        first.textContent = (String(content.hero_title || 'ستايل على مزاجك').slice(0, 100)) + ' ';
       const colored = hero.querySelector('.hl');
       if (colored) colored.textContent = String(content.hero_highlight || 'بطريقتك.').slice(0, 70);
     }
@@ -69,7 +69,7 @@
       // without mutating owner settings or altering normal custom descriptions.
       const staleComingSoon = /بنجهز|قيد التجهيز|بعد نشرها|عند نشرها|هتظهر هنا|ستظهر هنا|تظهر هنا بعد/.test(description);
       lead.textContent = P.length > 0 && staleComingSoon
-        ? 'تصفحي الموديلات المتاحة بصورها وأسعارها الحقيقية، واختاري القطعة اللي تحبيها.'
+        ? 'تصفح الموديلات المتاحة بصورها وأسعارها الحقيقية، واختيار القطعة المناسبة.'
         : description;
     }
     if (brand.storeName) {
@@ -83,8 +83,8 @@
       freshNote.hidden = P.length > 0 && !CFG.loadError;
       $('#shop .shop-head')?.after(freshNote);
       freshNote.textContent = CFG.loadError
-        ? 'تعذّر تحميل المنتجات حاليًا. البيانات التجريبية مش معروضة، جربي تحديث الصفحة.'
-        : P.length ? 'اختاري الموديل، وكمّلي المقاس والطلب من صفحة المنتج الآمنة.'
+        ? 'تعذّر تحميل المنتجات حاليًا. البيانات التجريبية مش معروضة، يرجى تحديث الصفحة.'
+        : P.length ? 'من صفحة المنتج يمكن اختيار اللون والمقاس وإكمال الطلب.'
           : 'متجر WOMEN قيد التجهيز · لا توجد طلبات شراء مفعّلة حاليًا';
     }
     const storySection = $('#stories')?.parentElement;
@@ -186,16 +186,16 @@
     const ids = window.SelectStore.savedIds();
     utilityTitle.textContent = 'المحفوظة';
     if (!ids.length) {
-      utilityBody.innerHTML = `<div class="utility-empty"><span class="utility-empty-icon">♡</span><h3>لسه مفيش قطع محفوظة</h3><p>اضغطي على علامة القلب جنب أي موديل، وهتلاقيه هنا حتى بعد ما تقفلي الصفحة وتفتحيها تاني على نفس الجهاز.</p><button type="button" class="utility-main-btn" data-utility-shop>تصفحي الموديلات</button></div>`;
+      utilityBody.innerHTML = `<div class="utility-empty"><span class="utility-empty-icon">♡</span><h3>لسه مفيش قطع محفوظة</h3><p>الضغط على علامة القلب جنب أي موديل بيحفظه هنا على نفس الجهاز، حتى بعد إغلاق الصفحة وفتحها تاني.</p><button type="button" class="utility-main-btn" data-utility-shop>تصفح الموديلات</button></div>`;
       return;
     }
-    utilityBody.innerHTML = `<p class="utility-intro">${pieces(ids.length)} محفوظة على الجهاز ده. افتحي القطعة أو شيليها من القائمة.</p>
+    utilityBody.innerHTML = `<p class="utility-intro">${pieces(ids.length)} محفوظة على الجهاز ده. ممكن فتح أي قطعة أو إزالتها من القائمة.</p>
       <div class="utility-items">${ids.map(id => {
         const p = byId(id);
         const picture = p?.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">` : '<span class="utility-photo-fallback">♡</span>';
         const action = p?.url
-          ? `<a class="utility-product-link" href="${esc(p.url)}">شوفي الموديل</a>`
-          : p ? `<button type="button" class="utility-product-link" data-utility-find="${esc(id)}">شوفي الموديل</button>`
+          ? `<a class="utility-product-link" href="${esc(p.url)}">عرض الموديل</a>`
+          : p ? `<button type="button" class="utility-product-link" data-utility-find="${esc(id)}">عرض الموديل</button>`
             : '<span class="utility-unavailable">المنتج غير متاح حاليًا</span>';
         return `<article class="utility-item"><div class="utility-photo">${picture}</div>
           <div class="utility-item-info"><h3>${esc(p?.name || id)}</h3>
@@ -209,11 +209,11 @@
     utilityBody.innerHTML = `<div class="utility-account">
       <div class="utility-avatar" aria-hidden="true">♡</div>
       <h3>أهلًا بيكي في SELECT SHOP</h3>
-      <p>تقدري ترجعي للموديلات اللي حفظتيها وتفتحي الشنطة على نفس الجهاز.</p>
-      <p class="utility-account-note">حساب العميلات وتسجيل الدخول ومتابعة الطلبات الشخصية لسه مش متاحين؛ المفضلة هنا محلية ومش مرتبطة بحساب أو رقم موبايل.</p>
+      <p>الموديلات المحفوظة والشنطة متاحين من نفس الجهاز.</p>
+      <p class="utility-account-note">حساب العملاء وتسجيل الدخول ومتابعة الطلبات الشخصية لسه مش متاحين؛ المفضلة هنا محلية ومش مرتبطة بحساب أو رقم موبايل.</p>
       <button type="button" class="utility-account-action" data-account-saved>♡ <span>المفضلة</span><strong>${savedCount}</strong></button>
       <button type="button" class="utility-account-action" data-account-bag>◫ <span>الشنطة</span><b>عرض الشنطة</b></button>
-      <button type="button" class="utility-main-btn" data-utility-shop>كمّلي تسوق</button>
+      <button type="button" class="utility-main-btn" data-utility-shop>استكمال تسوق</button>
     </div>`;
   }
   function openUtility(kind) {
@@ -273,7 +273,7 @@
       if (card) {
         card.closest('.card')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
         card.focus({ preventScroll: true });
-      } else say('الموديل مش ظاهر في القسم الحالي؛ اختاري كل القطع.');
+      } else say('الموديل مش ظاهر في القسم الحالي؛ اعرض كل القطع.');
     }
   });
   addEventListener('women-saved-changed', syncSaved);
@@ -323,7 +323,7 @@
         <ul class="look-items">${items.map(p => `<li><span>${esc(p.name)}</span><span class="num">${fmt(p.price)}</span></li>`).join('')}</ul>
         <div class="look-foot">
           <div class="total"><small>اللوك كامل · ${esc(l.note)}</small><b>${fmt(total)} ${CUR}</b></div>
-          <button class="cta" data-look="${i}">ضيفي اللوك</button>
+          <button class="cta" data-look="${i}">إضافة اللوك</button>
         </div>
       </div>
     </article>`;
@@ -389,12 +389,12 @@
     feed.innerHTML = list.length ? list.map((p, k) => `
       <article class="card" style="--k:${k}">
         <div class="shot" style="--c:${cssColor(p.c)}">
-          <a class="shot-link" href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}" aria-label="افتحي تفاصيل ${esc(p.name)}">
+          <a class="shot-link" href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}" aria-label="فتح تفاصيل ${esc(p.name)}">
             ${p.image ? `<img src="${esc(p.image)}" ${p.smallImage ? `srcset="${esc(p.smallImage)} 400w, ${esc(p.image)} 560w" sizes="(max-width: 699px) calc((100vw - 60px) / 2), (max-width: 979px) calc((100vw - 80px) / 3), 300px"` : ""} alt="${esc(p.name)}" width="600" height="800" data-fallback="${esc(p.originalImage && p.originalImage !== p.image ? p.originalImage : "")}" ${k < 2 ? `loading="eager"${k === 0 ? ' fetchpriority="high"' : ''}` : 'loading="lazy"'} decoding="async">` : '<span class="ph">صورة المنتج</span>'}
-            <span class="shot-link-label">شوفي التفاصيل ↗</span>
+            <span class="shot-link-label">عرض التفاصيل ↗</span>
           </a>
           ${p.was ? `<span class="badge">خصم ${Math.round((1 - p.price / p.was) * 100)}%</span>` : p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
-          <button class="heart" data-save="${esc(p.id)}" aria-pressed="${window.SelectStore.isSaved(p.id)}" aria-label="احفظي ${esc(p.name)}"><svg class="i" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
+          <button class="heart" data-save="${esc(p.id)}" aria-pressed="${window.SelectStore.isSaved(p.id)}" aria-label="حفظ ${esc(p.name)}"><svg class="i" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
           <button class="add" data-add="${esc(p.id)}" aria-label="اطلبي ${esc(p.name)} مباشرة"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
         <h3><a href="${p.url ? esc(p.url) : '#shop'}" data-name="${esc(p.id)}">${esc(p.name)}</a></h3>
@@ -403,7 +403,7 @@
           <span class="swatches" aria-hidden="true">${(p.sw || []).map(s => `<i style="--s:${cssSwatch(s)}"></i>`).join('')}</span>
         </div>
         ${p.swatchNames?.length ? `<p class="card-colour-names" title="${esc(p.swatchNames.join('، '))}" aria-label="ألوان الموديل: ${esc(p.swatchNames.join('، '))}">الألوان: ${esc(p.swatchNames.slice(0, 3).join(' · '))}${p.swatchNames.length > 3 ? ` · +${p.swatchNames.length - 3}` : ''}</p>` : ''}
-      </article>`).join('') : `<p class="empty">مفيش قطع في القسم ده دلوقتي. اسحبي الشريط لقسم تاني.</p>`;
+      </article>`).join('') : `<p class="empty">مفيش قطع في القسم ده دلوقتي. ممكن استخدام شريط الأقسام للانتقال لقسم تاني.</p>`;
   }
   // Native image errors do not bubble; capture and retry with the already-validated original once.
   feed.addEventListener('error', event => {
@@ -460,7 +460,7 @@
       ? `<button class="size" role="radio" aria-checked="true" data-z="ONE" style="grid-column:1/-1">مقاس واحد</button>`
       : SIZES.map(z => `<button class="size" role="radio" aria-checked="false" data-z="${z}" ${outAll.has(z) ? 'disabled aria-label="' + z + ' خلص"' : ''}>${z}</button>`).join('');
     $('#finder').hidden = oneSize; $('#finder').open = false;
-    if (oneSize) choose('ONE'); else { addBtn.disabled = true; addBtn.textContent = 'اختاري المقاس الأول'; }
+    if (oneSize) choose('ONE'); else { addBtn.disabled = true; addBtn.textContent = 'اختيار المقاس الأول'; }
     sheet.style.removeProperty('--drag');
     sheet.classList.add('show'); scrim.classList.add('show'); lock(true); pushOverlay();
     setTimeout(() => (sheet.querySelector('.size:not(:disabled)') || addBtn).focus({ preventScroll: true }), 50);
@@ -474,7 +474,7 @@
   }
   function choose(z) {
     pick = z; $$('#shSizes .size').forEach(b => b.setAttribute('aria-checked', b.dataset.z === z));
-    addBtn.disabled = false; addBtn.textContent = z === 'ONE' ? 'ضيفي للشنطة' : `ضيفي ${z} للشنطة`; buzz(5);
+    addBtn.disabled = false; addBtn.textContent = z === 'ONE' ? 'إضافة للشنطة' : `إضافة ${z} للشنطة`; buzz(5);
   }
   $('#shSizes').addEventListener('click', e => { const b = e.target.closest('.size'); if (b && !b.disabled) choose(b.dataset.z); });
   addBtn.onclick = async () => {
@@ -482,7 +482,7 @@
     addBtn.disabled = true;
     const r = await window.SelectStore.addToBag(items.map(p => ({ productId: p.id, size: p.one ? 'ONE' : pick })));
     addBtn.disabled = false;
-    if (!r.ok) { say(r.message || 'مقدرناش نضيفها للشنطة. جربي تاني.'); return; }
+    if (!r.ok) { say(r.message || 'مقدرناش نضيفها للشنطة. يرجى المحاولة مرة تانية.'); return; }
     bagCount = r.count; setDots('.bagdot', bagCount);
     say(ctx.look ? `اتضاف ${ctx.look.name} (${pieces(items.length)}) للشنطة` : `اتضافت للشنطة: ${ctx.item.name}${pick !== 'ONE' ? ' · ' + pick : ''}`);
     buzz([10, 40, 10]); closeSheet();
@@ -501,12 +501,12 @@
     const b = +$('#fBust').value, w = +$('#fWaist').value, out = $('#fOut');
     if (!b || !w) { out.textContent = 'هنعلّملك المقاس المناسب على الأزرار فوق.'; return; }
     const bi = chart.findIndex(r => b <= r[1]), wi = chart.findIndex(r => w <= r[2]);
-    if (b < chartMin.bust || w < chartMin.waist) { out.textContent = 'قياساتك أصغر من جدولنا. كلمينا على واتساب ونرشحلك.'; return; }
-    if (bi < 0 || wi < 0) { out.textContent = 'قياساتك أكبر من جدولنا العادي. اسألي على واتساب عن المقاسات الخاصة.'; return; }
+    if (b < chartMin.bust || w < chartMin.waist) { out.textContent = 'القياسات أصغر من جدول المقاسات. التواصل على واتساب للمساعدة في الاختيار.'; return; }
+    if (bi < 0 || wi < 0) { out.textContent = 'القياسات أكبر من جدول المقاسات العادي. التواصل على واتساب للاستفسار عن المقاسات الخاصة.'; return; }
     const z = chart[Math.max(bi, wi)][0], btn = $(`#shSizes .size[data-z="${z}"]`);
     if (btn) btn.classList.add('rec');
     if (btn && !btn.disabled) { choose(z); out.textContent = `مقاسك ${z}${bi !== wi ? ` (اخترناه على ${bi > wi ? 'الصدر' : 'الوسط'})` : ''}. اخترناهولك فوق.`; }
-    else out.textContent = `مقاسك ${z} بس خلص في القطعة دي. فعّلي تنبيه لما يرجع من صفحة المنتج.`;
+    else out.textContent = `مقاسك ${z} بس خلص في القطعة دي. ممكن تفعيل تنبيه لما يرجع من صفحة المنتج.`;
   }
   $('#fBust').addEventListener('input', fit); $('#fWaist').addEventListener('input', fit);
 
@@ -514,7 +514,7 @@
   $$('[data-open-bag]').forEach(b => b.addEventListener('click', () => {
     // Cart must open at the same origin as checkout so its persisted selections survive.
     if (!CFG.demo && window.SelectStore.cartUrl) location.assign(window.SelectStore.cartUrl);
-    else say(bagCount ? `في الشنطة ${pieces(bagCount)}` : 'الشنطة فاضية. اضغطي + على أي قطعة');
+    else say(bagCount ? `في الشنطة ${pieces(bagCount)}` : 'الشنطة فاضية. علامة + على أي قطعة بتضيفها للشنطة.');
   }));
 
 })();

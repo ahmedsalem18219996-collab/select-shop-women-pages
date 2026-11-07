@@ -156,7 +156,7 @@ test("generated pages retain optional cart except explicitly focused direct-only
   assert.match(html, /id="lpCartLink"/);
   assert.match(html, /id="lpCartCount"/);
   assert.match(html, /id="lpOrder"/);
-  assert.match(html, /\/lp\/runtime\.js\?v=20261030-4/);
+  assert.match(html, /\/lp\/runtime\.js\?v=20261107-neutral-colours/);
   const generated = await readdir(new URL("../../lp/", import.meta.url), { withFileTypes:true });
   const dirs = generated.filter(d => d.isDirectory() && (d.name.startsWith("ss-") || d.name === "ballon-suit"));
   assert.equal(dirs.length, 39);
@@ -193,7 +193,14 @@ test("automatic shell: same form and runtime, no product data baked in, committe
   assert.ok(html.includes('id="lpForm"') && html.includes('"auto":true') && html.includes("/js/catalog-thumbs.js"));
   assert.ok(!html.includes('"code":') && html.includes('<h1 id="lpTitle"></h1>'), "no product baked into the shell");
   const faces = readexFaces(await readFile(new URL("../../css/fonts.css", import.meta.url), "utf8"));
-  assert.equal(await readFile(new URL("../../lp/index.html", import.meta.url), "utf8"), renderShell(faces, await shellRoutes()));
+  const committed = await readFile(new URL("../../lp/index.html", import.meta.url), "utf8");
+  const generated = renderShell(faces, await shellRoutes());
+  let position = 0;
+  while (position < Math.min(committed.length, generated.length) && committed[position] === generated[position]) position += 1;
+  assert.equal(committed, generated, position === committed.length && position === generated.length ? undefined
+    : 'shell first mismatch at ' + position + ' of ' + committed.length + '/' + generated.length
+      + '\ncommitted: ' + JSON.stringify(committed.slice(position - 90, position + 200))
+      + '\ngenerated: ' + JSON.stringify(generated.slice(position - 90, position + 200)));
 });
 
 test("every generated product page: zoomable original photos, trust strip, in-form colours under the form heading", async () => {
@@ -217,9 +224,13 @@ test("a chosen colour keeps only its own buyable sizes, and brings its own photo
   assert.deepEqual([...openValues(product, [0, -1], 1)].sort(), [0, 1, 2], "baby blue: S, M, L");
   assert.deepEqual([...openValues(product, [-1, 1], 0)], [0], "size M: pink is not purchasable");
   const urls = (list) => list.map((m) => m.url.split("/").pop().slice(0, 4));
-  assert.deepEqual(urls(colourMedia(product.media, 0, 0)), ["b1b1", "b2b2", "aaaa"]);
-  assert.deepEqual(urls(colourMedia(product.media, 0, 1)), ["c1c1", "aaaa"]);
-  assert.deepEqual(colourMedia(product.media, 0, 2), [], "no photo of pink: keep what is shown");
+  assert.deepEqual(urls(colourMedia(product.media, 0, 0)), ["b1b1", "b2b2"], "do not mix shared media into a colour gallery");
+  assert.deepEqual(urls(colourMedia(product.media, 0, 1)), ["c1c1"]);
+  assert.deepEqual(colourMedia(product.media, 0, 2), [], "no photo of pink: never show a different shade");
+  const unscoped = product.media.map(m => ({ ...m, target: { kind: "product" } }));
+  assert.equal(colourMedia(unscoped, 0, 0, true).length, 0, "multi-colour: no tagged photos must show a missing-photo notice, not mixed images");
+  assert.equal(colourMedia(unscoped, 0, 1, true).length, 0, "switching colour cannot inherit another shade from an unscoped gallery");
+  assert.equal(colourMedia(unscoped, 0, 0).length, unscoped.length, "single-colour legacy product still uses shared photos");
   assert.equal(colourIndex({ options: [{ name: "المقاس" }] }), -1);
 });
 

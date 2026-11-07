@@ -29,7 +29,7 @@ test('admin shows supply-first checklist and does not auto-confirm orders', () =
   assert.match(adminOrders, /البيع حسب الطلب — بدون مخزون فعلي/);
   assert.match(adminOrders, /قبل تأكيد الأوردر/);
   assert.match(adminOrders, /مراجعة طلب جديد حسب الطلب/);
-  assert.match(adminOrders, /اتأكدتي من بيانات العميلة/);
+  assert.match(adminOrders, /بيانات العميل واللون والمقاس/);
   assert.match(adminOrders, /orders\.transition/);
   assert.match(adminOrders, /o\.status === 'pending'/);
 });
@@ -37,7 +37,7 @@ test('admin shows supply-first checklist and does not auto-confirm orders', () =
 test('admin does not pass synthetic inventory numbers off as physical stock', () => {
   assert.match(adminProducts, /كميات المخزون هنا افتراضية/);
   assert.match(adminProducts, /كمية افتراضية/);
-  assert.match(adminProducts, /اتأكدي من التوافر والسعر عند المورد/);
+  assert.match(adminProducts, /لازم التأكد من التوافر والسعر عند المورد/);
 });
 
 test('on-demand UI copies do not introduce any new order API or auto-purchasing flow', () => {

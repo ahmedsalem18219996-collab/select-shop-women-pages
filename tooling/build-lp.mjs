@@ -372,7 +372,7 @@ function layout(o) {
     : ORDER_FORM;
   // Refresh the browser-cached runtime only on affected grouped and legacy
   // product pages. Unrelated generated LPs retain their exact original HTML.
-  const choiceVersion = campaign ? "20261031-sweater-3" : /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
+  const choiceVersion = o.source === " (automatic product page)" ? "20261107-neutral-colours" : campaign ? "20261031-sweater-3" : /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
     ? "20261030-7" : checkoutPicker ? "20261030-5" : "20261030-4";
   return `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -463,7 +463,7 @@ export function render(page, products, fontFaces = "") {
 
 // Automatic page only: shows the hero photo as soon as the early product read lands, without waiting for the
 // runtime module (lp/runtime.js fillFromProduct sets the same URLs, so nothing is downloaded twice).
-const HERO_BOOT = String.raw`(()=>{const w=window,l=w.__lp;if(!l||!l.product)return;l.product.then(r=>r.ok?r.clone().json():null).then(d=>{const m=((d&&d.product&&d.product.media)||[]).filter(x=>/^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[0-9a-f]{32}\.(jpg|png|webp)$/.test(x.url||"")).sort((a,b)=>(b.isPrimary===true)-(a.isPrimary===true)||a.position-b.position)[0],img=document.querySelector("#lpHero img");if(!m||!img||img.src)return;const f=m.url.split("/").pop(),b="/assets/catalog-thumbs/"+f;img.fetchPriority="high";if(new Set(w.SELECT_THUMBNAILS||[]).has(f)){img.sizes="(min-width: 900px) 560px, 100vw";img.srcset=b+".w400.webp 400w, "+b+".webp 559w";img.src=b+".webp"}else img.src=m.url}).catch(()=>{})})()`;
+const HERO_BOOT = String.raw`(()=>{const w=window,l=w.__lp;if(!l||!l.product)return;l.product.then(r=>r.ok?r.clone().json():null).then(d=>{const p=d&&d.product;if(p&&(p.options||[]).some(o=>(o.values||[]).length>1&&/لون|colou?r/i.test(o.name||""))&&(p.media||[]).some(m=>m.target&&m.target.kind!=="product"))return;const m=((d&&d.product&&d.product.media)||[]).filter(x=>/^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[0-9a-f]{32}\.(jpg|png|webp)$/.test(x.url||"")).sort((a,b)=>(b.isPrimary===true)-(a.isPrimary===true)||a.position-b.position)[0],img=document.querySelector("#lpHero img");if(!m||!img||img.src)return;const f=m.url.split("/").pop(),b="/assets/catalog-thumbs/"+f;img.fetchPriority="high";if(new Set(w.SELECT_THUMBNAILS||[]).has(f)){img.sizes="(min-width: 900px) 560px, 100vw";img.srcset=b+".w400.webp 400w, "+b+".webp 559w";img.src=b+".webp"}else img.src=m.url}).catch(()=>{})})()`;
 
 /** /lp/index.html: the automatic page for any public product (/lp/?p=SS-1008). Filled by lp/runtime.js from the
  *  live product read; photos come from the checked-in catalog thumbnails (js/catalog-thumbs.js) when present. */
@@ -488,15 +488,19 @@ export async function shellRoutes() {
 
 export function renderShell(fontFaces = "", routes = {}) {
   const code = `String(new URLSearchParams(location.search).get("p")||new URLSearchParams(location.search).get("code")||"").trim().toUpperCase()`;
-  return layout({
+  const markup = layout({
     source: " (automatic product page)", title: "SELECT SHOP WOMEN",
-    description: "اطلبي من نفس الصفحة من SELECT SHOP WOMEN. الدفع عند الاستلام والشحن لكل المحافظات.",
+    description: "طلب مباشر من نفس الصفحة من SELECT SHOP WOMEN. الدفع عند الاستلام والشحن لكل المحافظات.",
     canonical: "", preload: "", codeExpr: code, fontFaces, route: ROUTE(routes),
     hero: `<img alt="" width="800" height="1067" decoding="async"${HERO_READY}>`, gallery: "", count: 0, h1: "", price: "—", desc: "", picker: "", options: "",
-    choice: "اختاري المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
-    noscript: `<a href="/">افتحي المتجر</a>`, data: JSON.stringify({ auto: true }),
+    choice: "اختيار اللون والمقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
+    noscript: `<a href="/">فتح المتجر</a>`, data: JSON.stringify({ auto: true }),
     scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n`,
   });
+  // Accessible first paint, even when JS is unavailable. Only the automatic shell
+  // gets these neutral labels; published campaigns retain their original snapshots.
+  const neutralLabels = [["اطلبي إطلالتك","طلب سريع"],["تفاصيل تكمّل إطلالتك","تفاصيل المنتج"],["اطلبي دلوقتي","طلب مباشر"],["سيبي بياناتك، والتوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب.","بيانات التوصيل مطلوبة، والتوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب."],["اختاري المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد","مصاريف الشحن والإجمالي بيظهروا بعد اختيار المحافظة"],["اختاري المحافظة","اختيار المحافظة"],["هتدفعي الإجمالي ده كاش للمندوب.","الإجمالي ده بيتدفع كاش للمندوب عند الاستلام."],["شوفي قطع تانية","عرض منتجات تانية"],["أضيفي للشنطة","إضافة للشنطة"],["افتحي المتجر","فتح المتجر"]];
+  return neutralLabels.reduce((out, [before, after]) => out.replaceAll(before, after), markup);
 }
 
 async function encodeImages(page, products) {

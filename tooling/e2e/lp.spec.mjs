@@ -28,6 +28,11 @@ test("one page: real product data, the order form is already open under it, stic
   await expect(page.locator("h1")).toHaveText("Leather jacket");
   await expectPrices(page, "١٬٢٠٠");
   await expect(page.locator("#lpForm")).toBeVisible(); // no button to reveal it
+  // Existing committed page snapshots get neutral copy via the shared runtime.
+  await expect(page.locator(".atelier-heading")).toHaveText("تفاصيل المنتج");
+  await expect(page.locator(".top .jump")).toHaveText("نموذج الطلب");
+  await expect(page.locator("#lpQtyUp")).toHaveAttribute("aria-label", "زيادة الكمية");
+  await expect(page.locator("#lpQtyDown")).toHaveAttribute("aria-label", "تقليل الكمية");
   for (const n of ["name", "phone", "region", "address"]) await expect(page.locator(`[name=${n}]`)).toBeVisible();
   await expect(page.locator("#lpOrder")).toHaveText("تأكيد الطلب");
   await expect(page.locator("#lpOrder")).toBeEnabled();
@@ -100,7 +105,7 @@ test("A/B: ?lpv pins the variant and the bucket is remembered", async ({ page })
 test("direct COD order: server shipping per governorate, quantity, one order on double tap, confirmation in page", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
   await page.goto(LP);
-  await expect(page.locator("#lpShip")).toHaveText("اختاري المحافظة");
+  await expect(page.locator("#lpShip")).toHaveText("اختيار المحافظة");
   await expect(page.locator("#lpTotal")).toHaveText("—");
   await fillBuyer(page, "cairo");
   await expect(page.locator("#lpShip")).toHaveText("٧٠ ج");
@@ -247,8 +252,8 @@ test("multi-size product: size required, sold-out disabled, prices follow the si
   await expectPrices(page, "من ١٬٢٠٠");
   await fillBuyer(page);
   expect(sent).toEqual([]); // no quote without a size
-  await page.locator("#lpOrder").click();
-  await expect(page.locator("#lpStatus")).toHaveText("اختاري المقاس الأول.");
+  // The customer cannot submit an incomplete colour/size selection.
+  await expect(page.locator("#lpOrder")).toBeDisabled();
   const chip = page.getByText("M", { exact: true });
   expect((await chip.boundingBox()).height).toBeGreaterThanOrEqual(44); // comfortable tap target
   // Interaction latency (INP proxy) of the size tap alone, measured by the browser's Event Timing API.

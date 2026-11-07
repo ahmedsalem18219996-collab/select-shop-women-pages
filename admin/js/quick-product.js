@@ -47,8 +47,8 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     const product = detail.product;
     const rows = variantChoices(product, detail.stock);
     if (!rows.length) {
-      panel.innerHTML = '<p role="alert">اللون ده مالوش مقاسات أو اختيارات محفوظة. افتحي بيانات المنتج لإصلاحه قبل النشر.</p>' +
-        '<a class="btn btn-soft" data-quick-link href="#/products/' + esc(code) + '">افتحي المنتج</a>';
+      panel.innerHTML = '<p role="alert">اللون ده مالوش مقاسات أو اختيارات محفوظة. يرجى فتح بيانات المنتج لإصلاحه قبل النشر.</p>' +
+        '<a class="btn btn-soft" data-quick-link href="#/products/' + esc(code) + '">فتح المنتج</a>';
       bindLink(); return;
     }
     const chosen = rows.find(v => v.position === position) || rows[0];
@@ -81,10 +81,10 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       (r.active ? '' : ' (موقوف)') + '</button>').join('');
     panel.innerHTML = [
       '<div class="quick-section">',
-      '<div class="quick-header"><b>٢. اختاري اللون والمقاس</b><span class="code">' + esc(code) + '</span></div>',
-      hasColourOption ? '<span class="muted">لون الاختيار:</span><div class="quick-sizes" role="group" aria-label="اختاري لون المنتج">' + colourButtons + '</div>' : '',
-      '<span class="muted">المقاس:</span><div class="quick-sizes" role="group" aria-label="اختاري مقاس المنتج">' + sizeOptions + '</div>',
-      hasUnspecifiedSize ? '<p class="muted quick-help">المنتج ده مش متسجل له مقاسات مختلفة. المعروض حاليًا اختيار واحد فقط؛ مش هنخترع مقاسات ممكن توصل غلط للعميلة.</p>' : '',
+      '<div class="quick-header"><b>٢. اختيار اللون والمقاس</b><span class="code">' + esc(code) + '</span></div>',
+      hasColourOption ? '<span class="muted">لون الاختيار:</span><div class="quick-sizes" role="group" aria-label="اختيار لون المنتج">' + colourButtons + '</div>' : '',
+      '<span class="muted">المقاس:</span><div class="quick-sizes" role="group" aria-label="اختيار مقاس المنتج">' + sizeOptions + '</div>',
+      hasUnspecifiedSize ? '<p class="muted quick-help">المنتج ده مش متسجل له مقاسات مختلفة. المعروض حاليًا اختيار واحد فقط؛ مش هنخترع مقاسات ممكن توصل غلط للعميل.</p>' : '',
       '</div>',
       '<div class="quick-section">',
       '<div class="quick-header"><b>٣. السعر والإتاحة</b><span class="muted">' + esc(STATUS_LABELS[product.status] || 'غير منشور') + '</span></div>',
@@ -94,13 +94,13 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       '</div>',
       '<label class="quick-check"><input type="checkbox" data-quick-available ' + (chosen.availability ? 'checked ' : '') + (canQty ? '' : 'disabled') +
       '> <span>متاح للتوريد من المورد</span></label>',
-      '<p class="muted quick-help">الكمية افتراضية مش مخزون عندك. قبل تأكيد الأوردر لازم تراجعي اللون والمقاس والسعر عند المورد.</p>',
-      (canPrice || canQty ? '<button type="button" class="btn btn-primary quick-save" data-quick-save>احفظي تعديل الاختيار ده</button>' : '<p class="muted">حسابك للعرض فقط. مسؤولة السعر أو الإتاحة تقدر تحفظ التعديلات.</p>'),
+      '<p class="muted quick-help">الكمية افتراضية مش مخزون عندك. قبل تأكيد الأوردر لازم مراجعة اللون والمقاس والسعر عند المورد.</p>',
+      (canPrice || canQty ? '<button type="button" class="btn btn-primary quick-save" data-quick-save>حفظ تعديل الاختيار ده</button>' : '<p class="muted">حسابك للعرض فقط. فريق التسعير أو الإتاحة عنده صلاحية حفظ التعديلات.</p>'),
       '</div>',
       '<div class="quick-section">',
       '<div class="quick-header"><b>٤. صور اللون ده</b><span class="muted">' + visiblePhotos.length + ' صورة</span></div>',
       '<div class="quick-pictures">' + visiblePhotos.slice(0, 8).map(m => '<img src="' + esc(safeImage(m.storage_path)) + '" alt="صورة اللون" loading="lazy">').join('') + '</div>',
-      (canImages ? '<label class="btn btn-soft quick-upload">' + (hasColourOption ? 'ارفعي صورة اللون والمقاس المختارين' : 'ارفعي صور اللون ده (كل المقاسات)') +
+      (canImages ? '<label class="btn btn-soft quick-upload">' + (hasColourOption ? 'رفع صورة اللون والمقاس المختارين' : 'رفع صور اللون ده (كل المقاسات)') +
         '<input data-quick-files type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr"></label>' : '<p class="muted">رفع الصور يحتاج صلاحية إدارة الصور.</p>'),
       hasColourOption ? '<p class="muted quick-help">الصورة هنا تخص اختيار اللون والمقاس المحدد فقط. لو نفس الصورة مطلوبة لباقي المقاسات، لازم تربطيها بكل مقاس منفصل في النسخة الحالية.</p>'
         : '<p class="muted quick-help">الصور المرفوعة هنا تخص كود اللون المحدد، وبتظهر مع كل مقاساته. مش بتتغير صور بقية الألوان.</p>',
@@ -132,7 +132,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       if ((canPrice && toMinor(draftPrice) !== chosen.amount_minor) ||
           (canQty && (String(chosen.quantity ?? '') !== String(draftQty ?? '') ||
             draftAvailable !== chosen.availability))) {
-        island('error', 'احفظي تعديلات السعر والإتاحة الأول، وبعدها غيّري حالة النشر.');
+        island('error', 'حفظ تعديلات السعر والإتاحة الأول، وبعدها تغيير حالة النشر.');
         return;
       }
       if (lifecycle.op === 'products.publish') {
@@ -147,8 +147,8 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       question.className = 'quick-status-confirm';
       const paragraph = document.createElement('p');
       paragraph.textContent = lifecycle.op === 'products.publish'
-        ? 'اللون ده هيظهر للعملاء. اتأكدتي من الصور والسعر والمقاس والتوافر عند المورد؟'
-        : 'اللون ده هيختفي مؤقتًا من المتجر، من غير حذف الأوردرات أو الصور. موافقة؟';
+        ? 'اللون ده هيظهر للعملاء. هل الصور والسعر والمقاس والتوافر عند المورد اتراجعوا؟'
+        : 'اللون ده هيختفي مؤقتًا من المتجر، من غير حذف الأوردرات أو الصور. تأكيد الإخفاء؟';
       const controls = document.createElement('div');
       controls.className = 'row';
       const cancel = document.createElement('button');
@@ -185,13 +185,13 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       const price = canPrice ? toMinor(newPriceText) : chosen.amount_minor;
       const q = canQty ? Number(newQtyText) : num(chosen.quantity);
       if (canPrice && (price === null || price < 100)) {
-        island('error', 'اكتبي سعر صحيح بالجنيه، زي 650.'); $('[data-quick-price]', panel)?.focus(); return;
+        island('error', 'كتابة سعر صحيح بالجنيه، زي 650.'); $('[data-quick-price]', panel)?.focus(); return;
       }
       if (canQty && !/^\d{1,6}$/.test(newQtyText)) {
-        island('error', 'اكتبي كمية افتراضية من 0 إلى 999999.'); $('[data-quick-qty]', panel)?.focus(); return;
+        island('error', 'كتابة كمية افتراضية من 0 إلى 999999.'); $('[data-quick-qty]', panel)?.focus(); return;
       }
       if (canQty && q === 0 && newAvailability) {
-        island('error', 'لو الكمية صفر، اقفلي «متاح للتوريد» الأول.'); return;
+        island('error', 'لو الكمية صفر، لازم إيقاف «متاح للتوريد» الأول.'); return;
       }
       const tasks = [];
       if (canPrice && price !== chosen.amount_minor) {
@@ -212,8 +212,8 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
             try { result = await call(op, args); } catch { result = { outcome: 'network' }; }
             if (result?.outcome !== 'saved') {
               fail(result);
-              island('error', saved ? 'اتحفظ جزء من التعديلات. راجعي ' + label + '، واللي اتغير بالفعل مش هنكرره تلقائيًا.' :
-                'ماقدرناش نحفظ ' + label + '. البيانات القديمة لسه زي ما هي، راجعي صلاحياتك وجربي تاني.');
+              island('error', saved ? 'اتحفظ جزء من التعديلات. مراجعة ' + label + '، واللي اتغير بالفعل مش هنكرره تلقائيًا.' :
+                'ماقدرناش نحفظ ' + label + '. البيانات القديمة لسه زي ما هي، يرجى مراجعة الصلاحيات وإعادة المحاولة.');
               await load(code, position);
               return;
             }
@@ -231,7 +231,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       const list = [...(input.files || [])];
       const invalid = list.filter(f => checkSourceImage(f) !== null);
       const photos = list.filter(f => checkSourceImage(f) === null);
-      if (!photos.length) { island('error', 'اختاري صورة JPG أو PNG أو WebP مناسبة، أقل من 5MB.'); input.value = ''; return; }
+      if (!photos.length) { island('error', 'اختيار صورة JPG أو PNG أو WebP مناسبة، أقل من 5MB.'); input.value = ''; return; }
       uploading = true; input.disabled = true;
       const selectedCode = code, selectedPosition = position, scopedToVariant = hasColourOption;
       let mediaVersion = detail.media?.structure_version ?? product.structure_version;
@@ -272,7 +272,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
           }
         }
         if (uploaded === photos.length && !invalid.length) done('تم رفع صور اللون المحدد بنجاح');
-        else island('error', 'اترفع ' + uploaded + ' من ' + list.length + ' صورة. راجعي الناقص قبل إعادة المحاولة.');
+        else island('error', 'اترفع ' + uploaded + ' من ' + list.length + ' صورة. مراجعة الناقص قبل إعادة المحاولة.');
         if (uploaded && code === selectedCode) { onChanged(); await load(selectedCode, position); }
       } finally { tiles.forEach(t => t.release()); uploading = false; if (document.contains(input)) { input.value = ''; input.disabled = false; } }
     });
@@ -295,7 +295,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     try { response = await call('products.get', { code }); } catch { response = { outcome: 'network' }; }
     if (requestId !== loadNumber || !document.contains(panel)) return;
     if (response?.outcome !== 'ok' || !response.data?.product) {
-      panel.innerHTML = '<p role="alert" class="err">تعذّر تحميل اللون ده. اتأكدي من الاتصال، وجربي تاني.</p>' +
+      panel.innerHTML = '<p role="alert" class="err">تعذّر تحميل اللون ده. يرجى التأكد من الاتصال وإعادة المحاولة.</p>' +
         '<button class="btn btn-soft" type="button" data-quick-retry>إعادة المحاولة</button>';
       $('[data-quick-retry]', panel).onclick = () => load(nextCode, nextPosition);
       return;
