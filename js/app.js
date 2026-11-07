@@ -208,7 +208,7 @@
     utilityTitle.textContent = 'حسابي';
     utilityBody.innerHTML = `<div class="utility-account">
       <div class="utility-avatar" aria-hidden="true">♡</div>
-      <h3>أهلًا بيكي في SELECT SHOP</h3>
+      <h3>أهلًا بك في SELECT SHOP</h3>
       <p>يمكن الرجوع إلى الموديلات المحفوظة وفتح الشنطة على الجهاز نفسه.</p>
       <p class="utility-account-note">حساب العملاء وتسجيل الدخول ومتابعة الطلبات الشخصية لسه مش متاحين؛ المفضلة هنا محلية ومش مرتبطة بحساب أو رقم موبايل.</p>
       <button type="button" class="utility-account-action" data-account-saved>♡ <span>المفضلة</span><strong>${savedCount}</strong></button>
