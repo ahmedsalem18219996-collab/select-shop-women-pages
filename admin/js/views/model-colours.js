@@ -160,6 +160,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
   const live = model.colours.filter((c) => c.variants.length);
   const half = p.options.length && !p.variants.length;
   const queuedPhotos = new Map(); // only local Files, per colour card; upload happens on Save
+  let savingColour = false; // prevents another card being edited during async save/reload
 
   render(body, html`<div class="stack">
     <section class="card stack"><div class="card-head"><h3>الألوان والمقاسات والصور</h3><span class="muted">${live.length} لون</span></div>
@@ -305,6 +306,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
       return;
     }
     if (b.matches('[data-save-colour]')) {
+      if (savingColour) return;
       const wanted = model.sizeOption && can('products.edit') && c.active
         ? $$('[data-c-size][aria-pressed="true"]', card).map((x) => x.dataset.cSize)
         : c.variants.filter((v) => v.active).map((v) => v.size ?? ONE_SIZE);
@@ -322,7 +324,14 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
       }
       const desiredAvail = $('[data-c-avail]', card)?.checked;
       const files = queuedPhotos.get(Number(card.dataset.colour)) || [];
-      await withBusy(b, async () => {
+      // Freeze every card while saving. A product reload can otherwise replace another
+      // colour's selected File input before its change event has been handled.
+      savingColour = true;
+      const unlocked = $$('button, input, select, textarea', body).filter((el) => !el.disabled);
+      unlocked.forEach((el) => { el.disabled = true; });
+      body.setAttribute('aria-busy', 'true');
+      try {
+        await withBusy(b, async () => {
         // Read fresh state first so repeated taps/retries never blindly repeat a
         // partially completed structural save with an old version token.
         let latest;
@@ -370,12 +379,17 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
           });
           if (result.ok !== files.length) {
             island('error', 'اتحفظ اللون واترفعت ' + result.ok + ' من ' + files.length + ' صورة. أعيدي رفع الناقص بس، مش الصور الناجحة.');
-            reload(); return;
+            await reload(); return;
           }
         }
         done('اتحفظت بيانات اللون وصوره بنجاح.');
-        reload();
-      });
+        await reload();
+        });
+      } finally {
+        savingColour = false;
+        body.removeAttribute('aria-busy');
+        unlocked.forEach((el) => { if (el.isConnected) el.disabled = false; });
+      }
     }
     if (b.matches('[data-retire]')) {
       if (!(await confirmDialog({ title: 'وقف اللون ' + c.name, text: 'اللون هيختفي من المتجر للطلبات الجديدة. الأوردرات القديمة والصور والكود زي ما هم، وتقدري ترجّعيه بعدين.', okText: 'وقّفي اللون', danger: true }))) return;
