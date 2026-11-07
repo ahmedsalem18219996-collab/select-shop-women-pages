@@ -398,7 +398,7 @@ function fillFromProduct(/** @type {any} */ p) {
   if (hint) {
     hint.hidden = !(first && opt.values.length > 1);
     hint.textContent = first && opt.values.length > 1
-      ? "معاينة لون " + first.value + " · اختار اللون المناسب من الخيارات بالأسفل"
+      ? "معاينة لون " + first.value + " · اختيار اللون المناسب من الخيارات بالأسفل"
       : "";
   }
   const lines = String(p.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
@@ -684,7 +684,7 @@ async function init() {
       say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة وصلت للحد الأقصى. فتح الشنطة لتعديلها.' :
         'مش قادرين نضيف للشنطة دلوقتي. ممكن تطلبي مباشرة من نفس الصفحة.', true);
     } finally {
-      cartBusy = false; cartBtn.textContent = 'أضيفي للشنطة'; cartBtn.disabled = !lineNow() || busy;
+      cartBusy = false; cartBtn.textContent = 'إضافة للشنطة'; cartBtn.disabled = !lineNow() || busy;
     }
   });
 
