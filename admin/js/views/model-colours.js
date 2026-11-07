@@ -264,6 +264,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
       : '';
   };
   body.addEventListener('change', (e) => {
+    if (e.target.matches('[data-c-avail]')) { e.target.dataset.dirty = 'true'; return; }
     if (!e.target.matches('[data-upload]')) return;
     const card = e.target.closest('[data-colour]'); if (!card) return;
     const colourIndex = Number(card.dataset.colour);
@@ -345,7 +346,9 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
         const priceNeedsSync = can('products.price') && (priceDirty || (sizesPlan.length && Number.isInteger(c.priceMinor)));
         const pricePlan = priceNeedsSync && (priceDirty || current.priceMinor !== price)
           ? planColourPrice(current, price) : [];
-        const availPlan = typeof desiredAvail === 'boolean' && can('inventory.manage')
+        // An untouched switch must not turn unavailable sizes back on during a photo-only save.
+        const availabilityEdited = $('[data-c-avail]', card)?.dataset.dirty === 'true';
+        const availPlan = typeof desiredAvail === 'boolean' && can('inventory.manage') && (availabilityEdited || sizesPlan.length > 0)
           ? planColourAvailability(current, desiredAvail) : [];
         if ((pricePlan.length || availPlan.length) &&
           !(await apply([...pricePlan, ...availPlan], { ctx, p: latest.data.product, code, list }))) return;
