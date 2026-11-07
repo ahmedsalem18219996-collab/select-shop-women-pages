@@ -191,7 +191,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
         island('error', 'كتابة كمية افتراضية من 0 إلى 999999.'); $('[data-quick-qty]', panel)?.focus(); return;
       }
       if (canQty && q === 0 && newAvailability) {
-        island('error', 'لو الكمية صفر، اقفلي «متاح للتوريد» الأول.'); return;
+        island('error', 'لو الكمية صفر، لازم إيقاف «متاح للتوريد» الأول.'); return;
       }
       const tasks = [];
       if (canPrice && price !== chosen.amount_minor) {
