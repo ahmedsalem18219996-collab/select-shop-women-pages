@@ -19,6 +19,6 @@ test('focused campaign shows escaped product-led headline and a direct COD jump 
 });
 test('ordinary landing page keeps its existing presentation', () => {
   const html = render(base, { 'SS-1011': product });
-  assert.match(html, /تفاصيل تكمّل إطلالتك/);
+  assert.match(html, /تفاصيل المنتج/);
   assert.doesNotMatch(html, /data-campaign="focused"|class="campaign-jump"/);
 });
