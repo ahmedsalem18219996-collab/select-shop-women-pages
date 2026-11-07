@@ -181,7 +181,9 @@ test("Admin never marks a failed price as complete, and colour drafts keep what 
 test("admin creates one multi-colour product and attaches each colour photo to that colour's own Variant", async () => {
   const colours = await readFile(new URL("../../admin/js/views/model-colours.js", import.meta.url), "utf8");
   assert.match(colours, /planNewModel\(clean, model\.base\)/);
-  assert.match(colours, /fields: photoTarget\(c\)/);
+  assert.match(colours, /fields: photoTarget\(match\)/, "new colour images bind to fetched Variant");
+  assert.match(colours, /fields: photoTarget\(current\)/, "edited colour images bind to selected Variant");
+  assert.match(colours, /checkSourceImage\(file\)/, "invalid images are filtered before upload");
   const media = await readFile(new URL("../../admin/js/views/products.js", import.meta.url), "utf8");
   assert.match(media, /fields: \{ variant_position: variantPos \}/);
 });

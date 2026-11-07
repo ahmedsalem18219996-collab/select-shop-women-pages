@@ -79,6 +79,7 @@ function backend(seed) {
       case 'products.set_availability': p.variants.find((x) => x.position === a.position).availability = a.available ? 'available' : 'unavailable'; return { outcome: 'saved' };
       case 'media.reorder': a.media_ids.forEach((id, i) => { s.media.find((m) => m.media_id === id).position = i; }); return { outcome: 'saved' };
       case 'products.publish': p.status = 'public'; return { outcome: 'published' };
+      case 'products.archive': return session.role === 'owner' ? (p.status = 'archived', { outcome: 'archived' }) : { outcome: 'forbidden' };
       case 'dashboard.summary': return { outcome: 'ok', data: { orders: { revenue_30d_minor: 0, revenue_today_minor: 0, pending: 0, to_ship: 0, revenue_7d_minor: 0 }, products: { public: 1, draft: 0 }, views: { days_7: 0, today: 0 }, top_viewed: [], recent_orders: [], revenue_by_day: [], low_stock: [] } };
       case 'profit.summary': return s.profitLines ? { outcome: 'ok', data: { lines: s.profitLines } } : { outcome: 'unknown_operation' };
       case 'costs.get': return s.costsLive ? { outcome: 'ok', data: s.costs } : { outcome: 'unknown_operation' };
@@ -140,6 +141,7 @@ test('owner builds a 3-colour model: own photos, sizes, prices and cost; saved, 
   await page.locator('#c-cost').fill('350');
   await expect(page.locator('[data-c-profit]')).toContainText('ربح مبدئي');
   await expect(page.locator('[data-c-profit]')).toContainText('٣٦٫٤');
+  await expect(page.locator('#c-photo')).toHaveCount(0); // photos picked with each colour only
   await page.locator('[data-create]').click();
   await expect(page).toHaveURL(/#\/products\/SS-9101$/);
   await expect(page.locator('#tabbody')).toContainText('ابدئي بأول لون');
@@ -158,17 +160,20 @@ test('owner builds a 3-colour model: own photos, sizes, prices and cost; saved, 
   await drafts.nth(2).locator('[data-d-size="M"]').click();
   await drafts.nth(2).locator('label.switch').click();
   await expect(drafts.nth(2).locator('[data-d-avail]')).not.toBeChecked();
+  // Photos are selected before saving, in the matching colour card.
+  await drafts.nth(0).locator('[data-d-files]').setInputFiles([photo('blue-1.png', [169, 200, 232]), photo('blue-2.png', [150, 190, 225])]);
+  await drafts.nth(1).locator('[data-d-files]').setInputFiles([photo('brown-1.png', [110, 75, 58])]);
+  await expect(drafts.nth(0).locator('[data-d-photos] img')).toHaveCount(2);
+  await expect(drafts.nth(1).locator('[data-d-photos] img')).toHaveCount(1);
+  expect(b.s.uploads).toHaveLength(0); // no early product-wide upload
   await page.locator('[data-save-drafts]').click();
   const cards = page.locator('[data-colour]');
   await expect(cards).toHaveCount(3);
   expect(b.s.product.options.map((o) => [o.name, o.values.map((v) => v.value)])).toEqual([['اللون', ['بيبي بلو', 'بني', 'بينك']], ['المقاس', ['S', 'M', 'L', 'One Size']]]);
   expect(b.s.product.variants.map((v) => [v.position, v.amount_minor, v.availability])).toEqual([[0, 55000, 'available'], [1, 55000, 'available'], [2, 55000, 'available'], [3, 60000, 'available'], [4, 55000, 'unavailable']]);
 
-  // Photos per colour: 2 for baby blue, 1 for brown, each tied to that colour only
-  await cards.nth(0).locator('[data-upload]').setInputFiles([photo('blue-1.png', [169, 200, 232]), photo('blue-2.png', [150, 190, 225])]);
-  await expect(page.locator('#island')).toContainText('اترفعت 2 صورة');
+  // Exactly one upload for each file, scoped to the saved colour.
   await expect(cards.nth(0).locator('.thumb img')).toHaveCount(2);
-  await cards.nth(1).locator('[data-upload]').setInputFiles([photo('brown-1.png', [110, 75, 58])]);
   await expect(cards.nth(1).locator('.thumb img')).toHaveCount(1);
   expect(b.s.uploads.map((u) => u.variant_position)).toEqual(['0', '0', '3']);
   expect(b.s.uploads.every((u) => u.option_position === undefined && /image\/(webp|jpeg|png)/.test(u.type))).toBe(true);
@@ -211,6 +216,119 @@ test('owner builds a 3-colour model: own photos, sizes, prices and cost; saved, 
   await expect.poll(() => b.s.product.status).toBe('public');
 });
 
+
+
+test('photo-only Save preserves disabled sizes inside an otherwise available colour', async ({ page }) => {
+  const b = backend({ version: 6 });
+  b.s.product = { public_code: 'SS-9101', title: 'بلوفر', description: '', status: 'draft',
+    created_at: now, updated_at: now, base_price: { amount_minor: 70000 }, shipping_profile: null, publish_blockers: [],
+    options: [
+      { option_id: 'o0', name: 'اللون', position: 0, values: [{ value_id: 'o0v0', value: 'أسود', position: 0, active: true }] },
+      { option_id: 'o1', name: 'المقاس', position: 1, values: [
+        { value_id: 'o1v0', value: 'M', position: 0, active: true },
+        { value_id: 'o1v1', value: 'L', position: 1, active: true }
+      ] }
+    ],
+    variants: [
+      { position: 0, active: true, availability: 'available', amount_minor: 70000, price_source: 'base',
+        selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v0' }] },
+      { position: 1, active: true, availability: 'unavailable', amount_minor: 70000, price_source: 'base',
+        selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v1' }] }
+    ] };
+  b.s.stock = { 0: { quantity: 20 }, 1: { quantity: 0 } };
+  await open(page, b, owner);
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await page.goto(target + '#/products/SS-9101');
+  const card = page.locator('[data-colour]').first();
+  await card.locator('[data-upload]').setInputFiles([photo('black.png', [33, 34, 35])]);
+  await card.locator('[data-save-colour]').click();
+  await expect(card.locator('.thumb img')).toHaveCount(1);
+  expect(b.s.product.variants[0].availability).toBe('available');
+  expect(b.s.product.variants[1].availability).toBe('unavailable');
+  expect(b.s.ops.filter((x) => x.op === 'products.set_availability' || x.op === 'products.set_stock')).toHaveLength(0);
+});
+
+test('one colour Save combines new size, special price, supplier availability and queued photo', async ({ page }) => {
+  const b = backend({ version: 6 });
+  b.s.product = { public_code: 'SS-9101', title: 'سويت شيرت', description: '', status: 'draft',
+    created_at: now, updated_at: now, base_price: { amount_minor: 70000 },
+    shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: [],
+    options: [
+      { option_id: 'o0', name: 'اللون', position: 0, values: [{ value_id: 'o0v0', value: 'أسود', position: 0, active: true }] },
+      { option_id: 'o1', name: 'المقاس', position: 1, values: [{ value_id: 'o1v0', value: 'M', position: 0, active: true }] }
+    ],
+    variants: [{ position: 0, active: true, availability: 'available', amount_minor: 70000,
+      price_source: 'base', selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v0' }] }] };
+  b.s.stock = { 0: { quantity: 20 } };
+  await open(page, b, owner);
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await page.goto(target + '#/products/SS-9101');
+  const card = page.locator('[data-colour]').first();
+  await card.locator('[data-c-size="XL"]').click();
+  await card.locator('[data-c-price]').fill('750');
+  await card.locator('[data-upload]').setInputFiles([photo('black.png', [34, 35, 42])]);
+  await expect(card.locator('[data-c-queued] img')).toHaveCount(1);
+  expect(b.s.uploads).toHaveLength(0);
+  await card.locator('[data-save-colour]').click();
+  await expect.poll(() => b.s.product.variants.length).toBe(2);
+  expect(b.s.product.variants.map((v) => [v.position, v.amount_minor, v.availability]))
+    .toEqual([[0, 75000, 'available'], [1, 75000, 'available']]);
+  expect(b.s.uploads).toHaveLength(1);
+  expect(b.s.uploads[0].variant_position).toBe('0');
+  await expect(page.locator('[data-colour]').first().locator('.thumb img')).toHaveCount(1);
+});
+
+test('adding an available size never reactivates an older unavailable size', async ({ page }) => {
+  const b = backend({ version: 5 });
+  b.s.product = { public_code: 'SS-9101', title: 'سويت شيرت أسود', description: '', status: 'draft',
+    created_at: now, updated_at: now, base_price: { amount_minor: 70000 },
+    shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: [],
+    options: [
+      { option_id: 'o0', name: 'اللون', position: 0, values: [{ value_id: 'o0v0', value: 'أسود', position: 0, active: true }] },
+      { option_id: 'o1', name: 'المقاس', position: 1, values: [
+        { value_id: 'o1v0', value: 'M', position: 0, active: true },
+        { value_id: 'o1v1', value: 'L', position: 1, active: true }
+      ] }
+    ],
+    variants: [
+      { position: 0, active: true, availability: 'available', amount_minor: 70000,
+        price_source: 'base', selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v0' }] },
+      { position: 1, active: true, availability: 'unavailable', amount_minor: 70000,
+        price_source: 'base', selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v1' }] }
+    ] };
+  b.s.stock = { 0: { quantity: 20 }, 1: { quantity: 0 } };
+  await open(page, b, owner);
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await page.goto(target + '#/products/SS-9101');
+  const card = page.locator('[data-colour]').first();
+  await card.locator('[data-c-size="XL"]').click();
+  await card.locator('[data-save-colour]').click();
+  await expect.poll(() => b.s.product.variants.length).toBe(3);
+  expect(b.s.product.variants[0].availability).toBe('available');
+  expect(b.s.product.variants[1].availability).toBe('unavailable');
+  expect(b.s.stock[1].quantity).toBe(0);
+  expect(b.s.product.variants[2].availability).toBe('available');
+  expect(b.s.stock[2].quantity).toBe(20);
+  expect(b.s.ops.filter(x => x.op === 'products.set_stock').map(x => x.args.position)).toEqual([2]);
+});
+
+test('owner archives from inside product editor only after explicit confirmation', async ({ page }) => {
+  const b = backend({ version: 4 });
+  b.s.product = { public_code: 'SS-9101', title: 'بلوفر أسود', description: '', status: 'draft',
+    created_at: now, updated_at: now, base_price: { amount_minor: 70000 }, shipping_profile: null,
+    options: [], variants: [], publish_blockers: [] };
+  await open(page, b, owner);
+  await page.goto(target + '#/products/SS-9101');
+  const remove = page.locator('[data-archive-editor]');
+  await expect(remove).toBeVisible();
+  await remove.click();
+  await expect(page.locator('#layer')).toContainText('الأوردرات والسجلات القديمة');
+  expect(b.s.product.status).toBe('draft'); // opening dialog must not mutate
+  await page.locator('#layer [data-yes]').click();
+  await expect.poll(() => b.s.product.status).toBe('archived');
+  await expect(page).toHaveURL(/#\/products$/);
+});
+
 test('staff without price or owner rights edits colours but never sees or loads supplier cost', async ({ page }) => {
   const b = backend({ version: 3 });
   b.s.product = { public_code: 'SS-9101', title: 'بلوزة', description: '', status: 'draft', created_at: now, updated_at: now, base_price: { amount_minor: 45000 }, shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: [],
@@ -222,6 +340,7 @@ test('staff without price or owner rights edits colours but never sees or loads 
   await page.goto(target + '#/products/SS-9101');
   await expect(page.locator('[data-colour]')).toHaveCount(1);
   await expect(page.locator('.cost-box')).toHaveCount(0);
+  await expect(page.locator('[data-archive-editor]')).toHaveCount(0);
   await expect(page.locator('[data-c-price]')).toHaveCount(0);
   expect(b.s.ops.some((o) => o.op.startsWith('costs.'))).toBe(false);
   // Adding a colour later only adds its value and its own Variants
@@ -388,10 +507,19 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   expect(b.s.product.options[0].values.map((v) => v.value)).toEqual(['بيبي بلو', 'بني × بيج']);
   expect(b.s.product.variants).toHaveLength(2);
   await cards.nth(0).locator('[data-upload]').setInputFiles([photo('blue.png', [169, 200, 232])]);
-  await expect(cards.nth(0).locator('.thumb img')).toHaveCount(1);
+  await expect(cards.nth(0).locator('[data-c-queued] img')).toHaveCount(1);
+  expect(b.s.uploads).toHaveLength(0); // existing card also uploads only on Save
+  await cards.nth(0).locator('[data-save-colour]').click();
+  // The queue preview also has .thumb img; wait for the server-backed gallery instead.
+  await expect.poll(() => b.s.media.length).toBe(1);
+  await expect(cards.nth(0).locator('.thumbs').first().locator('figure.thumb img')).toHaveCount(1);
+  await expect(cards.nth(0).locator('[data-c-queued] img')).toHaveCount(0);
   await cards.nth(1).locator('[data-upload]').setInputFiles([photo('brown-beige.png', [110, 75, 58])]);
-  await expect(cards.nth(1).locator('.thumb img')).toHaveCount(1);
-  await expect(cards.nth(0).locator('.thumb img')).toHaveCount(1);
+  await expect(cards.nth(1).locator('[data-c-queued] img')).toHaveCount(1);
+  await cards.nth(1).locator('[data-save-colour]').click();
+  await expect.poll(() => b.s.media.length).toBe(2);
+  await expect(cards.nth(1).locator('.thumbs').first().locator('figure.thumb img')).toHaveCount(1);
+  await expect(cards.nth(0).locator('.thumbs').first().locator('figure.thumb img')).toHaveCount(1);
   expect(b.s.uploads.map((x) => x.variant_position)).toEqual(['0', '1']);
   expect(b.s.uploads.every((x) => !x.option_position)).toBe(true);
 

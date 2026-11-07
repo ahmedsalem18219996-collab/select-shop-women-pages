@@ -142,6 +142,21 @@
 .thumb-add:hover{border-color:var(--primary);color:var(--primary)}
 .thumb-add svg{inline-size:22px;block-size:22px;stroke:currentColor;fill:none;stroke-width:1.6}
 .thumbs .media{inline-size:96px}
+
+/* One-upload colour cards: selected Files preview in the SAME card before Save. */
+.thumbs>.thumb{block-size:120px;min-block-size:120px;overflow:hidden}
+.draft-colour-photos{min-block-size:124px;align-items:flex-start}
+.draft-pending-photo{position:relative;isolation:isolate}
+.draft-pending-photo .icon-btn{z-index:2;inset-block-end:6px;inset-inline-end:6px;background:var(--surface);border-radius:6px;inline-size:28px;block-size:28px}
+.draft-pending-photo .badge{z-index:1}
+[data-d-upload-progress], [data-c-queued]{min-block-size:0}
+[data-c-queue-count]:empty{display:none}
+@media(max-width:480px){
+  .colour-card .thumbs{gap:10px}
+  .colour-card [data-save-colour]{inline-size:100%;min-block-size:48px}
+  .draft-colour-photos .thumb-add{min-inline-size:96px}
+}
+
 .cost-box summary{cursor:pointer;min-block-size:36px;display:flex;align-items:center;font-weight:600}
 [data-profit][data-kind="loss"]{color:var(--danger);font-weight:600}
 [data-profit][data-kind="incomplete"]{color:var(--warn)}
