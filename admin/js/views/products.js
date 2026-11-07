@@ -3,7 +3,7 @@ import { html, render, toString, $, $$, icon, money, toMinor, fmtNum, ago, date,
 import { call, deleteProductImage, mediaUrl } from '../api.js';
 import { previewTile } from '../image-optimize.js';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js';
-import { coloursTab, previewTab } from './model-colours.js?v=20261106-colourpicker';
+import { coloursTab, previewTab } from './model-colours.js?v=20261107-one-upload';
 import { mountDescriptionEnhancer } from '../description-enhancer.js';
 import { saveCost, profitText, COST_OPS_MISSING } from '../profit.js';
 import { activityLine } from './dashboard.js';
