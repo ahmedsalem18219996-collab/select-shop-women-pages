@@ -39,7 +39,7 @@ function draftCard(dr, i, { canPrice, canMedia }) {
       <button type="button" class="btn btn-ghost btn-sm" data-drop-draft="${i}">${icon('x')}إزالة اللون ده</button></div>
     <div class="grid2">
       <div class="colour-picker-slot" data-colour-picker-slot></div>
-      <label class="field"><span>اسم اللون / لون مخصص (اختياري)</span><input class="input" data-d-name value="${dr.name}" list="palette-names" maxlength="40" placeholder="اختيار من القائمة فوق أو كتابة لون مخصص"><small>الاسم ده هو اللي هيتحفظ ويظهر للعميلة. لو اخترتي لونين هيتسجلوا كاختيار واحد.</small></label>
+      <label class="field"><span>اسم اللون / لون مخصص (اختياري)</span><input class="input" data-d-name value="${dr.name}" list="palette-names" maxlength="40" placeholder="اختيار من القائمة فوق أو كتابة لون مخصص"><small>الاسم ده هو اللي هيتحفظ ويظهر للعميل. ولو اللون مزدوج هيتسجل كاختيار واحد.</small></label>
       ${canPrice ? html`<label class="field"><span>سعر خاص للون (اختياري)</span><div class="input-money"><input data-d-price inputmode="decimal" value="${dr.priceMinor ? dr.priceMinor / 100 : ''}" placeholder="فاضي = السعر الأساسي"><span>EGP</span></div></label>` : ''}
     </div>
 
@@ -48,7 +48,7 @@ function draftCard(dr, i, { canPrice, canMedia }) {
         <label class="thumb thumb-add" data-d-photo-add>${icon('upload')}<span>اختيار صور اللون</span>
           <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" data-d-files aria-label="رفع صور اللون"></label>
       </div>
-      <small data-d-photo-count>${dr.files?.length ? dr.files.length + ' صورة جاهزة للحفظ (أول صورة هي الغلاف)' : 'ممكن تختاري عدة صور مرة واحدة، وهتترفع تلقائيًا بعد حفظ اللون.'}</small>
+      <small data-d-photo-count>${dr.files?.length ? dr.files.length + ' صورة جاهزة للحفظ (أول صورة هي الغلاف)' : 'ممكن اختيار عدة صور مرة واحدة، وهتترفع تلقائيًا بعد حفظ اللون.'}</small>
       <div class="thumbs" data-d-upload-progress aria-live="polite"></div>
     </div>` : ''}
     <div class="field"><span>المقاسات المتاحة للون ده</span>
@@ -233,7 +233,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
             }
           }
         }
-        if (failed) island('error', 'اتحفظت الألوان واترفعت ' + uploaded + ' من ' + total + ' صورة. الصور الناقصة تتضاف من كارت اللون؛ متعيديش رفع الصور الناجحة.');
+        if (failed) island('error', 'اتحفظت الألوان واترفعت ' + uploaded + ' من ' + total + ' صورة. الصور الناقصة تتضاف من كارت اللون؛ الصور اللي اترفعت بالفعل مش محتاجة تتكرر.');
         else done('اتحفظت الألوان واترفعت كل الصور (' + uploaded + ') وربطناها بألوانها.');
         reload();
       },
@@ -313,14 +313,14 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
       const extra = $('[data-c-custom]', card)?.value.trim();
       if (extra && !wanted.includes(extra)) wanted.push(extra);
       if (!wanted.length && model.sizeOption && c.active) {
-        island('error', 'اختيار مقاس واحد على الأقل، أو وقّفي اللون نفسه.'); return;
+        island('error', 'اختيار مقاس واحد على الأقل، أو إيقاف اللون نفسه.'); return;
       }
       const input = $('[data-c-price]', card);
       const priceDirty = input?.dataset.dirty === 'true';
       const raw = input?.value.trim() || '';
       const amount = raw ? toMinor(raw) : null;
       if (priceDirty && raw && (amount === null || amount < 100)) {
-        island('error', 'كتابة سعر صحيح بالجنيه، مثل 650، أو امسحي السعر الخاص للرجوع للسعر الأساسي.'); input.focus(); return;
+        island('error', 'يرجى إدخال سعر صحيح بالجنيه، زي 650، أو ترك السعر الخاص فاضي لاستخدام السعر الأساسي.'); input.focus(); return;
       }
       const desiredAvail = $('[data-c-avail]', card)?.checked;
       const files = queuedPhotos.get(Number(card.dataset.colour)) || [];
@@ -339,7 +339,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
         if (latest?.outcome !== 'ok') { island('error', 'تعذّر قراءة آخر نسخة من المنتج. مفيش صور اترفعت.'); return; }
         let freshModel = colourModel(latest.data.product, latest.data.stock, latest.data.media?.media || []);
         let current = freshModel.colours.find((x) => x.valuePosition === c.valuePosition && x.optionPosition === c.optionPosition);
-        if (!current) { island('error', 'اللون اتغير من وقت فتح الصفحة؛ حدّثي المنتج قبل الحفظ.'); return; }
+        if (!current) { island('error', 'اللون اتغير من وقت فتح الصفحة؛ يرجى تحديث المنتج قبل الحفظ.'); return; }
         const sizesPlan = model.sizeOption && can('products.edit') && c.active ? planSizes(freshModel, current, wanted) : [];
         if (sizesPlan.length) {
           if (!(await apply(sizesPlan, { ctx, p: latest.data.product, code, list }))) return;
@@ -383,7 +383,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
             grid: $('.thumbs', card), before: $('.thumb-add', card), fields: photoTarget(current)
           });
           if (result.ok !== files.length) {
-            island('error', 'اتحفظ اللون واترفعت ' + result.ok + ' من ' + files.length + ' صورة. أعيدي رفع الناقص بس، مش الصور الناجحة.');
+            island('error', 'اتحفظ اللون واترفعت ' + result.ok + ' من ' + files.length + ' صورة. إعادة رفع الصور الناقصة فقط؛ الصور الناجحة محفوظة.');
             await reload(); return;
           }
         }
@@ -397,7 +397,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
       }
     }
     if (b.matches('[data-retire]')) {
-      if (!(await confirmDialog({ title: 'وقف اللون ' + c.name, text: 'اللون هيختفي من المتجر للطلبات الجديدة. الأوردرات القديمة والصور والكود زي ما هم، وممكن ترجّعيه بعدين.', okText: 'وقّفي اللون', danger: true }))) return;
+      if (!(await confirmDialog({ title: 'وقف اللون ' + c.name, text: 'اللون هيختفي من المتجر للطلبات الجديدة. الأوردرات القديمة والصور والكود زي ما هم، وممكن إعادة تفعيله بعدين.', okText: 'إيقاف اللون', danger: true }))) return;
       await run([{ label: 'وقف اللون', op: 'products.structure', args: { change: { op: 'set_value_active', option: c.optionPosition, value: c.valuePosition, active: false } }, need: 'products.edit' }], 'اللون اتوقف.');
     }
     if (b.matches('[data-restore]')) await run([{ label: 'رجوع اللون', op: 'products.structure', args: { change: { op: 'set_value_active', option: c.optionPosition, value: c.valuePosition, active: true } }, need: 'products.edit' }], 'اللون رجع.');
@@ -470,7 +470,7 @@ function colourCard(c, ci, { model, media, can, cost, costsReady }) {
         <small data-profit="${v.position}" data-kind="${t.kind}" role="status">${t.text}</small></div>`; })}
         <div class="row"><span class="space"></span><button type="button" class="btn btn-soft btn-sm" data-save-cost>حفظ التكلفة</button></div>
         <small class="muted">الربح المبدئي = سعر البيع − تكلفة المورد. الشحن اللي بيُدفع العميل مش ربح. التكلفة بتتحفظ مع كل أوردر وقت الطلب، فتغييرها مش بيغيّر حسابات الأوردرات القديمة.</small></div></details>` : ''}
-    ${can('products.edit') && c.optionPosition !== null ? html`<div class="row"><span class="space"></span>${c.active ? html`<button type="button" class="btn btn-ghost btn-sm" data-retire>وقّفي اللون</button>` : html`<button type="button" class="btn btn-soft btn-sm" data-restore>رجّعي اللون</button>`}</div>` : ''}
+    ${can('products.edit') && c.optionPosition !== null ? html`<div class="row"><span class="space"></span>${c.active ? html`<button type="button" class="btn btn-ghost btn-sm" data-retire>إيقاف اللون</button>` : html`<button type="button" class="btn btn-soft btn-sm" data-restore>رجّعي اللون</button>`}</div>` : ''}
     <ol class="blockers" data-steps hidden></ol>
   </article>`;
 }
