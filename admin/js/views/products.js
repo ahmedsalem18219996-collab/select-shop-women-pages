@@ -139,7 +139,7 @@ async function renderList(ctx) {
     if (!can('products.publish')) return;
     const item = visibleProduct(code);
     const action = statusAction(item?.status);
-    if (!item || !action) { island('error', 'المنتج مش ظاهر في القائمة، اعملي تحديث وجربي تاني.'); return; }
+    if (!item || !action) { island('error', 'المنتج مش ظاهر في القائمة، يرجى تحديث القائمة والمحاولة مرة تانية.'); return; }
     // A product can have stale listing metadata: use the authenticated detail and
     // never publish based on client-side guesses about readiness.
     if (action.op === 'products.publish') {
@@ -156,7 +156,7 @@ async function renderList(ctx) {
       title: action.op === 'products.publish' ? 'نشر ' + item.title : 'إخفاء ' + item.title,
       text: action.op === 'products.publish'
         ? 'بعد النشر المنتج هيظهر للعملاء وهيقدروا يطلبوه. هل السعر والصور والتوافر عند المورد اتراجعوا؟'
-        : 'المنتج هيتشال من العرض مؤقتًا، من غير ما نحذف بياناته أو الأوردرات القديمة. موافقة؟',
+        : 'المنتج هيتشال من العرض مؤقتًا، من غير ما نحذف بياناته أو الأوردرات القديمة. تأكيد الإخفاء؟',
       okText: action.label
     });
     if (!yes) return;
@@ -170,7 +170,7 @@ async function renderList(ctx) {
   };
   const openQuickMobile = (code) => {
     const product = visibleProduct(code);
-    if (!product) { island('error', 'المنتج اتغير، اعملي تحديث وجربي تاني.'); return; }
+    if (!product) { island('error', 'المنتج اتغير، يرجى تحديث القائمة والمحاولة مرة تانية.'); return; }
     const box = sheet({
       title: product.title + ' · تعديل سريع',
       wide: true,
@@ -189,7 +189,7 @@ async function renderList(ctx) {
     const s = e.target.closest('[data-cat]'); if (!s) return;
     const code = s.closest('tr[data-code]')?.dataset.code;
     const original = listedGroups.flatMap(g => g.members).find(m => m.product.public_code === code)?.product;
-    if (!original) { island('error', 'المنتج اتغير، حدّثي الصفحة وجربي تاني.'); await load(); return; }
+    if (!original) { island('error', 'المنتج اتغير، يرجى تحديث الصفحة والمحاولة مرة تانية.'); await load(); return; }
     if (s.value === original.category) return;
     s.disabled = true;
     const r = await call('products.set_display', { code, category: s.value, is_new: original.is_new === true });
@@ -213,7 +213,7 @@ async function renderList(ctx) {
           catch { return { color, result: { outcome: 'network' } }; }
         }));
         if (fetched.some(x => x.result.outcome !== 'ok')) {
-          island('error', 'مش قادرين نحمل كل ألوان الموديل. مفيش أي تغيير حصل — حدّثي القائمة وجربي تاني.');
+          island('error', 'مش قادرين نحمل كل ألوان الموديل. مفيش أي تغيير حصل — يرجى تحديث القائمة والمحاولة مرة تانية.');
           return;
         }
         for (const {color, result} of fetched) {
@@ -399,7 +399,7 @@ function createSheet(ctx) {
     ordered.forEach((c) => catSel.add(new Option(c.visible === false ? `${c.name} (${t('status.hidden')})` : c.name, c.name)));
     const firstVisible = ordered.find((c) => c.visible !== false);
     if (firstVisible) catSel.value = firstVisible.name;
-  }).catch(() => message('تعذّر تحميل الأقسام. اقفل النافذة وحاول مرة تانية.')).finally(() => {
+  }).catch(() => message('تعذّر تحميل الأقسام. يرجى إغلاق النافذة والمحاولة مرة تانية.')).finally(() => {
     if (document.contains(createButton)) createButton.disabled = !catSel.value || !categories.some(c => c.name === catSel.value && c.visible !== false);
   });
   const costIn = $('#c-cost', box);
@@ -513,7 +513,7 @@ async function renderEditor(ctx, code) {
       ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} حذف المنتج</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
       <div class="card-head"><h3>استكمال الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعملاء لحد النشر</span></div>
-      <p class="muted" style="margin:0">كل لون ليه صوره ومقاساته وسعره. راجع شكل المنتج في المعاينة قبل النشر.</p>
+      <p class="muted" style="margin:0">كل لون ليه صوره ومقاساته وسعره. المعاينة بتعرض شكل المنتج للعميل قبل النشر.</p>
       <div class="row" style="flex-wrap:wrap">
         <button type="button" class="btn btn-soft btn-sm" data-setup-tab="details">١. البيانات (${p.base_price ? 'السعر متحدد' : 'السعر ناقص'}${p.shipping_profile ? '' : '، الشحن ناقص'})</button>
         <button type="button" class="btn btn-soft btn-sm" data-setup-tab="colours">٢. الألوان والصور (${visiblePhotos.length ? visiblePhotos.length + ' صورة' : 'الصور ناقصة'}${hasVirtualAvailability ? '' : '، التوافر ناقص'})</button>
@@ -549,7 +549,7 @@ async function renderEditor(ctx, code) {
     // Archive is the existing owner-only operation: never delete historical orders or reuse the code.
     const confirmed = await confirmDialog({
       title: 'حذف المنتج ' + code,
-      text: 'هيختفي المنتج من المتجر والقائمة النشطة، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. الأرشفة نهائية ومش ممكن ترجعي المنتج من لوحة الإدارة. متأكدة؟',
+      text: 'هيختفي المنتج من المتجر والقائمة النشطة، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. الأرشفة نهائية ومش ممكن استرجاع المنتج من لوحة الإدارة. تأكيد الأرشفة؟',
       okText: 'تأكيد حذف المنتج', danger: true
     });
     if (!confirmed) return;
@@ -678,7 +678,7 @@ const TABS = {
     if (!canEdit) return;
     let uploading = false;
     const upload = async (files) => {
-      if (uploading) { island('busy', 'فيه صور بتترفع بالفعل؛ متضغطيش رفع تاني قبل ما تخلص.'); return; }
+      if (uploading) { island('busy', 'فيه صور بتترفع بالفعل؛ ما ينفعش إعادة الرفع قبل اكتمال العملية الحالية.'); return; }
       uploading = true;
       const uploadField = $('#file', body);
       if (uploadField) uploadField.disabled = true;
@@ -803,7 +803,7 @@ const TABS = {
         done('تم حفظ السعر');
         void refreshAside().catch(() => {});
       } catch {
-        feedback.textContent = 'مشكلة اتصال: مش مالتأكدن إن السعر اتحفظ. حدّثي الصفحة.';
+        feedback.textContent = 'مشكلة اتصال: مش متأكدين إن السعر اتحفظ. يرجى تحديث الصفحة.';
         island('error', feedback.textContent);
       } finally { button.disabled = false; input.disabled = false; }
     };
