@@ -278,6 +278,40 @@ test('one colour Save combines new size, special price, supplier availability an
   await expect(page.locator('[data-colour]').first().locator('.thumb img')).toHaveCount(1);
 });
 
+test('adding an available size never reactivates an older unavailable size', async ({ page }) => {
+  const b = backend({ version: 5 });
+  b.s.product = { public_code: 'SS-9101', title: 'سويت شيرت أسود', description: '', status: 'draft',
+    created_at: now, updated_at: now, base_price: { amount_minor: 70000 },
+    shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: [],
+    options: [
+      { option_id: 'o0', name: 'اللون', position: 0, values: [{ value_id: 'o0v0', value: 'أسود', position: 0, active: true }] },
+      { option_id: 'o1', name: 'المقاس', position: 1, values: [
+        { value_id: 'o1v0', value: 'M', position: 0, active: true },
+        { value_id: 'o1v1', value: 'L', position: 1, active: true }
+      ] }
+    ],
+    variants: [
+      { position: 0, active: true, availability: 'available', amount_minor: 70000,
+        price_source: 'base', selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v0' }] },
+      { position: 1, active: true, availability: 'unavailable', amount_minor: 70000,
+        price_source: 'base', selections: [{ option_id: 'o0', value_id: 'o0v0' }, { option_id: 'o1', value_id: 'o1v1' }] }
+    ] };
+  b.s.stock = { 0: { quantity: 20 }, 1: { quantity: 0 } };
+  await open(page, b, owner);
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await page.goto(target + '#/products/SS-9101');
+  const card = page.locator('[data-colour]').first();
+  await card.locator('[data-c-size="XL"]').click();
+  await card.locator('[data-save-colour]').click();
+  await expect.poll(() => b.s.product.variants.length).toBe(3);
+  expect(b.s.product.variants[0].availability).toBe('available');
+  expect(b.s.product.variants[1].availability).toBe('unavailable');
+  expect(b.s.stock[1].quantity).toBe(0);
+  expect(b.s.product.variants[2].availability).toBe('available');
+  expect(b.s.stock[2].quantity).toBe(20);
+  expect(b.s.ops.filter(x => x.op === 'products.set_stock').map(x => x.args.position)).toEqual([2]);
+});
+
 test('owner archives from inside product editor only after explicit confirmation', async ({ page }) => {
   const b = backend({ version: 4 });
   b.s.product = { public_code: 'SS-9101', title: 'بلوفر أسود', description: '', status: 'draft',
