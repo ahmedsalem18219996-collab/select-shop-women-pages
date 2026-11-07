@@ -257,7 +257,7 @@ async function renderList(ctx) {
           </div>` : html`<p class="muted">تعديل القسم يحتاج صلاحية تعديل المنتجات.</p>`}
           </details>
           <details class="quick-advanced"><summary>روابط تعديل إضافية للمستخدم المتقدم</summary>
-          <p class="muted">لو مطلوب تعديل بيانات المنتج القديمة بالتفصيل فتح اللون. إضافة لون جديد للموديل أو مقاس جديد لمنتج منشور محتاجة ربط خادم آمن مش موجود حاليًا.</p>
+          <p class="muted">لتعديل بيانات المنتج القديم بالتفصيل، افتح صفحة اللون الخاصة بيه. إضافة لون جديد للموديل أو مقاس جديد لمنتج منشور محتاجة ربط خادم آمن مش موجود حاليًا.</p>
           ${allMembers.map(m => html`<div class="model-color-line">
             <span class="thumb">${m.product.image ? html`<img src="${imgUrl(m.product.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="model-dot" style="background:${m.color.hex}"></span>
