@@ -444,6 +444,9 @@ function colourCard(c, ci, { model, media, can, cost, costsReady }) {
     <div class="row" style="flex-wrap:wrap">${swatch(c.hex, c.name)}<h3 style="margin:0">${c.name || 'الموديل (لون واحد)'}</h3>
       <span class="badge ${!c.active ? '' : c.available ? 'ok' : 'warn'}">${!c.active ? 'متوقف' : c.available ? 'متاح عند المورد' : 'مش متاح'}</span>
       <span class="space"></span><b class="num">${sell === null ? 'السعر ناقص' : money(sell)}</b></div>
+    ${c.active && model.colourOption && model.colours.filter(x => x.active).length > 1 && !photos.some(m => !m.hidden)
+      ? html`<p class="note" role="status">مفيش صور مرتبطة باللون ده. صفحة المنتج هتعرض رسالة بدل صور لون تاني. رفع صور اللون وحفظها من الكارت ده قبل النشر.</p>`
+      : ''}
     <div class="field"><span>صور اختيار اللون ${photos.length ? '(' + photos.length + ')' : '— لسه ناقصة'}</span>
       <div class="thumbs">${photos.map((m, i) => html`<figure class="thumb ${m.hidden ? 'hidden' : ''}"><img src="${img(m)}" alt="${m.alt_text || c.name}" loading="lazy" width="96" height="120">
         ${i === 0 ? html`<span class="badge ok">غلاف اللون</span>` : can('media.manage') ? html`<button type="button" class="icon-btn" data-first="${m.media_id}" aria-label="تعيينها أول صورة للون" title="تعيينها أول صورة للون">${icon('star')}</button>` : ''}</figure>`)}
