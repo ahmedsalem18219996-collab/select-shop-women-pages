@@ -94,7 +94,7 @@ test('Staff gets actionable errors before create, then arrives at the colours st
   await page.locator('[data-create]').click();
   await expect(page).toHaveURL(/#\/products\/SS-9876$/);
   await expect(page.locator('#tabbody')).toContainText('الألوان والمقاسات والصور');
-  await expect(page.getByText('كمّلي الموديل في ٣ خطوات')).toBeVisible();
+  await expect(page.getByText('استكمال الموديل في ٣ خطوات')).toBeVisible();
   const creates = ops.filter(x => x.op === 'products.create');
   expect(creates).toHaveLength(1);
   expect(creates[0].args.title).toBe('بلوفر شتوي');

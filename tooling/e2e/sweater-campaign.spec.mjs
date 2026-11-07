@@ -47,7 +47,7 @@ test('click and keyboard open full-detail photo; Escape closes and restores focu
   await expect(photo).toBeFocused();
   await photo.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('button',{name:'اقفلي الصورة'}).click();
+  await page.getByRole('button',{name:'إغلاق الصورة'}).click();
   await page.locator('#lpGallery button').nth(1).click(); // a thumbnail shows that photo in place
   await expect(page.getByRole('dialog')).toBeHidden();
   await photo.click();                                     // the zoom opens the original of the photo on screen

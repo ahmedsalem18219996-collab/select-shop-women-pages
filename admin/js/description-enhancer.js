@@ -10,10 +10,10 @@ const MAX_DESCRIPTION = 10000;
 export function improveProductDescription({ title = '', description = '' } = {}) {
   const raw = collapse(description);
   if (raw.length < 6) {
-    return { ok: false, message: 'اكتبي تفاصيل بسيطة عن المنتج الأول، زي الخامة أو اللون أو المقاس.' };
+    return { ok: false, message: 'إدخال تفاصيل بسيطة عن المنتج أولًا، مثل الخامة أو اللون أو المقاس.' };
   }
-  if (/^اكتشفي .+ من SELECT SHOP\.\n\nتفاصيل المنتج:/s.test(raw)) {
-    return { ok: false, message: 'الوصف متحسّن بالفعل. تقدري تعدّليه يدويًا أو تحفظيه.' };
+  if (/^(?:نقدم لك|اكتشفي) .+ من SELECT SHOP\.\n\nتفاصيل المنتج:/s.test(raw)) {
+    return { ok: false, message: 'الوصف متحسّن بالفعل. يمكن تعديله يدويًا أو حفظه.' };
   }
   const name = unmark(collapse(title)) || 'الموديل';
   // Only reorder the staff-supplied claims. Never infer fabric, comfort,
@@ -25,16 +25,16 @@ export function improveProductDescription({ title = '', description = '' } = {})
     const key = part.toLocaleLowerCase('ar').replace(/\s+/g,' ');
     if (!seen.has(key)) { unique.push(part); seen.add(key); }
   }
-  if (!unique.length) return { ok: false, message: 'اكتبي تفاصيل المنتج الأول.' };
+  if (!unique.length) return { ok: false, message: 'إدخال تفاصيل المنتج أولًا.' };
   const facts = unique.map(x => '• ' + x).join('\n');
-  const text = `اكتشفي ${name} من SELECT SHOP.
+  const text = `نقدم لك ${name} من SELECT SHOP.
 
 تفاصيل المنتج:
 ${facts}
 
-راجعي الألوان والمقاسات المتاحة على صفحة المنتج واختاري الأنسب ليكي.`;
+مراجعة الألوان والمقاسات المتاحة على صفحة المنتج واختيار الأنسب.`;
   if (text.length > MAX_DESCRIPTION) {
-    return { ok: false, message: 'الوصف طويل جدًا للتحسين التلقائي. اختصري التفاصيل الأول من غير حذف المعلومات المهمة.' };
+    return { ok: false, message: 'الوصف طويل جدًا للتحسين التلقائي. يرجى اختصار التفاصيل أولًا من دون حذف المعلومات المهمة.' };
   }
   if (text === raw) return { ok: false, message: 'الوصف الحالي جاهز.' };
   return { ok: true, text };
@@ -62,7 +62,7 @@ export function mountDescriptionEnhancer(root, { textarea, titleInput }) {
     field.value = generated;
     field.dispatchEvent(new Event('input', { bubbles: true }));
     undo.hidden = false;
-    status.textContent = 'الوصف اتحسّن في الخانة. راجعيه وعدّليه براحتك، وبعدها اضغطي حفظ. مفيش نشر تلقائي.';
+    status.textContent = 'الوصف اتحسّن في الخانة. يرجى مراجعته وتعديله، ثم الضغط على حفظ. مفيش نشر تلقائي.';
     field.focus();
   });
   undo.addEventListener('click', () => {
@@ -72,7 +72,7 @@ export function mountDescriptionEnhancer(root, { textarea, titleInput }) {
     generated = null;
     before = null;
     undo.hidden = true;
-    status.textContent = 'رجعنا للوصف الأصلي. التعديل مش محفوظ لحد ما تضغطي حفظ.';
+    status.textContent = 'رجعنا للوصف الأصلي. التعديل مش محفوظ لحد الضغط على حفظ.';
     field.focus();
   });
   field.addEventListener('input', () => {
@@ -81,7 +81,7 @@ export function mountDescriptionEnhancer(root, { textarea, titleInput }) {
       before = null;
       generated = null;
       undo.hidden = true;
-      status.textContent = 'عدّلتي الوصف بنفسك. اضغطي حفظ لما تخلصي.';
+      status.textContent = 'تم تعديل الوصف يدويًا. يرجى الضغط على حفظ عند الانتهاء.';
     }
   });
 }

@@ -7,7 +7,7 @@ import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from '.
 
 export async function uploadPhotos({ files, code, title, version, grid, before, fields = {} }) {
   const list = [...files].filter((f) => checkSourceImage(f) === null);
-  if (!list.length) { island('error', 'اختاري صور JPG أو PNG أو WebP وحجمها مناسب. جرّبي صورة أصغر من 5MB.'); return { ok: 0, total: 0, missed: [] }; }
+  if (!list.length) { island('error', 'اختيار صور مناسبة بصيغة JPG أو PNG أو WebP. يرجى تجربة صورة أصغر من 5MB.'); return { ok: 0, total: 0, missed: [] }; }
   if (list.length !== files.length) island('error', 'فيه صور اتشالت من الدفعة لأنها مش JPG/PNG/WebP أو حجمها كبير. هنرفع الصور السليمة بس.');
   let ok = 0;
   const missed = [];

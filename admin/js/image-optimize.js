@@ -14,8 +14,8 @@ export const IMAGE_PRESETS = Object.freeze({
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 export function checkSourceImage(file) {
   if (!file || !TYPES.has(file.type) || !Number.isFinite(file.size) || file.size <= 0)
-    return 'اختاري صورة JPG أو PNG أو WebP صالحة.';
-  if (file.size > MAX_SOURCE_BYTES) return 'الصورة الأصلية أكبر من 25MB؛ اختاري ملفًا أصغر.';
+    return 'اختيار صورة صالحة بصيغة JPG أو PNG أو WebP.';
+  if (file.size > MAX_SOURCE_BYTES) return 'الصورة الأصلية أكبر من 25MB؛ يرجى اختيار ملف أصغر.';
   return null;
 }
 export function imageDimensions(width, height, maxEdge) {
@@ -35,7 +35,7 @@ export async function isAnimatedWebp(file) {
     return b.length < 21 || tag(0) !== 'RIFF' || tag(8) !== 'WEBP' || (tag(12) === 'VP8X' && (b[20] & 0x02) !== 0);
   } catch { return true; }
 }
-const limitError = () => new Error('تعذّر ضغط الصورة للجودة المطلوبة. جرّبي صورة أصغر من 5MB أو صيغة JPG/WebP.');
+const limitError = () => new Error('تعذّر ضغط الصورة للجودة المطلوبة. يرجى استخدام صورة أصغر من 5MB أو بصيغة JPG/WebP.');
 /** @param {File} source @param {'product'|'storefront'|'logo'} preset */
 export async function optimizeUploadImage(source, preset = 'product') {
   const policy = IMAGE_PRESETS[preset];
@@ -48,13 +48,13 @@ export async function optimizeUploadImage(source, preset = 'product') {
     return { file: source, originalBytes: source.size, uploadedBytes: source.size, optimized: false };
   }
   if (typeof createImageBitmap !== 'function' || typeof document === 'undefined')
-    throw new Error('متصفحك لا يدعم ضغط الصور تلقائيًا؛ استخدمي متصفحًا حديثًا.');
+    throw new Error('متصفحك لا يدعم ضغط الصور تلقائيًا؛ يلزم استخدام متصفح حديث.');
   let bitmap;
   let canvas;
   try {
     bitmap = await createImageBitmap(source);
     if (!bitmap.width || !bitmap.height || bitmap.width * bitmap.height > 70_000_000)
-      throw new Error('أبعاد الصورة كبيرة جدًا. جرّبي صورة أصغر.');
+      throw new Error('أبعاد الصورة كبيرة جدًا. يرجى تجربة صورة أصغر.');
     const size = imageDimensions(bitmap.width, bitmap.height, policy.maxEdge);
     canvas = document.createElement('canvas');
     canvas.width = size.width;
@@ -79,7 +79,7 @@ export async function optimizeUploadImage(source, preset = 'product') {
     return { file, originalBytes: source.size, uploadedBytes: file.size, optimized: true, width: size.width, height: size.height };
   } catch (e) {
     if (e instanceof Error && /^(أبعاد الصورة|تعذّر ضغط الصورة)/.test(e.message)) throw e;
-    throw new Error('مش قادرين نعالج الصورة دي. جرّبي JPG أو PNG تانية.');
+    throw new Error('مش قادرين نعالج الصورة دي. يرجى استخدام صورة أخرى بصيغة JPG أو PNG.');
   } finally {
     bitmap?.close?.();
     if (canvas) { canvas.width = 0; canvas.height = 0; }
