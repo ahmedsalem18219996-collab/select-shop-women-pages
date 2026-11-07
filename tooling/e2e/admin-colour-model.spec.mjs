@@ -493,7 +493,7 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   await second.getByLabel('اللون الأول', { exact: true }).selectOption('بني');
   await second.getByLabel('اللون الثاني', { exact: true }).selectOption('بني');
   await expect(second.locator('[data-d-name]')).toHaveValue('بني × بني');
-  await expect(second.locator('[role="alert"]')).toContainText('اختاري لونين مختلفين');
+  await expect(second.locator('[role="alert"]')).toContainText('اختيار لونين مختلفين');
   await page.locator('[data-save-drafts]').click();
   await expect(page.locator('[data-draft-error]')).toContainText('مختلفين');
   expect(b.s.ops.filter((o) => o.op === 'products.structure')).toHaveLength(0);
