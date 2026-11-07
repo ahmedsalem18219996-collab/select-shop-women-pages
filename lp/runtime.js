@@ -845,7 +845,7 @@ async function init() {
     if (mine !== ticket) return false;
     if (!p || p.publicCode !== c.code || !Array.isArray(p.variants) || !Array.isArray(p.options)) { unavailable("القطعة دي مش متاحة دلوقتي."); return false; }
     if (page.auto) fillFromProduct(p);
-    if (p.purchasable !== true || priceLabel(p, null) === "—") { unavailable(colors.length > 1 ? "اللون ده خلص حاليًا، اختيار لون تاني." : "القطعة دي خلصت حاليًا."); return false; }
+    if (p.purchasable !== true || priceLabel(p, null) === "—") { unavailable(colors.length > 1 ? "اللون ده خلص حاليًا. فيه ألوان تانية متاحة." : "القطعة دي خلصت حاليًا."); return false; }
     product = p;
     variantMixChoices = page.auto ? variantColourChoices(p) : [];
     mixBox.hidden = !(colors.length > 1 || variantMixChoices.length > 1);
