@@ -356,7 +356,7 @@ function createSheet(ctx) {
       ${ctx.can('products.price') ? html`<label class="field"><span>${t('create.price')}</span><div class="input-money"><input id="c-price" inputmode="decimal" autocomplete="off" placeholder="مثال: 650"><span class="sr">سعر بيع المنتج بالجنيه المصري</span><span>EGP</span></div></label>` : ''}
     </div>
     ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هتحدده مسؤولة التسعير بعد الحفظ.</p>` : ''}
-    ${ctx.can('owner') ? html`<label class="field"><span>تكلفة المورد (اختياري، للإدارة فقط)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعميلات ولا في المتجر.</small></label>` : ''}
+    ${ctx.can('owner') ? html`<label class="field"><span>تكلفة المورد (اختياري، للإدارة فقط)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعملاء ولا في المتجر.</small></label>` : ''}
     <label class="field"><span>${t('create.description')} (اختياري)</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
     <div class="desc-helper" data-description-helper>
       <div class="row" style="flex-wrap:wrap;gap:8px">
@@ -406,7 +406,7 @@ function createSheet(ctx) {
   const profitLine = () => {
     const out = $('[data-c-profit]', box); if (!out) return;
     const cost = costIn.value.trim() ? toMinor(costIn.value.trim()) : null, sell = toMinor($('#c-price', box)?.value.trim() || '');
-    out.textContent = cost === null ? 'التكلفة مش بتظهر للعميلات ولا في المتجر.' : profitText(sell, cost, money).text;
+    out.textContent = cost === null ? 'التكلفة مش بتظهر للعملاء ولا في المتجر.' : profitText(sell, cost, money).text;
   };
   costIn?.addEventListener('input', profitLine);
   $('#c-price', box)?.addEventListener('input', profitLine);
