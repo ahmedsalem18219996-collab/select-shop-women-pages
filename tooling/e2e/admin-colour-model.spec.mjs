@@ -476,11 +476,16 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   await expect(cards.nth(0).locator('[data-c-queued] img')).toHaveCount(1);
   expect(b.s.uploads).toHaveLength(0); // existing card also uploads only on Save
   await cards.nth(0).locator('[data-save-colour]').click();
-  await expect(cards.nth(0).locator('.thumb img')).toHaveCount(1);
+  // The queue preview also has .thumb img; wait for the server-backed gallery instead.
+  await expect.poll(() => b.s.media.length).toBe(1);
+  await expect(cards.nth(0).locator('.thumbs').first().locator('figure.thumb img')).toHaveCount(1);
+  await expect(cards.nth(0).locator('[data-c-queued] img')).toHaveCount(0);
   await cards.nth(1).locator('[data-upload]').setInputFiles([photo('brown-beige.png', [110, 75, 58])]);
+  await expect(cards.nth(1).locator('[data-c-queued] img')).toHaveCount(1);
   await cards.nth(1).locator('[data-save-colour]').click();
-  await expect(cards.nth(1).locator('.thumb img')).toHaveCount(1);
-  await expect(cards.nth(0).locator('.thumb img')).toHaveCount(1);
+  await expect.poll(() => b.s.media.length).toBe(2);
+  await expect(cards.nth(1).locator('.thumbs').first().locator('figure.thumb img')).toHaveCount(1);
+  await expect(cards.nth(0).locator('.thumbs').first().locator('figure.thumb img')).toHaveCount(1);
   expect(b.s.uploads.map((x) => x.variant_position)).toEqual(['0', '1']);
   expect(b.s.uploads.every((x) => !x.option_position)).toBe(true);
 
