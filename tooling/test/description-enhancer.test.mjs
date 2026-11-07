@@ -27,6 +27,8 @@ test('blank and already polished descriptions do not fabricate details or add du
   assert.equal(improveProductDescription({title:'فستان',description:'جامد'}).ok,false);
   const first=improveProductDescription({title:'فستان',description:'لون أسود، مقاس M'});
   assert.equal(improveProductDescription({title:'فستان',description:first.text}).ok,false);
+  const legacy='اكتشفي فستان من SELECT SHOP.\n\nتفاصيل المنتج:\n• لون أسود\n• مقاس M\n\nراجعي الألوان والمقاسات المتاحة على صفحة المنتج واختاري الأنسب ليكي.';
+  assert.equal(improveProductDescription({title:'فستان',description:legacy}).ok,false,'legacy female-only polished descriptions must not be re-wrapped');
 });
 
 test('oversized text is rejected rather than silently truncated or losing factual claims', () => {
