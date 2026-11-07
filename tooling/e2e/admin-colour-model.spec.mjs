@@ -481,7 +481,7 @@ test('staff picker searches colours and saves a two-tone garment as one option w
   const drafts = page.locator('[data-draft]');
   const first = drafts.first();
   await expect(first.locator('[data-colour-picker-slot]')).toBeVisible();
-  await first.locator('[aria-label="ابحثي عن اللون"]').fill('بيب');
+  await first.locator('[aria-label="البحث عن اللون"]').fill('بيب');
   await expect(first.locator('[aria-label="اختيار لون المنتج من القائمة"] option')).toHaveCount(2);
   await first.locator('[aria-label="اختيار لون المنتج من القائمة"]').selectOption('بيبي بلو');
   await expect(first.locator('[data-d-name]')).toHaveValue('بيبي بلو');
