@@ -52,6 +52,26 @@ test("choosing a colour switches to its photos, shows only its real sizes and it
   if (test.info().project.name === "mobile") await page.screenshot({ path: test.info().outputPath("lp-colour-model.png") });
 });
 
+test("customer first sees a clear colour picker below the photo, not mixed colour images", async ({ page }) => {
+  await page.goto("/lp/?p=SS-9101");
+  await expect(page.locator("#lpQuickColors")).toBeVisible();
+  await expect(page.locator("#lpQuickColors")).toContainText("اختيار اللون");
+  await expect(page.locator("#lpQuickColors")).toContainText("متوفر لونين");
+  // Single authoritative radio group: the selected colour is bound to the cart's Variant.
+  await expect(page.locator("input[name=opt0]")).toHaveCount(3);
+  await expect(page.locator("#lpOrder")).toBeDisabled();
+  await expect(hero(page)).toHaveAttribute("src", /b1b1/);
+  const initialPhotos = await page.locator("#lpGallery img").evaluateAll(imgs => imgs.map(img => img.src));
+  expect(initialPhotos.every(src => !/c1c1/.test(src))).toBe(true);
+  await page.locator("#lpQuickColors label:has(input[name=opt0][value='1'])").click();
+  await expect(page.locator("#lpQuickColors")).toContainText("فيه لون تاني");
+  await expect(hero(page)).toHaveAttribute("src", /c1c1/);
+  await expect(page.locator("#lpOrder")).toBeEnabled(); // brown's only size is selected
+  await expect(page.locator("#lpBarChoice")).toContainText("بني");
+  await expect(page.locator(".order h2")).toContainText("تسجيل الطلب");
+  await expect(page.locator("#lpMixToggle")).not.toContainText("عايزة");
+});
+
 test("new Admin model: two colours and distinct sizes in one COD order (isolated mock)", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
   await page.goto("/lp/?p=SS-9101");
