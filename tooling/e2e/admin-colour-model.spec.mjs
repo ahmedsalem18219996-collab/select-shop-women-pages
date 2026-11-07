@@ -175,6 +175,8 @@ test('owner builds a 3-colour model: own photos, sizes, prices and cost; saved, 
   // Exactly one upload for each file, scoped to the saved colour.
   await expect(cards.nth(0).locator('.thumb img')).toHaveCount(2);
   await expect(cards.nth(1).locator('.thumb img')).toHaveCount(1);
+  await expect(cards.nth(2)).toContainText('مفيش صور مرتبطة باللون ده');
+  await expect(cards.nth(0)).not.toContainText('مفيش صور مرتبطة باللون ده');
   expect(b.s.uploads.map((u) => u.variant_position)).toEqual(['0', '0', '3']);
   expect(b.s.uploads.every((u) => u.option_position === undefined && /image\/(webp|jpeg|png)/.test(u.type))).toBe(true);
 
