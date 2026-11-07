@@ -47,7 +47,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
     const product = detail.product;
     const rows = variantChoices(product, detail.stock);
     if (!rows.length) {
-      panel.innerHTML = '<p role="alert">اللون ده مالوش مقاسات أو اختيارات محفوظة. فتح بيانات المنتج لإصلاحه قبل النشر.</p>' +
+      panel.innerHTML = '<p role="alert">اللون ده مالوش مقاسات أو اختيارات محفوظة. يرجى فتح بيانات المنتج لإصلاحه قبل النشر.</p>' +
         '<a class="btn btn-soft" data-quick-link href="#/products/' + esc(code) + '">فتح المنتج</a>';
       bindLink(); return;
     }
@@ -95,7 +95,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       '<label class="quick-check"><input type="checkbox" data-quick-available ' + (chosen.availability ? 'checked ' : '') + (canQty ? '' : 'disabled') +
       '> <span>متاح للتوريد من المورد</span></label>',
       '<p class="muted quick-help">الكمية افتراضية مش مخزون عندك. قبل تأكيد الأوردر لازم مراجعة اللون والمقاس والسعر عند المورد.</p>',
-      (canPrice || canQty ? '<button type="button" class="btn btn-primary quick-save" data-quick-save>حفظ تعديل الاختيار ده</button>' : '<p class="muted">حسابك للعرض فقط. مسؤول التسعير أو الإتاحة تقدر تحفظ التعديلات.</p>'),
+      (canPrice || canQty ? '<button type="button" class="btn btn-primary quick-save" data-quick-save>حفظ تعديل الاختيار ده</button>' : '<p class="muted">حسابك للعرض فقط. فريق التسعير أو الإتاحة عنده صلاحية حفظ التعديلات.</p>'),
       '</div>',
       '<div class="quick-section">',
       '<div class="quick-header"><b>٤. صور اللون ده</b><span class="muted">' + visiblePhotos.length + ' صورة</span></div>',
