@@ -144,10 +144,10 @@ export function egMobile(/** @type {string} */ raw) {
 export function checkBuyer(/** @type {{name:string, phone:string, region:string, address:string}} */ f) {
   /** @type {Record<string,string>} */
   const errors = {};
-  if (f.name.trim().length < 2) errors.name = "اكتبي اسمك";
-  if (!egMobile(f.phone)) errors.phone = "اكتبي رقم موبايل مصري صحيح، زي 01012345678";
-  if (!f.region) errors.region = "اختاري المحافظة";
-  if (f.address.trim().length < 5) errors.address = "اكتبي العنوان بالتفصيل";
+  if (f.name.trim().length < 2) errors.name = "كتابة اسمك";
+  if (!egMobile(f.phone)) errors.phone = "كتابة رقم موبايل مصري صحيح، زي 01012345678";
+  if (!f.region) errors.region = "اختيار المحافظة";
+  if (f.address.trim().length < 5) errors.address = "كتابة العنوان بالتفصيل";
   return errors;
 }
 
@@ -406,10 +406,36 @@ function fillFromProduct(/** @type {any} */ p) {
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
 }
 
+
+/** Customer-facing static copy uses nouns, not gendered imperatives. Works for
+ * automatic /lp/?p= and previously generated campaign pages without rebuilding
+ * ads or changing their product identifiers. */
+function neutralLandingCopy() {
+  const set = (selector, value) => {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = value;
+  };
+  set(".top .jump", "نموذج الطلب");
+  const orderHeading = document.querySelector(".order h2");
+  if (orderHeading?.firstChild?.nodeType === 3) orderHeading.firstChild.textContent = "تسجيل الطلب";
+  set(".order h2 small", "بيانات التوصيل فقط. تأكيد التوافر وميعاد الشحن بعد تسجيل الطلب.");
+  set("#lpAddCart", "إضافة للشنطة");
+  set(".f select[name=region] option[value='']", "اختيار المحافظة");
+  set("#lpQtyLabel", "الكمية");
+  set("#lpQtyUp", "+");
+  set("#lpQtyDown", "−");
+  document.querySelector("#lpQtyUp")?.setAttribute("aria-label", "زيادة الكمية");
+  document.querySelector("#lpQtyDown")?.setAttribute("aria-label", "تقليل الكمية");
+  set(".notes li:nth-child(2)", "مصاريف الشحن والإجمالي بتظهر بعد اختيار المحافظة.");
+  set(".done a", "تصفح منتجات تانية");
+  set("#lpBarChoice", "اختيار اللون والمقاس");
+}
+
 async function init() {
   const dataEl = document.getElementById("lp-data");
   if (!dataEl) return;
   const page = JSON.parse(dataEl.textContent || "{}");
+  neutralLandingCopy();
   if (page.auto) {
     // /lp/?p=SS-1008 (and the older ?code=) open the automatic page; anything else goes to the storefront.
     const q = new URLSearchParams(location.search);
@@ -543,14 +569,14 @@ async function init() {
   mixBox.hidden = true; // enable only when multiple purchasable colours are confirmed
   const mixToggle = document.createElement("button");
   mixToggle.type = "button"; mixToggle.id = "lpMixToggle";
-  mixToggle.textContent = "عايزة أكتر من لون؟ حددي كمية كل لون";
+  mixToggle.textContent = "أكتر من لون؟ تحديد كمية كل لون";
   mixToggle.setAttribute("aria-expanded", "false");
   const mixRows = document.createElement("div");
   mixRows.id = "lpMixRows"; mixRows.hidden = true;
   mixRows.setAttribute("aria-label", "عدد القطع من كل لون");
   const mixHint = document.createElement("p");
   mixHint.id = "lpMixHint";
-  mixHint.textContent = "كل لون هيتسجل في نفس الأوردر بالعدد اللي تختاريه.";
+  mixHint.textContent = "كل لون هيتسجل في نفس الطلب بالعدد المحدد.";
   mixHint.hidden = true;
   mixBox.append(mixToggle, mixHint, mixRows);
   // Lightweight CSS is attached only on model pages with multiple colours.
@@ -600,7 +626,7 @@ async function init() {
         const btn = document.createElement("button");
         btn.type = "button"; btn.textContent = delta > 0 ? "+" : "−";
         btn.dataset.mixCode = color.code; btn.dataset.delta = String(delta);
-        btn.setAttribute("aria-label", (delta > 0 ? "زوّدي " : "قلّلي ") + (color.name || color.code));
+        btn.setAttribute("aria-label", (delta > 0 ? "زيادة " : "تقليل ") + (color.name || color.code));
         btn.disabled = mixBusy || busy || (delta < 0 && count === 0) ||
           (delta > 0 && (mixCount() >= MAX_QTY || count >= MAX_QTY));
         controls.append(btn);
@@ -636,7 +662,7 @@ async function init() {
   cartBtn.addEventListener("click", async () => {
     if (cartBusy || busy) return;
     const line = lineNow();
-    if (!line || !lineOk(line)) { say('اختاري اللون والمقاس الأول.', true); return; }
+    if (!line || !lineOk(line)) { say('اختيار اللون والمقاس الأول.', true); return; }
     cartBusy = true; cartBtn.disabled = true; cartBtn.textContent = 'بنضيف…';
     try {
       // Server validates options and availability. It does not create an order.
@@ -653,10 +679,10 @@ async function init() {
       funnel('add_to_cart', { currency: 'EGP',
         ...(okMinor(variant.unitPrice?.amountMinor) ? { value: variant.unitPrice.amountMinor * line.quantity / 100 } : {}),
         items: [{ item_id: line.publicCode, item_variant: variantLabel(), quantity: line.quantity }] });
-      say('اتضافت للشنطة ✓ كمّلي تسوق أو افتحي الشنطة من فوق.');
+      say('اتضافت للشنطة ✓ استكمال تسوق أو فتح الشنطة من فوق.');
     } catch (e) {
-      say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة وصلت للحد الأقصى. افتحي الشنطة لتعديلها.' :
-        'مش قادرين نضيف للشنطة دلوقتي. تقدري تطلبي مباشرة من نفس الصفحة.', true);
+      say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة وصلت للحد الأقصى. فتح الشنطة لتعديلها.' :
+        'مش قادرين نضيف للشنطة دلوقتي. ممكن تطلبي مباشرة من نفس الصفحة.', true);
     } finally {
       cartBusy = false; cartBtn.textContent = 'أضيفي للشنطة'; cartBtn.disabled = !lineNow() || busy;
     }
@@ -686,7 +712,7 @@ async function init() {
       (mixMode ? (currentLines().length ? mixedSubtotal : null) : (unitMinor === null ? null : unitMinor * qty));
     const ship = minorOf(quote?.shippingTotal), total = minorOf(quote?.grandTotal);
     $("#lpSub").textContent = sub === null ? "—" : egp(sub) + " ج";
-    $("#lpShip").textContent = ship !== null ? (ship === 0 ? "مجاني" : egp(ship) + " ج") : !region.value ? "اختاري المحافظة" : quoting ? "بنحسب…" : "—";
+    $("#lpShip").textContent = ship !== null ? (ship === 0 ? "مجاني" : egp(ship) + " ج") : !region.value ? "اختيار المحافظة" : quoting ? "بنحسب…" : "—";
     $("#lpTotal").textContent = total === null ? "—" : egp(total) + " ج";
     $("#lpBarPrice").textContent = total !== null ? egp(total) + " ج" : unit === "—" ? "—" : unit + " ج";
     if (choiceEl && product) choiceEl.textContent = mixMode
@@ -713,7 +739,7 @@ async function init() {
     } catch (e) {
       if (mine !== quoteTicket) return;
       quoteError = true;
-      say(/** @type {any} */ (e)?.message === "checkout_not_purchasable" ? "الكمية دي مش متاحة حاليًا، قللي العدد أو اختاري مقاس تاني." : "مش قادرين نحسب الشحن دلوقتي. جرّبي تاني.", true);
+      say(/** @type {any} */ (e)?.message === "checkout_not_purchasable" ? "الكمية دي مش متاحة حاليًا، قللي العدد أو اختيار مقاس تاني." : "مش قادرين نحسب الشحن دلوقتي. إعادة المحاولة.", true);
     } finally { if (mine === quoteTicket) { quoting = false; paint(); } }
   };
 
@@ -776,7 +802,7 @@ async function init() {
       const box = document.createElement("fieldset");
       box.className = "lp-opt";
       const legend = document.createElement("legend");
-      legend.textContent = i === ci ? "اختار اللون" : (o.name || "المقاس");
+      legend.textContent = i === ci ? "اختيار اللون" : (o.name || "المقاس");
       box.append(legend);
       for (const val of o.values) {
         const label = document.createElement("label");
@@ -811,13 +837,13 @@ async function init() {
     try { p = await load(c.code); }
     catch (e) {
       // A missing product is unavailable; a network failure leaves no verified price either, so neither is shown.
-      if (mine === ticket) unavailable(/** @type {any} */ (e)?.status === 404 ? "القطعة دي مش متاحة دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. جرّبي تاني بعد شوية.");
+      if (mine === ticket) unavailable(/** @type {any} */ (e)?.status === 404 ? "القطعة دي مش متاحة دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. إعادة المحاولة بعد شوية.");
       return false;
     }
     if (mine !== ticket) return false;
     if (!p || p.publicCode !== c.code || !Array.isArray(p.variants) || !Array.isArray(p.options)) { unavailable("القطعة دي مش متاحة دلوقتي."); return false; }
     if (page.auto) fillFromProduct(p);
-    if (p.purchasable !== true || priceLabel(p, null) === "—") { unavailable(colors.length > 1 ? "اللون ده خلص حاليًا، اختاري لون تاني." : "القطعة دي خلصت حاليًا."); return false; }
+    if (p.purchasable !== true || priceLabel(p, null) === "—") { unavailable(colors.length > 1 ? "اللون ده خلص حاليًا، اختيار لون تاني." : "القطعة دي خلصت حاليًا."); return false; }
     product = p;
     variantMixChoices = page.auto ? variantColourChoices(p) : [];
     mixBox.hidden = !(colors.length > 1 || variantMixChoices.length > 1);
@@ -858,7 +884,7 @@ async function init() {
     if (busy || mixBusy || !product) return;
     if (!mixMode) {
       if (!variantMixChoices.length && (!variant || product.options.length)) {
-        say("اختاري مقاس القطعة الأول، أو استخدمي الشنطة للمنتجات بمقاسات مختلفة.", true);
+        say("اختيار مقاس القطعة الأول، أو استخدمي الشنطة للمنتجات بمقاسات مختلفة.", true);
         return;
       }
       mixEntries.clear();
@@ -871,7 +897,7 @@ async function init() {
     } else {
       mixMode = false;
       mixRows.hidden = true; mixHint.hidden = true;
-      mixToggle.textContent = "عايزة أكتر من لون؟ حددي كمية كل لون";
+      mixToggle.textContent = "أكتر من لون؟ تحديد كمية كل لون";
       mixToggle.setAttribute("aria-expanded", "false");
     }
     if (singleQtyBox) singleQtyBox.style.display = mixMode ? "none" : "";
@@ -902,12 +928,12 @@ async function init() {
         const v = p?.options?.length === 0 ? findVariant(p, []) : null;
         if (!p || p.publicCode !== code || p.purchasable !== true ||
             v?.purchasable !== true || !okMinor(v.unitPrice?.amountMinor)) {
-          say("اللون ده مش متاح حاليًا أو ليه مقاسات مختلفة. اختاري لون تاني.", true);
+          say("اللون ده مش متاح حاليًا أو ليه مقاسات مختلفة. اختيار لون تاني.", true);
           return;
         }
         mixEntries.set(code, { product: p, variant: v, quantity: 0 });
       } catch {
-        say("مش قادرين نتأكد من توفر اللون ده دلوقتي. جرّبي تاني.", true);
+        say("مش قادرين نتأكد من توفر اللون ده دلوقتي. إعادة المحاولة.", true);
         return;
       } finally {
         mixBusy = false;
@@ -948,7 +974,7 @@ async function init() {
     if (text) el.setAttribute("aria-invalid", "true"); else el.removeAttribute("aria-invalid");
     if (out) out.textContent = text;
   };
-  const FIELD_HELP = "كمّلي البيانات المطلوبة.";
+  const FIELD_HELP = "استكمال البيانات المطلوبة.";
   for (const n of fieldNames) fieldEl(n).addEventListener(n === "region" ? "change" : "input", () => {
     markField(n, "");
     if (status.textContent === FIELD_HELP && !form.querySelector("[aria-invalid=true]")) say(""); // all fixed: drop the stale hint
@@ -978,7 +1004,7 @@ async function init() {
     const summary = lines.map(l =>
       labelForLine(l, lines.length === 1) + " × " +
       new Intl.NumberFormat("ar-EG").format(l.quantity)).join("، ");
-    $("#lpDoneText").textContent = (total !== null ? "هتدفعي " + egp(total) + " ج عند الاستلام. " : "") +
+    $("#lpDoneText").textContent = (total !== null ? "المطلوب دفعه " + egp(total) + " ج عند الاستلام. " : "") +
       (summary ? "الألوان المطلوبة: " + summary + ". " : "") +
       "طلبك قيد المراجعة، والتوافر وميعاد الشحن بيتأكدوا قبل التأكيد النهائي.";
     form.hidden = true;
@@ -1007,7 +1033,7 @@ async function init() {
     if (firstBad) { say(FIELD_HELP, true); fieldEl(firstBad).focus(); return; }
     if (!quote) { await requote(); if (!quote) return; }
     if (JSON.stringify(currentLines()) !== intent) {
-      say("الكميات اتغيرت. راجعي الألوان وأكّدي تاني.", true);
+      say("الكميات اتغيرت. مراجعة الألوان وتأكيد تاني.", true);
       return;
     }
     const q = quote;
@@ -1029,25 +1055,25 @@ async function init() {
     } catch (err) {
       const error = /** @type {any} */ (err), data = error?.data || {};
       if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines); return; }
-      if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب السابق اتلغى من المتجر. تقدري تأكدي طلب جديد.", true); }
+      if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب السابق اتلغى من المتجر. ممكن التأكد طلب جديد.", true); }
       else if (error?.message === "checkout_changed") {
-        say("السعر أو الشحن اتغير. راجعي الإجمالي الجديد وأكّدي تاني.", true);
+        say("السعر أو الشحن اتغير. مراجعة الإجمالي الجديد وتأكيد تاني.", true);
         // Same total after a fresh quote = the server refused for stock (fewer units left than asked), not price.
         const before = minorOf(q.grandTotal);
-        void requote().then(() => { if (quote && minorOf(quote.grandTotal) === before) say("الكمية المطلوبة أكبر من المتاح دلوقتي. قلّلي العدد وأكّدي تاني.", true); });
+        void requote().then(() => { if (quote && minorOf(quote.grandTotal) === before) say("الكمية المطلوبة أكبر من المتاح دلوقتي. تقليل العدد وتأكيد تاني.", true); });
       }
       else if (error?.message === "checkout_not_purchasable" || error?.message === "unavailable" || error?.message === "selection_changed") {
         cache.delete(current.code);
-        void show(current).then(() => say("الكمية أو المقاس ده مش متاح دلوقتي. غيّري الاختيار وأكّدي تاني.", true));
+        void show(current).then(() => say("الكمية أو المقاس ده مش متاح دلوقتي. غيّري الاختيار وتأكيد تاني.", true));
       } else if (error?.message === "invalid_request" && data.fields && typeof data.fields === "object") {
         const map = /** @type {Record<string,string>} */ ({ name: "name", phone: "phone", area: "region", address: "address" });
-        for (const [k, problem] of Object.entries(data.fields)) if (map[k]) markField(map[k], problem === "too_long" ? "النص طويل، اختصريه." : "راجعي الخانة دي.");
-        say("راجعي البيانات المظللة.", true);
-      } else if (error?.message === "rate_limited") say("محاولات كتير ورا بعض. استني دقيقة وجرّبي تاني.", true);
+        for (const [k, problem] of Object.entries(data.fields)) if (map[k]) markField(map[k], problem === "too_long" ? "النص طويل، اختصريه." : "مراجعة الخانة دي.");
+        say("مراجعة البيانات المظللة.", true);
+      } else if (error?.message === "rate_limited") say("محاولات كتير ورا بعض. استني دقيقة وإعادة المحاولة.", true);
       // Order taking switched off by the store, or the server could not verify the request: nothing was saved.
-      else if (error?.message === "orders_not_enabled" || error?.message === "source_unavailable") say("استقبال الطلبات متوقف مؤقتًا، ومفيش طلب اتسجل. جرّبي تاني بعد شوية.", true);
+      else if (error?.message === "orders_not_enabled" || error?.message === "source_unavailable") say("استقبال الطلبات متوقف مؤقتًا، ومفيش طلب اتسجل. إعادة المحاولة بعد شوية.", true);
       // Unknown outcome (timeout, network, 5xx): the SAME key is reused on retry, so the server returns the same order.
-      else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. اضغطي «تأكيد الطلب» تاني، مش هيتكرر.", true);
+      else say("مش مالتأكدن إن الطلب اتسجل بسبب الاتصال. الضغط على «تأكيد الطلب» تاني، مش هيتكرر.", true);
     } finally { busy = false; }
     cta.disabled = !product || (mixMode ? !currentLines().length : !lineNow());
     cartBtn.disabled = mixMode || !lineNow() || cartBusy;
