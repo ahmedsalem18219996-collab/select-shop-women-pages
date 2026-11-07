@@ -247,8 +247,8 @@ test("multi-size product: size required, sold-out disabled, prices follow the si
   await expectPrices(page, "من ١٬٢٠٠");
   await fillBuyer(page);
   expect(sent).toEqual([]); // no quote without a size
-  await page.locator("#lpOrder").click();
-  await expect(page.locator("#lpStatus")).toHaveText("اختاري المقاس الأول.");
+  // The customer cannot submit an incomplete colour/size selection.
+  await expect(page.locator("#lpOrder")).toBeDisabled();
   const chip = page.getByText("M", { exact: true });
   expect((await chip.boundingBox()).height).toBeGreaterThanOrEqual(44); // comfortable tap target
   // Interaction latency (INP proxy) of the size tap alone, measured by the browser's Event Timing API.
