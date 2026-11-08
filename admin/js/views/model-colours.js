@@ -461,7 +461,7 @@ function colourCard(c, ci, { model, media, can, cost, costsReady }) {
       ${can('inventory.manage') && c.active ? html`<label class="switch" style="align-self:center"><input type="checkbox" data-c-avail ${c.available ? 'checked' : ''}><i></i>متاح عند المورد</label>` : ''}
     </div>
     ${(can('products.edit') || can('products.price') || can('inventory.manage') || can('media.manage')) && c.active ? html`<div class="row"><span class="space"></span><button type="button" class="btn btn-primary" data-save-colour>حفظ اللون والصور</button></div>` : ''}
-    ${can('owner') && costsReady ? html`<details class="cost-box" ${live.some((v) => cost(v.position) === null) ? 'open' : ''}><summary>تكلفة المورد والربح (للإدارة فقط)</summary>
+    ${can('owner') && costsReady ? html`<details class="cost-box" open><summary>سعر المورد والربح (للمالك فقط)</summary>
       <div class="stack" style="margin-top:8px">${live.map((v) => { const k = cost(v.position); const t = profitText(v.amountMinor ?? sell, k, money); return html`<div class="row" style="flex-wrap:wrap">
         <span style="min-width:72px">${v.size ?? ONE_SIZE}</span><div class="input-money" style="max-width:140px"><input data-cost="${v.position}" inputmode="decimal" value="${k === null ? '' : k / 100}" placeholder="التكلفة" aria-label="تكلفة ${c.name} ${v.size ?? ''}"><span>EGP</span></div>
         <small data-profit="${v.position}" data-kind="${t.kind}" role="status">${t.text}</small></div>`; })}
