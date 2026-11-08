@@ -270,8 +270,8 @@ test('one colour Save combines new size, special price, supplier availability an
   await expect(card.locator('[data-c-queued] img')).toHaveCount(1);
   expect(b.s.uploads).toHaveLength(0);
   await card.locator('[data-save-colour]').click();
-  await expect.poll(() => b.s.product.variants.length).toBe(2);
-  expect(b.s.product.variants.map((v) => [v.position, v.amount_minor, v.availability]))
+  // A new Variant appears before its price and availability mutations finish.
+  await expect.poll(() => b.s.product.variants.map((v) => [v.position, v.amount_minor, v.availability]))
     .toEqual([[0, 75000, 'available'], [1, 75000, 'available']]);
   // Upload starts after asynchronous Variant/price/availability saves, so wait for
   // the upload itself. Variant count reaching 2 is not evidence that upload finished.
