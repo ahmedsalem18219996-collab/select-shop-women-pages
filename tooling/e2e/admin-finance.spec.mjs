@@ -21,6 +21,8 @@ async function openAs(page, role, options = {}) {
       if (role === 'owner' && op === 'profit.summary') r = { outcome:'ok', data:{ lines: [
         { order_code:'A',status:'delivered',quantity:1,line_total_minor:60000,unit_cost_minor:40000 },
         { order_code:'B',status:'delivered',quantity:1,line_total_minor:100000,unit_cost_minor:40000 },
+        // Defensive fixture: completed return still present in a stale profit summary.
+        { order_code:'C',status:'delivered',quantity:1,line_total_minor:70000,unit_cost_minor:30000 },
       ]}};
       if (role === 'owner' && op === 'orders.list') {
         const data = args?.status === 'confirmed'
