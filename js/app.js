@@ -6,6 +6,12 @@
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const CFG = window.SELECT_CONFIG || {};
+  // Keep legacy public branding gender-neutral without mutating Owner settings.
+  // A custom Owner-entered store name / announcement is never replaced.
+  const publicLabel = value => {
+    const text = String(value ?? '').trim();
+    return /^select(?: shop)? wom(?:an|en)$/i.test(text) ? 'SELECT SHOP' : text;
+  };
   const fmt = n => Number(n).toLocaleString('en-US');
   const esc = v => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const cssColor = v => /^#[0-9a-f]{3,8}$/i.test(v || '') ? v : '#B9BCC8';
@@ -49,7 +55,7 @@
     // node after the asynchronous catalog arrived shifted the entire homepage.
     const banner = $('#womenOwnerAnnouncement');
     if (banner) {
-      banner.textContent = String(content.announcement || brand.storeName || 'SELECT SHOP WOMEN').slice(0, 160);
+      banner.textContent = publicLabel(content.announcement || brand.storeName || 'SELECT SHOP').slice(0, 160);
       // The owner-selected brand colour is not the Atelier announcement trim:
       // keep the storefront's olive/brass design consistent (no inline override).
     }
@@ -58,7 +64,7 @@
     if (hero) {
       const first = hero.firstChild;
       if (first && first.nodeType === Node.TEXT_NODE)
-        first.textContent = (String(content.hero_title || 'ستايل يناسبك').slice(0, 100)) + ' ';
+        first.textContent = (String(content.hero_title === 'اختاري ستايلك' ? 'ستايل يناسبك' : (content.hero_title || 'ستايل يناسبك')).slice(0, 100)) + ' ';
       const colored = hero.querySelector('.hl');
       if (colored) colored.textContent = String(content.hero_highlight || 'بطريقتك.').slice(0, 70);
     }
@@ -73,9 +79,9 @@
         : description;
     }
     if (brand.storeName) {
-      document.title = String(brand.storeName).slice(0, 100);
+      document.title = publicLabel(brand.storeName).slice(0, 100);
       const copyright = $('.foot > span');
-      if (copyright) copyright.textContent = '© 2026 ' + String(brand.storeName).slice(0, 100);
+      if (copyright) copyright.textContent = '© 2026 ' + publicLabel(brand.storeName).slice(0, 100);
     }
     const freshNote = $('#demoNote');
     if (freshNote) {
@@ -85,7 +91,7 @@
       freshNote.textContent = CFG.loadError
         ? 'تعذّر تحميل المنتجات حاليًا. البيانات التجريبية مش معروضة، يرجى تحديث الصفحة.'
         : P.length ? 'من صفحة المنتج يمكن اختيار اللون والمقاس وإكمال الطلب.'
-          : 'متجر WOMEN قيد التجهيز · لا توجد طلبات شراء مفعّلة حاليًا';
+          : 'المتجر قيد التجهيز · مفيش منتجات منشورة دلوقتي';
     }
     const storySection = $('#stories')?.parentElement;
     if (storySection && !STORIES.length) storySection.hidden = true;

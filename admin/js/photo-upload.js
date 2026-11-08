@@ -50,5 +50,5 @@ export async function uploadPhotos({ files, code, title, version, grid, before, 
 
 /** Message after a batch, and the failed tiles put back once the page shows the saved photos. */
 export function uploadSummary({ ok, total, missed }) {
-  return ok === total ? '' : 'اترفع ' + ok + ' من ' + total + ' صورة. ما اترفعتش: ' + missed.map((m) => m.file.name).join('، ') + '. الصور الأصلية على جهازك زي ما هي؛ أعيدي رفع الناقص بس.';
+  return ok === total ? '' : 'اترفع ' + ok + ' من ' + total + ' صورة. ما اترفعتش: ' + missed.map((m) => m.file.name).join('، ') + '. الصور الأصلية على جهازك زي ما هي؛ إعادة رفع الصور الناقصة فقط.';
 }
