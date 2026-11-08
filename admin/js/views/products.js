@@ -586,7 +586,7 @@ async function renderEditor(ctx, code) {
     if (revealAfterLoad) revealOwnerCosts = false;
     await TABS[name](body, { ctx, d, p, code, reload });
     // Cost data loads asynchronously: reveal only when the colour cards are rendered.
-    if (revealAfterLoad && body.isConnected) $('.cost-box', body).forEach(panel => { panel.open = true; });
+    if (revealAfterLoad && body.isConnected) $$('.cost-box', body).forEach(panel => { panel.open = true; });
   };
   segmented($('.seg', el), show);
   $$('[data-setup-tab]', el).forEach(button => button.addEventListener('click', () => {
