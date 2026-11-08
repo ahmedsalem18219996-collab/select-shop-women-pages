@@ -21,7 +21,7 @@ applyTheme(); applyLang();
 const NAV = [
   { group: null, items: [{ path: 'dashboard', icon: 'home', perm: 'dashboard.view' }] },
   { group: 'catalog', items: [{ path: 'products', icon: 'box', perm: 'products.view' }, { path: 'traffic', icon: 'globe', perm: 'dashboard.view' }, { path: 'categories', icon: 'tag', perm: 'categories.manage' }] },
-  { group: 'sales', items: [{ path: 'orders', icon: 'cart', perm: 'orders.view' }, { path: 'customers', icon: 'users', perm: 'customers.view' }, { path: 'shipping', icon: 'truck', perm: 'shipping.view' }] },
+  { group: 'sales', items: [{ path: 'orders', icon: 'cart', perm: 'orders.view' }, { path: 'finance', icon: 'money', perm: 'owner' }, { path: 'customers', icon: 'users', perm: 'customers.view' }, { path: 'shipping', icon: 'truck', perm: 'shipping.view' }] },
   { group: 'store', items: [{ path: 'storefront', icon: 'layout', perm: 'storefront.manage' }, { path: 'settings', icon: 'gear', perm: 'settings.view' }] },
   { group: 'admin', items: [{ path: 'team', icon: 'shield', perm: 'owner' }, { path: 'activity', icon: 'clock', perm: 'audit.view' }] },
 ];
@@ -37,7 +37,7 @@ const V = new URL(import.meta.url).searchParams.get('v') || '0';
 const view = (name) => import(`./views/${name}.js?v=${V}`);
 const VIEWS = {
   dashboard: () => view('dashboard'), products: () => view('products'), traffic: () => view('traffic'), categories: () => view('categories'),
-  orders: () => view('orders'), customers: () => view('customers'), shipping: () => view('shipping'),
+  orders: () => view('orders'), finance: () => view('finance'), customers: () => view('customers'), shipping: () => view('shipping'),
   storefront: () => view('storefront'), settings: () => view('settings'), team: () => view('team'),
   activity: () => view('activity'),
 };
