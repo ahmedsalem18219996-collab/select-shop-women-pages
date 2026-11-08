@@ -297,7 +297,7 @@ test("automatic page for any product: old /lp/?p= and ?code= links order directl
   for (const url of ["/lp/?p=SS-1099", "/lp/?code=ss-1099"]) {
     await page.goto(url);
     await expect(page.locator("h1")).toHaveText("Leather jacket");
-    await expect(page).toHaveTitle("Leather jacket · SELECT SHOP WOMEN");
+    await expect(page).toHaveTitle("Leather jacket · SELECT SHOP");
     await expectPrices(page, "١٬٢٠٠");
     await expect(page.locator("#lpForm")).toBeVisible();
     await expect.poll(() => page.locator("#lpHero img").evaluate(i => i.currentSrc)).toMatch(/\/assets\/catalog-thumbs\/[0-9a-f]{32}\.jpg\.(w400\.)?webp$/);

@@ -21,13 +21,13 @@
 <script id="theme-boot">(()=>{const d=document.documentElement,K="ssw.theme.v1";let t="dark";const read=()=>{try{return localStorage.getItem(K)==="light"?"light":"dark"}catch(e){return"dark"}},set=x=>{t=x;d.dataset.theme=x;const m=document.querySelector('meta[name="theme-color"]'),l=x==="light"?"التحويل للوضع الداكن":"التحويل للوضع الفاتح";if(m)m.content=x==="light"?"#F7F3EC":"#050B1C";for(const b of document.querySelectorAll("[data-theme-toggle]")){b.setAttribute("aria-label",l);b.title=l}};set(read());document.addEventListener("click",e=>{const b=e.target instanceof Element&&e.target.closest("[data-theme-toggle]");if(!b)return;set(t==="light"?"dark":"light");try{localStorage.setItem(K,t)}catch(e){}});document.addEventListener("DOMContentLoaded",()=>set(t));addEventListener("pageshow",e=>{if(e.persisted)set(read())})})()</script>
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://byluoipdunralsurwebt.supabase.co" crossorigin>
-<title>تفاصيل المنتج | SELECT SHOP WOMEN</title>
+<title>تفاصيل المنتج | SELECT SHOP</title>
 <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../css/fonts.css">
 <link rel="stylesheet" href="../css/styles.css">
 <link rel="stylesheet" href="../css/commerce.css?v=product-perf-20261022">
 <style id="women-premium-minimal">
-/* SELECT SHOP WOMEN — premium minimal v3. Small critical overlay: no extra stylesheet, font or JS request. */
+/* SELECT SHOP — premium minimal v3. Small critical overlay: no extra stylesheet, font or JS request. */
 :root{
   --mirror:#F8F5F4;--chalk:#fff;--ink:#2A2129;--tape:#F1EAEE;--pin:#7A5C71;
   --dust:#665963;--hair:#E7DCE2;--f-display:"Readex Pro","Segoe UI",Tahoma,sans-serif;
@@ -158,7 +158,7 @@ body{background:var(--mirror)}
 <body class="atelier-product"><div class="app">
 <header class="hdr">
   <div class="wrap hdr-in">
-    <a href="/" class="logo" aria-label="Select Shop Woman — الرئيسية"><b>select</b><small>shop woman</small></a>
+    <a href="/" class="logo" aria-label="SELECT SHOP — الرئيسية"><b>select</b><small>shop</small></a>
     <nav class="hdr-links" aria-label="الأقسام">
       <a href="/#shop">وصل جديد</a><a href="/#shop">فساتين</a><a href="/#shop">أطقم</a><a href="/#shop">عبايات</a><a href="/#shop" style="color:var(--pin)">تخفيضات</a>
     </nav>
@@ -171,7 +171,7 @@ body{background:var(--mirror)}
     </div>
   </div>
 </header>
-<div class="commerce-tape" aria-hidden="true"><div class="commerce-tape-inner"><span>SELECT SHOP WOMAN</span><span class="commerce-tape-ticks"></span><span>اختيار اللي على مقاسك</span></div></div>
+<div class="commerce-tape" aria-hidden="true"><div class="commerce-tape-inner"><span>SELECT SHOP</span><span class="commerce-tape-ticks"></span><span>اختيار اللي على مقاسك</span></div></div>
 <main class="commerce wrap">
 <nav class="commerce-quick-links" aria-label="تنقل سريع"><a href="/#shop">← كل المنتجات</a><a href="/cart/">🛍️ شنطتك</a></nav>
 
@@ -198,7 +198,7 @@ body{background:var(--mirror)}
     <img id="photoZoomed" alt="">
     <button type="button" id="photoNext" aria-label="الصورة التالية">›</button>
   </div>
-  <p class="commerce-lightbox-help">اسحبي الصورة يمين أو شمال للتنقل، واغلقيها للرجوع للتفاصيل.</p>
+  <p class="commerce-lightbox-help">يمكن التنقل بين الصور بالسحب يمينًا أو شمالًا، ثم إغلاق المعاينة للرجوع للتفاصيل.</p>
 </dialog>
 </main><div class="commerce-mobile-buybar" id="productMobileBuyBar" hidden>
 <div><span class="commerce-mobile-label">السعر الحالي</span><span class="commerce-mobile-price" id="productMobilePrice">—</span></div>

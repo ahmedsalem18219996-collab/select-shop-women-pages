@@ -50,7 +50,7 @@ function authShell(inner) {
     <aside class="auth-art" aria-hidden="true"><div class="tape-wall"></div>
       <div class="art-copy"><b>${t('auth.artTitle')}</b><span>${t('auth.artText')}</span></div></aside>
     <main class="auth-panel">
-      <div class="row"><div class="brand"><b>select</b><small>women admin</small></div><span class="space"></span>
+      <div class="row"><div class="brand"><b>select</b><small>shop admin</small></div><span class="space"></span>
         <div class="auth-tools">
           <button class="icon-btn" data-lang aria-label="${t('nav.language')}">${icon('globe')}</button>
           <button class="icon-btn" data-theme-toggle aria-label="${t('nav.theme')}">${icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon')}</button>
@@ -217,7 +217,7 @@ async function route() {
   const el = document.createElement('div');
   $('#view', app).replaceChildren(el);
   const title = mod.title ? mod.title(rest) : t('nav.' + target);
-  $('#page-title', app).textContent = title; document.title = `${title} · SELECT WOMEN`;
+  $('#page-title', app).textContent = title; document.title = `${title} · SELECT SHOP`;
   state.view?.destroy?.();
   state.view = mod;
   try {

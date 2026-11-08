@@ -395,7 +395,7 @@ ${o.fontFaces}
 ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
 <body${campaign ? ' data-campaign="focused"' : ""}>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP WOMEN الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}${THEME_TOGGLE}</header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}${THEME_TOGGLE}</header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">
@@ -418,7 +418,7 @@ ${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · ا
 ${o.video}
 </div>
 </main>
-<footer><strong dir="ltr">SELECT SHOP WOMEN</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
+<footer><strong dir="ltr">SELECT SHOP</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
 ${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}-gallery1106"></script>
@@ -442,7 +442,7 @@ export function render(page, products, fontFaces = "") {
   return layout({
     campaign: page.campaign,
     source: ` from tooling/pages/${esc(page.id)}.json`,
-    title: `${esc(title)} · SELECT SHOP WOMEN`,
+    title: `${esc(title)} · SELECT SHOP`,
     description: `${esc(title)}. يمكن تسجيل الطلب من نفس الصفحة، مع الدفع عند الاستلام والشحن لكل المحافظات.`,
     canonical: `<link rel="canonical" href="https://selectshopeg.com/lp/${esc(page.id)}/">\n`,
     preload: `<link rel="preload" as="image" type="image/avif" imagesrcset="${hero.avif}" imagesizes="${sizes}" fetchpriority="high">\n`,
@@ -454,7 +454,7 @@ export function render(page, products, fontFaces = "") {
     choice: esc((first.name ? first.name + " · " : "") + (oneSize ? "مقاس واحد" : "اختيار المقاس")),
     benefits: page.benefits || DEFAULT_BENEFITS,
     more: page.campaign?.colourNote ? `<p>${esc(page.campaign.colourNote)}</p>` : lines.slice(1).map(l => `<p>${esc(l)}</p>`).join(""),
-    video: page.video ? `<button type="button" class="video" data-lp-video="${esc(page.video.src)}">▶ شغّلي الفيديو</button>` : "",
+    video: page.video ? `<button type="button" class="video" data-lp-video="${esc(page.video.src)}">▶ تشغيل الفيديو</button>` : "",
     noscript: `<a href="/p/?code=${esc(first.code)}">فتح صفحة المنتج لإتمام الطلب</a>`,
     data: JSON.stringify({ id: page.id, code: first.code, colors, ...(page.campaign ? { directOnly: page.campaign.directOnly === true, campaign: true } : {}) }).replace(/</g, "\\u003c"),
     scripts: '<script type="module" src="/lp/image-zoom.js?v=20261106-theme"></script>',
@@ -489,8 +489,8 @@ export async function shellRoutes() {
 export function renderShell(fontFaces = "", routes = {}) {
   const code = `String(new URLSearchParams(location.search).get("p")||new URLSearchParams(location.search).get("code")||"").trim().toUpperCase()`;
   return layout({
-    source: " (automatic product page)", title: "SELECT SHOP WOMEN",
-    description: "يمكن تسجيل الطلب من نفس الصفحة عبر SELECT SHOP WOMEN، مع الدفع عند الاستلام والشحن لكل المحافظات.",
+    source: " (automatic product page)", title: "SELECT SHOP",
+    description: "يمكن تسجيل الطلب من نفس الصفحة عبر SELECT SHOP، مع الدفع عند الاستلام والشحن لكل المحافظات.",
     canonical: "", preload: "", codeExpr: code, fontFaces, route: ROUTE(routes),
     hero: `<img alt="" width="800" height="1067" decoding="async"${HERO_READY}>`, gallery: "", count: 0, h1: "", price: "—", desc: "", picker: "", options: "",
     choice: "اختيار المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",

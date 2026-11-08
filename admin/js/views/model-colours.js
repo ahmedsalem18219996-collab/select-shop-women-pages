@@ -383,7 +383,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
             grid: $('.thumbs', card), before: $('.thumb-add', card), fields: photoTarget(current)
           });
           if (result.ok !== files.length) {
-            island('error', 'اتحفظ اللون واترفعت ' + result.ok + ' من ' + files.length + ' صورة. أعيدي رفع الناقص بس، مش الصور الناجحة.');
+            island('error', 'اتحفظ اللون واترفعت ' + result.ok + ' من ' + files.length + ' صورة. إعادة رفع الصور الناقصة فقط، مش الصور الناجحة.');
             await reload(); return;
           }
         }

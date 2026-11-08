@@ -373,7 +373,7 @@ function paintPhotos(/** @type {any[]} */ list, /** @type {string} */ alt) {
 /** Automatic page: fill the pre-rendered layout from the live product (title, photos, description). */
 function fillFromProduct(/** @type {any} */ p) {
   const title = String(p.title || "").trim().slice(0, 200);
-  document.title = title + " · SELECT SHOP WOMEN";
+  document.title = title + " · SELECT SHOP";
   /** @type {HTMLElement} */ (document.getElementById("lpTitle")).textContent = title;
   // Before a colour is picked, show the photos shared by every colour (all photos when none are shared).
   const all = liveMedia(p), shared = all.filter((/** @type {any} */ m) => !m.target || m.target.kind === "product");

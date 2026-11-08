@@ -162,7 +162,7 @@ async function renderList(ctx) {
     if (!yes) return;
     const res = await withBusy(button, () => call(action.op, { code }));
     if (['published', 'hidden', 'already_public', 'already_hidden'].includes(res?.outcome)) {
-      done(action.op === 'products.publish' ? 'المنتج اتنشر للعميلات' : 'المنتج اتخفى مؤقتًا من المتجر');
+      done(action.op === 'products.publish' ? 'المنتج اتنشر للعملاء' : 'المنتج اتخفى مؤقتًا من المتجر');
       await load(); void refreshCounts();
     } else if (res?.outcome === 'rejected' && Array.isArray(res.blockers)) {
       island('error', 'النشر مرفوض لأن فيه بيانات ناقصة: ' + res.blockers.map(b => t('blocker.' + b, b)).join('، '));
