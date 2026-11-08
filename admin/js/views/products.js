@@ -536,6 +536,327 @@ async function renderEditor(ctx, code) {
       wide: true,
       body: html`<div class="stack">
         <p class="muted">اختيار المقاس وتعديل السعر والإتاحة والصور من نفس الشاشة. المقاسات غير المسجلة هتظهر بوضوح.</p>
-       
-... (output truncated, full output saved to: /mnt/files/.composio/output/bash_same_stdout.txt)
-Run 'cat /mnt/files/.composio/output/bash_same_stdout.txt' to view the full output, or use 'head -n 100 /mnt/files/.composio/output/bash_same_stdout.txt' / 'tail -n 100 /mnt/files/.composio/output/bash_same_stdout.txt' to view parts of it.
+        <div class="quick-colors" data-quick-colors role="group" aria-label="المنتج"></div>
+        <div data-quick-panel aria-live="polite"></div>
+      </div>`,
+      foot: html`<button class="btn btn-ghost" type="button" data-close>إغلاق</button>${can('products.price') || can('inventory.manage') ? html`<button type="button" class="btn btn-primary" data-quick-save-footer>حفظ اللون والمقاس</button>` : ''}`
+    });
+    mountQuickProductEditor({
+      box, ctx,
+      members: [{ product: { ...p, image: d.card?.image || null }, color: { name: 'المنتج', hex: '#66768B' } }],
+      onChanged: reload
+    });
+  });
+  $('[data-archive-editor]', el)?.addEventListener('click', async (e) => {
+    // Archive is the existing owner-only operation: never delete historical orders or reuse the code.
+    const confirmed = await confirmDialog({
+      title: 'حذف المنتج ' + code,
+      text: 'هيختفي المنتج من المتجر والقائمة النشطة، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. الأرشفة نهائية، ولا يمكن استعادة المنتج من لوحة الإدارة. تأكيد الأرشفة؟',
+      okText: 'تأكيد حذف المنتج', danger: true
+    });
+    if (!confirmed) return;
+    const res = await withBusy(e.currentTarget, () => call('products.archive', { code }));
+    if (['archived', 'already_archived'].includes(res?.outcome)) {
+      done('اتحذف المنتج من العرض واتحفظ تاريخ الأوردرات.');
+      ctx.go('products');
+    } else fail(res);
+  });
+  $('[data-pub]', el)?.addEventListener('click', async (e) => {
+    const publish = p.status !== 'public';
+    if (publish && !visiblePhotos.length) {
+      island('error', 'المنتج لسه مالوش صور ظاهرة. رفع صورة واحدة على الأقل قبل النشر.');
+      $('[data-v="media"]', el)?.click();
+      return;
+    }
+    if (publish && !p.shipping_profile) {
+      island('error', 'طريقة الشحن مش محددة. اختيار طريقة الشحن من تبويب البيانات قبل النشر.');
+      $('[data-v="details"]', el)?.click();
+      return;
+    }
+    const res = await withBusy(e.currentTarget, () => call(publish ? 'products.publish' : 'products.hide', { code }));
+    if (['published', 'hidden', 'already_public', 'already_hidden'].includes(res.outcome)) { done(); reload(); }
+    else if (res.outcome === 'rejected' && res.blockers) island('error', t('editor.blockers'), res.blockers.map((b) => t('blocker.' + b, b)).join('، '));
+    else fail(res);
+  });
+  const body = $('#tabbody', el);
+  const show = (name) => { tab = name; sessionStorage.setItem('wa.ptab', name); TABS[name](body, { ctx, d, p, code, reload }); };
+  segmented($('.seg', el), show);
+  $$('[data-setup-tab]', el).forEach(button => button.addEventListener('click', () => {
+    const target = button.dataset.setupTab;
+    $('[data-v="' + target + '"]', el)?.click();
+  }));
+  show(tab);
+}
+
+function publishCard(p, d) {
+  const blockers = p.publish_blockers || [];
+  const photosReady = (d.media?.media || []).some(m => !m.hidden && !m.delete_pending);
+  const soft = [!p.shipping_profile && 'noShipping', !photosReady && 'noMedia'].filter(Boolean);
+  return html`<section class="card"><div class="card-head"><h3>${t('editor.publishTitle')}</h3>${statusBadge(p.status)}</div>
+    ${blockers.length ? html`<p class="muted" style="margin:0 0 8px">${t('editor.blockers')}</p><ul class="blockers">${blockers.map((b) => html`<li>${icon('alert')}${t('blocker.' + b, b)}</li>`)}</ul>`
+      : soft.length ? html`<p class="muted" style="margin:0">المنتج ناقصه حاجات قبل النشر:</p>`
+      : html`<div class="ready">${t('editor.ready')}</div>`}
+    ${soft.length ? html`<ul class="blockers" style="margin-top:8px">${soft.map((b) => html`<li>${icon('alert')}${t('blocker.' + b)}</li>`)}</ul>` : ''}</section>`;
+}
+
+const TABS = {
+  colours: coloursTab,
+  preview: previewTab,
+  details(body, { ctx, d, p, code, reload }) {
+    const { can } = ctx;
+    render(body, html`<div class="stack">
+      <form class="card stack" id="f-text"><div class="card-head"><h3>${t('editor.details')}</h3></div>
+        <label class="field"><span>${t('editor.title')}</span><input class="input" id="e-title" value="${p.title}" maxlength="200" ${can('products.edit') ? '' : 'disabled'}></label>
+        <label class="field"><span>${t('editor.description')}</span><textarea class="textarea" id="e-desc" maxlength="10000" ${can('products.edit') ? '' : 'disabled'}>${p.description || ''}</textarea></label>
+        ${can('products.edit') ? html`<div class="desc-helper" data-description-helper>
+          <div class="row" style="flex-wrap:wrap;gap:8px">
+            <button type="button" class="btn btn-soft" data-desc-improve>✨ تحسين الوصف مجانًا</button>
+            <button type="button" class="btn btn-ghost" data-desc-undo hidden>رجوع للوصف الأصلي</button>
+          </div>
+          <p class="muted" data-desc-message role="status" aria-live="polite">مراجعة الوصف المحسّن قبل حفظ التعديل. مفيش نشر تلقائي.</p>
+        </div>` : ''}
+        ${can('products.edit') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-text>${t('app.save')}</button></div>` : ''}</form>
+      <section class="card stack"><div class="card-head"><h3>${t('editor.display')}</h3></div>
+        <div class="grid2"><label class="field"><span>${t('editor.category')}</span><select class="select" id="e-cat" ${can('products.edit') ? '' : 'disabled'}>${categories.map((c) => html`<option ${c.name === d.card.category ? 'selected' : ''}>${c.name}</option>`)}</select></label>
+          <label class="field"><span>${t('editor.basePrice')}</span><div class="input-money"><input id="e-price" inputmode="decimal" value="${p.base_price ? (p.base_price.amount_minor / 100) : ''}" ${can('products.price') ? '' : 'disabled'}><span>EGP</span></div></label></div>
+        <label class="switch"><input type="checkbox" id="e-new" ${d.card.is_new ? 'checked' : ''} ${can('products.edit') ? '' : 'disabled'}><i></i>${t('editor.isNew')}</label>
+        <label class="field"><span>${t('editor.shipping')}</span><select class="select" id="e-ship" ${can('shipping.manage') ? '' : 'disabled'}>
+          <option value="">${t('editor.shippingNone')}</option>${(d.shipping_profiles || []).map((s) => html`<option value="${s.key}" ${p.shipping_profile?.key === s.key ? 'selected' : ''}>${s.name}</option>`)}</select></label>
+        ${can('products.edit') || can('products.price') || can('shipping.manage') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-display>${t('app.save')}</button></div>` : ''}</section></div>`);
+    if (can('products.edit')) {
+      try { mountDescriptionEnhancer(body, { textarea: '#e-desc', titleInput: '#e-title' }); }
+      catch {
+        const btn = $('[data-desc-improve]', body);
+        if (btn) btn.disabled = true;
+        const hint = $('[data-desc-message]', body);
+        if (hint) hint.textContent = 'كتابة الوصف وحفظه عادي؛ التحسين المجاني مش متاح دلوقتي.';
+      }
+    }
+    $('#f-text', body).addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const res = await withBusy($('[data-save-text]', e.currentTarget), () => call('products.update_text', { code, title: $('#e-title', body).value.trim(), description: $('#e-desc', body).value.trim(), updated_at: p.updated_at }));
+      if (res.outcome === 'updated') { done(); reload(); } else if (res.outcome === 'unchanged') done(t('settings.unchanged'));
+      else if (res.outcome === 'conflict') { island('error', t('editor.conflict')); reload(); } else fail(res);
+    });
+    $('[data-save-display]', body)?.addEventListener('click', async (e) => {
+      await withBusy(e.currentTarget, async () => {
+        const jobs = [];
+        const cat = $('#e-cat', body).value, isNew = $('#e-new', body).checked;
+        if (can('products.edit') && (cat !== d.card.category || isNew !== d.card.is_new)) jobs.push(call('products.set_display', { code, category: cat, is_new: isNew }));
+        const priceIn = $('#e-price', body).value.trim();
+        if (can('products.price') && priceIn) { const v = toMinor(priceIn); if (v === null || v < 100) { island('error', t('err.invalid'), t('editor.basePrice')); return; } if (v !== p.base_price?.amount_minor) jobs.push(call('products.set_price', { code, amount_minor: v })); }
+        const ship = $('#e-ship', body).value;
+        if (can('shipping.manage') && ship && ship !== p.shipping_profile?.key) jobs.push(call('products.set_shipping_profile', { code, profile_key: ship }));
+        const results = await Promise.all(jobs);
+        const bad = results.find((x) => x.outcome !== 'saved');
+        if (bad) fail(bad); else { done(); reload(); }
+      });
+    });
+  },
+
+  media(body, { ctx, d, code, reload }) {
+    const media = [...(d.media?.media || [])].filter((m) => !m.delete_pending).sort((a, b) => a.position - b.position);
+    const canEdit = ctx.can('media.manage');
+    const variants = d.product?.variants || [];
+    const options = d.product?.options || [];
+    const variantName = (v) => (v.selections || []).map(s => options.find(o=>o.option_id===s.option_id)?.values.find(x=>x.value_id===s.value_id)?.value || '?').join(' / ') || 'مقاس واحد';
+    render(body, html`<section class="card stack"><div class="card-head"><h3>${t('editor.media')}</h3><span class="muted">${fmtNum(media.length)}</span></div>
+      <p class="muted" style="margin:0;font-size:12.5px">${t('editor.uploadHint')} يمكن اختيار أكثر من صورة مرة واحدة؛ النظام يضغط الصور قبل الرفع. أول صورة ظاهرة بتكون الغلاف. <strong>لو المنتج ليه ألوان مختلفة، اختيار اللون والمقاس المناسب من القائمة قبل الرفع.</strong></p>
+      ${canEdit && variants.length ? html`<label class="field"><span>الصور تخص أنهي لون ومقاس؟</span><select class="select" id="m-variant"><option value="">صور عامة للمنتج</option>${variants.map(v=>html`<option value="${v.position}">${variantName(v)}</option>`)}</select><small>اختيار اللون/المقاس قبل رفع الصور. الصور العامة لكل الاختيارات.</small></label>` : ""}
+      <div class="media-grid">
+        ${media.map((m, i) => html`<figure class="media ${m.hidden ? 'hidden' : ''}" data-id="${m.media_id}" style="margin:0">
+          <img src="${imgUrl(m.storage_path)}" alt="${m.alt_text || ''}" loading="lazy">
+          <small class="muted" style="display:block;max-width:120px;overflow-wrap:anywhere">${m.scope === "variant" ? (m.variant?.values || []).join(" / ") : m.scope === "option_value" ? m.option_value?.value : "كل الألوان"}</small>
+          ${i === 0 ? html`<span class="badge ok cover">${t('editor.cover')}</span>` : ''}
+          ${canEdit ? html`<div class="tools">
+            ${i > 0 ? html`<button class="icon-btn" data-act="primary" title="${t('editor.makeCover')}" aria-label="${t('editor.makeCover')}">${icon('star')}</button>` : ''}
+            <button class="icon-btn" data-act="left" aria-label="${t('editor.moveUp')}" ${i === 0 ? 'disabled' : ''}>${icon(document.dir === 'rtl' ? 'chev' : 'chevBack')}</button>
+            <button class="icon-btn" data-act="right" aria-label="${t('editor.moveDown')}" ${i === media.length - 1 ? 'disabled' : ''}>${icon(document.dir === 'rtl' ? 'chevBack' : 'chev')}</button>
+            <button class="icon-btn" data-act="hide" aria-label="${m.hidden ? t('editor.showImg') : t('editor.hideImg')}">${icon(m.hidden ? 'eye' : 'eyeOff')}</button>
+            <button class="icon-btn" data-act="delete" aria-label="${t('editor.deleteImg')}">${icon('trash')}</button></div>` : ''}
+        </figure>`)}
+        ${canEdit ? html`<label class="drop" id="drop">${icon('upload')}<span>${t('editor.upload')}</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" id="file"></label>` : ''}
+      </div>${!media.length && !canEdit ? html`<p class="muted">${t('editor.noMedia')}</p>` : ''}</section>`);
+    if (!canEdit) return;
+    let uploading = false;
+    const upload = async (files) => {
+      if (uploading) { island('busy', 'فيه صور بتترفع بالفعل؛ يرجى عدم بدء رفع جديد قبل انتهاء الرفع الحالي.'); return; }
+      uploading = true;
+      const uploadField = $('#file', body);
+      if (uploadField) uploadField.disabled = true;
+      // Keep the chosen option stable for every photo in the same batch.
+      const variantPos = $('#m-variant', body)?.value;
+      try {
+        const result = await uploadPhotos({ files, code, title: d.product.title, version: d.media?.structure_version ?? d.product.structure_version,
+          grid: $('.media-grid', body), before: $('#drop', body), fields: { variant_position: variantPos } });
+        if (!result.total) return;
+        if (result.ok === result.total) { done('تم رفع ' + result.ok + ' صورة. مراجعة الغلاف وربط الصور بالألوان قبل النشر.'); reload(); }
+        else {
+          if (result.ok) {
+            // Show the saved photos as real media, then put the failed ones back so the retry list stays visible.
+            await reload();
+            const grid = $('.media-grid'), drop = $('#drop');
+            if (grid) result.missed.forEach((m) => previewTile(grid, drop, m.file).failed(m.text));
+          }
+          island('error', uploadSummary(result));
+        }
+      } finally {
+        uploading = false;
+        if (uploadField && document.contains(uploadField)) { uploadField.disabled = false; uploadField.value = ''; }
+      }
+    };
+    $('#file', body).addEventListener('change', (e) => upload(e.target.files));
+    const drop = $('#drop', body);
+    ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', (e) => upload(e.dataTransfer.files));
+    body.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const id = b.closest('[data-id]').dataset.id, idx = media.findIndex((m) => m.media_id === id);
+      let res;
+      if (b.dataset.act === 'primary') res = await call('media.set_primary', { code, media_id: id });
+      if (b.dataset.act === 'hide') res = await call('media.set_hidden', { code, media_id: id, hidden: !media[idx].hidden });
+      if (b.dataset.act === 'left' || b.dataset.act === 'right') {
+        const ids = media.map((m) => m.media_id), j = idx + (b.dataset.act === 'left' ? -1 : 1);
+        [ids[idx], ids[j]] = [ids[j], ids[idx]]; res = await call('media.reorder', { code, media_ids: ids });
+      }
+      if (b.dataset.act === 'delete') {
+        if (!(await confirmDialog({ title: t('editor.deleteImg'), text: t('editor.deleteImgQ'), okText: t('app.delete'), danger: true }))) return;
+        // The database only deletes a hidden photo (MD006): take it off the store first, then delete it.
+        if (!media[idx].hidden) {
+          const h = await call('media.set_hidden', { code, media_id: id, hidden: true });
+          if (h.outcome !== 'saved') { fail(h); return; }
+        }
+        res = await deleteProductImage(code, id);
+      }
+      if (['saved', 'deleted'].includes(res?.outcome)) { done(); reload(); } else if (res) fail(res);
+    });
+  },
+
+  variants(body, { ctx, d, p, code, reload }) {
+    const { can } = ctx;
+    const valueOf = (v) => v.selections?.length ? v.selections.map((s) => p.options.find((o) => o.option_id === s.option_id)?.values.find((x) => x.value_id === s.value_id)?.value).join(' / ') : '—';
+    render(body, html`<div class="stack">
+      <section class="card stack variants"><div class="card-head"><h3>${t('editor.variants')}</h3><span class="muted">${fmtNum(p.variants.length)}</span></div>
+      <p class="muted" style="margin:0">المخزون هنا افتراضي: إدخال عدد تنظيمي موجب للون والمقاس المتاح للتوريد من المورد، مع تفعيل «متاح». يرجى مراجعة المورد قبل تأكيد أي طلب. لحفظ سعر لون معين، يتم إدخال السعر والضغط على زر «حفظ السعر» في الصف نفسه. الرقم الرمادي مثال للسعر الأساسي فقط. يتم حفظ الكمية والإتاحة عند الخروج من الخانة.</p>
+      <button type="button" class="btn btn-primary btn-sm" data-open-quick-colours>اختيار اللون والمقاس وتعديل السعر بسهولة</button>
+      ${p.variants.length ? html`<div class="table-wrap"><table class="t"><thead><tr><th>${t('editor.variant')}</th><th>${t('editor.vPrice')}</th><th title="عدد تنظيمي افتراضي، مش قطع مخزنة">كمية افتراضية</th><th>${t('editor.available')}</th><th></th></tr></thead>
+        <tbody>${p.variants.map((v) => { const st = d.stock[String(v.position)]; return html`<tr data-pos="${v.position}" ${v.active ? '' : 'style="opacity:.55"'}>
+          <td><b>${valueOf(v)}</b>${v.blockers?.length && v.active ? html`<div class="row-meta">${v.blockers.filter((b) => b !== 'product_not_public').map((b) => html`<span>${t('blocker.' + b, b)}</span>`)}</div>` : ''}</td>
+          <td><div class="variant-price-cell"><div class="input-money"><input data-vprice inputmode="decimal" value="${v.price_source === 'variant_override' ? v.amount_minor / 100 : ''}" placeholder="${p.base_price ? p.base_price.amount_minor / 100 : ''}" ${can('products.price') ? '' : 'disabled'} aria-label="سعر اللون بالجنيه"><span>EGP</span></div>${can('products.price') ? html`<button type="button" class="btn btn-primary btn-sm" data-save-vprice>حفظ السعر</button>` : ''}<small data-price-feedback role="status" aria-live="polite"></small></div></td>
+          <td><input class="input qty num" data-qty inputmode="numeric" value="${st ? st.quantity : ''}" placeholder="—" ${can('inventory.manage') ? '' : 'disabled'} aria-label="${t('editor.qty')}"></td>
+          <td><label class="switch"><input type="checkbox" data-avail ${v.availability === 'available' ? 'checked' : ''} ${can('inventory.manage') ? '' : 'disabled'}><i></i><span class="sr">${t('editor.available')}</span></label></td>
+          <td>${can('products.edit') ? html`<button class="btn btn-ghost btn-sm" data-active>${v.active ? t('team.suspend') : t('team.activate')}</button>` : ''}</td></tr>`; })}</tbody></table></div>
+        <p class="muted" style="margin:0;font-size:12px">${t('editor.vPriceHint')}</p>` : html`<div class="empty">${icon('tag')}<b>${t('editor.noVariants')}</b></div>`}
+      </section>
+      ${can('products.edit') ? html`<section class="card stack"><div class="card-head"><h3>${t('editor.addOption')}</h3></div>
+        ${p.status !== 'draft' ? html`<p class="muted" style="margin:0">${t('editor.structureDraftOnly')}</p>` : ''}
+        ${p.options.map((o, oi) => html`<div class="perm-group"><h4>${o.name}<span class="muted">${o.values.map((v) => v.value).join('، ')}</span></h4>
+          <div class="row"><input class="input" style="max-width:220px" data-newval="${oi}" placeholder="${t('editor.addValue')}" maxlength="40"><button class="btn btn-soft btn-sm" data-addval="${oi}">${t('editor.addValue')}</button></div></div>`)}
+        ${p.status === 'draft' && !p.variants.length ? html`<div class="grid2"><label class="field"><span>${t('editor.optionName')}</span><input class="input" id="o-name" placeholder="${t('editor.optionNamePh')}" maxlength="40"></label>
+          <label class="field"><span>${t('editor.values')}</span><input class="input" id="o-values" placeholder="S، M، L" maxlength="400"></label></div>
+          <div class="row"><span class="space"></span><button class="btn btn-soft" data-addopt>${t('editor.addOption')}</button></div>` : ''}
+        ${p.options.length ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-combos>${t('editor.createVariants')}</button></div>` : ''}
+      </section>` : ''}</div>`);
+    const refreshAside = async () => {
+      const fresh = await call('products.get', { code });
+      const card = document.querySelector('.editor aside section:last-child');
+      if (fresh.outcome === 'ok' && card) card.outerHTML = toString(publishCard(fresh.data.product, fresh.data));
+    };
+    const row = (el) => el.closest('tr[data-pos]');
+    const ver = () => p.structure_version;
+    const saveVariantPrice = async (tr) => {
+      const input = tr?.querySelector('[data-vprice]'), button = tr?.querySelector('[data-save-vprice]');
+      const feedback = tr?.querySelector('[data-price-feedback]');
+      if (!input || !button || button.disabled) return;
+      const raw = input.value.trim(), amount = raw ? toMinor(raw) : null;
+      if (raw && (amount === null || amount < 100)) {
+        input.setAttribute('aria-invalid', 'true');
+        feedback.textContent = 'كتابة سعر صحيح بالجنيه، مثل 650.';
+        island('error', feedback.textContent); return;
+      }
+      input.removeAttribute('aria-invalid');
+      button.disabled = true; input.disabled = true;
+      feedback.textContent = 'جاري حفظ السعر…';
+      try {
+        const position = Number(tr.dataset.pos);
+        const result = await call('products.set_variant_price', { code, version: ver(), position, amount_minor: amount });
+        if (result?.outcome !== 'saved') {
+          feedback.textContent = 'السعر ما اتحفظش، مراجعة الرسالة.';
+          fail(result);
+          if (result?.code === 'PS002') reload();
+          return;
+        }
+        const check = await call('products.get', { code });
+        const latest = check?.outcome === 'ok' ? check.data?.product : null;
+        const variant = latest?.variants?.find((v) => v.position === position);
+        const confirmed = variant && (amount === null
+          ? variant.price_source !== 'variant_override' && variant.amount_minor === latest.base_price?.amount_minor
+          : variant.amount_minor === amount);
+        if (!confirmed) {
+          feedback.textContent = 'اتبعث الحفظ لكن التأكيد فشل. مراجعة السعر قبل النشر.';
+          island('error', feedback.textContent); return;
+        }
+        // Keep the current editor snapshot fresh when staff switches tabs without a page reload.
+        p.structure_version = latest.structure_version;
+        p.variants = latest.variants;
+        p.base_price = latest.base_price;
+        feedback.textContent = '✓ اتحفظ سعر اللون واتأكدنا منه';
+        done('تم حفظ السعر');
+        void refreshAside().catch(() => {});
+      } catch {
+        feedback.textContent = 'مشكلة اتصال: مش متأكدين إن السعر اتحفظ. يرجى تحديث الصفحة.';
+        island('error', feedback.textContent);
+      } finally { button.disabled = false; input.disabled = false; }
+    };
+    body.addEventListener('change', async (e) => {
+      const tr = row(e.target); if (!tr) return; const pos = +tr.dataset.pos;
+      let res;
+      // Price is saved only with the explicit button, so there is no silent blur-save.
+      if (e.target.matches('[data-qty]')) { const q = e.target.value.trim(); if (!/^\d{1,6}$/.test(q)) {
+        e.target.setAttribute('aria-invalid', 'true');
+        island('error', 'كتابة كمية افتراضية رقم صحيح من 0 لحد 999999، من غير حروف أو كسور.');
+        return;
+      } res = await call('products.set_stock', { code, version: ver(), position: pos, quantity: Number(q) }); if (res.outcome === 'saved') $('[data-avail]', tr).checked = res.available; }
+      if (e.target.matches('[data-avail]')) res = await call('products.set_availability', { code, version: ver(), position: pos, available: e.target.checked });
+      if (res?.outcome === 'saved') { e.target.removeAttribute('aria-invalid'); done(); refreshAside(); } else if (res) { fail(res); if (res.code === 'PS002') reload(); }
+    });
+    body.addEventListener('keydown', (e) => {
+      if (e.target.matches('[data-vprice]') && e.key === 'Enter') {
+        e.preventDefault(); void saveVariantPrice(row(e.target));
+      }
+    });
+    body.addEventListener('click', async (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.matches('[data-save-vprice]')) { await saveVariantPrice(row(b)); return; }
+      if (b.matches('[data-open-quick-colours]')) { document.querySelector('[data-quick-single]')?.click(); return; }
+      let res;
+      if (b.matches('[data-active]')) { const pos = +row(b).dataset.pos; res = await call('products.structure', { code, version: ver(), change: { op: 'set_variant_active', variant: pos, active: !p.variants.find((v) => v.position === pos).active } }); }
+      if (b.matches('[data-addopt]')) { const name = $('#o-name', body).value.trim(); const values = $('#o-values', body).value.split(/[,،]/).map((x) => x.trim()).filter(Boolean); if (!name || !values.length) return; res = await call('products.structure', { code, version: ver(), change: { op: 'add_option', name, values } }); }
+      if (b.matches('[data-addval]')) { const oi = +b.dataset.addval; const v = $(`[data-newval="${oi}"]`, body).value.trim(); if (!v) return; res = await call('products.structure', { code, version: ver(), change: { op: 'add_value', option: oi, text: v } }); }
+      if (b.matches('[data-combos]')) {
+        const existing = new Set(p.variants.map((v) => p.options.map((o) => o.values.findIndex((x) => x.value_id === v.selections.find((s) => s.option_id === o.option_id)?.value_id)).join(',')));
+        const combos = p.options.reduce((acc, o) => acc.flatMap((c) => o.values.filter((v) => v.active).map((v) => [...c, v.position])), [[]]).filter((c) => !existing.has(c.join(',')));
+        if (!combos.length) { done(t('settings.unchanged')); return; }
+        res = await withBusy(b, () => call('products.structure', { code, version: ver(), change: { op: 'create_variants', selections: combos } }));
+      }
+      if (res?.outcome === 'applied') { done(); reload(); } else if (res) fail(res);
+    });
+  },
+
+  publish(body, { d, p }) {
+    render(body, html`<div class="stack">${publishCard(p, d)}
+      <section class="card"><dl class="kv"><dt>${t('products.status')}</dt><dd>${statusBadge(p.status)}</dd><dt>SS</dt><dd class="code">${p.public_code}</dd>
+        <dt>${t('editor.shipping')}</dt><dd>${p.shipping_profile?.name || t('editor.shippingNone')}</dd><dt>${t('products.title')}</dt><dd>${date(p.created_at, false)}</dd></dl></section></div>`);
+  },
+
+  activity(body, { d }) {
+    render(body, html`<section class="card"><div class="card-head"><h3>${t('editor.activity')}</h3></div>
+      ${d.activity?.length ? html`<ul class="timeline">${d.activity.map((a) => html`<li>${activityLine(a)}<small>${date(a.at)}</small></li>`)}</ul>` : html`<p class="muted" style="margin:0">${t('editor.noActivity')}</p>`}</section>`);
+  },
+};
+
+export default {
+  title: (params) => (params[0] ? params[0] : t('nav.products')),
+  async render(ctx) { return ctx.params[0] ? renderEditor(ctx, ctx.params[0]) : renderList(ctx); },
+};
