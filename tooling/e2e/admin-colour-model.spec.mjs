@@ -22,7 +22,7 @@ const svg = (hex) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="htt
 
 // ---- in-memory WOMEN backend
 function backend(seed) {
-  const s = { version: 1, product: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], costsLive: true, ...seed };
+  const s = { version: 1, product: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], costsLive: true, listExisting: false, trash: [], ...seed };
   const P = () => s.product;
   const next = (l) => l.reduce((m, x) => Math.max(m, x.position), -1) + 1;
   const bump = () => ({ outcome: 'applied', structure_version: ++s.version });
@@ -61,10 +61,10 @@ function backend(seed) {
     const perm = { 'products.create': 'products.edit', 'products.structure': 'products.edit', 'products.set_price': 'products.price', 'products.set_variant_price': 'products.price',
       'products.set_stock': 'inventory.manage', 'products.set_availability': 'inventory.manage', 'products.publish': 'products.publish', 'media.reorder': 'media.manage' }[op];
     if (session.role !== 'owner' && perm && !session.permissions.includes(perm)) return { outcome: 'forbidden' };
-    if (op.startsWith('costs.') && session.role !== 'owner') return { outcome: 'forbidden' };
+    if (op.startsWith('costs.') && session.role !== 'owner' && !session.permissions.includes('products.edit')) return { outcome: 'forbidden' };
     switch (op) {
       case 'session.get': return { outcome: 'ok', data: session };
-      case 'products.list': return { outcome: 'ok', data: [] };
+      case 'products.list': return { outcome: 'ok', data: s.listExisting && p && !s.trash.length && (!a.status || a.status === p.status) ? [{ ...p, category: 'فساتين', price_min_minor: p.base_price?.amount_minor ?? null, price_max_minor: p.base_price?.amount_minor ?? null, stock_total: 20, views_30d: 0 }] : [] };
       case 'categories.list': return { outcome: 'ok', data: [{ name: 'فساتين', visible: true }] };
       case 'shipping.get': return { outcome: 'ok', data: { profiles: [{ key: 'women_standard', active: true, name: 'شحن عادي' }] } };
       case 'products.create':
@@ -80,6 +80,16 @@ function backend(seed) {
       case 'media.reorder': a.media_ids.forEach((id, i) => { s.media.find((m) => m.media_id === id).position = i; }); return { outcome: 'saved' };
       case 'products.publish': p.status = 'public'; return { outcome: 'published' };
       case 'products.archive': return session.role === 'owner' ? (p.status = 'archived', { outcome: 'archived' }) : { outcome: 'forbidden' };
+      case 'products.trash_list': return session.role === 'owner' ? { outcome: 'ok', data: s.trash } : { outcome: 'forbidden' };
+      case 'products.trash':
+        if (session.role !== 'owner') return { outcome: 'forbidden' };
+        if (!['hidden', 'archived'].includes(p?.status)) return { outcome: 'invalid_state' };
+        s.trash.push({ code: p.public_code, title: p.title, original_status: p.status });
+        p.status = 'archived'; return { outcome: 'trashed' };
+      case 'products.restore':
+        if (session.role !== 'owner') return { outcome: 'forbidden' };
+        if (!s.trash.length) return { outcome: 'not_found' };
+        p.status = s.trash[0].original_status; s.trash = []; return { outcome: 'restored' };
       case 'dashboard.summary': return { outcome: 'ok', data: { orders: { revenue_30d_minor: 0, revenue_today_minor: 0, pending: 0, to_ship: 0, revenue_7d_minor: 0 }, products: { public: 1, draft: 0 }, views: { days_7: 0, today: 0 }, top_viewed: [], recent_orders: [], revenue_by_day: [], low_stock: [] } };
       case 'profit.summary': return s.profitLines ? { outcome: 'ok', data: { lines: s.profitLines } } : { outcome: 'unknown_operation' };
       case 'costs.get': return s.costsLive ? { outcome: 'ok', data: s.costs } : { outcome: 'unknown_operation' };
@@ -355,7 +365,7 @@ test('owner shortcut opens supplier costs after the colour data finishes loading
   expect(b.s.ops.some(o => o.op === 'costs.set')).toBe(false);
 });
 
-test('staff without price or owner rights edits colours but never sees or loads supplier cost', async ({ page }) => {
+test('staff with products.edit can save supplier cost without owner profit or trash access', async ({ page }) => {
   const b = backend({ version: 3 });
   b.s.product = { public_code: 'SS-9101', title: 'بلوزة', description: '', status: 'draft', created_at: now, updated_at: now, base_price: { amount_minor: 45000 }, shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: [],
     options: [{ option_id: 'o0', name: 'اللون', position: 0, values: [{ value_id: 'o0v0', value: 'أسود', position: 0, active: true }] }, { option_id: 'o1', name: 'المقاس', position: 1, values: [{ value_id: 'o1v0', value: 'M', position: 0, active: true }] }],
@@ -365,11 +375,19 @@ test('staff without price or owner rights edits colours but never sees or loads 
   await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
   await page.goto(target + '#/products/SS-9101');
   await expect(page.locator('[data-colour]')).toHaveCount(1);
-  await expect(page.locator('button[data-open-cost]')).toHaveCount(0);
-  await expect(page.locator('.cost-box')).toHaveCount(0);
+  await expect(page.locator('button[data-open-cost]')).toHaveText('تكلفة المورد');
+  await expect(page.locator('.cost-box')).toHaveCount(1);
+  await expect(page.locator('.cost-box [data-profit]')).toHaveCount(0);
+  await page.locator('.cost-box [data-cost="0"]').fill('325');
+  await page.locator('.cost-box [data-save-cost]').click();
+  await expect.poll(() => b.s.costs.variants[0]?.cost_minor).toBe(32500);
+  await expect(page.locator('a[href="#/finance"]')).toHaveCount(0);
+  await expect(page.locator('[data-trash-editor]')).toHaveCount(0);
   await expect(page.locator('[data-archive-editor]')).toHaveCount(0);
   await expect(page.locator('[data-c-price]')).toHaveCount(0);
-  expect(b.s.ops.some((o) => o.op.startsWith('costs.'))).toBe(false);
+  expect(b.s.ops.some((o) => o.op === 'costs.get')).toBe(true);
+  expect(b.s.ops.some((o) => o.op === 'costs.set')).toBe(true);
+  expect(b.s.ops.some((o) => o.op === 'profit.summary')).toBe(false);
   // Adding a colour later only adds its value and its own Variants
   await page.locator('[data-add-draft]').click();
   await page.locator('[data-draft] [data-d-name]').fill('بيج');
@@ -587,4 +605,67 @@ test('free offline description enhancer: new draft, undo, existing edit, and no 
   await expect.poll(() => b.s.product.description).toContain('خامة قطن');
   expect(b.s.product.status).toBe('draft');
   expect(b.s.ops.some(x => x.op === 'products.publish')).toBe(false);
+});
+
+
+test('staff product creator can enter supplier cost without aggregate margin', async ({ page }) => {
+  const b = backend();
+  const session = {role:'staff',email:'qa-upload@example.test',permissions:['products.view','products.edit','products.price','shipping.manage']};
+  await open(page,b,session);
+  await page.locator('a[href="#/products"]:visible').first().click();
+  await page.locator('button[data-new]:visible').first().click();
+  await page.locator('#c-title').fill('بلوفر قطن');
+  await page.locator('#c-price').fill('550');
+  await page.locator('#c-cost').fill('350');
+  await expect(page.locator('[data-c-profit]')).not.toContainText('ربح مبدئي');
+  await page.locator('[data-create]').click();
+  await expect.poll(() => b.s.costs.product_cost_minor).toBe(35000);
+  expect(b.s.ops.filter(x => x.op === 'costs.set').map(x=>x.args.cost_minor)).toEqual([35000]);
+  expect(b.s.ops.some(x=>x.op==='profit.summary')).toBe(false);
+});
+
+test('viewer without products.edit never gets supplier-cost controls', async ({ page }) => {
+  const b=backend({version:3});
+  b.s.product = { public_code:'SS-9101',title:'بلوفر',description:'',status:'hidden',created_at:now,updated_at:now,
+    base_price:{amount_minor:50000},shipping_profile:{key:'women_standard',name:'شحن عادي'},publish_blockers:[],
+    options:[],variants:[{position:0,active:true,availability:'available',amount_minor:50000,price_source:'base',selections:[]}]};
+  await open(page,b,{role:'staff',email:'qa-viewer@example.test',permissions:['products.view','dashboard.view']});
+  await page.goto(target+'#/products/SS-9101');
+  await expect(page.locator('[data-open-cost]')).toHaveCount(0);
+  await expect(page.locator('[data-cost]')).toHaveCount(0);
+  expect(b.s.ops.some(x=>x.op.startsWith('costs.'))).toBe(false);
+});
+
+test('owner can move hidden product into reversible trash and restore with no order writes', async ({ page }) => {
+  const b=backend({listExisting:true,version:3});
+  b.s.product={public_code:'SS-9101',title:'بلوفر قديم',description:'',status:'hidden',created_at:now,updated_at:now,
+    base_price:{amount_minor:50000},shipping_profile:{key:'women_standard',name:'شحن عادي'},publish_blockers:[],
+    options:[],variants:[{position:0,active:true,availability:'available',amount_minor:50000,price_source:'base',selections:[]}]};
+  await open(page,b,owner);
+  await page.goto(target+'#/products?status=hidden');
+  await expect(page.locator('[data-trash="SS-9101"]:visible').first()).toBeVisible();
+  await page.locator('[data-trash="SS-9101"]:visible').first().click();
+  await page.locator('#layer [data-yes]').click();
+  await expect.poll(()=>b.s.trash.length).toBe(1);
+  await expect.poll(()=>b.s.product.status).toBe('archived');
+  await page.locator('[data-trash-bin]').click();
+  await expect(page.locator('[data-trashed-code="SS-9101"]')).toContainText('بلوفر قديم');
+  await page.locator('[data-restore-trash="SS-9101"]').click();
+  await expect.poll(()=>b.s.product.status).toBe('hidden');
+  expect(b.s.trash).toHaveLength(0);
+  expect(b.s.ops.filter(x=>x.op.startsWith('orders.')||x.op==='products.publish')).toHaveLength(0);
+});
+
+test('staff must not have an owner product trash control',async({page})=>{
+  const b=backend({listExisting:true,version:2});
+  b.s.product={public_code:'SS-9101',title:'بلوفر',description:'',status:'hidden',created_at:now,updated_at:now,
+    base_price:{amount_minor:50000},shipping_profile:{key:'women_standard',name:'شحن عادي'},publish_blockers:[],
+    options:[],variants:[{position:0,active:true,availability:'available',amount_minor:50000,price_source:'base',selections:[]}]};
+  await open(page,b,{role:'staff',email:'qa-staff@example.test',permissions:['products.view','products.edit']});
+  await page.goto(target+'#/products?status=hidden');
+  await expect(page.locator('[data-trash-bin]')).toHaveCount(0);
+  await expect(page.locator('[data-trash]')).toHaveCount(0);
+  await page.goto(target+'#/products/SS-9101');
+  await expect(page.locator('[data-trash-editor]')).toHaveCount(0);
+  expect(b.s.ops.some(x=>x.op.startsWith('products.trash'))).toBe(false);
 });

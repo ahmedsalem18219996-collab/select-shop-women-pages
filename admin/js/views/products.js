@@ -24,7 +24,7 @@ async function renderList(ctx) {
   const state = { q: query.get('q') || '', status: query.get('status') || '', category: query.get('category') || '' };
   render(el, html`<div class="page">
     <div class="page-head"><div><h2>${t('products.title')}</h2><p>${t('products.subtitle')}</p></div>
-      ${can('products.edit') ? html`<div class="actions"><button class="btn btn-primary" data-new>${icon('plus')}${t('products.new')}</button></div>` : ''}</div>
+      <div class="actions">${can('owner') ? html`<button type="button" class="btn btn-soft" data-trash-bin>سلة المحذوفات</button>` : ''}${can('products.edit') ? html`<button class="btn btn-primary" data-new>${icon('plus')}${t('products.new')}</button>` : ''}</div></div>
     <section class="card catalog-overview" aria-label="التحكم في نشر المنتجات" style="margin-bottom:14px">
       <details class="on-demand-note" aria-label="المخزون الافتراضي"><summary><b>التوريد حسب الطلب</b> · الكميات هنا افتراضية</summary>
         <p class="muted">كميات المخزون هنا افتراضية لتنظيم قبول الأوردرات، ومش معناها إن القطع موجودة عندك. يرجى مراجعة التوافر والسعر عند المورد قبل تأكيد أي طلب، وإخفاء المنتج إذا تعذر توفيره.</p></details>
@@ -34,7 +34,7 @@ async function renderList(ctx) {
         <a class="catalog-state" href="#/products?status=hidden"><strong data-product-count="hidden">—</strong><span>مخفي مؤقتًا</span></a>
         <a class="catalog-state" href="#/products?status=archived"><strong data-product-count="archived">—</strong><span>مؤرشف</span></a>
       </div>
-      <p class="muted" style="font-size:12px;margin:8px 0 0">«إخفاء» يوقف عرض المنتج من غير حذف الصور أو بيانات الطلبات القديمة. «نشر» بيخضع لفحص جاهزية المنتج.</p>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">«إخفاء» يوقف عرض المنتج؛ «أرشفة» تحافظ على السجلات. المالك فقط ينقل المخفي والمؤرشف لسلة المحذوفات، مع إمكانية استرجاعه. ما بنمسحش الطلبات أو الصور نهائيًا.</p>
     </section>
     <div class="toolbar">
       <label class="searchbox"><span class="sr">${t('app.search')}</span>${icon('search')}<input class="input" id="q" type="search" value="${state.q}" placeholder="${t('products.searchPh')}" autocomplete="off"></label>
@@ -92,6 +92,7 @@ async function renderList(ctx) {
           <div class="catalog-mobile-actions">
             <button type="button" class="btn btn-primary btn-sm" data-quick-mobile="${p.public_code}">تعديل سريع</button>
             ${can('products.publish') && statusAction(p.status) ? html`<button type="button" class="btn btn-soft btn-sm" data-status-action="${p.public_code}">${statusAction(p.status).label}</button>` : ''}
+            ${can('owner') && ['hidden','archived'].includes(p.status) ? html`<button type="button" class="btn btn-danger btn-sm" data-trash="${p.public_code}">نقل لسلة المحذوفات</button>` : ''}
           </div>
         </div>`;
       })}</div>
@@ -128,13 +129,50 @@ async function renderList(ctx) {
           <td>${statusBadge(p.status)}</td>
           <td><div class="row">
             ${can('products.publish') && statusAction(p.status) ? html`<button class="btn btn-soft btn-sm" data-status-action="${p.public_code}">${statusAction(p.status).label}</button>` : ''}
-            ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<button type="button" class="btn btn-danger btn-sm" data-archive>حذف المنتج</button>` : ''}
+            ${ctx.session?.role === 'owner' && p.status !== 'archived' && p.status !== 'hidden' ? html`<button type="button" class="btn btn-soft btn-sm" data-archive>أرشفة المنتج</button>` : ''}
+            ${ctx.session?.role === 'owner' && ['hidden','archived'].includes(p.status) ? html`<button type="button" class="btn btn-danger btn-sm" data-trash="${p.public_code}">نقل لسلة المحذوفات</button>` : ''}
           </div></td></tr>`;
         })}</tbody></table></div>`);
     // categories list may arrive after the first paint
     if (can('products.edit') && !categories.length) await loadCategories().then(load);
   };
   const visibleProduct = (code) => listedGroups.flatMap(g => g.members).find(m => m.product.public_code === code)?.product;
+  // Reversible disposal: the service keeps original SKU, photos, audit and order history.
+  const trashProduct = async (button, code) => {
+    if (!can('owner')) return;
+    const product = visibleProduct(code);
+    if (!product || !['hidden','archived'].includes(product.status)) { island('error', 'لازم المنتج يكون مخفي أو مؤرشف قبل نقله للسلة.'); return; }
+    const yes = await confirmDialog({ title: 'نقل ' + code + ' لسلة المحذوفات',
+      text: 'هيختفي من قائمة المنتجات، لكنه هيفضل محفوظ لاسترجاعه. الطلبات القديمة والصور والأكواد مش هتتمسح. متابعة؟',
+      okText: 'نقل للسلة', danger: true });
+    if (!yes) return;
+    const response = await withBusy(button, () => call('products.trash', { code }));
+    if (['trashed', 'already_trashed'].includes(response?.outcome)) {
+      done('اتنقل لسلة المحذوفات، ويمكن استرجاعه من زر السلة.');
+      await load(); void refreshCounts();
+    } else fail(response);
+  };
+  const openTrashBin = async () => {
+    if (!can('owner')) return;
+    let response;
+    try { response = await call('products.trash_list'); } catch { response = { outcome: 'network' }; }
+    if (response?.outcome !== 'ok' || !Array.isArray(response.data)) { fail(response); return; }
+    const rows = response.data;
+    const box = sheet({ title: 'سلة المحذوفات', wide: true, body: html`<div class="stack">
+      <p class="muted">المنتجات هنا مش ظاهرة للعملاء أو للفريق. الاسترجاع يرجعها مخفية أو مؤرشفة، ومش بينشرها تلقائيًا.</p>
+      ${rows.length ? rows.map(p => html`<div class="row" style="flex-wrap:wrap" data-trashed-code="${esc(p.code)}">
+        <div style="flex:1"><b>${esc(p.title)}</b><p class="muted" style="margin:0">${esc(p.code)} · ${p.original_status === 'hidden' ? 'كان مخفي' : 'كان مؤرشف'}</p></div>
+        <button type="button" class="btn btn-soft btn-sm" data-restore-trash="${esc(p.code)}">استرجاع</button></div>`) : html`<p class="muted">السلة فاضية.</p>`}
+      </div>`, foot: html`<button type="button" class="btn btn-ghost" data-close>إغلاق</button>` });
+    $('[data-close]', box)?.addEventListener('click', closeLayer);
+    box.addEventListener('click', async e => {
+      const button = e.target.closest('[data-restore-trash]'); if (!button || !can('owner')) return;
+      const code = button.dataset.restoreTrash;
+      const result = await withBusy(button, () => call('products.restore', { code }));
+      if (result?.outcome === 'restored') { done('اترجع المنتج، ومش هيظهر للعملاء إلا بعد النشر.'); closeLayer(); await load(); void refreshCounts(); }
+      else fail(result);
+    });
+  };
   const changeStatus = async (button, code) => {
     if (!can('products.publish')) return;
     const item = visibleProduct(code);
@@ -308,13 +346,15 @@ async function renderList(ctx) {
     if (quick) { openQuickMobile(quick.dataset.quickMobile); return; }
     const statusBtn = e.target.closest('[data-status-action]');
     if (statusBtn) { await changeStatus(statusBtn, statusBtn.dataset.statusAction); return; }
+    const trashBtn = e.target.closest('[data-trash]');
+    if (trashBtn) { await trashProduct(trashBtn, trashBtn.dataset.trash); return; }
     const tr = e.target.closest('tr[data-code]');
     if (e.target.closest('[data-archive]') && tr && ctx.session?.role === 'owner') {
       const code=tr.dataset.code;
       const confirmed=await confirmDialog({
-        title:'حذف المنتج '+code,
-        text:'سيتم إخفاء المنتج من المتجر وأرشفته نهائيًا، مع الاحتفاظ بالطلبات والسجلات القديمة. لا يمكن التراجع عن الحذف. تأكيد الحذف؟',
-        okText:'تأكيد الحذف والأرشفة',danger:true
+        title:'أرشفة المنتج '+code,
+        text:'المنتج هيتأرشف ويتشال من العرض، مع الاحتفاظ بالطلبات القديمة. ويمكن نقله بعد كده لسلة المحذوفات.',
+        okText:'تأكيد الأرشفة',danger:true
       });
       if(!confirmed)return;
       const button=e.target.closest('[data-archive]');
@@ -324,6 +364,7 @@ async function renderList(ctx) {
     }
     if (e.target.closest('[data-price]') && tr) quickPrice(tr.dataset.code, load);
   });
+  $('[data-trash-bin]', el)?.addEventListener('click', openTrashBin);
   $('#q', el).addEventListener('input', debounce((e) => { state.q = e.target.value.trim(); load(); }, 300));
   $$('[data-status]', el).forEach((b) => b.addEventListener('click', () => { state.status = b.dataset.status; $$('[data-status]', el).forEach((x) => x.setAttribute('aria-pressed', String(x === b))); load(); }));
   $('#cat', el).addEventListener('change', (e) => { state.category = e.target.value; load(); });
@@ -356,7 +397,7 @@ function createSheet(ctx) {
       ${ctx.can('products.price') ? html`<label class="field"><span>${t('create.price')}</span><div class="input-money"><input id="c-price" inputmode="decimal" autocomplete="off" placeholder="مثال: 650"><span class="sr">سعر بيع المنتج بالجنيه المصري</span><span>EGP</span></div></label>` : ''}
     </div>
     ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هيحدده فريق التسعير بعد الحفظ.</p>` : ''}
-    ${ctx.can('owner') ? html`<label class="field"><span>تكلفة المورد (اختياري، للإدارة فقط)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعملاء ولا في المتجر.</small></label>` : ''}
+    ${ctx.can('products.edit') ? html`<label class="field"><span>تكلفة المورد (اختياري، للفريق والإدارة)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعملاء ولا في المتجر.</small></label>` : ''}
     <label class="field"><span>${t('create.description')} (اختياري)</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
     <div class="desc-helper" data-description-helper>
       <div class="row" style="flex-wrap:wrap;gap:8px">
@@ -406,7 +447,7 @@ function createSheet(ctx) {
   const profitLine = () => {
     const out = $('[data-c-profit]', box); if (!out) return;
     const cost = costIn.value.trim() ? toMinor(costIn.value.trim()) : null, sell = toMinor($('#c-price', box)?.value.trim() || '');
-    out.textContent = cost === null ? 'التكلفة مش بتظهر للعملاء ولا في المتجر.' : profitText(sell, cost, money).text;
+    out.textContent = cost === null ? 'التكلفة مش بتظهر للعملاء ولا في المتجر.' : (ctx.can('owner') ? profitText(sell, cost, money).text : 'تكلفة المورد هتتحفظ للإدارة، ومش هتغيّر سعر البيع.');
   };
   costIn?.addEventListener('input', profitLine);
   $('#c-price', box)?.addEventListener('input', profitLine);
@@ -509,10 +550,11 @@ async function renderEditor(ctx, code) {
     <div class="page-head"><div><a class="btn btn-ghost btn-sm" href="#/products">${icon(document.dir === 'rtl' ? 'chev' : 'chevBack')}${t('nav.products')}</a>
       <h2 style="margin-top:8px">${p.title}</h2><p class="row"><span class="code">${p.public_code}</span>${statusBadge(p.status)}<span class="muted">${ago(p.updated_at)}</span></p></div>
       <div class="actions">
-        ${can('owner') ? html`<button type="button" class="btn btn-soft" data-setup-tab="colours" data-open-cost>سعر المورد والربح</button>` : ''}
+        ${can('products.edit') || can('owner') ? html`<button type="button" class="btn btn-soft" data-setup-tab="colours" data-open-cost>${can('owner') ? 'سعر المورد والربح' : 'تكلفة المورد'}</button>` : ''}
         <button type="button" class="btn btn-soft" data-quick-single>تعديل سريع للمقاس والسعر والصور</button></div>
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}
-      ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} حذف المنتج</button></div>` : ''}</div>
+      ${ctx.session?.role === 'owner' && !['archived','hidden'].includes(p.status) ? html`<div class="actions"><button type="button" class="btn btn-soft" data-archive-editor>أرشفة المنتج</button></div>` : ''}
+      ${ctx.session?.role === 'owner' && ['archived','hidden'].includes(p.status) ? html`<div class="actions"><button type="button" class="btn btn-danger" data-trash-editor>${icon('trash')} نقل لسلة المحذوفات</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
       <div class="card-head"><h3>استكمال الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعملاء لحد النشر</span></div>
       <p class="muted" style="margin:0">لكل لون صوره ومقاساته وسعره. مراجعة معاينة عرض المنتج في المتجر، ثم النشر.</p>
@@ -547,12 +589,22 @@ async function renderEditor(ctx, code) {
       onChanged: reload
     });
   });
+  $('[data-trash-editor]', el)?.addEventListener('click', async (e) => {
+    if (ctx.session?.role !== 'owner' || !['hidden','archived'].includes(p.status)) return;
+    const confirmed = await confirmDialog({ title: 'نقل ' + code + ' للسلة',
+      text: 'هيختفي من قائمة المنتجات. الصور والطلبات القديمة محفوظة ويمكن استرجاع المنتج من سلة المحذوفات.',
+      okText: 'نقل للسلة', danger: true });
+    if (!confirmed) return;
+    const result = await withBusy(e.currentTarget, () => call('products.trash', { code }));
+    if (['trashed','already_trashed'].includes(result?.outcome)) { done('اتنقل المنتج لسلة المحذوفات.'); ctx.go('products'); }
+    else fail(result);
+  });
   $('[data-archive-editor]', el)?.addEventListener('click', async (e) => {
     // Archive is the existing owner-only operation: never delete historical orders or reuse the code.
     const confirmed = await confirmDialog({
-      title: 'حذف المنتج ' + code,
-      text: 'هيختفي المنتج من المتجر والقائمة النشطة، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. الأرشفة نهائية، ولا يمكن استعادة المنتج من لوحة الإدارة. تأكيد الأرشفة؟',
-      okText: 'تأكيد حذف المنتج', danger: true
+      title: 'أرشفة المنتج ' + code,
+      text: 'هيختفي المنتج من المتجر والقائمة النشطة، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. بعد الأرشفة يمكن نقله لسلة المحذوفات.',
+      okText: 'تأكيد الأرشفة', danger: true
     });
     if (!confirmed) return;
     const res = await withBusy(e.currentTarget, () => call('products.archive', { code }));
