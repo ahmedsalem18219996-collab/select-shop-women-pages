@@ -273,7 +273,9 @@ test('one colour Save combines new size, special price, supplier availability an
   await expect.poll(() => b.s.product.variants.length).toBe(2);
   expect(b.s.product.variants.map((v) => [v.position, v.amount_minor, v.availability]))
     .toEqual([[0, 75000, 'available'], [1, 75000, 'available']]);
-  expect(b.s.uploads).toHaveLength(1);
+  // Upload starts after asynchronous Variant/price/availability saves, so wait for
+  // the upload itself. Variant count reaching 2 is not evidence that upload finished.
+  await expect.poll(() => b.s.uploads.length, { timeout: 12000 }).toBe(1);
   expect(b.s.uploads[0].variant_position).toBe('0');
   await expect(page.locator('[data-colour]').first().locator('.thumb img')).toHaveCount(1);
 });
