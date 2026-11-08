@@ -508,7 +508,9 @@ async function renderEditor(ctx, code) {
   render(el, html`<div class="page">
     <div class="page-head"><div><a class="btn btn-ghost btn-sm" href="#/products">${icon(document.dir === 'rtl' ? 'chev' : 'chevBack')}${t('nav.products')}</a>
       <h2 style="margin-top:8px">${p.title}</h2><p class="row"><span class="code">${p.public_code}</span>${statusBadge(p.status)}<span class="muted">${ago(p.updated_at)}</span></p></div>
-      <div class="actions"><button type="button" class="btn btn-soft" data-quick-single>تعديل سريع للمقاس والسعر والصور</button></div>
+      <div class="actions">
+        ${can('owner') ? html`<button type="button" class="btn btn-soft" data-setup-tab="colours" data-open-cost>سعر المورد والربح</button>` : ''}
+        <button type="button" class="btn btn-soft" data-quick-single>تعديل سريع للمقاس والسعر والصور</button></div>
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}
       ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} حذف المنتج</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
@@ -582,6 +584,8 @@ async function renderEditor(ctx, code) {
   $$('[data-setup-tab]', el).forEach(button => button.addEventListener('click', () => {
     const target = button.dataset.setupTab;
     $('[data-v="' + target + '"]', el)?.click();
+    // Owner shortcut opens the cost panel; ordinary colour flows preserve their previous state.
+    if (button.hasAttribute('data-open-cost')) el.querySelectorAll('.cost-box').forEach(card => { card.open = true; });
   }));
   show(tab);
 }

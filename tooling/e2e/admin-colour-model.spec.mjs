@@ -273,7 +273,8 @@ test('one colour Save combines new size, special price, supplier availability an
   await expect.poll(() => b.s.product.variants.length).toBe(2);
   expect(b.s.product.variants.map((v) => [v.position, v.amount_minor, v.availability]))
     .toEqual([[0, 75000, 'available'], [1, 75000, 'available']]);
-  expect(b.s.uploads).toHaveLength(1);
+  // The size/price change can be saved before the queued photo upload finishes.
+  await expect.poll(() => b.s.uploads.length).toBe(1);
   expect(b.s.uploads[0].variant_position).toBe('0');
   await expect(page.locator('[data-colour]').first().locator('.thumb img')).toHaveCount(1);
 });
@@ -381,22 +382,16 @@ test('cost ops not live yet: the model still saves and the owner sees a clear no
   await expect(page.locator('#tabbody')).toContainText('محتاجين تفعيل من السيرفر');
 });
 
-test('dashboard profit: confirmed/delivered only, frozen cost, incomplete when a cost is unknown, net after shop expenses; hidden from staff', async ({ page }) => {
+test('dashboard routes the owner to the finance view without misleading old profit totals', async ({ page }) => {
   const b = backend();
   b.s.profitLines = [
-    { order_code: 'A', status: 'delivered', quantity: 1, line_total_minor: 55000, unit_cost_minor: 35000 },
-    { order_code: 'B', status: 'confirmed', quantity: 1, line_total_minor: 55000, unit_cost_minor: 35000 },
-    { order_code: 'C', status: 'cancelled', quantity: 1, line_total_minor: 55000, unit_cost_minor: 35000 },
+    { order_code:'A', status:'delivered', quantity:1, line_total_minor:55000, unit_cost_minor:35000 }
   ];
   await open(page, b, owner);
   const card = page.locator('[data-profit-summary]');
-  await expect(card).toContainText('٣٦٫٤');
-  await card.locator('summary').click();
-  await card.locator('[data-exp="ad"]').fill('50');
-  await expect(card.locator('[data-net]')).toContainText('صافي تقديري');
-  b.s.profitLines.push({ order_code: 'D', status: 'delivered', quantity: 1, line_total_minor: 55000, unit_cost_minor: null });
-  await page.reload();
-  await expect(page.locator('[data-profit-summary]')).toContainText('الربح غير مكتمل');
+  await expect(card).toContainText('الأرباح والمرتجعات');
+  await expect(card.locator('a[href="#/finance"]')).toBeVisible();
+  expect(b.s.ops.some(o => o.op === 'profit.summary')).toBe(false);
 });
 
 test('dashboard profit card never appears for staff', async ({ page }) => {
