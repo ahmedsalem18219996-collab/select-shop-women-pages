@@ -329,6 +329,30 @@ test('owner archives from inside product editor only after explicit confirmation
   await expect(page).toHaveURL(/#\/products$/);
 });
 
+test('owner shortcut opens supplier costs after the colour data finishes loading', async ({ page }) => {
+  const b = backend({ version: 3, costs: { product_cost_minor: 30000, variants: [] } });
+  b.s.product = {
+    public_code: 'SS-9101', title: 'بلوفر', description: '', status: 'draft',
+    created_at: now, updated_at: now, base_price: { amount_minor: 50000 },
+    shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: [],
+    options: [{ option_id: 'o0', name: 'اللون', position: 0, values: [{ value_id: 'o0v0', value: 'أسود', position: 0, active: true }] }],
+    variants: [{ position: 0, active: true, availability: 'available', amount_minor: 50000, price_source: 'base',
+      selections: [{ option_id: 'o0', value_id: 'o0v0' }] }]
+  };
+  b.s.stock = { 0: { quantity: 20 } };
+  await open(page, b, owner);
+  await page.goto(target + '#/products/SS-9101');
+  const shortcut = page.getByRole('button', { name: 'سعر المورد والربح' });
+  await expect(shortcut).toBeVisible();
+  await shortcut.click();
+  const costBox = page.locator('.cost-box');
+  await expect(costBox).toHaveAttribute('open', '');
+  await expect(costBox.locator('[data-cost="0"]')).toHaveValue('300');
+  await expect(page.locator('[data-c-price]')).toHaveCount(1);
+  expect(b.s.ops.some(o => o.op === 'costs.get')).toBe(true);
+  expect(b.s.ops.some(o => o.op === 'costs.set')).toBe(false);
+});
+
 test('staff without price or owner rights edits colours but never sees or loads supplier cost', async ({ page }) => {
   const b = backend({ version: 3 });
   b.s.product = { public_code: 'SS-9101', title: 'بلوزة', description: '', status: 'draft', created_at: now, updated_at: now, base_price: { amount_minor: 45000 }, shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: [],
@@ -339,6 +363,7 @@ test('staff without price or owner rights edits colours but never sees or loads 
   await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
   await page.goto(target + '#/products/SS-9101');
   await expect(page.locator('[data-colour]')).toHaveCount(1);
+  await expect(page.locator('button[data-open-cost]')).toHaveCount(0);
   await expect(page.locator('.cost-box')).toHaveCount(0);
   await expect(page.locator('[data-archive-editor]')).toHaveCount(0);
   await expect(page.locator('[data-c-price]')).toHaveCount(0);
@@ -381,22 +406,14 @@ test('cost ops not live yet: the model still saves and the owner sees a clear no
   await expect(page.locator('#tabbody')).toContainText('محتاجين تفعيل من السيرفر');
 });
 
-test('dashboard profit: confirmed/delivered only, frozen cost, incomplete when a cost is unknown, net after shop expenses; hidden from staff', async ({ page }) => {
+test('dashboard routes the owner to the returns-aware finance view without counting stale quick-profit', async ({ page }) => {
   const b = backend();
-  b.s.profitLines = [
-    { order_code: 'A', status: 'delivered', quantity: 1, line_total_minor: 55000, unit_cost_minor: 35000 },
-    { order_code: 'B', status: 'confirmed', quantity: 1, line_total_minor: 55000, unit_cost_minor: 35000 },
-    { order_code: 'C', status: 'cancelled', quantity: 1, line_total_minor: 55000, unit_cost_minor: 35000 },
-  ];
+  b.s.profitLines = [{ order_code: 'A', status: 'delivered', quantity: 1, line_total_minor: 55000, unit_cost_minor: 35000 }];
   await open(page, b, owner);
   const card = page.locator('[data-profit-summary]');
-  await expect(card).toContainText('٣٦٫٤');
-  await card.locator('summary').click();
-  await card.locator('[data-exp="ad"]').fill('50');
-  await expect(card.locator('[data-net]')).toContainText('صافي تقديري');
-  b.s.profitLines.push({ order_code: 'D', status: 'delivered', quantity: 1, line_total_minor: 55000, unit_cost_minor: null });
-  await page.reload();
-  await expect(page.locator('[data-profit-summary]')).toContainText('الربح غير مكتمل');
+  await expect(card).toContainText('الأرباح والمرتجعات');
+  await expect(card.locator('a[href="#/finance"]')).toBeVisible();
+  expect(b.s.ops.some(o => o.op === 'profit.summary')).toBe(false);
 });
 
 test('dashboard profit card never appears for staff', async ({ page }) => {
