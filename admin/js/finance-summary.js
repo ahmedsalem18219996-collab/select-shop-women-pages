@@ -38,4 +38,3 @@ export function estimateNet(summary, expenses) {
   const value = summary.grossMinor - cost;
   return Number.isSafeInteger(value) ? value : null;
 }
-
