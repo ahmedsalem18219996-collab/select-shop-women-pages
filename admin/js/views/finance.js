@@ -38,7 +38,11 @@ export default {
     const validProfit = profit?.outcome === 'ok' && Array.isArray(profit.data?.lines);
     // The old profit endpoint still counts return_requested as sales. Exclude those orders explicitly.
     // If the confirmed order listing is missing/capped, do not show potentially inflated profit.
-    const lines = validProfit && open.complete ? filterOpenReturns(profit.data.lines, open.codes) : null;
+    // Exclude both pending and completed returns by their order codes, even if a
+    // legacy profit row has no reliable returned flag.
+    const returnedCodes = open.complete && back.complete
+      ? new Set([...open.codes, ...back.codes]) : null;
+    const lines = validProfit && returnedCodes ? filterOpenReturns(profit.data.lines, returnedCodes) : null;
     const s = lines ? summarizeLines(lines) : null;
     let exp = {};
     try { exp = JSON.parse(localStorage.getItem('wa.profitExpenses') || '{}') || {}; } catch { exp = {}; }
