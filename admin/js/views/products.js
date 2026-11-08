@@ -579,13 +579,20 @@ async function renderEditor(ctx, code) {
     else fail(res);
   });
   const body = $('#tabbody', el);
-  const show = (name) => { tab = name; sessionStorage.setItem('wa.ptab', name); TABS[name](body, { ctx, d, p, code, reload }); };
+  let revealOwnerCosts = false;
+  const show = async (name) => {
+    tab = name; sessionStorage.setItem('wa.ptab', name);
+    const revealAfterLoad = name === 'colours' && revealOwnerCosts;
+    if (revealAfterLoad) revealOwnerCosts = false;
+    await TABS[name](body, { ctx, d, p, code, reload });
+    // Cost data loads asynchronously: reveal only when the colour cards are rendered.
+    if (revealAfterLoad && body.isConnected) $('.cost-box', body).forEach(panel => { panel.open = true; });
+  };
   segmented($('.seg', el), show);
   $$('[data-setup-tab]', el).forEach(button => button.addEventListener('click', () => {
     const target = button.dataset.setupTab;
+    if (button.hasAttribute('data-open-cost')) revealOwnerCosts = true;
     $('[data-v="' + target + '"]', el)?.click();
-    // Open owner cost panel from shortcut; leave ordinary colour editors unchanged.
-    if (button.hasAttribute('data-open-cost')) el.querySelectorAll('.cost-box').forEach(card => { card.open = true; });
   }));
   show(tab);
 }
