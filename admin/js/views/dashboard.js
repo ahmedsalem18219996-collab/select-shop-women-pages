@@ -1,7 +1,6 @@
 import { t, getLang } from '../i18n.js';
-import { html, render, $, icon, money, fmtNum, ago, statusBadge, skCards, skRows, spotlight, countUp, fail, esc, toMinor } from '../ui.js';
+import { html, render, $, icon, money, fmtNum, ago, statusBadge, skCards, skRows, spotlight, countUp, fail, esc } from '../ui.js';
 import { call } from '../api.js';
-import { summarizeLines, COST_OPS_MISSING } from '../profit.js';
 
 export function activityLine(a) {
   const who = a.actor_email ? a.actor_email.split('@')[0] : t(`role.${a.actor_role || 'staff'}`);
@@ -69,42 +68,6 @@ async function populateProductViews(el, fallback = []) {
   update();
 }
 
-// Owner-only profit of confirmed/delivered orders, from the cost frozen on each order line (profit.summary).
-// Gross = revenue after discounts − supplier cost; returns are excluded; the customer's shipping fee is never profit.
-// The estimated net subtracts what the shop itself pays per order, typed here and kept only in this browser.
-async function populateProfit(el) {
-  const box = el.querySelector('[data-profit-body]'); if (!box) return;
-  let r;
-  try { r = await call('profit.summary', { days: 30 }); } catch { r = { outcome: 'network' }; }
-  if (r.outcome !== 'ok') {
-    render(box, html`<p class="note" role="note" style="margin:0">${COST_OPS_MISSING.has(r.outcome) ? 'حساب الربح محتاج تفعيل تكلفة المورد من السيرفر (التعديل جاهز للمراجعة ومش متطبق على قاعدة البيانات الحقيقية).' : 'تعذّر تحميل الربح دلوقتي.'}</p>`);
-    return;
-  }
-  const sum = summarizeLines(r.data?.lines || []);
-  let exp = {};
-  try { exp = JSON.parse(localStorage.getItem('wa.profitExpenses') || '{}'); } catch { /* private mode */ }
-  const field = (k, label) => html`<label class="field"><span>${label}</span><div class="input-money"><input data-exp="${k}" inputmode="decimal" value="${exp[k] ? exp[k] / 100 : ''}" placeholder="0"><span>EGP</span></div></label>`;
-  render(box, html`<div class="stack">
-    <dl class="kv"><dt>عدد الأوردرات</dt><dd class="num">${fmtNum(sum.orders)}</dd><dt>المبيعات بعد الخصم</dt><dd class="num">${money(sum.revenueMinor)}</dd>
-      <dt>تكلفة المورد</dt><dd class="num">${sum.complete ? money(sum.costMinor) : '—'}</dd>
-      <dt>الربح المبدئي</dt><dd class="num" data-gross>${sum.complete ? html`${money(sum.grossMinor)}${sum.revenueMinor ? ' (' + (Math.round(sum.grossMinor / sum.revenueMinor * 1000) / 10).toLocaleString('ar-EG') + '%)' : ''}` : 'الربح غير مكتمل'}</dd></dl>
-    ${sum.complete ? '' : html`<p class="note" role="note" style="margin:0">الربح غير مكتمل: ${fmtNum(sum.incompleteOrders)} أوردر فيه منتج من غير تكلفة مورد. تسجيل التكلفة من تبويب «الألوان والصور»؛ الأوردرات الجاية هتتحسب صح، والقديمة بتفضل بالتكلفة اللي اتسجلت وقتها.</p>`}
-    <details><summary>صافي تقديري بعد مصاريفك على كل أوردر</summary><div class="grid2" style="margin-top:8px">${field('ship', 'مصاريف الشحن المدفوعة')}${field('ad', 'تكلفة إعلان لكل أوردر')}${field('other', 'تغليف ودفع ومصاريف تانية')}</div>
-      <p class="muted" style="margin:0" data-net role="status"></p></details>
-    <small class="muted">الشحن المدفوع من العميل مش ربح. المرتجعات مش محسوبة. ده حساب تقديري للمالكة ومش بيظهر في المتجر.</small></div>`);
-  const net = () => {
-    const vals = Object.fromEntries([...box.querySelectorAll('[data-exp]')].map((i) => [i.dataset.exp, i.value.trim() ? toMinor(i.value.trim()) : 0]));
-    try { localStorage.setItem('wa.profitExpenses', JSON.stringify(vals)); } catch { /* private mode */ }
-    const out = box.querySelector('[data-net]');
-    if (!sum.complete) { out.textContent = 'الصافي محتاج كل التكاليف تكون متسجلة الأول.'; return; }
-    if (Object.values(vals).some((v) => v === null || v < 0)) { out.textContent = 'إدخال المصاريف بالجنيه، مثل 40.'; return; }
-    const n = sum.grossMinor - sum.orders * (vals.ship + vals.ad + vals.other);
-    out.textContent = 'صافي تقديري: ' + money(n) + (n < 0 ? ' — صافي سلبي بعد المصاريف؛ يرجى مراجعة الأسعار أو الإعلانات.' : '');
-  };
-  box.addEventListener('input', (e) => { if (e.target.matches('[data-exp]')) net(); });
-  net();
-}
-
 export default {
   title: () => t('nav.dashboard'),
   async render({ el, session, can, go }) {
@@ -132,9 +95,9 @@ export default {
         <div class="card kpi spotlight lift"><span class="label">${icon('eye')}${t('dash.views7')}</span>
           <span class="value" data-count="${d.views.days_7}">0</span><span class="foot">${t('dash.viewsToday')}: ${fmtNum(d.views.today)}</span></div>
       </section>
-      ${can('owner') ? html`<section class="card" data-profit-summary aria-label="ربح الطلبات" style="margin-bottom:14px"><div class="card-head"><h3>ربح الطلبات المؤكدة والمسلّمة (30 يوم)</h3><span class="muted">للمالكة بس</span></div><div data-profit-body><p class="muted" style="margin:0">بنحسب…</p></div></section>` : ''}
+      ${can('owner') ? html`<section class="card" data-profit-summary aria-label="لوحة الأرباح والمرتجعات" style="margin-bottom:14px"><div class="card-head"><h3>الأرباح والمرتجعات</h3><span class="muted">للمالك فقط</span></div><p class="muted">تابع المبيعات وتكلفة المورد والمرتجعات من التقرير المالي، من غير اعتبار طلبات الاسترجاع أرباحًا مؤكدة.</p><a class="btn btn-primary" href="#/finance">فتح لوحة المالك المالية</a></section>` : ''}
       <section class="card" aria-label="إدارة المنتجات المعروضة والزيارات" style="margin-bottom:14px">
-        <div class="card-head"><h3>تحكّمي في اللي بيتعرض للعميلات</h3></div>
+        <div class="card-head"><h3>التحكم في المنتجات المعروضة بالمتجر</h3></div>
         <p class="muted" style="margin:0 0 10px">المسودة مش بتظهر في المتجر. يمكن إعادة نشر المنتج المخفي بعد مراجعة السعر والتوافر.</p>
         <div class="row" style="flex-wrap:wrap;gap:8px">
           <a href="#/products?status=public" class="btn btn-soft btn-sm">المنشور</a>
@@ -168,6 +131,5 @@ export default {
       </div></div>`);
     spotlight(el); countUp(el);
     void populateProductViews(el, d.top_viewed);
-    if (can('owner')) void populateProfit(el);
   },
 };
