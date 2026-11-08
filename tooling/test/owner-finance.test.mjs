@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { summarizeStageRows, filterOpenReturns, estimateNet } from '../../admin/js/finance-summary.js';
+import { summarizeStageRows, summarizeConfirmedStages, filterOpenReturns, estimateNet } from '../../admin/js/finance-summary.js';
 import { summarizeLines } from '../../admin/js/profit.js';
 const row = (code, price) => ({ public_order_code: code, grand_total_minor: price });
 test('returns are distinct from cancellations; duplicate codes do not count twice', () => {
@@ -29,3 +29,16 @@ test('estimated net requires explicit validated expenses and known costs', () =>
   assert.equal(estimateNet(s,{ship:-1,ad:0,other:0}),null);
 });
 
+
+test('stage filtering after server limit is unsafe; all-confirmed cap must suppress profit', () => {
+  const confirmed = [row('old-return', 70000), ...Array.from({length:98}, (_,i) => row('o'+i,50000))];
+  confirmed[0].stage = 'return_requested';
+  for (const r of confirmed.slice(1)) r.stage = 'preparing';
+  const complete = summarizeConfirmedStages(confirmed);
+  assert.equal(complete.complete, true);
+  assert.equal(complete.open.count, 1);
+  const capped = summarizeConfirmedStages([...confirmed, row('o99',50000)]);
+  assert.equal(capped.complete, false);
+  assert.equal(capped.open.complete, false);
+  assert.equal(capped.returned.complete, false);
+});

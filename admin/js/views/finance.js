@@ -2,13 +2,12 @@ import { t } from '../i18n.js';
 import { html, render, icon, money, fmtNum, toMinor } from '../ui.js';
 import { call } from '../api.js';
 import { summarizeLines } from '../profit.js';
-import { summarizeStageRows, filterOpenReturns, estimateNet } from '../finance-summary.js';
+import { summarizeStageRows, summarizeConfirmedStages, filterOpenReturns, estimateNet } from '../finance-summary.js';
 
 const safeCall = async (op, data) => {
   try { return await call(op, data); }
   catch { return { outcome: 'network' }; }
 };
-const stageRows = async (stage) => safeCall('orders.list', { status: 'confirmed', stage, limit: 100 });
 const listRows = async (status) => safeCall('orders.list', { status, limit: 100 });
 const asSummary = (r) => r?.outcome === 'ok' ? summarizeStageRows(r.data) : { complete: false };
 const amount = (s) => s?.complete ? money(s.orderValueMinor) : 'غير مكتمل';
@@ -24,19 +23,21 @@ export default {
       return;
     }
     render(el, html`<div class="page"><div class="page-head"><h2>الأرباح والمرتجعات</h2></div><p class="muted" role="status">بنراجع أرقام آخر 30 يوم وحالات المرتجعات…</p></div>`);
-    const [profit, requests, returned, cancelled, pending] = await Promise.all([
+    const [profit, confirmed, cancelled, pending] = await Promise.all([
       safeCall('profit.summary', { days: 30 }),
-      stageRows('return_requested'),
-      stageRows('returned'),
+      // No stage filter: the existing server filters AFTER its 100-order limit.
+      listRows('confirmed'),
       listRows('cancelled'),
       listRows('pending')
     ]);
     if (!el.isConnected) return;
-    const open = asSummary(requests), back = asSummary(returned);
+    const stages = confirmed?.outcome === 'ok' ? summarizeConfirmedStages(confirmed.data) :
+      { complete: false, open: { complete: false }, returned: { complete: false } };
+    const open = stages.open, back = stages.returned;
     const cancels = asSummary(cancelled), newOrders = asSummary(pending);
     const validProfit = profit?.outcome === 'ok' && Array.isArray(profit.data?.lines);
     // The old profit endpoint still counts return_requested as sales. Exclude those orders explicitly.
-    // If the returns query is missing/limited, do not show a potentially inflated profit.
+    // If the confirmed order listing is missing/capped, do not show potentially inflated profit.
     const lines = validProfit && open.complete ? filterOpenReturns(profit.data.lines, open.codes) : null;
     const s = lines ? summarizeLines(lines) : null;
     let exp = {};
@@ -62,7 +63,7 @@ export default {
           <dt>الطلبات المنتظرة تأكيد</dt><dd>${number(newOrders)}</dd>
           <dt>مبالغ مستردة للعملاء فعلًا</dt><dd>غير مسجلة بالنظام</dd>
         </dl>
-        ${[open,back,cancels,newOrders].some(x => !x.complete) ? html`<p class="note" role="alert">قائمة واحدة على الأقل لم تُحمّل بالكامل أو وصلت لحد 100 طلب. الأرقام الناقصة مش صفر.</p>` : ''}
+        ${[open,back,cancels,newOrders].some(x => !x.complete) ? html`<p class="note" role="alert">قائمة واحدة على الأقل لم تُحمّل بالكامل أو وصلت لحد 100 طلب. لتجنّب إخفاء مرتجعات قديمة مش هنحسب ربحًا من بيانات ناقصة.</p>` : ''}
         <p class="muted" style="margin:0">الملغي مش مرتجع. قيمة فاتورة المرتجع مش دليل على رد المبلغ، ولا يجوز خصمها مرتين من الربح. تكاليف شحن المرتجعات والتعويضات لسه محتاجة تسجيل مستقل.</p>
         <div class="row" style="flex-wrap:wrap"><a class="btn btn-soft btn-sm" href="#/orders?stage=return_requested">طلبات استرجاع</a><a class="btn btn-soft btn-sm" href="#/orders?stage=returned">مرتجع مكتمل</a><a class="btn btn-soft btn-sm" href="#/orders?status=cancelled">الملغية</a></div>
       </section>

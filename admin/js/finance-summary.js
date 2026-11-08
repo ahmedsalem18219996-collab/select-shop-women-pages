@@ -14,6 +14,19 @@ export function summarizeStageRows(rows) {
   if (!Number.isSafeInteger(amount)) return { complete: false, count: null, orderValueMinor: null, codes: new Set() };
   return { complete: true, count: unique.size, orderValueMinor: amount, codes: new Set(unique.keys()) };
 }
+// The server applies fulfillment-stage filtering *after* the 100-order cap.
+// Load the whole confirmed order page without a stage filter first; if the
+// page is capped, we cannot know whether older return requests are missing.
+export function summarizeConfirmedStages(rows) {
+  const coverage = summarizeStageRows(rows);
+  if (!coverage.complete) return { complete: false, open: { complete: false }, returned: { complete: false } };
+  return {
+    complete: true,
+    open: summarizeStageRows(rows.filter(row => row.stage === 'return_requested')),
+    returned: summarizeStageRows(rows.filter(row => row.stage === 'returned'))
+  };
+}
+
 export function filterOpenReturns(lines, openCodes) {
   if (!Array.isArray(lines) || !(openCodes instanceof Set)) return null;
   return lines.filter(line => !openCodes.has(line.order_code));

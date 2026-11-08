@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 test.use({ bypassCSP: true });
 const url = 'http://127.0.0.1:4173/admin/';
 const order = (code, price) => ({ public_order_code: code, grand_total_minor: price });
-async function openAs(page, role) {
+async function openAs(page, role, options = {}) {
   const seen = [];
   await page.addInitScript(() => {
     sessionStorage.setItem('wa.session', JSON.stringify({
@@ -23,8 +23,12 @@ async function openAs(page, role) {
         { order_code:'B',status:'delivered',quantity:1,line_total_minor:100000,unit_cost_minor:40000 },
       ]}};
       if (role === 'owner' && op === 'orders.list') {
-        const data = args?.stage === 'return_requested' ? [order('B',108500)]
-          : args?.stage === 'returned' ? [order('C',70000)]
+        const data = args?.status === 'confirmed'
+          ? (options.confirmedRows || [
+            { ...order('B',108500), stage:'return_requested' },
+            { ...order('C',70000), stage:'returned' },
+            { ...order('A',60000), stage:'delivered' }
+          ])
           : args?.status === 'cancelled' ? [order('D',90000)]
           : args?.status === 'pending' ? [order('E',55000)] : [];
         r = { outcome:'ok', data };
@@ -64,7 +68,8 @@ test('owner sees private finance, excludes open return and does not trigger any 
   await page.locator('[data-finance-exp="ad"]').fill('');
   await expect(net).toContainText('الصافي غير مكتمل');
   expect(calls.filter(x=>x.op==='profit.summary')).toHaveLength(1);
-  expect(calls.filter(x=>x.op==='orders.list')).toHaveLength(4);
+  expect(calls.filter(x=>x.op==='orders.list')).toHaveLength(3);
+  expect(calls.some(x=>x.op==='orders.list' && x.args.stage)).toBe(false);
   expect(calls.every(x=>['session.get','profit.summary','orders.list'].includes(x.op))).toBe(true);
 });
 test('staff is never offered finance route and cannot trigger cost read', async ({ page }) => {
@@ -74,3 +79,15 @@ test('staff is never offered finance route and cannot trigger cost read', async 
   expect(calls.filter(x=>x.op==='profit.summary')).toHaveLength(0);
 });
 
+
+test('finance refuses to report profit if the unfiltered 100-confirmed-order page is capped', async ({ page }) => {
+  const confirmedRows = Array.from({length:100}, (_,i) => ({
+    ...order('OLDER-' + i,55000), stage:'preparing'
+  }));
+  const calls = await openAs(page,'owner',{ confirmedRows });
+  const figures = page.locator('section[aria-label="المالية آخر 30 يوم"] .value');
+  await expect(figures).toHaveCount(4);
+  await expect(figures.nth(3)).toHaveText('—');
+  await expect(page.getByText(/تعذر الحصول على تقرير ربح موثوق/)).toBeVisible();
+  expect(calls.some(x=>x.op==='orders.list' && x.args.stage)).toBe(false);
+});
