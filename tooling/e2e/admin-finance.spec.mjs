@@ -44,6 +44,25 @@ test('owner sees private finance, excludes open return and does not trigger any 
   await expect(page.getByText('قيمة المنتجات بعد الخصم (30 يوم)')).toBeVisible();
   await expect(page.getByText('مبالغ مستردة للعملاء فعلًا')).toBeVisible();
   await expect(page.locator('a[href="#/orders?stage=return_requested"]')).toBeVisible();
+  // A is 600 EGP sale, 400 EGP frozen cost; B is a 1,000 EGP open return.
+  // Failing to exclude B would misleadingly report 1,600 EGP revenue / 800 EGP cost.
+  const figures = page.locator('section[aria-label="المالية آخر 30 يوم"] .value');
+  await expect(figures).toHaveCount(4);
+  await expect(figures.nth(0)).toHaveText('1');
+  await expect(figures.nth(1)).toHaveText('600 ج.م');
+  await expect(figures.nth(2)).toHaveText('400 ج.م');
+  await expect(figures.nth(3)).toHaveText('200 ج.م');
+  // Returned invoice value is NOT a verified actual refund.
+  await expect(page.locator('[aria-label="المرتجعات"]')).toContainText('700 ج.م');
+  await expect(page.locator('[aria-label="المرتجعات"]')).toContainText('غير مسجلة بالنظام');
+  const net = page.locator('[data-finance-net]');
+  await expect(net).toContainText('الصافي غير مكتمل');
+  for (const k of ['ship','ad','other']) await page.locator('[data-finance-exp="' + k + '"]').fill('0');
+  await expect(net).toHaveText('صافي تقديري: 200 ج.م');
+  await page.locator('[data-finance-exp="ad"]').fill('50');
+  await expect(net).toHaveText('صافي تقديري: 150 ج.م');
+  await page.locator('[data-finance-exp="ad"]').fill('');
+  await expect(net).toContainText('الصافي غير مكتمل');
   expect(calls.filter(x=>x.op==='profit.summary')).toHaveLength(1);
   expect(calls.filter(x=>x.op==='orders.list')).toHaveLength(4);
   expect(calls.every(x=>['session.get','profit.summary','orders.list'].includes(x.op))).toBe(true);
