@@ -22,7 +22,7 @@ const svg = (hex) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="htt
 
 // ---- in-memory WOMEN backend
 function backend(seed) {
-  const s = { version: 1, product: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], costsLive: true, ...seed };
+  const s = { version: 1, product: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], costsLive: true, listExisting: false, ...seed };
   const P = () => s.product;
   const next = (l) => l.reduce((m, x) => Math.max(m, x.position), -1) + 1;
   const bump = () => ({ outcome: 'applied', structure_version: ++s.version });
@@ -64,7 +64,7 @@ function backend(seed) {
     if (op.startsWith('costs.') && session.role !== 'owner' && !session.permissions.includes('products.edit')) return { outcome: 'forbidden' };
     switch (op) {
       case 'session.get': return { outcome: 'ok', data: session };
-      case 'products.list': return { outcome: 'ok', data: [] };
+      case 'products.list': return { outcome: 'ok', data: s.listExisting && p && (!a.status || a.status === p.status) ? [{ ...p, category: 'أطقم', image: 'media/test-product.webp', price_min_minor: p.base_price?.amount_minor ?? null, price_max_minor: p.base_price?.amount_minor ?? null, stock_total: 0, views_30d: 0 }] : [] };
       case 'categories.list': return { outcome: 'ok', data: [{ name: 'فساتين', visible: true }] };
       case 'shipping.get': return { outcome: 'ok', data: { profiles: [{ key: 'women_standard', active: true, name: 'شحن عادي' }] } };
       case 'products.create':
@@ -613,3 +613,61 @@ test('staff product creator can enter supplier cost without aggregate margin', a
   expect(b.s.ops.some(x=>x.op==='profit.summary')).toBe(false);
 });
 
+
+test('mobile owner can archive a draft, but staff cannot; product history is retained', async ({ page }) => {
+  const product = {
+    public_code: 'SS-9101', title: 'سويت شيرت شتوي مقلم أحمر وأبيض بمقاسات متعددة',
+    description: '', status: 'draft', created_at: now, updated_at: now,
+    base_price: { amount_minor: 70000 }, options: [], variants: [],
+    shipping_profile: null, publish_blockers: []
+  };
+  const b = backend({ product, listExisting: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, b, owner);
+  await page.goto(target + '#/products?status=draft');
+  const card = page.locator('[data-mobile-product="SS-9101"]');
+  await expect(card).toBeVisible();
+  await expect(card.locator('[data-archive-mobile]')).toHaveText('أرشفة المنتج');
+
+  // Regression for screenshot: photo must not overlap the Arabic product title.
+  for (const width of [320, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    const geometry = await card.locator('.catalog-mobile-open').evaluate(el => {
+      const thumb = el.querySelector('.thumb').getBoundingClientRect();
+      const title = el.querySelector('.row-main > b').getBoundingClientRect();
+      const overlapX = Math.max(0, Math.min(thumb.right, title.right) - Math.max(thumb.left, title.left));
+      const overlapY = Math.max(0, Math.min(thumb.bottom, title.bottom) - Math.max(thumb.top, title.top));
+      return { overlapArea: overlapX * overlapY, titleWidth: title.width };
+    });
+    expect(geometry.overlapArea).toBeLessThan(1);
+    expect(geometry.titleWidth).toBeGreaterThan(90);
+  }
+
+  await card.locator('[data-archive-mobile]').click();
+  await expect(page.locator('#layer')).toContainText('الاسترجاع غير متاح حاليًا');
+  await page.locator('#layer [data-no]').click();
+  expect(b.s.product.status).toBe('draft');
+  await card.locator('[data-archive-mobile]').click();
+  await page.locator('#layer [data-yes]').click();
+  await expect.poll(() => b.s.product.status).toBe('archived');
+  await expect(page.locator('[data-mobile-product="SS-9101"]')).toHaveCount(0);
+  expect(b.s.ops.filter(x => x.op === 'products.archive')).toHaveLength(1);
+  expect(b.s.ops.filter(x => x.op.startsWith('orders.'))).toHaveLength(0);
+  await page.goto(target + '#/products?status=archived');
+  await expect(page.locator('[data-mobile-product="SS-9101"]')).toBeVisible();
+  await expect(page.locator('[data-archive-mobile]')).toHaveCount(0);
+});
+
+test('mobile staff can see the draft but never sees owner archive control', async ({ page }) => {
+  const b = backend({ listExisting: true, product: {
+    public_code: 'SS-9101', title: 'بلوفر', description: '', status: 'draft',
+    created_at: now, updated_at: now, base_price: { amount_minor: 55000 },
+    options: [], variants: [], shipping_profile: null, publish_blockers: []
+  }});
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, b, { role: 'staff', email: 'qa-mobile-staff@example.test', permissions: ['products.view','products.edit','products.price'] });
+  await page.goto(target + '#/products?status=draft');
+  await expect(page.locator('[data-mobile-product="SS-9101"]')).toBeVisible();
+  await expect(page.locator('[data-archive-mobile]')).toHaveCount(0);
+  expect(b.s.ops.some(x => x.op === 'products.archive')).toBe(false);
+});
