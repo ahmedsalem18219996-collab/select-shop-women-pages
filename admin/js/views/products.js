@@ -528,7 +528,7 @@ async function renderEditor(ctx, code) {
         ${can('products.edit') || can('owner') ? html`<button type="button" class="btn btn-soft" data-setup-tab="colours" data-open-cost>${can('owner') ? 'سعر المورد والربح' : 'تكلفة المورد'}</button>` : ''}
         <button type="button" class="btn btn-soft" data-quick-single>تعديل سريع للمقاس والسعر والصور</button></div>
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}
-      ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} حذف المنتج</button></div>` : ''}</div>
+      ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} أرشفة المنتج</button></div>` : ''}</div>
     ${p.status !== 'public' && p.status !== 'archived' ? html`<section class="card stack" aria-label="خطوات تجهيز مسودة المنتج">
       <div class="card-head"><h3>استكمال الموديل في ٣ خطوات</h3><span class="muted">مسودة مش ظاهرة للعملاء لحد النشر</span></div>
       <p class="muted" style="margin:0">لكل لون صوره ومقاساته وسعره. مراجعة معاينة عرض المنتج في المتجر، ثم النشر.</p>
@@ -566,14 +566,14 @@ async function renderEditor(ctx, code) {
   $('[data-archive-editor]', el)?.addEventListener('click', async (e) => {
     // Archive is the existing owner-only operation: never delete historical orders or reuse the code.
     const confirmed = await confirmDialog({
-      title: 'حذف المنتج ' + code,
+      title: 'أرشفة المنتج ' + code,
       text: 'هيختفي المنتج من المتجر والقائمة النشطة، لكن الأوردرات والسجلات القديمة هتفضل محفوظة. الأرشفة نهائية، ولا يمكن استعادة المنتج من لوحة الإدارة. تأكيد الأرشفة؟',
-      okText: 'تأكيد حذف المنتج', danger: true
+      okText: 'تأكيد الأرشفة', danger: true
     });
     if (!confirmed) return;
     const res = await withBusy(e.currentTarget, () => call('products.archive', { code }));
     if (['archived', 'already_archived'].includes(res?.outcome)) {
-      done('اتحذف المنتج من العرض واتحفظ تاريخ الأوردرات.');
+      done('المنتج اتأرشف، واتحفظت الصور والأوردرات القديمة.');
       ctx.go('products');
     } else fail(res);
   });
