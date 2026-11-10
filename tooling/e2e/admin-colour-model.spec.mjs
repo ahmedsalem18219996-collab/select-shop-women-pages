@@ -61,7 +61,7 @@ function backend(seed) {
     const perm = { 'products.create': 'products.edit', 'products.structure': 'products.edit', 'products.set_price': 'products.price', 'products.set_variant_price': 'products.price',
       'products.set_stock': 'inventory.manage', 'products.set_availability': 'inventory.manage', 'products.publish': 'products.publish', 'media.reorder': 'media.manage' }[op];
     if (session.role !== 'owner' && perm && !session.permissions.includes(perm)) return { outcome: 'forbidden' };
-    if (op.startsWith('costs.') && session.role !== 'owner') return { outcome: 'forbidden' };
+    if (op.startsWith('costs.') && session.role !== 'owner' && !session.permissions.includes('products.edit')) return { outcome: 'forbidden' };
     switch (op) {
       case 'session.get': return { outcome: 'ok', data: session };
       case 'products.list': return { outcome: 'ok', data: [] };
@@ -355,7 +355,7 @@ test('owner shortcut opens supplier costs after the colour data finishes loading
   expect(b.s.ops.some(o => o.op === 'costs.set')).toBe(false);
 });
 
-test('staff without price or owner rights edits colours but never sees or loads supplier cost', async ({ page }) => {
+test('staff with products.edit can save supplier cost without owner profit', async ({ page }) => {
   const b = backend({ version: 3 });
   b.s.product = { public_code: 'SS-9101', title: 'بلوزة', description: '', status: 'draft', created_at: now, updated_at: now, base_price: { amount_minor: 45000 }, shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: [],
     options: [{ option_id: 'o0', name: 'اللون', position: 0, values: [{ value_id: 'o0v0', value: 'أسود', position: 0, active: true }] }, { option_id: 'o1', name: 'المقاس', position: 1, values: [{ value_id: 'o1v0', value: 'M', position: 0, active: true }] }],
@@ -365,11 +365,19 @@ test('staff without price or owner rights edits colours but never sees or loads 
   await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
   await page.goto(target + '#/products/SS-9101');
   await expect(page.locator('[data-colour]')).toHaveCount(1);
-  await expect(page.locator('button[data-open-cost]')).toHaveCount(0);
-  await expect(page.locator('.cost-box')).toHaveCount(0);
+  await expect(page.locator('button[data-open-cost]')).toHaveText('تكلفة المورد');
+  await expect(page.locator('.cost-box')).toHaveCount(1);
+  await expect(page.locator('.cost-box [data-profit]')).toHaveCount(0);
+  await page.locator('.cost-box [data-cost="0"]').fill('325');
+  await page.locator('.cost-box [data-save-cost]').click();
+  await expect.poll(() => b.s.costs.variants[0]?.cost_minor).toBe(32500);
+  await expect(page.locator('a[href="#/finance"]')).toHaveCount(0);
+  await expect(page.locator('[data-trash-editor]')).toHaveCount(0);
   await expect(page.locator('[data-archive-editor]')).toHaveCount(0);
   await expect(page.locator('[data-c-price]')).toHaveCount(0);
-  expect(b.s.ops.some((o) => o.op.startsWith('costs.'))).toBe(false);
+  expect(b.s.ops.some((o) => o.op === 'costs.get')).toBe(true);
+  expect(b.s.ops.some((o) => o.op === 'costs.set')).toBe(true);
+  expect(b.s.ops.some((o) => o.op === 'profit.summary')).toBe(false);
   // Adding a colour later only adds its value and its own Variants
   await page.locator('[data-add-draft]').click();
   await page.locator('[data-draft] [data-d-name]').fill('بيج');
@@ -588,3 +596,20 @@ test('free offline description enhancer: new draft, undo, existing edit, and no 
   expect(b.s.product.status).toBe('draft');
   expect(b.s.ops.some(x => x.op === 'products.publish')).toBe(false);
 });
+
+test('staff product creator can enter supplier cost without aggregate margin', async ({ page }) => {
+  const b = backend();
+  const session = {role:'staff',email:'qa-upload@example.test',permissions:['products.view','products.edit','products.price','shipping.manage']};
+  await open(page,b,session);
+  await page.locator('a[href="#/products"]:visible').first().click();
+  await page.locator('button[data-new]:visible').first().click();
+  await page.locator('#c-title').fill('بلوفر قطن');
+  await page.locator('#c-price').fill('550');
+  await page.locator('#c-cost').fill('350');
+  await expect(page.locator('[data-c-profit]')).not.toContainText('ربح مبدئي');
+  await page.locator('[data-create]').click();
+  await expect.poll(() => b.s.costs.product_cost_minor).toBe(35000);
+  expect(b.s.ops.filter(x => x.op === 'costs.set').map(x=>x.args.cost_minor)).toEqual([35000]);
+  expect(b.s.ops.some(x=>x.op==='profit.summary')).toBe(false);
+});
+

@@ -155,7 +155,8 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
   const { can } = ctx;
   const model = colourModel(p, d.stock, d.media?.media || []);
   const media = allMedia(d);
-  const costs = can('owner') ? await loadCosts(call, code) : null;
+  const mayEditCost = can('products.edit') || can('owner');
+  const costs = mayEditCost ? await loadCosts(call, code) : null;
   const cost = (pos) => (costs?.ready ? costOf(costs.data, pos) : null);
   const live = model.colours.filter((c) => c.variants.length);
   const half = p.options.length && !p.variants.length;
@@ -167,7 +168,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
       <p class="muted" style="margin:0">كل لون له صوره ومقاساته وسعره الخاص لو موجود. عند اختيار اللون، الصور والمقاسات والسعر بتتغير معاه. المخزون افتراضي: «متاح عند المورد» معناه بنقبل الأوردر وبنشتري بعده.</p>
       ${!model.canAddColour ? html`<p class="note" role="note"><b>موديل قديم من غير اختيار لون.</b> يمكن تعديل صوره وسعره وتوافره من هنا. إضافة ألوان على نفس الكود مش مسموحة من قاعدة البيانات بعد ما اتعمل له مقاس؛ لإضافة ألوان، يجب إنشاء موديل جديد. الكود والأوردرات واللينكات القديمة زي ما هي، ومفيش دمج أو حذف تلقائي.</p>` : ''}
       ${half ? html`<p class="note" role="note">الموديل ده عليه خيارات من غير مقاسات جاهزة (غالبًا الحفظ اتقطع). استكمال من تبويب «المقاسات والمخزون» بزر «إنشاء كل التوليفات».</p>` : ''}
-      ${can('owner') && costs && !costs.ready ? html`<p class="note" role="note">${costs.missing ? 'تكلفة المورد والربح محتاجين تفعيل من السيرفر (التعديل جاهز للمراجعة). الأسعار والصور شغالة عادي.' : 'تعذّر تحميل تكلفة المورد دلوقتي. باقي الشاشة شغالة.'}</p>` : ''}
+      ${mayEditCost && costs && !costs.ready ? html`<p class="note" role="note">${costs.missing ? 'تكلفة المورد والربح محتاجين تفعيل من السيرفر (التعديل جاهز للمراجعة). الأسعار والصور شغالة عادي.' : 'تعذّر تحميل تكلفة المورد دلوقتي. باقي الشاشة شغالة.'}</p>` : ''}
     </section>
     ${live.map((c, ci) => colourCard(c, ci, { model, media, can, cost, costsReady: costs?.ready }))}
     ${can('products.edit') && model.canAddColour && !half ? html`<section class="card stack" data-new-colours><div class="card-head"><h3>${live.length ? 'إضافة لون جديد' : 'بداية بأول لون'}</h3></div><div data-drafts></div></section>` : ''}
@@ -409,7 +410,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
       if (r.outcome === 'saved') { done('بقت أول صورة للون.'); reload(); } else fail(r);
     }
     if (b.matches('[data-save-cost]')) {
-      // Cost is Owner-only and never part of the public product. Updating it never changes a price.
+      // Product editors may save expected supplier cost. Server enforces products.edit; Owner retains aggregate financial reports.
       const inputs = $$('[data-cost]', card), jobs = [];
       for (const inp of inputs) {
         const v = inp.value.trim(), amount = v ? toMinor(v) : null, pos = Number(inp.dataset.cost);
@@ -461,12 +462,12 @@ function colourCard(c, ci, { model, media, can, cost, costsReady }) {
       ${can('inventory.manage') && c.active ? html`<label class="switch" style="align-self:center"><input type="checkbox" data-c-avail ${c.available ? 'checked' : ''}><i></i>متاح عند المورد</label>` : ''}
     </div>
     ${(can('products.edit') || can('products.price') || can('inventory.manage') || can('media.manage')) && c.active ? html`<div class="row"><span class="space"></span><button type="button" class="btn btn-primary" data-save-colour>حفظ اللون والصور</button></div>` : ''}
-    ${can('owner') && costsReady ? html`<details class="cost-box" ${live.some((v) => cost(v.position) === null) ? 'open' : ''}><summary>سعر المورد والربح (للمالك فقط)</summary>
+    ${(can('products.edit') || can('owner')) && costsReady ? html`<details class="cost-box" ${live.some((v) => cost(v.position) === null) ? 'open' : ''}><summary>${can('owner') ? 'سعر المورد والربح' : 'تكلفة المورد'}</summary>
       <div class="stack" style="margin-top:8px">${live.map((v) => { const k = cost(v.position); const t = profitText(v.amountMinor ?? sell, k, money); return html`<div class="row" style="flex-wrap:wrap">
         <span style="min-width:72px">${v.size ?? ONE_SIZE}</span><div class="input-money" style="max-width:140px"><input data-cost="${v.position}" inputmode="decimal" value="${k === null ? '' : k / 100}" placeholder="التكلفة" aria-label="تكلفة ${c.name} ${v.size ?? ''}"><span>EGP</span></div>
-        <small data-profit="${v.position}" data-kind="${t.kind}" role="status">${t.text}</small></div>`; })}
+        ${can('owner') ? html`<small data-profit="${v.position}" data-kind="${t.kind}" role="status">${t.text}</small>` : ''}</div>`; })}
         <div class="row"><span class="space"></span><button type="button" class="btn btn-soft btn-sm" data-save-cost>حفظ التكلفة</button></div>
-        <small class="muted">الربح المبدئي = سعر البيع − تكلفة المورد. الشحن اللي بيُدفع العميل مش ربح. التكلفة بتتحفظ مع كل أوردر وقت الطلب، فتغييرها مش بيغيّر حسابات الأوردرات القديمة.</small></div></details>` : ''}
+        <small class="muted">${can('owner') ? 'الربح المبدئي = سعر البيع − تكلفة المورد. الشحن اللي بيُدفع العميل مش ربح. التكلفة بتتحفظ مع كل أوردر وقت الطلب، فتغييرها مش بيغيّر حسابات الأوردرات القديمة.' : 'التكلفة مش بتظهر للعملاء. تعديلها مش بيغيّر سعر البيع أو التكاليف المسجلة على الطلبات القديمة.'}</small></div></details>` : ''}
     ${can('products.edit') && c.optionPosition !== null ? html`<div class="row"><span class="space"></span>${c.active ? html`<button type="button" class="btn btn-ghost btn-sm" data-retire>إيقاف اللون</button>` : html`<button type="button" class="btn btn-soft btn-sm" data-restore>رجّعي اللون</button>`}</div>` : ''}
     <ol class="blockers" data-steps hidden></ol>
   </article>`;
