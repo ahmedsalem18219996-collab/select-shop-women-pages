@@ -92,6 +92,7 @@ async function renderList(ctx) {
           <div class="catalog-mobile-actions">
             <button type="button" class="btn btn-primary btn-sm" data-quick-mobile="${p.public_code}">تعديل سريع</button>
             ${can('products.publish') && statusAction(p.status) ? html`<button type="button" class="btn btn-soft btn-sm" data-status-action="${p.public_code}">${statusAction(p.status).label}</button>` : ''}
+            ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<button type="button" class="btn btn-soft btn-sm" data-archive-mobile="${p.public_code}">أرشفة المنتج</button>` : ''}
           </div>
         </div>`;
       })}</div>
@@ -128,13 +129,37 @@ async function renderList(ctx) {
           <td>${statusBadge(p.status)}</td>
           <td><div class="row">
             ${can('products.publish') && statusAction(p.status) ? html`<button class="btn btn-soft btn-sm" data-status-action="${p.public_code}">${statusAction(p.status).label}</button>` : ''}
-            ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<button type="button" class="btn btn-danger btn-sm" data-archive>حذف المنتج</button>` : ''}
+            ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<button type="button" class="btn btn-soft btn-sm" data-archive>أرشفة المنتج</button>` : ''}
           </div></td></tr>`;
         })}</tbody></table></div>`);
     // categories list may arrive after the first paint
     if (can('products.edit') && !categories.length) await loadCategories().then(load);
   };
   const visibleProduct = (code) => listedGroups.flatMap(g => g.members).find(m => m.product.public_code === code)?.product;
+  // Owner-only archive: moves a product out of active catalog; does not delete history.
+  const archiveProduct = async (button, code) => {
+    if (ctx.session?.role !== 'owner') return;
+    const item = visibleProduct(code);
+    if (!item || item.status === 'archived') {
+      island('error', 'المنتج مش متاح للأرشفة. حدّث القائمة وحاول تاني.');
+      return;
+    }
+    const confirmed = await confirmDialog({
+      title: 'أرشفة المنتج ' + code,
+      text: 'المنتج هيختفي من المتجر وقائمة المنتجات النشطة. الصور والطلبات القديمة هتفضل محفوظة. الاسترجاع غير متاح حاليًا من لوحة الإدارة. تأكيد الأرشفة؟',
+      okText: 'تأكيد الأرشفة',
+      danger: true
+    });
+    if (!confirmed) return;
+    let res;
+    try { res = await withBusy(button, () => call('products.archive', { code })); }
+    catch { res = { outcome: 'network' }; }
+    if (['archived', 'already_archived'].includes(res?.outcome)) {
+      done('المنتج اتأرشف واتشال من قائمة المنتجات النشطة.');
+      await load();
+      void refreshCounts();
+    } else fail(res);
+  };
   const changeStatus = async (button, code) => {
     if (!can('products.publish')) return;
     const item = visibleProduct(code);
@@ -308,20 +333,11 @@ async function renderList(ctx) {
     if (quick) { openQuickMobile(quick.dataset.quickMobile); return; }
     const statusBtn = e.target.closest('[data-status-action]');
     if (statusBtn) { await changeStatus(statusBtn, statusBtn.dataset.statusAction); return; }
+    const archiveMobile = e.target.closest('[data-archive-mobile]');
+    if (archiveMobile) { await archiveProduct(archiveMobile, archiveMobile.dataset.archiveMobile); return; }
     const tr = e.target.closest('tr[data-code]');
-    if (e.target.closest('[data-archive]') && tr && ctx.session?.role === 'owner') {
-      const code=tr.dataset.code;
-      const confirmed=await confirmDialog({
-        title:'حذف المنتج '+code,
-        text:'سيتم إخفاء المنتج من المتجر وأرشفته نهائيًا، مع الاحتفاظ بالطلبات والسجلات القديمة. لا يمكن التراجع عن الحذف. تأكيد الحذف؟',
-        okText:'تأكيد الحذف والأرشفة',danger:true
-      });
-      if(!confirmed)return;
-      const button=e.target.closest('[data-archive]');
-      const res=await withBusy(button,()=>call('products.archive',{code}));
-      if(['archived','already_archived'].includes(res.outcome)){done('تم أرشفة المنتج وإخفاؤه من المتجر');load();}
-      else fail(res);
-    }
+    const archiveDesktop = e.target.closest('[data-archive]');
+    if (archiveDesktop && tr) { await archiveProduct(archiveDesktop, tr.dataset.code); return; }
     if (e.target.closest('[data-price]') && tr) quickPrice(tr.dataset.code, load);
   });
   $('#q', el).addEventListener('input', debounce((e) => { state.q = e.target.value.trim(); load(); }, 300));
