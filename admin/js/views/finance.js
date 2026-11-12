@@ -69,7 +69,7 @@ async function loadOwnerCostCatalogue(el, button) {
       ownerCostCells(p, costs.get(p.public_code)).complete).length;
     const pending = products.length - readCount;
     render(output, html`
-      <p class="muted" role="status">تمت مراجعة ${fmtNum(readCount)} من ${fmtNum(products.length)} منتج. ${pending ? 'جاري جلب الباقي بهدوء…' : 'انتهى تحميل الأسعار.'}</p>
+      <p class="muted" role="status">تمت مراجعة ${fmtNum(readCount)} من ${fmtNum(products.length)} منتج. ${pending ? 'اعرض باقي المنتجات من الزر تحت الجدول.' : 'انتهى تحميل الأسعار.'}</p>
       ${!archivedOk || truncated ? html`<p class="note" role="alert">القائمة غير مكتملة (حد النتائج أو تعذّر جلب المؤرشف). الأسعار الظاهرة تخص الصفوف المحمّلة فقط.</p>` : ''}
       <p class="muted">تكلفة مثبتة لعدد ${fmtNum(complete)} من الصفوف المحمّلة. «غير مسجلة» تعني أن التكلفة غير محفوظة؛ و«جزئي» يعني أن بعض المقاسات فقط لها تكلفة.</p>
       <div class="table-wrap" style="overflow-x:auto">
