@@ -61,6 +61,7 @@ async function loadOwnerCostCatalogue(el, button) {
   const truncated = listed.data.length >= 100 || (archivedOk && archived.data.length >= 100);
   const costs = new Map();
   let readCount = 0;
+  let displayed = 0;
   const paint = () => {
     if (!el.isConnected) return;
     const complete = products.filter(p => costs.get(p.public_code)?.outcome === 'ok' &&
@@ -73,7 +74,7 @@ async function loadOwnerCostCatalogue(el, button) {
       <div class="table-wrap" style="overflow-x:auto">
         <table class="t">
           <thead><tr><th>المنتج</th><th>الحالة</th><th>سعر البيع</th><th>تكلفة المورد</th><th>الربح المبدئي للوحدة</th></tr></thead>
-          <tbody>${products.map(p => {
+          <tbody>${products.slice(0, displayed).map(p => {
             const cells = ownerCostCells(p, costs.get(p.public_code));
             return html`<tr><td><a href="#/products/${p.public_code}">${p.title || p.public_code}</a><small class="muted" style="display:block" dir="ltr">${p.public_code}</small></td>
               <td>${p.status === 'public' ? 'منشور' : p.status === 'draft' ? 'مسودة' : p.status === 'hidden' ? 'مخفي' : 'مؤرشف'}</td>
@@ -82,19 +83,25 @@ async function loadOwnerCostCatalogue(el, button) {
         </table>
       </div>
       <small class="muted">الربح هنا فرق سعر البيع وتكلفة المورد فقط، من غير شحن أو إعلانات أو مرتجعات. لو المقاسات أو الأسعار مختلفة راجع تفاصيل المنتج.</small>
+      ${displayed < products.length ? html`<button type="button" class="btn btn-soft btn-sm" data-cost-next>عرض 12 منتج تاني</button>` : ''}
     `);
+    output.querySelector('[data-cost-next]')?.addEventListener('click', () => { void loadNext(); });
   };
-  paint();
-  for (let i = 0; i < products.length; i += 3) {
-    if (!el.isConnected) return;
-    const batch = products.slice(i, i + 3);
-    await Promise.all(batch.map(async (p) => {
-      const result = await safeCall('costs.get', { code: p.public_code });
-      costs.set(p.public_code, result);
-      readCount++;
-    }));
+  const loadNext = async () => {
+    const until = Math.min(products.length, displayed + 12);
+    const next = products.slice(displayed, until);
+    displayed = until;
     paint();
-  }
+    for (let i = 0; i < next.length; i += 3) {
+      if (!el.isConnected) return;
+      await Promise.all(next.slice(i, i + 3).map(async (p) => {
+        costs.set(p.public_code, await safeCall('costs.get', { code: p.public_code }));
+        readCount++;
+      }));
+      paint();
+    }
+  };
+  await loadNext();
   button.disabled = false;
   button.textContent = 'تحديث أسعار المورد';
 }
@@ -134,6 +141,11 @@ export default {
     const field = (key, title) => html`<label class="field"><span>${title}</span><div class="input-money"><input data-finance-exp="${key}" inputmode="decimal" value="${inputValue(exp,key)}" placeholder="اكتب 0 لو مفيش"><span>EGP</span></div></label>`;
     render(el, html`<div class="page">
       <div class="page-head"><div><h2>الأرباح والمرتجعات</h2><p>تقرير خاص بالمالك؛ مبالغ بالجنيه المصري.</p></div><a class="btn btn-soft" href="#/products">${icon('box')} تعديل أسعار المنتجات</a></div>
+      <section class="card stack" aria-label="تكلفة المورد حسب المنتج" style="margin-top:14px">
+        <div class="card-head"><h3>أسعار البيع والمورد لكل منتج</h3><button type="button" class="btn btn-soft btn-sm" data-owner-cost-load>تحميل أسعار المورد</button></div>
+        <p class="muted">خاص بالمالك فقط. تحميل عند الطلب وعلى دفعات صغيرة علشان الموظفين يقدروا يكملوا شغلهم. التكاليف الناقصة مش محسوبة كصفر.</p>
+        <div data-owner-cost-results role="region" aria-live="polite">اضغط «تحميل أسعار المورد» لعرض القائمة.</div>
+      </section>
       <p class="note" role="note">الطلبات عند الاستلام مش معناها إن الفلوس اتحصلت. الإيراد المعروض قيمة طلبات مؤكدة أو متسلّمة، مش رصيد بنكي أو أرباح محصّلة.</p>
       <section class="kpis" aria-label="المالية آخر 30 يوم">
         <div class="card kpi"><span class="label">طلبات محتسبة في التقرير (30 يوم)</span><b class="value">${s ? fmtNum(s.orders) : '—'}</b></div>
@@ -162,11 +174,6 @@ export default {
         <div class="grid2">${field('ship','شحن دفعه المتجر لكل أوردر')}${field('ad','إعلانات لكل أوردر')}${field('other','تغليف ومصاريف تانية لكل أوردر')}</div>
         <b data-finance-net role="status"></b>
         <small class="muted">الشحن اللي العميل دفعه مش مضاف لربح المنتجات. المصاريف دي محفوظة في المتصفح فقط، ومش بتعدّل بيانات الطلبات.</small>
-      </section>
-      <section class="card stack" aria-label="تكلفة المورد حسب المنتج" style="margin-top:14px">
-        <div class="card-head"><h3>أسعار البيع والمورد لكل منتج</h3><button type="button" class="btn btn-soft btn-sm" data-owner-cost-load>تحميل أسعار المورد</button></div>
-        <p class="muted">خاص بالمالك فقط. تحميل عند الطلب وعلى دفعات صغيرة علشان الموظفين يقدروا يكملوا شغلهم. التكاليف الناقصة مش محسوبة كصفر.</p>
-        <div data-owner-cost-results role="region" aria-live="polite">اضغط «تحميل أسعار المورد» لعرض القائمة.</div>
       </section>
     </div>`);
     const updateNet = () => {
