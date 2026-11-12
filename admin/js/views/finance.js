@@ -14,6 +14,91 @@ const amount = (s) => s?.complete ? money(s.orderValueMinor) : 'غير مكتم�
 const number = (s) => s?.complete ? fmtNum(s.count) : '—';
 const inputValue = (o, key) => Number.isInteger(o[key]) && o[key] >= 0 ? String(o[key] / 100) : '';
 
+
+const isCost = (x) => Number.isSafeInteger(x) && x > 0;
+const rangeLabel = (a, b) => !Number.isSafeInteger(a) || !Number.isSafeInteger(b) ? 'غير محدد'
+  : a === b ? money(a) : money(a) + ' – ' + money(b);
+
+// The catalogue view deliberately never estimates a per-size profit from unmatched price/cost ranges.
+function ownerCostCells(product, reply) {
+  const sellMin = product.price_min_minor, sellMax = product.price_max_minor;
+  if (!reply) return { cost: 'جارٍ التحميل…', gross: '—', complete: false };
+  if (reply.outcome !== 'ok' || !reply.data) return { cost: 'تعذر قراءة التكلفة', gross: '—', complete: false };
+  const base = isCost(reply.data.product_cost_minor) ? reply.data.product_cost_minor : null;
+  const overrides = Array.isArray(reply.data.variants)
+    ? reply.data.variants.map(v => v.cost_minor).filter(isCost) : [];
+  if (base === null && !overrides.length) return { cost: 'غير مسجلة', gross: '—', complete: false };
+  const known = [...(base === null ? [] : [base]), ...overrides];
+  const cost = rangeLabel(Math.min(...known), Math.max(...known)) + (base === null ? ' (جزئي)' : '');
+  const exact = base !== null && known.every(v => v === base) &&
+    Number.isSafeInteger(sellMin) && sellMin > 0 && sellMin === sellMax;
+  return { cost, gross: exact ? money(sellMin - base) : 'يختلف حسب المقاس/السعر',
+    complete: base !== null };
+}
+
+async function loadOwnerCostCatalogue(el, button) {
+  const output = el.querySelector('[data-owner-cost-results]');
+  if (!output || !button) return;
+  button.disabled = true;
+  output.textContent = 'بنحمّل قائمة المنتجات…';
+  // Read-only, opt-in and limited concurrency: no supplier, pricing or product writes.
+  const [listed, archived] = await Promise.all([
+    safeCall('products.list', { limit: 100 }),
+    safeCall('products.list', { status: 'archived', limit: 100 })
+  ]);
+  if (!el.isConnected) return;
+  if (listed?.outcome !== 'ok' || !Array.isArray(listed.data)) {
+    output.textContent = 'تعذّر تحميل المنتجات. لم يتم تغيير أي سعر أو تكلفة.';
+    button.disabled = false;
+    return;
+  }
+  const archivedOk = archived?.outcome === 'ok' && Array.isArray(archived.data);
+  const byCode = new Map();
+  for (const p of [...listed.data, ...(archivedOk ? archived.data : [])]) {
+    if (p && typeof p.public_code === 'string') byCode.set(p.public_code, p);
+  }
+  const products = [...byCode.values()].sort((a, b) => a.public_code.localeCompare(b.public_code, 'en'));
+  const truncated = listed.data.length >= 100 || (archivedOk && archived.data.length >= 100);
+  const costs = new Map();
+  let readCount = 0;
+  const paint = () => {
+    if (!el.isConnected) return;
+    const complete = products.filter(p => costs.get(p.public_code)?.outcome === 'ok' &&
+      ownerCostCells(p, costs.get(p.public_code)).complete).length;
+    const pending = products.length - readCount;
+    render(output, html`
+      <p class="muted" role="status">تمت مراجعة ${fmtNum(readCount)} من ${fmtNum(products.length)} منتج. ${pending ? 'جاري جلب الباقي بهدوء…' : 'انتهى تحميل الأسعار.'}</p>
+      ${!archivedOk || truncated ? html`<p class="note" role="alert">القائمة غير مكتملة (حد النتائج أو تعذّر جلب المؤرشف). الأسعار الظاهرة تخص الصفوف المحمّلة فقط.</p>` : ''}
+      <p class="muted">تكلفة مثبتة لعدد ${fmtNum(complete)} من الصفوف المحمّلة. «غير مسجلة» تعني أن التكلفة غير محفوظة؛ و«جزئي» يعني أن بعض المقاسات فقط لها تكلفة.</p>
+      <div class="table-wrap" style="overflow-x:auto">
+        <table class="t">
+          <thead><tr><th>المنتج</th><th>الحالة</th><th>سعر البيع</th><th>تكلفة المورد</th><th>الربح المبدئي للوحدة</th></tr></thead>
+          <tbody>${products.map(p => {
+            const cells = ownerCostCells(p, costs.get(p.public_code));
+            return html`<tr><td><a href="#/products/${p.public_code}">${p.title || p.public_code}</a><small class="muted" style="display:block" dir="ltr">${p.public_code}</small></td>
+              <td>${p.status === 'public' ? 'منشور' : p.status === 'draft' ? 'مسودة' : p.status === 'hidden' ? 'مخفي' : 'مؤرشف'}</td>
+              <td>${rangeLabel(p.price_min_minor, p.price_max_minor)}</td><td>${cells.cost}</td><td>${cells.gross}</td></tr>`;
+          })}</tbody>
+        </table>
+      </div>
+      <small class="muted">الربح هنا فرق سعر البيع وتكلفة المورد فقط، من غير شحن أو إعلانات أو مرتجعات. لو المقاسات أو الأسعار مختلفة راجع تفاصيل المنتج.</small>
+    `);
+  };
+  paint();
+  for (let i = 0; i < products.length; i += 3) {
+    if (!el.isConnected) return;
+    const batch = products.slice(i, i + 3);
+    await Promise.all(batch.map(async (p) => {
+      const result = await safeCall('costs.get', { code: p.public_code });
+      costs.set(p.public_code, result);
+      readCount++;
+    }));
+    paint();
+  }
+  button.disabled = false;
+  button.textContent = 'تحديث أسعار المورد';
+}
+
 export default {
   title: () => 'الأرباح والمرتجعات',
   async render({ el, can }) {
@@ -78,7 +163,11 @@ export default {
         <b data-finance-net role="status"></b>
         <small class="muted">الشحن اللي العميل دفعه مش مضاف لربح المنتجات. المصاريف دي محفوظة في المتصفح فقط، ومش بتعدّل بيانات الطلبات.</small>
       </section>
-      <section class="card"><h3>سعر المورد وسعر البيع</h3><p class="muted">من المنتجات افتح الموديل، وبعدها «سعر المورد والربح». سعر البيع يظهر للفريق حسب صلاحيات الأسعار؛ تكلفة المورد تظهر للمالك فقط.</p></section>
+      <section class="card stack" aria-label="تكلفة المورد حسب المنتج" style="margin-top:14px">
+        <div class="card-head"><h3>أسعار البيع والمورد لكل منتج</h3><button type="button" class="btn btn-soft btn-sm" data-owner-cost-load>تحميل أسعار المورد</button></div>
+        <p class="muted">خاص بالمالك فقط. تحميل عند الطلب وعلى دفعات صغيرة علشان الموظفين يقدروا يكملوا شغلهم. التكاليف الناقصة مش محسوبة كصفر.</p>
+        <div data-owner-cost-results role="region" aria-live="polite">اضغط «تحميل أسعار المورد» لعرض القائمة.</div>
+      </section>
     </div>`);
     const updateNet = () => {
       const values = {};
@@ -95,5 +184,8 @@ export default {
     };
     el.addEventListener('input', e => { if (e.target.matches('[data-finance-exp]')) updateNet(); });
     updateNet();
+    el.querySelector('[data-owner-cost-load]')?.addEventListener('click', e => {
+      void loadOwnerCostCatalogue(el, e.currentTarget);
+    });
   }
 };
