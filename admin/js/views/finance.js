@@ -62,6 +62,7 @@ async function loadOwnerCostCatalogue(el, button) {
   const costs = new Map();
   let readCount = 0;
   let displayed = 0;
+  let loadingPage = false;
   const paint = () => {
     if (!el.isConnected) return;
     const complete = products.filter(p => costs.get(p.public_code)?.outcome === 'ok' &&
@@ -83,11 +84,13 @@ async function loadOwnerCostCatalogue(el, button) {
         </table>
       </div>
       <small class="muted">الربح هنا فرق سعر البيع وتكلفة المورد فقط، من غير شحن أو إعلانات أو مرتجعات. لو المقاسات أو الأسعار مختلفة راجع تفاصيل المنتج.</small>
-      ${displayed < products.length ? html`<button type="button" class="btn btn-soft btn-sm" data-cost-next>عرض 12 منتج تاني</button>` : ''}
+      ${displayed < products.length ? html`<button type="button" class="btn btn-soft btn-sm" data-cost-next ${loadingPage ? 'disabled' : ''}>عرض 12 منتج تاني</button>` : ''}
     `);
     output.querySelector('[data-cost-next]')?.addEventListener('click', () => { void loadNext(); });
   };
   const loadNext = async () => {
+    if (loadingPage) return;
+    loadingPage = true;
     const until = Math.min(products.length, displayed + 12);
     const next = products.slice(displayed, until);
     displayed = until;
@@ -100,6 +103,8 @@ async function loadOwnerCostCatalogue(el, button) {
       }));
       paint();
     }
+    loadingPage = false;
+    paint();
   };
   await loadNext();
   button.disabled = false;
