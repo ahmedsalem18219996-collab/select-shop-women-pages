@@ -3,7 +3,7 @@ import { html, render, toString, $, $$, icon, money, toMinor, fmtNum, ago, date,
 import { call, deleteProductImage, mediaUrl } from '../api.js';
 import { previewTile } from '../image-optimize.js?v=20261113-media-team-v1';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js?v=20261113-media-team-v1';
-import { coloursTab, previewTab } from './model-colours.js?v=20261113-media-team-v1';
+import { coloursTab, previewTab } from './model-colours.js?v=20261113-admin-audit-p2';
 import { mountDescriptionEnhancer } from '../description-enhancer.js';
 import { saveCost, profitText, COST_OPS_MISSING } from '../profit.js';
 import { activityLine } from './dashboard.js';
@@ -38,11 +38,11 @@ async function renderList(ctx) {
     </section>
     <div class="toolbar">
       <label class="searchbox"><span class="sr">${t('app.search')}</span>${icon('search')}<input class="input" id="q" type="search" value="${state.q}" placeholder="${t('products.searchPh')}" autocomplete="off"></label>
-      <div class="row" style="justify-content:flex-end">
-        <div class="chips" role="group" aria-label="${t('products.status')}">
+      <div class="row catalog-filters">
+        <div class="chips catalog-status-chips" role="group" aria-label="${t('products.status')}">
           ${['', 'public', 'draft', 'hidden', 'archived'].map((s) => html`<button class="chip" data-status="${s}" aria-pressed="${state.status === s}">${s === 'archived' ? 'المؤرشفة' : s ? t('status.' + s) : t('app.all')}</button>`)}
         </div>
-        <select class="select" id="cat" style="width:auto;min-width:160px" aria-label="${t('products.category')}"><option value="">${t('products.allCategories')}</option></select>
+        <select class="select catalog-category-select" id="cat" aria-label="${t('products.category')}"><option value="">${t('products.allCategories')}</option></select>
       </div>
     </div>
     <div id="results">${skRows(6)}</div></div>`);
@@ -538,7 +538,7 @@ async function renderEditor(ctx, code) {
         <button type="button" class="btn btn-primary btn-sm" data-setup-tab="preview">٣. المعاينة والنشر</button>
       </div>
     </section>` : ''}
-    <div class="seg" role="tablist">${tabs.map((x) => html`<button role="tab" data-v="${x}" aria-selected="${x === tab}">${t('editor.tabs.' + x)}</button>`)}</div>
+    <div class="seg product-editor-tabs" role="tablist" aria-label="أقسام المنتج">${tabs.map((x) => html`<button role="tab" data-v="${x}" aria-selected="${x === tab}">${t('editor.tabs.' + x)}</button>`)}</div>
     <div class="editor"><div id="tabbody"></div>
       <aside>
         <section class="card"><div class="card-head"><h3>${t('editor.viewsTitle')}</h3>${icon('eye')}</div>
