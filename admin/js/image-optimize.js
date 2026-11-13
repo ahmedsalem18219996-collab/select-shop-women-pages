@@ -64,18 +64,34 @@ export async function optimizeUploadImage(source, preset = 'product') {
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
     context.drawImage(bitmap, 0, 0, size.width, size.height);
-    const toBlob = (quality) => new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
-    let candidate = await toBlob(policy.quality);
-    if (!candidate || candidate.type !== 'image/webp' || candidate.size === 0) throw limitError();
+    const toBlob = (mime, quality) => new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
+    let mime = 'image/webp';
+    let candidate = await toBlob(mime, policy.quality);
+    if (!candidate || candidate.size === 0) throw limitError();
+    if (candidate.type !== mime) {
+      // Safari on iPhone can display WebP but cannot always export canvas as WebP.
+      // Canvas falls back to PNG silently; encode a JPEG instead of rejecting the upload.
+      mime = 'image/jpeg';
+      if (source.type !== 'image/jpeg') {
+        // JPEG has no transparency: use a white product-photo background, never black.
+        context.globalCompositeOperation = 'destination-over';
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, size.width, size.height);
+        context.globalCompositeOperation = 'source-over';
+      }
+      candidate = await toBlob(mime, policy.quality);
+      if (!candidate || candidate.type !== mime || candidate.size === 0) throw limitError();
+    }
     for (let q = policy.quality - 0.04; candidate.size > policy.targetBytes && q >= policy.floor - 1e-9; q -= 0.04) {
-      const alternative = await toBlob(Math.round(q * 100) / 100);
-      if (alternative?.type === 'image/webp' && alternative.size > 0 && alternative.size < candidate.size) candidate = alternative;
+      const alternative = await toBlob(mime, Math.round(q * 100) / 100);
+      if (alternative?.type === mime && alternative.size > 0 && alternative.size < candidate.size) candidate = alternative;
     }
     if (candidate.size >= source.size && source.size <= MAX_UPLOAD_BYTES)
       return { file: source, originalBytes: source.size, uploadedBytes: source.size, optimized: false };
     if (candidate.size > MAX_UPLOAD_BYTES) throw limitError();
-    const name = source.name.replace(/\.[^.]+$/, '').slice(0, 110) + '.webp';
-    const file = new File([candidate], name, { type: 'image/webp', lastModified: source.lastModified });
+    const suffix = mime === 'image/webp' ? '.webp' : '.jpg';
+    const name = source.name.replace(/\.[^.]+$/, '').slice(0, 110) + suffix;
+    const file = new File([candidate], name, { type: mime, lastModified: source.lastModified });
     return { file, originalBytes: source.size, uploadedBytes: file.size, optimized: true, width: size.width, height: size.height };
   } catch (e) {
     if (e instanceof Error && /^(أبعاد الصورة|تعذّر ضغط الصورة)/.test(e.message)) throw e;

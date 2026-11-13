@@ -113,6 +113,36 @@ test('failed compression throws and never returns a replacement file', async () 
     await assert.rejects(optimizeUploadImage(sample(10 * 1024 * 1024), 'product'), /تعذّر ضغط الصورة/);
   });
 });
+test('Safari WebP-to-PNG fallback becomes JPEG with a white background for transparency', async () => {
+  const saved = [globalThis.createImageBitmap, globalThis.document, globalThis.File];
+  const encodings = [];
+  let whitened = false;
+  globalThis.createImageBitmap = async () => ({ width: 3000, height: 2000, close() {} });
+  globalThis.document = { createElement: () => ({ width: 0, height: 0,
+    getContext: () => ({
+      drawImage() {},
+      fillRect() { whitened = true; },
+      fillStyle: '',
+      globalCompositeOperation: '',
+    }),
+    toBlob(callback, type) {
+      encodings.push(type);
+      callback(new Blob([new Uint8Array(type === 'image/webp' ? 500_000 : 200_000)],
+        { type: type === 'image/webp' ? 'image/png' : type }));
+    },
+  }) };
+  globalThis.File = class { constructor(parts, name, opts) { Object.assign(this, { size: parts[0].size, name, type: opts.type }); } };
+  try {
+    const result = await optimizeUploadImage(sample(3 * 1024 * 1024, 'image/png', 'transparent.png'));
+    assert.deepEqual(encodings, ['image/webp', 'image/jpeg']);
+    assert.equal(whitened, true);
+    assert.equal(result.file.type, 'image/jpeg');
+    assert.equal(result.file.name, 'transparent.jpg');
+    assert.equal(result.file.size, 200_000);
+  } finally {
+    [globalThis.createImageBitmap, globalThis.document, globalThis.File] = saved;
+  }
+});
 test('size labels read naturally', () => {
   assert.equal(sizeLabel(20 * 1024 * 1024), '20.0MB');
   assert.equal(sizeLabel(212 * 1024), '212KB');

@@ -113,7 +113,7 @@ function mountDrafts(box, drafts, { canPrice, canMedia, onSave, saveText, single
     const draft = at(e.target);
     const chosen = [...(e.target.files || [])];
     const valid = chosen.filter((file) => checkSourceImage(file) === null);
-    if (valid.length !== chosen.length) island('error', 'بعض الصور مش JPG/PNG/WebP أو أكبر من 5MB؛ هنحتفظ بالصور السليمة بس.');
+    if (valid.length !== chosen.length) island('error', checkSourceImage(chosen.find((file) => checkSourceImage(file))) + ' هنحتفظ بالصور السليمة بس.');
     const existing = draft.files || [];
     const keys = new Set(existing.map((file) => [file.name, file.size, file.lastModified].join(':')));
     for (const file of valid) {
@@ -272,7 +272,7 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
     const colourIndex = Number(card.dataset.colour);
     const next = [...(e.target.files || [])];
     const accepted = next.filter((file) => checkSourceImage(file) === null);
-    if (accepted.length !== next.length) island('error', 'في صور غير مناسبة أو أكبر من 5MB؛ احتفظنا بالصور السليمة بس.');
+    if (accepted.length !== next.length) island('error', checkSourceImage(next.find((file) => checkSourceImage(file))) + ' احتفظنا بالصور السليمة بس.');
     const files = queuedPhotos.get(colourIndex) || [];
     const seen = new Set(files.map((f) => [f.name, f.size, f.lastModified].join(':')));
     for (const file of accepted) {
