@@ -222,3 +222,21 @@
 .desc-helper [data-desc-message]{margin:0;font-size:12px;line-height:1.5}
 
 .desc-helper [hidden]{display:none!important}
+
+
+/* 2026-11-13 audit P2: keep the mobile catalogue and editor inside the viewport. */
+.catalog-filters{justify-content:flex-end;flex-wrap:wrap;min-width:0;max-width:100%}
+.catalog-status-chips{min-width:0;max-width:100%}
+.catalog-category-select{width:auto;min-width:160px;max-width:100%}
+.preview-description{margin:10px 0 0;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink-2);font-size:13px}
+@media(max-width:620px){
+  .toolbar,.toolbar>*{min-width:0;max-width:100%}
+  .catalog-filters{justify-content:flex-start;align-items:stretch;gap:8px;width:100%}
+  .catalog-status-chips{flex:1 1 100%;width:100%;flex-wrap:wrap;overflow:visible;gap:6px}
+  .catalog-status-chips .chip{flex:1 1 auto;min-width:max-content;justify-content:center;padding-inline:9px}
+  .catalog-category-select{flex:1 1 100%;width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+  .product-editor-tabs{flex-wrap:wrap;overflow:visible;min-width:0;gap:6px}
+  .product-editor-tabs .pill{display:none}
+  .product-editor-tabs button{flex:1 1 calc(33.333% - 8px);min-width:0;min-height:42px;padding-inline:7px;white-space:normal;line-height:1.4;text-align:center;overflow-wrap:anywhere}
+  .product-editor-tabs button[aria-selected="true"]{background:var(--surface);box-shadow:var(--shadow-1)}
+}
