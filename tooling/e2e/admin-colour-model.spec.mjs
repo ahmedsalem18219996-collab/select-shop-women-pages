@@ -22,7 +22,7 @@ const svg = (hex) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="htt
 
 // ---- in-memory WOMEN backend
 function backend(seed) {
-  const s = { version: 1, product: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], costsLive: true, listExisting: false, ...seed };
+  const s = { version: 1, product: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], costsLive: true, listExisting: false, trash: [], ...seed };
   const P = () => s.product;
   const next = (l) => l.reduce((m, x) => Math.max(m, x.position), -1) + 1;
   const bump = () => ({ outcome: 'applied', structure_version: ++s.version });
@@ -62,9 +62,10 @@ function backend(seed) {
       'products.set_stock': 'inventory.manage', 'products.set_availability': 'inventory.manage', 'products.publish': 'products.publish', 'media.reorder': 'media.manage' }[op];
     if (session.role !== 'owner' && perm && !session.permissions.includes(perm)) return { outcome: 'forbidden' };
     if (op.startsWith('costs.') && session.role !== 'owner' && !session.permissions.includes('products.edit')) return { outcome: 'forbidden' };
+    if (s.trash.some(x => x.code === a.code) && !['products.trash','products.restore','products.trash_list'].includes(op)) return { outcome: 'not_found' };
     switch (op) {
       case 'session.get': return { outcome: 'ok', data: session };
-      case 'products.list': return { outcome: 'ok', data: s.listExisting && p && (!a.status || a.status === p.status) ? [{ ...p, category: 'أطقم', image: 'media/test-product.webp', price_min_minor: p.base_price?.amount_minor ?? null, price_max_minor: p.base_price?.amount_minor ?? null, stock_total: 0, views_30d: 0 }] : [] };
+      case 'products.list': return { outcome: 'ok', data: s.listExisting && p && !s.trash.some(x => x.code === p.public_code) && (!a.status || a.status === p.status) ? [{ ...p, category: 'أطقم', image: 'media/test-product.webp', price_min_minor: p.base_price?.amount_minor ?? null, price_max_minor: p.base_price?.amount_minor ?? null, stock_total: 0, views_30d: 0 }] : [] };
       case 'categories.list': return { outcome: 'ok', data: [{ name: 'فساتين', visible: true }] };
       case 'shipping.get': return { outcome: 'ok', data: { profiles: [{ key: 'women_standard', active: true, name: 'شحن عادي' }] } };
       case 'products.create':
@@ -80,6 +81,22 @@ function backend(seed) {
       case 'media.reorder': a.media_ids.forEach((id, i) => { s.media.find((m) => m.media_id === id).position = i; }); return { outcome: 'saved' };
       case 'products.publish': p.status = 'public'; return { outcome: 'published' };
       case 'products.archive': return session.role === 'owner' ? (p.status = 'archived', { outcome: 'archived' }) : { outcome: 'forbidden' };
+      case 'products.trash_list': return session.role === 'owner' ? { outcome: 'ok', data: s.trash } : { outcome: 'forbidden' };
+      case 'products.trash':
+        if (session.role !== 'owner') return { outcome: 'forbidden' };
+        if (s.trash.some(x => x.code === a.code)) return { outcome: 'already_trashed' };
+        if (!['hidden','archived'].includes(p?.status)) return { outcome: 'invalid_state' };
+        s.trash.push({ code: p.public_code, title: p.title, original_status: p.status });
+        p.status = 'archived';
+        return { outcome: 'trashed' };
+      case 'products.restore': {
+        if (session.role !== 'owner') return { outcome: 'forbidden' };
+        const item = s.trash.find(x => x.code === a.code);
+        if (!item || !p || p.public_code !== a.code) return { outcome: 'not_found' };
+        p.status = item.original_status;
+        s.trash = s.trash.filter(x => x.code !== a.code);
+        return { outcome: 'restored' };
+      }
       case 'dashboard.summary': return { outcome: 'ok', data: { orders: { revenue_30d_minor: 0, revenue_today_minor: 0, pending: 0, to_ship: 0, revenue_7d_minor: 0 }, products: { public: 1, draft: 0 }, views: { days_7: 0, today: 0 }, top_viewed: [], recent_orders: [], revenue_by_day: [], low_stock: [] } };
       case 'profit.summary': return s.profitLines ? { outcome: 'ok', data: { lines: s.profitLines } } : { outcome: 'unknown_operation' };
       case 'costs.get': return s.costsLive ? { outcome: 'ok', data: s.costs } : { outcome: 'unknown_operation' };
@@ -656,6 +673,7 @@ test('mobile owner can archive a draft, but staff cannot; product history is ret
   await page.goto(target + '#/products?status=archived');
   await expect(page.locator('[data-mobile-product="SS-9101"]')).toBeVisible();
   await expect(page.locator('[data-archive-mobile]')).toHaveCount(0);
+  await expect(page.locator('[data-trash="SS-9101"]')).toHaveCount(1);
 });
 
 test('mobile staff can see the draft but never sees owner archive control', async ({ page }) => {
@@ -670,4 +688,68 @@ test('mobile staff can see the draft but never sees owner archive control', asyn
   await expect(page.locator('[data-mobile-product="SS-9101"]')).toBeVisible();
   await expect(page.locator('[data-archive-mobile]')).toHaveCount(0);
   expect(b.s.ops.some(x => x.op === 'products.archive')).toBe(false);
+});
+
+test('Owner can move a hidden product to reversible trash and restore it without touching orders', async ({ page }) => {
+  const b = backend({ listExisting: true, product: {
+    public_code: 'SS-9101', title: 'بلوفر مخفي', description: '', status: 'hidden',
+    created_at: now, updated_at: now, base_price: { amount_minor: 55000 },
+    options: [], variants: [], shipping_profile: null, publish_blockers: []
+  }});
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, b, owner);
+  await page.goto(target + '#/products?status=hidden');
+  const card = page.locator('[data-mobile-product="SS-9101"]');
+  await expect(card).toBeVisible();
+  await expect(card.locator('[data-trash="SS-9101"]')).toHaveText('نقل لسلة المحذوفات');
+  await card.locator('[data-trash="SS-9101"]').click();
+  await expect(page.locator('#layer')).toContainText('الطلبات القديمة');
+  await page.locator('#layer [data-yes]').click();
+  await expect.poll(() => b.s.trash.length).toBe(1);
+  await expect.poll(() => b.s.product.status).toBe('archived');
+  await expect(page.locator('[data-mobile-product="SS-9101"]')).toHaveCount(0);
+
+  await page.locator('[data-trash-bin]').click();
+  await expect(page.locator('[data-trashed-code="SS-9101"]')).toContainText('بلوفر مخفي');
+  await page.locator('[data-restore-trash="SS-9101"]').click();
+  await expect.poll(() => b.s.product.status).toBe('hidden');
+  await expect.poll(() => b.s.trash.length).toBe(0);
+  await expect(page.locator('[data-mobile-product="SS-9101"]')).toBeVisible();
+  expect(b.s.ops.filter(x => x.op.startsWith('orders.'))).toHaveLength(0);
+  expect(b.s.ops.filter(x => x.op === 'products.trash')).toHaveLength(1);
+  expect(b.s.ops.filter(x => x.op === 'products.restore')).toHaveLength(1);
+});
+
+test('Owner trash also restores archived products as archived, never public', async ({ page }) => {
+  const b = backend({ listExisting: true, product: {
+    public_code: 'SS-9101', title: 'بلوفر مؤرشف', description: '', status: 'archived',
+    created_at: now, updated_at: now, base_price: { amount_minor: 55000 },
+    options: [], variants: [], shipping_profile: null, publish_blockers: []
+  }});
+  await open(page, b, owner);
+  await page.goto(target + '#/products?status=archived');
+  await page.locator('[data-trash="SS-9101"]').click();
+  await page.locator('#layer [data-yes]').click();
+  await expect.poll(() => b.s.trash.length).toBe(1);
+  await page.locator('[data-trash-bin]').click();
+  await page.locator('[data-restore-trash="SS-9101"]').click();
+  await expect.poll(() => b.s.product.status).toBe('archived');
+  expect(b.s.product.status).not.toBe('public');
+  expect(b.s.trash).toHaveLength(0);
+});
+
+test('Staff can edit products but never sees Owner trash controls', async ({ page }) => {
+  const b = backend({ listExisting: true, product: {
+    public_code: 'SS-9101', title: 'بلوفر مخفي', description: '', status: 'hidden',
+    created_at: now, updated_at: now, base_price: { amount_minor: 55000 },
+    options: [], variants: [], shipping_profile: null, publish_blockers: []
+  }});
+  const staff = { role: 'staff', email: 'qa-staff@example.test', permissions: ['products.view','products.edit','products.price'] };
+  await open(page, b, staff);
+  await page.goto(target + '#/products?status=hidden');
+  await expect(page.locator('[data-trash-bin]')).toHaveCount(0);
+  await expect(page.locator('[data-trash]')).toHaveCount(0);
+  await page.locator('[data-mobile-product="SS-9101"] .catalog-mobile-open').click();
+  await expect(page.locator('[data-trash-editor]')).toHaveCount(0);
+  expect(b.s.ops.some(x => x.op.startsWith('products.trash'))).toBe(false);
 });
