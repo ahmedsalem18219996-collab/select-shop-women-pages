@@ -7,7 +7,7 @@ import { html, render, $, $$, icon, money, toMinor, withBusy, island, done, fail
 import { call, deleteProductImage, mediaUrl } from '../api.js';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js?v=20261113-admin-audit-p2';
 import { checkSourceImage } from '../image-optimize.js?v=20261113-admin-audit-p2';
-import { colourModel, checkDrafts, planNewModel, planAddColour, planSizes, planColourPrice, planColourAvailability, photoTarget, runSteps, ONE_SIZE } from '../colour-model.js?v=20261106-colourpicker';
+import { colourModel, checkDrafts, planNewModel, planAddColour, planSizes, planColourPrice, planColourAvailability, photoTarget, runSteps, ONE_SIZE } from '../colour-model.js?v=20261114-qty100-v1';
 import { loadCosts, saveCost, costOf, profitText } from '../profit.js';
 import { PALETTE, hexOf, normName, colourKey } from '../../../js/colour-palette.js?v=20261106-colourpicker';
 import { mountDraftColourPickers } from '../colour-picker.js';

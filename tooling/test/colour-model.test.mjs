@@ -76,6 +76,18 @@ test("a new model with three colours: options first, then each colour with only 
   assert.deepEqual(after.filter((s) => s.op === "products.set_availability").map((s) => s.args), [{ position: 4, available: false }]);
 });
 
+test("available new variants receive 100 on-demand units and existing stock is preserved", () => {
+  assert.equal(VIRTUAL_QTY, 100);
+  const newModel = planNewModel([{ name: "بني", sizes: ["S", "M"], priceMinor: null, available: true }], 55000);
+  assert.deepEqual(newModel.filter((s) => s.op === "products.set_stock").map((s) => s.args.quantity), [100, 100]);
+  const m = colourModel(product, stock, media);
+  const added = planAddColour(m, { name: "بينك", sizes: ["M", "XL"], priceMinor: null, available: true });
+  assert.deepEqual(added.filter((s) => s.op === "products.set_stock").map((s) => s.args.quantity), [100, 100]);
+  const zero = { ...m.colours[1], variants: [{ ...m.colours[1].variants[0], available: false, quantity: 0 }] };
+  assert.deepEqual(planColourAvailability(zero, true).map((s) => s.args), [{ position: 2, quantity: 100 }]);
+  assert.deepEqual(planColourAvailability(m.colours[1], true).map((s) => s.args), [{ position: 2, quantity: 5 }]);
+});
+
 test("a single unnamed colour makes a sizes-only model", () => {
   const steps = planNewModel([{ name: "", sizes: ["One Size"], priceMinor: null, available: true }], 55000);
   assert.equal(steps.filter((s) => s.args.change?.op === "add_option").length, 1);

@@ -319,7 +319,7 @@ test('adding an available size never reactivates an older unavailable size', asy
   expect(b.s.product.variants[1].availability).toBe('unavailable');
   expect(b.s.stock[1].quantity).toBe(0);
   expect(b.s.product.variants[2].availability).toBe('available');
-  expect(b.s.stock[2].quantity).toBe(20);
+  expect(b.s.stock[2].quantity).toBe(100); // Newly added size starts at the current virtual default.
   expect(b.s.ops.filter(x => x.op === 'products.set_stock').map(x => x.args.position)).toEqual([2]);
 });
 

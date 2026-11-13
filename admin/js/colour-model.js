@@ -9,7 +9,7 @@ export const ONE_SIZE = 'One Size';
 export const COLOUR_OPTION = 'اللون';
 export const SIZE_OPTION = 'المقاس';
 /** Virtual quantity for a colour that is "available from the supplier" (stock is bought after each order). */
-export const VIRTUAL_QTY = 20;
+export const VIRTUAL_QTY = 100;
 
 const valueAt = (product, variant, option) => option?.values.find((x) => x.value_id === variant.selections?.find((s) => s.option_id === option.option_id)?.value_id);
 const nextPos = (list) => list.reduce((m, x) => Math.max(m, x.position), -1) + 1;
