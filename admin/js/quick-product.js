@@ -4,7 +4,7 @@
 import { $, $$, esc, money, toMinor, withBusy, island, done, fail, closeLayer } from './ui.js';
 import { call, uploadProductImage, mediaUrl } from './api.js';
 import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from './image-optimize.js';
-import { variantChoices } from './quick-variants.js';
+import { variantChoices } from './quick-variants.js?v=20261113-qty100';
 import { statusAction, prepublishHints, STATUS_LABELS } from './product-lifecycle.js';
 
 const safeHex = (x) => /^#[\da-fA-F]{6}$/.test(x || '') ? x : '#777777';
@@ -90,7 +90,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       '<div class="quick-header"><b>٣. السعر والإتاحة</b><span class="muted">' + esc(STATUS_LABELS[product.status] || 'غير منشور') + '</span></div>',
       '<div class="quick-fields">',
       '<label class="field"><span>سعر البيع (جنيه)</span><input class="input" inputmode="decimal" data-quick-price value="' + esc(priceValue) + '" placeholder="مثال: 650"' + (canPrice ? '' : ' disabled') + '></label>',
-      '<label class="field"><span>كمية افتراضية</span><input class="input" inputmode="numeric" data-quick-qty value="' + esc(chosen.quantity ?? '') + '" placeholder="مثال: 20"' + (canQty ? '' : ' disabled') + '></label>',
+      '<label class="field"><span>كمية افتراضية</span><input class="input" inputmode="numeric" data-quick-qty value="' + esc(chosen.quantity ?? 100) + '" placeholder="مثال: 100"' + (canQty ? '' : ' disabled') + '></label>',
       '</div>',
       '<label class="quick-check"><input type="checkbox" data-quick-available ' + (chosen.availability ? 'checked ' : '') + (canQty ? '' : 'disabled') +
       '> <span>متاح للتوريد من المورد</span></label>',
