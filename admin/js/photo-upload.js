@@ -5,12 +5,22 @@ import { island, fail } from './ui.js';
 import { call, uploadProductImage } from './api.js';
 import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from './image-optimize.js';
 
+export function classifyPhotoFiles(files) {
+  const accepted = [], missed = [];
+  for (const file of files) {
+    const reason = checkSourceImage(file);
+    if (reason) missed.push({ file, text: reason });
+    else accepted.push(file);
+  }
+  return { accepted, missed, total: accepted.length + missed.length };
+}
+
 export async function uploadPhotos({ files, code, title, version, grid, before, fields = {} }) {
-  const list = [...files].filter((f) => checkSourceImage(f) === null);
-  if (!list.length) { island('error', 'اختيار صور مناسبة بصيغة JPG أو PNG أو WebP. يرجى تجربة صورة أصغر من 5MB.'); return { ok: 0, total: 0, missed: [] }; }
-  if (list.length !== files.length) island('error', 'فيه صور اتشالت من الدفعة لأنها مش JPG/PNG/WebP أو حجمها كبير. هنرفع الصور السليمة بس.');
+  const { accepted: list, missed, total } = classifyPhotoFiles(files);
+  if (missed.length) island('error', missed[0].text + ' الصور غير المقبولة مش هتترفع؛ باقي الصور هنحاول نرفعها.');
+  // An entirely rejected batch must never return 0/0, which callers treat as success.
+  if (!list.length) return { ok: 0, total, missed };
   let ok = 0;
-  const missed = [];
   const tiles = list.map((f) => previewTile(grid, before, f));
   try {
     for (const [i, f] of list.entries()) {
@@ -45,7 +55,7 @@ export async function uploadPhotos({ files, code, title, version, grid, before, 
       }
     }
   } finally { tiles.forEach((tile) => tile.release()); }
-  return { ok, total: list.length, missed };
+  return { ok, total, missed };
 }
 
 /** Message after a batch, and the failed tiles put back once the page shows the saved photos. */

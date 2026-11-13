@@ -231,7 +231,7 @@ export function mountQuickProductEditor({ box, ctx, members, onChanged = () => {
       const list = [...(input.files || [])];
       const invalid = list.filter(f => checkSourceImage(f) !== null);
       const photos = list.filter(f => checkSourceImage(f) === null);
-      if (!photos.length) { island('error', 'اختيار صورة JPG أو PNG أو WebP مناسبة، أقل من 5MB.'); input.value = ''; return; }
+      if (!photos.length) { if (invalid.length) island('error', checkSourceImage(invalid[0])); input.value = ''; return; }
       uploading = true; input.disabled = true;
       const selectedCode = code, selectedPosition = position, scopedToVariant = hasColourOption;
       let mediaVersion = detail.media?.structure_version ?? product.structure_version;
