@@ -17,7 +17,7 @@ export function variantChoices(product, stock = {}) {
       colour, size,
       active: v.active === true,
       availability: v.availability === 'available',
-      quantity: stock[String(v.position)]?.quantity ?? null,
+      quantity: stock[String(v.position)]?.quantity ?? 100,
       amount_minor: Number.isInteger(v.amount_minor) ? v.amount_minor : (Number.isInteger(base) ? base : null),
       override: v.price_source === 'variant_override'
     };
