@@ -319,7 +319,7 @@ test('adding an available size never reactivates an older unavailable size', asy
   expect(b.s.product.variants[1].availability).toBe('unavailable');
   expect(b.s.stock[1].quantity).toBe(0);
   expect(b.s.product.variants[2].availability).toBe('available');
-  expect(b.s.stock[2].quantity).toBe(100); // New available size uses the on-demand stock default; old size remains unchanged.
+  expect(b.s.stock[2].quantity).toBe(100); // Newly added size starts at the current virtual default.
   expect(b.s.ops.filter(x => x.op === 'products.set_stock').map(x => x.args.position)).toEqual([2]);
 });
 
@@ -726,4 +726,121 @@ test('owner can delete one colour photo; mobile photo actions never overlap', as
   expect(b.s.ops.filter((x) => x.op === 'media.set_hidden' && x.args.media_id === 'm1')).toHaveLength(1);
   expect(b.s.media.map((x) => x.media_id)).toEqual(['m0']);
   expect(b.s.ops.some((x) => x.op.startsWith('orders.'))).toBe(false);
+});
+
+test('mobile catalogue filters and product tabs stay fully inside 360px and 390px viewports', async ({ page }) => {
+  const b = backend({ listExisting: true, product: {
+    public_code: 'SS-9101', title: 'بلوفر تجريبي', description: 'وصف المنتج',
+    status: 'draft', created_at: now, updated_at: now,
+    base_price: { amount_minor: 55000 }, options: [], variants: [],
+    shipping_profile: null, publish_blockers: []
+  }});
+  await page.setViewportSize({ width: 360, height: 800 });
+  await open(page, b, owner);
+  await page.goto(target + '#/products?status=draft');
+  await expect(page.locator('.catalog-status-chips .chip')).toHaveCount(5);
+
+  for (const width of [360, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    const layout = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+      body: document.body.scrollWidth,
+      chips: [...document.querySelectorAll('.catalog-status-chips .chip')].map(x => {
+        const r = x.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+      }),
+      category: (() => { const r = document.querySelector('.catalog-category-select').getBoundingClientRect(); return { left: r.left, right: r.right }; })()
+    }));
+    expect(layout.document).toBeLessThanOrEqual(layout.viewport + 1);
+    expect(layout.body).toBeLessThanOrEqual(layout.viewport + 1);
+    expect(layout.chips.every(r => r.left >= -1 && r.right <= layout.viewport + 1)).toBe(true);
+    expect(layout.category.left).toBeGreaterThanOrEqual(-1);
+    expect(layout.category.right).toBeLessThanOrEqual(layout.viewport + 1);
+  }
+
+  await page.goto(target + '#/products/SS-9101');
+  await expect(page.locator('.product-editor-tabs button')).toHaveCount(7);
+  for (const width of [360, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    const tabs = await page.locator('.product-editor-tabs').evaluate(el => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+      client: el.clientWidth,
+      scroll: el.scrollWidth,
+      buttons: [...el.querySelectorAll('button[data-v]')].map(x => {
+        const r = x.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+      })
+    }));
+    expect(tabs.document).toBeLessThanOrEqual(tabs.viewport + 1);
+    expect(tabs.scroll).toBeLessThanOrEqual(tabs.client + 1);
+    expect(tabs.buttons).toHaveLength(7);
+    expect(tabs.buttons.every(r => r.left >= -1 && r.right <= tabs.viewport + 1)).toBe(true);
+  }
+});
+
+test('product preview displays the saved description directly below its photo gallery', async ({ page }) => {
+  const b = backend();
+  b.s.product = {
+    public_code: 'SS-9101', title: 'بلوفر أزرق', description: 'وصف المنتج يظهر أسفل الصورة مباشرة.',
+    status: 'draft', created_at: now, updated_at: now, base_price: { amount_minor: 50000 },
+    options: [
+      { option_id: 'colour', name: 'اللون', position: 0, values: [{ value_id: 'blue', value: 'أزرق', position: 0, active: true }] },
+      { option_id: 'size', name: 'المقاس', position: 1, values: [{ value_id: 'm', value: 'M', position: 0, active: true }] }
+    ],
+    variants: [{ position: 0, active: true, availability: 'available', amount_minor: 50000, price_source: 'base',
+      selections: [{ option_id: 'colour', value_id: 'blue' }, { option_id: 'size', value_id: 'm' }] }],
+    shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: []
+  };
+  b.s.media = [{ media_id: 'm0', position: 0, scope: 'variant', variant_position: 0, storage_path: svg('#A9C8E8'), alt_text: '', hidden: false }];
+  await open(page, b, owner);
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'preview'));
+  await page.goto(target + '#/products/SS-9101');
+  const description = page.locator('.preview-gallery .preview-description');
+  await expect(description).toHaveText('وصف المنتج يظهر أسفل الصورة مباشرة.');
+  const [gallery, textBox] = await Promise.all([
+    page.locator('.preview-gallery .thumbs').boundingBox(),
+    description.boundingBox()
+  ]);
+  expect(gallery).not.toBeNull();
+  expect(textBox).not.toBeNull();
+  expect(textBox.y).toBeGreaterThanOrEqual(gallery.y + gallery.height);
+});
+
+test('mobile Staff can upload multiple photos for one colour and delete one without losing the others', async ({ page }) => {
+  const b = backend({ deletions: [] });
+  b.s.product = {
+    public_code: 'SS-9101', title: 'بلوفر أزرق', description: '', status: 'hidden',
+    created_at: now, updated_at: now, base_price: { amount_minor: 50000 },
+    options: [
+      { option_id: 'colour', name: 'اللون', position: 0, values: [{ value_id: 'blue', value: 'أزرق', position: 0, active: true }] },
+      { option_id: 'size', name: 'المقاس', position: 1, values: [{ value_id: 'm', value: 'M', position: 0, active: true }] }
+    ],
+    variants: [{ position: 0, active: true, availability: 'available', amount_minor: 50000, price_source: 'base',
+      selections: [{ option_id: 'colour', value_id: 'blue' }, { option_id: 'size', value_id: 'm' }] }],
+    shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: []
+  };
+  const staff = { role: 'staff', email: 'qa-mobile-upload@example.test', permissions: ['products.view','products.edit','products.price','media.manage'] };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, b, staff);
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await page.goto(target + '#/products/SS-9101');
+  const card = page.locator('[data-colour]').first();
+  await card.locator('[data-upload]').setInputFiles([
+    photo('blue-front.png', [169, 200, 232]),
+    photo('blue-back.png', [110, 145, 180])
+  ]);
+  await expect(card.locator('[data-c-queued] img')).toHaveCount(2);
+  await card.locator('[data-save-colour]').click();
+  await expect.poll(() => b.s.uploads.length).toBe(2);
+  await expect.poll(() => b.s.media.length).toBe(2);
+  const photos = card.locator('figure.thumb');
+  await expect(photos).toHaveCount(2);
+  await photos.nth(1).locator('[data-delete-photo="m1"]').click();
+  await expect(page.locator('#layer')).toContainText('سيتم إخفاء الصورة أولًا');
+  await page.locator('#layer [data-yes]').click();
+  await expect.poll(() => b.s.media.length).toBe(1);
+  expect(b.s.deletions).toEqual([{ code: 'SS-9101', media_id: 'm1' }]);
+  expect(b.s.media.map(x => x.media_id)).toEqual(['m0']);
+  expect(b.s.media[0].hidden).toBe(false);
+  expect(b.s.ops.some(x => x.op.startsWith('orders.'))).toBe(false);
 });
