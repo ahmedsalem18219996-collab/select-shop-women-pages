@@ -117,6 +117,7 @@ export function outcomeMessage(r) {
   if (o === 'in_use') return t('categories.inUse');
   if (o === 'duplicate') return t('categories.dup');
   if (o === 'network') return t('err.network');
+  if (o === 'storage_error') return 'تعذّر حفظ الصورة أو حذف ملفها من التخزين. الصور الأخرى لم تتأثر؛ حدّث الصفحة وحاول مرة أخرى.';
   if (o === 'rejected') return `${t('err.rejected')}${r.message ? `: ${r.message}` : ''}`;
   if (o === 'owner_protected') return t('team.ownerLocked');
   if (o === 'invite_failed') return r.reason === 'already_registered' ? t('team.alreadyRegistered') : t('err.server');
