@@ -3,7 +3,7 @@
 // merge SKUs, or claim that an unavailable variant is purchasable.
 import { $, $$, esc, money, toMinor, withBusy, island, done, fail, closeLayer } from './ui.js';
 import { call, uploadProductImage, mediaUrl } from './api.js';
-import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from './image-optimize.js?v=20261113-media-team-v1';
+import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from './image-optimize.js?v=20261113-admin-audit-p2';
 import { variantChoices } from './quick-variants.js?v=20261113-qty100';
 import { statusAction, prepublishHints, STATUS_LABELS } from './product-lifecycle.js';
 
