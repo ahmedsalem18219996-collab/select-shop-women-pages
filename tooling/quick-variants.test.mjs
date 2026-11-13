@@ -30,11 +30,11 @@ test('real colour and size choices retain their exact server-defined variant pos
   assert.equal(rows[0].hasExplicitSize,true);
   assert.equal(rows[0].quantity,3);
 });
-test('unknown options and unpriced old variants do not invent stock, sizes or prices', () => {
+test('missing virtual quantity defaults to 100 without inventing availability, sizes or prices', () => {
   const rows=variantChoices({options:[],variants:[
     {position:9,active:false,availability:'unavailable',selections:[]}]},{});
   assert.equal(rows[0].amount_minor,null);
-  assert.equal(rows[0].quantity,null);
+  assert.equal(rows[0].quantity,100);
   assert.equal(rows[0].availability,false);
   assert.equal(rows[0].active,false);
   assert.deepEqual(variantChoices({variants:[]},{}),[]);
@@ -46,4 +46,11 @@ test('colour-only option is not mistaken for a size',()=>{
  const v=variantChoices(p,{})[0];
  assert.equal(v.colour,'بني'); assert.equal(v.size,null);
  assert.equal(v.hasExplicitSize,false);
+});
+
+
+test('an explicit zero quantity is preserved instead of replaced by the default', () => {
+  const rows=variantChoices({options:[],variants:[{position:0,active:true,availability:'unavailable',selections:[]}]},{'0':{quantity:0}});
+  assert.equal(rows[0].quantity,0);
+  assert.equal(rows[0].availability,false);
 });
