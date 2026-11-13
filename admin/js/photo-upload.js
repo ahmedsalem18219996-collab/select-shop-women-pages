@@ -3,7 +3,7 @@
 // replaces or removes an already-saved photo. Returns { ok, total, missed: [{ file, text }] }.
 import { island, fail } from './ui.js';
 import { call, uploadProductImage } from './api.js';
-import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from './image-optimize.js';
+import { checkSourceImage, optimizeUploadImage, previewTile, sizeLabel } from './image-optimize.js?v=20261113-media-team-v1';
 
 export function classifyPhotoFiles(files) {
   const accepted = [], missed = [];
