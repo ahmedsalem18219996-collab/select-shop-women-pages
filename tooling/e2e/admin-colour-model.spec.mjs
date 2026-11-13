@@ -22,7 +22,7 @@ const svg = (hex) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="htt
 
 // ---- in-memory WOMEN backend
 function backend(seed) {
-  const s = { version: 1, product: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], costsLive: true, listExisting: false, ...seed };
+  const s = { version: 1, product: null, stock: {}, media: [], costs: { product_cost_minor: null, variants: [] }, ops: [], uploads: [], deletions: [], costsLive: true, listExisting: false, ...seed };
   const P = () => s.product;
   const next = (l) => l.reduce((m, x) => Math.max(m, x.position), -1) + 1;
   const bump = () => ({ outcome: 'applied', structure_version: ++s.version });
@@ -78,6 +78,7 @@ function backend(seed) {
       case 'products.set_stock': { s.stock[a.position] = { quantity: a.quantity }; const v = p.variants.find((x) => x.position === a.position); if (a.quantity > 0) v.availability = 'available'; return { outcome: 'saved', available: v.availability === 'available' }; }
       case 'products.set_availability': p.variants.find((x) => x.position === a.position).availability = a.available ? 'available' : 'unavailable'; return { outcome: 'saved' };
       case 'media.reorder': a.media_ids.forEach((id, i) => { s.media.find((m) => m.media_id === id).position = i; }); return { outcome: 'saved' };
+      case 'media.set_hidden': { const item = s.media.find((m) => m.media_id === a.media_id); if (!item) return { outcome: 'not_found' }; item.hidden = a.hidden === true; return { outcome: 'saved' }; }
       case 'products.publish': p.status = 'public'; return { outcome: 'published' };
       case 'products.archive': return session.role === 'owner' ? (p.status = 'archived', { outcome: 'archived' }) : { outcome: 'forbidden' };
       case 'dashboard.summary': return { outcome: 'ok', data: { orders: { revenue_30d_minor: 0, revenue_today_minor: 0, pending: 0, to_ship: 0, revenue_7d_minor: 0 }, products: { public: 1, draft: 0 }, views: { days_7: 0, today: 0 }, top_viewed: [], recent_orders: [], revenue_by_day: [], low_stock: [] } };
@@ -120,6 +121,14 @@ async function open(page, b, session) {
     const json = (body) => route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*', 'content-type': 'application/json' }, body: JSON.stringify(body) });
     if (url.pathname.endsWith('/women-admin/call')) { const { op, args } = JSON.parse(req.postData() || '{}'); return json(b.handle(op, args || {}, session)); }
     if (url.pathname.endsWith('/women-admin/media/upload')) return json(b.upload(req.postDataBuffer()));
+    if (url.pathname.endsWith('/women-admin/media/delete')) {
+      const { code, media_id } = JSON.parse(req.postData() || '{}');
+      b.s.deletions.push({ code, media_id });
+      const item = b.s.media.find((m) => m.media_id === media_id);
+      if (!item || !item.hidden) return json({ outcome: 'invalid' });
+      b.s.media = b.s.media.filter((m) => m.media_id !== media_id);
+      return json({ outcome: 'deleted' });
+    }
     if (url.hostname.endsWith('.supabase.co')) return route.abort('blockedbyclient');
     return route.continue();
   });
@@ -670,4 +679,51 @@ test('mobile staff can see the draft but never sees owner archive control', asyn
   await expect(page.locator('[data-mobile-product="SS-9101"]')).toBeVisible();
   await expect(page.locator('[data-archive-mobile]')).toHaveCount(0);
   expect(b.s.ops.some(x => x.op === 'products.archive')).toBe(false);
+});
+
+
+test('owner can delete one colour photo; mobile photo actions never overlap', async ({ page }) => {
+  const b = backend({ deletions: [] });
+  b.s.product = {
+    public_code: 'SS-9101', title: 'بلوفر أزرق', description: '', status: 'hidden',
+    created_at: now, updated_at: now, base_price: { amount_minor: 50000 },
+    options: [
+      { option_id: 'colour', name: 'اللون', position: 0, values: [{ value_id: 'blue', value: 'أزرق', position: 0, active: true }] },
+      { option_id: 'size', name: 'المقاس', position: 1, values: [{ value_id: 'm', value: 'M', position: 0, active: true }] }
+    ],
+    variants: [{ position: 0, active: true, availability: 'available', amount_minor: 50000, price_source: 'base',
+      selections: [{ option_id: 'colour', value_id: 'blue' }, { option_id: 'size', value_id: 'm' }] }],
+    shipping_profile: { key: 'women_standard', name: 'شحن عادي' }, publish_blockers: []
+  };
+  b.s.media = [
+    { media_id: 'm0', position: 0, scope: 'variant', variant_position: 0, storage_path: svg('#A9C8E8'), alt_text: '', hidden: false },
+    { media_id: 'm1', position: 1, scope: 'variant', variant_position: 0, storage_path: svg('#6E4B3A'), alt_text: '', hidden: false }
+  ];
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, b, owner);
+  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await page.goto(target + '#/products/SS-9101');
+  const card = page.locator('[data-colour]').first();
+  const photos = card.locator('figure.thumb');
+  await expect(photos).toHaveCount(2);
+  const second = photos.nth(1);
+  const remove = second.locator('[data-delete-photo="m1"]');
+  const cover = second.locator('[data-first="m1"]');
+  await expect(remove).toBeVisible();
+  await expect(cover).toBeVisible();
+  const [removeBox, coverBox] = await Promise.all([remove.boundingBox(), cover.boundingBox()]);
+  expect(removeBox).not.toBeNull();
+  expect(coverBox).not.toBeNull();
+  const overlapX = Math.max(0, Math.min(removeBox.x + removeBox.width, coverBox.x + coverBox.width) - Math.max(removeBox.x, coverBox.x));
+  const overlapY = Math.max(0, Math.min(removeBox.y + removeBox.height, coverBox.y + coverBox.height) - Math.max(removeBox.y, coverBox.y));
+  expect(overlapX * overlapY).toBe(0);
+
+  await remove.click();
+  await expect(page.locator('#layer')).toContainText('سيتم إخفاء الصورة أولًا');
+  await page.locator('#layer [data-yes]').click();
+  await expect.poll(() => b.s.media.length).toBe(1);
+  expect(b.s.deletions).toEqual([{ code: 'SS-9101', media_id: 'm1' }]);
+  expect(b.s.ops.filter((x) => x.op === 'media.set_hidden' && x.args.media_id === 'm1')).toHaveLength(1);
+  expect(b.s.media.map((x) => x.media_id)).toEqual(['m0']);
+  expect(b.s.ops.some((x) => x.op.startsWith('orders.'))).toBe(false);
 });
