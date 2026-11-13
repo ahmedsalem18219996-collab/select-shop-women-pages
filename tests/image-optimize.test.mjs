@@ -147,3 +147,11 @@ test('size labels read naturally', () => {
   assert.equal(sizeLabel(20 * 1024 * 1024), '20.0MB');
   assert.equal(sizeLabel(212 * 1024), '212KB');
 });
+
+
+test('gives iPhone HEIC and HEIF photos a specific conversion hint', () => {
+  const heic = sample(1024, 'image/heic', 'IMG_1234.HEIC');
+  const heif = sample(1024, 'application/octet-stream', 'IMG_1235.HEIF');
+  assert.match(checkSourceImage(heic), /HEIC\/HEIF/);
+  assert.match(checkSourceImage(heif), /HEIC\/HEIF/);
+});

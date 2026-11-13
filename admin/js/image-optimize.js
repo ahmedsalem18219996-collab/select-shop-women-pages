@@ -13,7 +13,13 @@ export const IMAGE_PRESETS = Object.freeze({
 });
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 export function checkSourceImage(file) {
-  if (!file || !TYPES.has(file.type) || !Number.isFinite(file.size) || file.size <= 0)
+  if (!file || !Number.isFinite(file.size) || file.size <= 0)
+    return 'اختيار صورة صالحة بصيغة JPG أو PNG أو WebP.';
+  const type = String(file.type || '').toLowerCase();
+  const name = String(file.name || '').toLowerCase();
+  if (type === 'image/heic' || type === 'image/heif' || /\.(heic|heif)$/.test(name))
+    return 'صيغة HEIC/HEIF من iPhone مش مدعومة. من Settings > Camera > Formats اختار Most Compatible (JPEG)، وبعدها ارفع الصورة تاني.';
+  if (!TYPES.has(type))
     return 'اختيار صورة صالحة بصيغة JPG أو PNG أو WebP.';
   if (file.size > MAX_SOURCE_BYTES) return 'الصورة الأصلية أكبر من 25MB؛ يرجى اختيار ملف أصغر.';
   return null;

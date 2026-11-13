@@ -9,15 +9,18 @@ test("Atelier storefront + admin route styles are served", async ({ request }) =
     ["/cart/", "/css/atelier-site.css?v=20261106-theme"],
     ["/checkout/", "/css/atelier-site.css?v=20261106-theme"],
     ["/order-success/", "/css/atelier-site.css?v=20261106-theme"],
-    ["/admin/", "/admin/css/atelier-admin.css?v=20261107-one-upload"],
+    ["/admin/", null],
   ];
   for (const [url, stylesheet] of routes) {
     const response = await request.get(url);
     expect(response.ok(), url + " status").toBe(true);
     const html = await response.text();
-    expect(html, url + " stylesheet").toContain(url === "/admin/" ? stylesheet.replace(/^\/admin\//, "") : stylesheet.replace(/^\//, ""));
-    const css = await request.get(stylesheet);
-    expect(css.ok(), stylesheet + " status").toBe(true);
+    const href = stylesheet || html.match(/href="([^"]*atelier-admin\.css\?v=[^"]+)"/)?.[1];
+    expect(href, url + " stylesheet href").toBeTruthy();
+    expect(html, url + " stylesheet").toContain(url === "/admin/" ? href : href.replace(/^\//, ""));
+    const assetPath = url === "/admin/" ? "/admin/" + href.replace(/^\//, "") : stylesheet;
+    const css = await request.get(assetPath);
+    expect(css.ok(), assetPath + " status").toBe(true);
     // Public storefront and WOMEN Admin share the same fuchsia actions.
     expect(await css.text()).toContain("#D100D1");
   }

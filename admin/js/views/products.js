@@ -1,15 +1,15 @@
 import { t } from '../i18n.js';
 import { html, render, toString, $, $$, icon, money, toMinor, fmtNum, ago, date, statusBadge, skRows, sheet, closeLayer, confirmDialog, withBusy, island, done, fail, debounce, segmented, idempotencyKey, spotlight, esc } from '../ui.js';
 import { call, deleteProductImage, mediaUrl } from '../api.js';
-import { previewTile } from '../image-optimize.js';
-import { uploadPhotos, uploadSummary } from '../photo-upload.js';
-import { coloursTab, previewTab } from './model-colours.js?v=20261107-one-upload';
+import { previewTile } from '../image-optimize.js?v=20261113-media-team-v1';
+import { uploadPhotos, uploadSummary } from '../photo-upload.js?v=20261113-media-team-v1';
+import { coloursTab, previewTab } from './model-colours.js?v=20261113-media-team-v1';
 import { mountDescriptionEnhancer } from '../description-enhancer.js';
 import { saveCost, profitText, COST_OPS_MISSING } from '../profit.js';
 import { activityLine } from './dashboard.js';
 import { groupAdminProducts } from '../model-families.js';
 import { saveFamilyCategory } from '../model-category.js';
-import { mountQuickProductEditor } from '../quick-product.js?v=18-qty100';
+import { mountQuickProductEditor } from '../quick-product.js?v=20261113-media-team-v1';
 import { countStatuses, PRODUCT_STATES, statusAction, prepublishHints } from '../product-lifecycle.js';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);

@@ -138,6 +138,8 @@
 .thumb.hidden img{opacity:.4}
 .thumb .badge{position:absolute;inset-block-start:6px;inset-inline-start:6px;font-size:10.5px}
 .thumb .icon-btn{position:absolute;inset-block-end:6px;inset-inline-end:6px;background:var(--surface)}
+.thumb .icon-btn[data-delete-photo]{inset-inline-start:6px;inset-inline-end:auto;inset-block-end:6px;inline-size:44px;block-size:44px;z-index:2}
+.thumb .icon-btn[data-first]{inset-inline-end:6px;inset-inline-start:auto;inset-block-start:6px;inset-block-end:auto;inline-size:44px;block-size:44px;z-index:2}
 .thumb-add{display:grid;place-items:center;gap:4px;block-size:120px;border:1.5px dashed var(--line);border-radius:10px;cursor:pointer;font-size:12px;text-align:center;color:var(--muted)}
 .thumb-add:hover{border-color:var(--primary);color:var(--primary)}
 .thumb-add svg{inline-size:22px;block-size:22px;stroke:currentColor;fill:none;stroke-width:1.6}
