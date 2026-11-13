@@ -4,7 +4,7 @@
 // so what is shown is what was saved. Nothing here deletes a colour, size, photo, order or code:
 // colours and sizes are retired (set inactive), photos are only hidden from the media tab.
 import { html, render, $, $$, icon, money, toMinor, withBusy, island, done, fail, confirmDialog } from '../ui.js';
-import { call, mediaUrl } from '../api.js';
+import { call, deleteProductImage, mediaUrl } from '../api.js';
 import { uploadPhotos, uploadSummary } from '../photo-upload.js';
 import { checkSourceImage } from '../image-optimize.js';
 import { colourModel, checkDrafts, planNewModel, planAddColour, planSizes, planColourPrice, planColourAvailability, photoTarget, runSteps, ONE_SIZE } from '../colour-model.js?v=20261106-colourpicker';
@@ -402,6 +402,29 @@ export async function coloursTab(body, { ctx, d, p, code, reload }) {
       await run([{ label: 'وقف اللون', op: 'products.structure', args: { change: { op: 'set_value_active', option: c.optionPosition, value: c.valuePosition, active: false } }, need: 'products.edit' }], 'اللون اتوقف.');
     }
     if (b.matches('[data-restore]')) await run([{ label: 'رجوع اللون', op: 'products.structure', args: { change: { op: 'set_value_active', option: c.optionPosition, value: c.valuePosition, active: true } }, need: 'products.edit' }], 'اللون رجع.');
+    if (b.matches('[data-delete-photo]')) {
+      if (!can('media.manage')) { island('error', 'صلاحية إدارة الصور مطلوبة.'); return; }
+      const id = b.dataset.deletePhoto;
+      const photo = c.media.find((item) => item.media_id === id);
+      if (!photo) { island('error', 'الصورة لم تعد موجودة. حدّث الصفحة وحاول مرة أخرى.'); return; }
+      if (!(await confirmDialog({
+        title: 'حذف صورة اللون',
+        text: 'سيتم إخفاء الصورة أولًا ثم حذفها نهائيًا من ملفات المنتج. لا يمكن استعادتها. باقي صور اللون والأوردرات لن تتأثر.',
+        okText: 'حذف الصورة نهائيًا',
+        danger: true
+      }))) return;
+      await withBusy(b, async () => {
+        // The media protocol only permanently deletes hidden photos.
+        if (!photo.hidden) {
+          const hidden = await call('media.set_hidden', { code, media_id: id, hidden: true });
+          if (hidden?.outcome !== 'saved') { fail(hidden); return; }
+        }
+        const result = await deleteProductImage(code, id);
+        if (['saved', 'deleted'].includes(result?.outcome)) { done('اتحذفت الصورة من اللون.'); reload(); }
+        else { fail(result); if (!photo.hidden) reload(); }
+      });
+      return;
+    }
     if (b.matches('[data-first]')) {
       // The colour's first photo is its cover in the store: move this one before the colour's current first photo.
       const id = b.dataset.first, ids = media.map((m) => m.media_id).filter((x) => x !== id);
@@ -447,7 +470,9 @@ function colourCard(c, ci, { model, media, can, cost, costsReady }) {
       <span class="space"></span><b class="num">${sell === null ? 'السعر ناقص' : money(sell)}</b></div>
     <div class="field"><span>صور اختيار اللون ${photos.length ? '(' + photos.length + ')' : '— لسه ناقصة'}</span>
       <div class="thumbs">${photos.map((m, i) => html`<figure class="thumb ${m.hidden ? 'hidden' : ''}"><img src="${img(m)}" alt="${m.alt_text || c.name}" loading="lazy" width="96" height="120">
-        ${i === 0 ? html`<span class="badge ok">غلاف اللون</span>` : can('media.manage') ? html`<button type="button" class="icon-btn" data-first="${m.media_id}" aria-label="تعيينها أول صورة للون" title="تعيينها أول صورة للون">${icon('star')}</button>` : ''}</figure>`)}
+        ${i === 0 && !m.hidden ? html`<span class="badge ok">غلاف اللون</span>` : ''}
+        ${can('media.manage') ? html`<button type="button" class="icon-btn" data-delete-photo="${m.media_id}" aria-label="حذف صورة اللون" title="حذف الصورة">${icon('trash-2')}</button>` : ''}
+        ${i !== 0 && can('media.manage') && !m.hidden ? html`<button type="button" class="icon-btn" data-first="${m.media_id}" aria-label="تعيينها أول صورة للون" title="تعيينها أول صورة للون">${icon('star')}</button>` : ''}</figure>`)}
         ${can('media.manage') && (c.optionPosition !== null || !model.colourOption) ? html`<label class="thumb thumb-add">${icon('upload')}<span>رفع صور ${c.name || 'الموديل'}</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr" data-upload></label>` : ''}</div>
       <div class="thumbs" data-c-queued></div><small data-c-queue-count role="status"></small>
       <small>اختيار كل صور اللون مرة واحدة، ثم الضغط على «حفظ اللون والصور». ستُرفع الصور باللون الصحيح مع المقاسات والسعر، ولن تتغير الصور القديمة عند حدوث خطأ.</small></div>
