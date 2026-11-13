@@ -5,8 +5,8 @@
 // Photo removal requires an explicit confirmation and the server's hide-then-storage-delete protocol.
 import { html, render, $, $$, icon, money, toMinor, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, deleteProductImage, mediaUrl } from '../api.js';
-import { uploadPhotos, uploadSummary } from '../photo-upload.js?v=20261113-media-team-v1';
-import { checkSourceImage } from '../image-optimize.js?v=20261113-media-team-v1';
+import { uploadPhotos, uploadSummary } from '../photo-upload.js?v=20261113-admin-audit-p2';
+import { checkSourceImage } from '../image-optimize.js?v=20261113-admin-audit-p2';
 import { colourModel, checkDrafts, planNewModel, planAddColour, planSizes, planColourPrice, planColourAvailability, photoTarget, runSteps, ONE_SIZE } from '../colour-model.js?v=20261106-colourpicker';
 import { loadCosts, saveCost, costOf, profitText } from '../profit.js';
 import { PALETTE, hexOf, normName, colourKey } from '../../../js/colour-palette.js?v=20261106-colourpicker';
