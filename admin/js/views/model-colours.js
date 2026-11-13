@@ -519,7 +519,8 @@ export function previewTab(body, { ctx, d, p, code }) {
     const sizes = c ? c.variants.filter((v) => v.active && v.available).map((v) => v.size ?? ONE_SIZE) : [];
     render($('[data-shop]', body), html`<div class="preview-shop">
       <div class="preview-gallery">${photos.length ? html`<img src="${img(photos[0])}" alt="${p.title}" width="320" height="400">` : html`<div class="empty">${icon('image')}<b>مفيش صور للون ده</b></div>`}
-        <div class="thumbs">${photos.slice(1, 6).map((m) => html`<img src="${img(m)}" alt="" width="56" height="70" loading="lazy">`)}</div></div>
+        <div class="thumbs">${photos.slice(1, 6).map((m) => html`<img src="${img(m)}" alt="" width="56" height="70" loading="lazy">`)}</div>
+        <p class="preview-description${p.description?.trim() ? '' : ' muted'}">${p.description?.trim() || 'مفيش وصف مضاف للمنتج.'}</p></div>
       <div class="stack"><h3 style="margin:0">${p.title}</h3><b class="num">${c && priceOf(c, model.base) !== null ? money(priceOf(c, model.base)) : '—'}</b>
         ${model.colourOption ? html`<div><small class="muted">اللون: ${c?.name || ''}</small><div class="chips" role="radiogroup" aria-label="اللون" style="flex-wrap:wrap">${colours.map((x, i) => html`<button type="button" class="chip swatch-chip" role="radio" data-pick="${i}" aria-checked="${i === pick}" aria-pressed="${i === pick}" ${x.available ? '' : 'disabled'}>${swatch(x.hex, x.name)}${x.name}</button>`)}</div></div>` : ''}
         <div><small class="muted">المقاس</small><div class="chips" style="flex-wrap:wrap">${sizes.length ? sizes.map((s, i) => html`<button type="button" class="chip" aria-pressed="${i === 0}">${s}</button>`) : html`<span class="muted">مفيش مقاس متاح للون ده</span>`}</div></div>
