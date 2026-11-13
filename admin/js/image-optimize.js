@@ -17,7 +17,7 @@ export function checkSourceImage(file) {
     return 'اختيار صورة صالحة بصيغة JPG أو PNG أو WebP.';
   const type = String(file.type || '').toLowerCase();
   const name = String(file.name || '').toLowerCase();
-  if (type === 'image/heic' || type === 'image/heif' || /\\.(heic|heif)$/.test(name))
+  if (type === 'image/heic' || type === 'image/heif' || /\.(heic|heif)$/.test(name))
     return 'صيغة HEIC/HEIF من iPhone مش مدعومة. من Settings > Camera > Formats اختار Most Compatible (JPEG)، وبعدها ارفع الصورة تاني.';
   if (!TYPES.has(type))
     return 'اختيار صورة صالحة بصيغة JPG أو PNG أو WebP.';
