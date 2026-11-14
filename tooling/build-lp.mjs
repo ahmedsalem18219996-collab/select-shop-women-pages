@@ -127,6 +127,11 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 .notes{margin:0;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;gap:6px;font-size:14px;color:#4A3F49;list-style:none}
 .desc{margin:0;font-size:14px;color:#4A3F49}
 .desc:empty{display:none}
+.browse-home{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;width:fit-content;max-width:100%;min-height:40px;margin-top:8px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font-size:13px;line-height:1.5;text-decoration:none}
+.browse-home::before{content:"↩";color:var(--gold);font-size:15px;line-height:1}
+.browse-home:hover{border-color:var(--gold);background:var(--bg)}
+.browse-home:focus-visible{outline:2px solid var(--mauve);outline-offset:3px}
+@media(max-width:360px){.browse-home{font-size:12px;padding-inline:10px}}
 .desc p{margin:0}
 .video{width:100%;aspect-ratio:16/9;border:0;border-radius:14px;background:var(--ink);color:#fff;font:600 16px var(--f);cursor:pointer}
 .lp-video{width:100%;border-radius:14px}
@@ -372,7 +377,7 @@ function layout(o) {
     : ORDER_FORM;
   // Refresh the browser-cached runtime only on affected grouped and legacy
   // product pages. Unrelated generated LPs retain their exact original HTML.
-  const choiceVersion = campaign ? "20261031-sweater-3" : /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
+  const choiceVersion = String(o.source || "").includes("automatic product page") ? "20261114-auto-zoom" : campaign ? "20261031-sweater-3" : /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
     ? "20261030-7" : checkoutPicker ? "20261030-5" : "20261030-4";
   return `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -406,7 +411,7 @@ ${stageControls(o.count)}
 </div>
 <div class="info">
 <p class="atelier-heading">${campaign ? esc(campaign.headline) : "تفاصيل تكمّل إطلالتك"}</p>
-<div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p></div>
+<div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p><a class="browse-home" href="/" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر">للرجوع للرئيسية لاختيار موديلات أكثر</a></div>
 ${campaign ? "" : `<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>\n`}${o.picker}
 <div id="lpOptions">${o.options}</div>
 ${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · الشحن واضح قبل التأكيد</p><a class="campaign-jump" href="#lpForm">اختيار الكمية وتسجيل الطلب</a>\n` : ""}${orderForm}
@@ -495,7 +500,7 @@ export function renderShell(fontFaces = "", routes = {}) {
     hero: `<img alt="" width="800" height="1067" decoding="async"${HERO_READY}>`, gallery: "", count: 0, h1: "", price: "—", desc: "", picker: "", options: "",
     choice: "اختيار المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
     noscript: `<a href="/">فتح المتجر</a>`, data: JSON.stringify({ auto: true }),
-    scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n`,
+    scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n<script type="module" src="/lp/image-zoom.js?v=20261114-auto-zoom"></script>\n`,
   });
 }
 

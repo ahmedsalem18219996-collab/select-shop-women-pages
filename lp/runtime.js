@@ -377,7 +377,10 @@ function fillFromProduct(/** @type {any} */ p) {
   /** @type {HTMLElement} */ (document.getElementById("lpTitle")).textContent = title;
   // Before a colour is picked, show the photos shared by every colour (all photos when none are shared).
   const all = liveMedia(p), shared = all.filter((/** @type {any} */ m) => !m.target || m.target.kind === "product");
-  paintPhotos(shared.length ? shared : all, title);
+  const visible = shared.length ? shared : all;
+  const w = /** @type {any} */ (window);
+  w.__lpZoomPhotos = visible.map((/** @type {any} */ m) => m.url);
+  paintPhotos(visible, title);
   const lines = String(p.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
   /** @type {HTMLElement} */ (document.getElementById("lpDesc")).textContent = lines[0] || "";
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
