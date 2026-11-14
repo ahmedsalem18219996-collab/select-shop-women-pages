@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#061024"/><stop offset=".48" stop-color="#0A1730"/><stop offset="1" stop-color="#17243A"/></linearGradient>
+    <radialGradient id="tealGlow" cx="0" cy="0" r="1" gradientTransform="translate(90 85) rotate(45) scale(570 390)" gradientUnits="userSpaceOnUse"><stop stop-color="#19B8B7" stop-opacity=".55"/><stop offset="1" stop-color="#19B8B7" stop-opacity="0"/></radialGradient>
+    <radialGradient id="champagneGlow" cx="0" cy="0" r="1" gradientTransform="translate(1450 690) rotate(155) scale(610 400)" gradientUnits="userSpaceOnUse"><stop stop-color="#E6C5A3" stop-opacity=".66"/><stop offset="1" stop-color="#E6C5A3" stop-opacity="0"/></radialGradient>
+    <radialGradient id="plumGlow" cx="0" cy="0" r="1" gradientTransform="translate(1510 70) rotate(90) scale(280 440)" gradientUnits="userSpaceOnUse"><stop stop-color="#8D617E" stop-opacity=".3"/><stop offset="1" stop-color="#8D617E" stop-opacity="0"/></radialGradient>
+    <linearGradient id="silk" x1="0" y1="0" x2="1" y2=".2"><stop stop-color="#263B55" stop-opacity=".82"/><stop offset=".35" stop-color="#B89A91" stop-opacity=".56"/><stop offset=".7" stop-color="#F0D7BD" stop-opacity=".82"/><stop offset="1" stop-color="#A98079" stop-opacity=".58"/></linearGradient>
+    <linearGradient id="silkEdge" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#7C999B" stop-opacity=".1"/><stop offset=".48" stop-color="#F3D5B3" stop-opacity=".9"/><stop offset="1" stop-color="#C18F82" stop-opacity=".15"/></linearGradient>
+    <linearGradient id="goldLine" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#C89C78" stop-opacity=".08"/><stop offset=".55" stop-color="#E6C6A4" stop-opacity=".72"/><stop offset="1" stop-color="#B47E72" stop-opacity=".12"/></linearGradient>
+    <filter id="soft" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur stdDeviation="28"/></filter>
+    <pattern id="grain" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M0 34 34 0M-8 8 8-8M26 42 42 26" stroke="#EAD6C2" stroke-opacity=".035" stroke-width="1"/></pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#night)"/><rect width="1600" height="900" fill="url(#tealGlow)"/><rect width="1600" height="900" fill="url(#champagneGlow)"/><rect width="1600" height="900" fill="url(#plumGlow)"/>
+  <g fill="none" stroke="url(#goldLine)" stroke-width="2"><path d="M180-80C-30 70-40 300 140 470" opacity=".55"/><path d="M365-100C100 45 50 315 250 520" opacity=".25"/><path d="M1120 1020c160-170 255-320 260-500 5-170-70-290-210-370" opacity=".28"/><path d="M-80 240C190 370 280 620 520 690" opacity=".24"/></g>
+  <g filter="url(#soft)" opacity=".32"><path d="M-80 610C210 505 380 760 650 700s470-210 720-95 250 70 320-20v390H-80Z" fill="#E5C4AB"/></g>
+  <path d="M-70 655C180 535 385 760 630 700c245-60 445-210 680-110 145 62 215 80 360-22v332H-70Z" fill="url(#silk)" opacity=".56"/>
+  <path d="M-80 760C170 625 340 835 590 770c300-78 440-190 665-105 150 57 250 82 425-30v300H-80Z" fill="#E9D0BB" opacity=".16"/>
+  <path d="M-60 650C205 540 365 760 630 700c255-58 445-210 680-110 145 62 215 80 360-22" fill="none" stroke="url(#silkEdge)" stroke-width="3" opacity=".75"/>
+  <path d="M-50 765C180 640 360 830 590 770c300-78 440-190 665-105 150 57 250 82 425-30" fill="none" stroke="url(#goldLine)" stroke-width="1.6" opacity=".52"/>
+  <path d="M0 0h1600v900H0z" fill="url(#grain)" opacity=".55"/>
+</svg>

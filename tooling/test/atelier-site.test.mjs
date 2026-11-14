@@ -4,11 +4,11 @@ import { readFile } from "node:fs/promises";
 
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 const storeRoutes = [
-  ["index.html", 'href="css/atelier-site.css?v=20261114-woman-hero"', 'class="atelier-home"'],
-  ["p/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-product"'],
-  ["cart/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-cart"'],
-  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-checkout"'],
-  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261106-theme"', 'class="atelier-success"'],
+  ["index.html", 'href="css/atelier-site.css?v=20261114-luxe"', 'class="atelier-home"'],
+  ["p/index.html", 'href="../css/atelier-site.css?v=20261114-luxe"', 'class="atelier-product"'],
+  ["cart/index.html", 'href="../css/atelier-site.css?v=20261114-luxe"', 'class="atelier-cart"'],
+  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261114-luxe"', 'class="atelier-checkout"'],
+  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261114-luxe"', 'class="atelier-success"'],
 ];
 
 test("Atelier shared style loads on every public storefront step", async () => {
@@ -35,6 +35,9 @@ test("Atelier preserves storefront controls, legacy checkout and the isolated ad
   const done = await source("order-success/index.html");
   const admin = await source("admin/index.html");
   assert.match(home, /id="feed"/);
+  assert.match(home, /assets\/hero-woman-luxe\.webp/);
+  assert.doesNotMatch(home, /assets\/hero-woman-luxe\.avif/);
+  assert.match(await source("css/atelier-site.css"), /luxury-silk-bg\.svg/);
   assert.match(home, /id="shop"/);
   assert.match(product, /id="addToCart"/);
   assert.match(product, /id="product"/);
