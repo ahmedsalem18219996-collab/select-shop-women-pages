@@ -23,7 +23,8 @@ if (data) {
     const selected = document.querySelector('#lpColors .chip[aria-pressed="true"]')?.getAttribute('data-code') || page.code;
     const colour = page.colors?.find(c => c.code === selected);
     const index = Number(img.dataset.index || 0); // the photo on screen (lp/runtime.js gallery)
-    const src = colour?.zoom?.[index];
+    const livePhotos = /** @type {any} */ (window).__lpZoomPhotos;
+    const src = colour?.zoom?.[index] || (page.auto && Array.isArray(livePhotos) ? livePhotos[index] : undefined);
     if (!/^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[a-f0-9]{32}\.(jpg|png|webp)$/.test(src || '')) return;
     opener = img; large.src = src; large.alt = img.alt;
     large.classList.remove('zoomed'); toggle.textContent = 'تكبير أكتر';
