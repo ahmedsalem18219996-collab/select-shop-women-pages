@@ -412,7 +412,7 @@ ${stageControls(o.count)}
 </div>
 <div class="info">
 <p class="atelier-heading">${campaign ? esc(campaign.headline) : "تفاصيل تكمّل إطلالتك"}</p>
-<div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p><div class="desc product-details" id="lpMore">${o.more}</div></div>
+<div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p>\n<div class="desc product-details" id="lpMore">${o.more}</div></div>
 ${campaign ? "" : `<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>\n`}${o.picker}
 <div id="lpOptions">${o.options}</div>
 ${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · الشحن واضح قبل التأكيد</p><a class="campaign-jump" href="#lpForm">اختيار الكمية وتسجيل الطلب</a>\n` : ""}${orderForm}
