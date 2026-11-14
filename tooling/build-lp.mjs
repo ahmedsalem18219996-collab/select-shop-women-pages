@@ -401,7 +401,7 @@ ${o.fontFaces}
 ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
 <body${campaign ? ' data-campaign="focused"' : ""}>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a><a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">موديلات أكثر</span></a>'}${THEME_TOGGLE}</header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}<a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">موديلات أكثر</span></a>${THEME_TOGGLE}</header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">
