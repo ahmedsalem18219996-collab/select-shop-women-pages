@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://byluoipdunralsurwebt.supabase.co" crossorigin>
-<!-- The brand-first hero is text-only: don't preload a jacket photo or compete with product cards. -->
+<!-- Responsive editorial hero: one optimized decorative image, no implied product availability. -->
 <!-- WOMEN public release: official verified domain. -->
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://selectshopeg.com/">
@@ -563,7 +563,7 @@ body{background:var(--mirror)}
   .seg{height:41px}
 }
 </style>
-<link rel="stylesheet" href="css/atelier-site.css?v=20261106-card-colours">
+<link rel="stylesheet" href="css/atelier-site.css?v=20261114-woman-hero">
 <script>
 /* Begin the public catalog request during HTML parsing instead of waiting for the UI bundle. */
 // Include only our isolated QA server so GitHub Lighthouse measures the same
@@ -611,16 +611,17 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
       <div class="stories" id="stories" aria-label="ستوري"></div>
     </div>
 
-    <!-- Brand-only hero: all real products (including SS-1011) belong to the same catalog grid. -->
+    <!-- Editorial hero: the model is decorative, all purchasable items remain in the actual catalog. -->
     <section class="hero hero--brand" aria-labelledby="heroTitle">
       <div class="hero-copy">
         <span class="hero-kicker">SELECT SHOP · THE EDIT</span>
         <h1 id="heroTitle">ستايل يناسبك <span class="hl">بطريقتك.</span></h1>
+        <p class="hero-lead">موديلات متنوعة بصورها وأسعارها؛ والقطعة المناسبة هتلاقيها بسهولة. التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب، والدفع عند الاستلام.</p>
         <div class="hero-cta">
           <a class="btn-solid" href="#shop">تصفح المنتجات</a>
         </div>
       </div>
-      <p class="hero-lead">موديلات متنوعة بصورها وأسعارها؛ والقطعة المناسبة هتلاقيها بسهولة. التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب، والدفع عند الاستلام.</p>
+      <div class="hero-visual" aria-hidden="true"><img src="assets/hero-woman-v2.webp" alt="" width="780" height="1040" fetchpriority="high" decoding="async"></div>
       <ul class="hero-trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الطلب في دقيقة</li></ul>
     </section>
 

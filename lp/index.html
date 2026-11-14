@@ -230,6 +230,9 @@ body:not([data-campaign]) .head{position:relative;z-index:1;margin:-16px 12px 0;
 h1{font-size:44px}.price{font-size:28px}
 .info{gap:22px}
 }
+/* The same faint, theme-aware page contours as the public storefront: CSS-only, no network cost. */
+body{background-color:var(--bg);background-image:radial-gradient(ellipse 420px 580px at 110% 9%,rgba(209,0,209,.052),transparent 80%),radial-gradient(ellipse 430px 520px at -11% 55%,rgba(46,217,209,.04),transparent 80%),radial-gradient(ellipse 380px 450px at 108% 91%,rgba(209,0,209,.035),transparent 80%);background-repeat:no-repeat}
+:root[data-theme="light"] body{background-image:radial-gradient(ellipse 420px 580px at 110% 9%,rgba(209,0,209,.028),transparent 80%),radial-gradient(ellipse 430px 520px at -11% 55%,rgba(0,114,122,.025),transparent 80%),radial-gradient(ellipse 380px 450px at 108% 91%,rgba(209,0,209,.02),transparent 80%)}
 /* Product gallery (2026-11-06): the whole garment stays visible (3:4 photos shown with contain, never cropped or covered),
    one colour's photos at a time, thumbnails under the photo (beside it on desktop), arrows, swipe and a 1/4 counter.
    Id selectors win over the older layered skins above (hero heights, 4:5 boxes, the floating card). */
