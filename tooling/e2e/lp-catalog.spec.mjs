@@ -158,7 +158,7 @@ test('automatic product landing page opens the full-size original when its hero 
   await expect(photo).toHaveAttribute('data-index', '0');
   await photo.click();
   await expect(page.getByRole('dialog', { name: 'تفاصيل الصورة' })).toBeVisible();
-  await expect(page.locator('#lpZoomImage')).toHaveAttribute('src', /54d164fae59c4f5dbbd137670802fc7c\\.jpg$/);
+  await expect(page.locator('#lpZoomImage')).toHaveAttribute('src', /54d164fae59c4f5dbbd137670802fc7c\.jpg$/);
   await page.getByRole('button', { name: 'إغلاق الصورة' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
 });
