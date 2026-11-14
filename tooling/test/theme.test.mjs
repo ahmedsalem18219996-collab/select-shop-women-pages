@@ -36,7 +36,7 @@ test("every public page sets the theme before any style and carries one Sun/Moon
 test("landing pages inline the same Light block as the storefront sheet", async () => {
   const sheet = (await source("css/atelier-site.css")).replace(/\r\n/g, "\n");
   assert.ok(sheet.includes(SHARED_THEME));
-  for (const p of await allPages()) if (p.startsWith("lp/")) assert.ok((await source(p)).includes(SHARED_THEME), p + " light block is stale: rebuild with build-lp.mjs");
+  for (const p of await allPages()) if (p.startsWith("lp/")) { const html = await source(p); assert.ok(html.includes(SHARED_THEME), p + " light block is stale: rebuild with build-lp.mjs"); assert.ok(html.includes("luxury-silk-bg.svg"), p + " luxury wallpaper is stale: rebuild with build-lp.mjs"); }
 });
 
 test("boot script: Dark by default, saved Light restored, unknown values and blocked storage fall back to Dark", () => {
@@ -67,6 +67,7 @@ test("Light palette meets WCAG AA (text 4.5:1, borders/focus 3:1); Dark tokens u
   assert.ok(ratio(light.cyan, light.bg) >= 3, "focus ring / selection frame");
   assert.equal(light.accent, "#D100D1"); // same neon purple buy button in both modes
   const sheet = await source("css/atelier-site.css");
+  assert.ok(sheet.includes("luxury-silk-bg.svg"), "storefront wallpaper asset is present");
   assert.doesNotMatch(sheet, /color-mix\s*\(/i, "theme CSS must not depend on color-mix in older Safari/WebKit");
   assert.match(sheet, /\.hero--brand \.hero-trust\{[^}]*background:rgba\(11,23,48,\.91\)/);
   assert.match(sheet, /:root\[data-theme="light"\] \.hero--brand \.hero-trust\{background:rgba\(255,253,248,\.74\)\}/);

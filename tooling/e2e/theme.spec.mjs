@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 const KEY = "ssw.theme.v1";
 const DARK_BG = "rgb(5, 11, 28)", LIGHT_BG = "rgb(247, 243, 236)";
 const mockLog = async (request) => (await request.get("/__mock/log")).json();
-const themeOf = (page) => page.evaluate(() => ({ theme: document.documentElement.dataset.theme, bg: getComputedStyle(document.body).backgroundColor,
+const themeOf = (page) => page.evaluate(() => ({ theme: document.documentElement.dataset.theme, bg: getComputedStyle(document.documentElement).backgroundColor,
   meta: document.querySelector('meta[name="theme-color"]').content }));
 const saveLight = (page) => page.addInitScript(k => { try { if (!sessionStorage.getItem("seeded")) { localStorage.setItem(k, "light"); sessionStorage.setItem("seeded", "1"); } } catch { /* blocked */ } }, KEY);
 
@@ -41,6 +41,7 @@ test("home editorial hero keeps one woman, readable theme colours and a working 
   const hero = page.locator(".hero--brand");
   const image = hero.locator(".hero-visual img");
   await expect(image).toHaveCount(1);
+  await expect(hero.locator(".hero-visual source[type='image/avif']")).toHaveAttribute("srcset", "assets/hero-woman-luxe.avif");
   await expect(image).toHaveAttribute("alt", ""); // editorial visual is not a stocked-product claim
   await expect.poll(() => image.evaluate(e => e.complete && e.naturalWidth > 0)).toBe(true);
   const backgrounds = [];
@@ -50,9 +51,10 @@ test("home editorial hero keeps one woman, readable theme colours and a working 
     await expect(hero.locator("h1")).toBeVisible();
     await expect(hero.locator(".hero-cta a")).toBeVisible();
     const view = await hero.evaluate(e => ({ bg: getComputedStyle(e).backgroundImage,
-      wallpaper: getComputedStyle(document.querySelector(".app")).backgroundImage,
+      wallpaper: getComputedStyle(document.documentElement).backgroundImage,
       bodyWidth: document.documentElement.scrollWidth, viewport: innerWidth }));
-    expect(view.wallpaper).toContain("radial-gradient");
+    expect(view.wallpaper).toContain("luxury-silk-bg.svg");
+    expect(view.bg).toContain("luxury-silk-bg.svg");
     expect(view.bodyWidth).toBeLessThanOrEqual(view.viewport);
     backgrounds.push(view.bg);
   }

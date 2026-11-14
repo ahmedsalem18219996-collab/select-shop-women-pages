@@ -28,21 +28,11 @@
 :root[data-theme="light"] .theme-toggle .moon{display:block}
 /* /theme:shared */
 html,body{background:var(--bg);color:var(--ink)}
-/* Quiet editorial contours: CSS-only and theme-aware, with no wallpaper download. */
-.app,.atelier-checkout,.atelier-success{
- background-color:var(--mirror);
- background-image:
-  radial-gradient(ellipse 420px 580px at 110% 9%,rgba(209,0,209,.052),transparent 80%),
-  radial-gradient(ellipse 430px 520px at -11% 55%,rgba(46,217,209,.04),transparent 80%),
-  radial-gradient(ellipse 380px 450px at 108% 91%,rgba(209,0,209,.035),transparent 80%);
- background-repeat:no-repeat;
-}
-:root[data-theme="light"] :is(.app,.atelier-checkout,.atelier-success){
- background-image:
-  radial-gradient(ellipse 420px 580px at 110% 9%,rgba(209,0,209,.028),transparent 80%),
-  radial-gradient(ellipse 430px 520px at -11% 55%,rgba(0,114,122,.025),transparent 80%),
-  radial-gradient(ellipse 380px 450px at 108% 91%,rgba(209,0,209,.02),transparent 80%);
-}
+/* Luxury silk wallpaper: a subtle fixed layer shared by home, product, cart and checkout. */
+html{background-image:linear-gradient(rgba(5,11,28,.76),rgba(5,11,28,.88)),url("/assets/luxury-silk-bg.svg");background-size:cover;background-position:center top;background-repeat:no-repeat;background-attachment:fixed}
+:root[data-theme="light"]{background-image:linear-gradient(rgba(247,243,236,.82),rgba(247,243,236,.91)),url("/assets/luxury-silk-bg.svg")}
+body{background:transparent}
+.app{background:transparent}
 .app :focus-visible,:is(.atelier-checkout,.atelier-success) :focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:0}
 .storefront-owner-announcement{border-bottom:1px solid var(--rose);background:var(--wash);color:var(--cyan);font:400 11px/1.9 var(--f-body);letter-spacing:.14em;padding:7px 16px}
 
@@ -76,8 +66,8 @@ html,body{background:var(--bg);color:var(--ink)}
 }
 
 /* ---------- theme-aware editorial hero: one transparent female model, responsive copy ---------- */
-.hero--brand{display:grid;position:relative;isolation:isolate;grid-template-areas:"copy" "trust";min-height:340px;background:radial-gradient(ellipse 65% 95% at 13% 75%,rgba(209,0,209,.15),transparent 76%),linear-gradient(115deg,var(--chalk),var(--bg) 85%);border-block:1px solid var(--hair);margin:0;max-width:none;padding:0;overflow:hidden}
-:root[data-theme="light"] .hero--brand{background:radial-gradient(ellipse 68% 92% at 12% 84%,rgba(209,0,209,.07),transparent 76%),linear-gradient(115deg,#F0E8DD,var(--paper) 85%)}
+.hero--brand{display:grid;position:relative;isolation:isolate;grid-template-areas:"copy" "trust";min-height:340px;background-color:var(--bg);background-image:radial-gradient(ellipse 65% 95% at 13% 75%,rgba(216,180,142,.13),transparent 76%),url("/assets/luxury-silk-bg.svg");background-size:auto,cover;background-position:center,center;background-repeat:no-repeat;border-block:1px solid var(--hair);margin:0;max-width:none;padding:0;overflow:hidden}
+:root[data-theme="light"] .hero--brand{background-image:radial-gradient(ellipse 68% 92% at 12% 84%,rgba(141,97,126,.07),transparent 76%),url("/assets/luxury-silk-bg.svg");background-size:auto,cover;background-position:center,center;background-repeat:no-repeat}
 .hero--brand::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(270deg,rgba(5,11,28,.94),rgba(5,11,28,.8) 28%,transparent 67%)}
 :root[data-theme="light"] .hero--brand::after{background:linear-gradient(270deg,rgba(255,253,248,.95),rgba(255,253,248,.84) 28%,transparent 67%)}
 .hero--brand .hero-copy{grid-area:copy;position:relative;z-index:2;display:grid;align-content:center;justify-items:start;gap:12px;min-height:304px;width:min(70%,520px);padding:24px max(20px,var(--gr)) 22px max(20px,var(--gl));color:var(--ink)}
@@ -90,7 +80,8 @@ html,body{background:var(--bg);color:var(--ink)}
 .hero--brand .btn-solid:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
 .hero--brand .hero-lead{margin:0;max-width:25ch;text-align:start;color:var(--dust);font-size:12px;line-height:1.7}
 .hero--brand .hero-visual{position:absolute;z-index:1;inset-inline-end:0;bottom:42px;width:56%;height:calc(100% - 42px);pointer-events:none;overflow:hidden;display:grid;place-items:end center}
-.hero--brand .hero-visual::before{content:"";position:absolute;width:min(87%,360px);aspect-ratio:1;border:1px solid rgba(46,217,209,.14);border-radius:50%;bottom:-30%;left:0;right:0;margin:auto;box-shadow:0 0 0 45px rgba(209,0,209,.025)}
+.hero--brand .hero-visual::before{content:"";position:absolute;width:min(87%,360px);aspect-ratio:1;border:1px solid rgba(216,180,142,.3);border-radius:50%;bottom:-30%;left:0;right:0;margin:auto;box-shadow:0 0 0 45px rgba(141,97,126,.035)}
+.hero--brand .hero-visual picture{position:relative;display:block;width:100%;height:100%;max-width:480px}
 .hero--brand .hero-visual img{position:relative;width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 14px 20px rgba(0,0,0,.14))}
 .hero--brand .hero-trust{grid-area:trust;position:relative;z-index:3;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--hair);background:rgba(11,23,48,.91)}
 :root[data-theme="light"] .hero--brand .hero-trust{background:rgba(255,253,248,.74)}

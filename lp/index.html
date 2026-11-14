@@ -231,8 +231,10 @@ h1{font-size:44px}.price{font-size:28px}
 .info{gap:22px}
 }
 /* The same faint, theme-aware page contours as the public storefront: CSS-only, no network cost. */
-body{background-color:var(--bg);background-image:radial-gradient(ellipse 420px 580px at 110% 9%,rgba(209,0,209,.052),transparent 80%),radial-gradient(ellipse 430px 520px at -11% 55%,rgba(46,217,209,.04),transparent 80%),radial-gradient(ellipse 380px 450px at 108% 91%,rgba(209,0,209,.035),transparent 80%);background-repeat:no-repeat}
-:root[data-theme="light"] body{background-image:radial-gradient(ellipse 420px 580px at 110% 9%,rgba(209,0,209,.028),transparent 80%),radial-gradient(ellipse 430px 520px at -11% 55%,rgba(0,114,122,.025),transparent 80%),radial-gradient(ellipse 380px 450px at 108% 91%,rgba(209,0,209,.02),transparent 80%)}
+/* Luxury silk wallpaper (2026-11-14): a tiny vector layer, fixed behind the full page. */
+html{background-color:var(--bg);background-image:linear-gradient(rgba(5,11,28,.76),rgba(5,11,28,.88)),url("/assets/luxury-silk-bg.svg");background-size:cover;background-position:center top;background-repeat:no-repeat;background-attachment:fixed}
+:root[data-theme="light"]{background-image:linear-gradient(rgba(247,243,236,.82),rgba(247,243,236,.91)),url("/assets/luxury-silk-bg.svg")}
+body{background:transparent}
 /* Product gallery (2026-11-06): the whole garment stays visible (3:4 photos shown with contain, never cropped or covered),
    one colour's photos at a time, thumbnails under the photo (beside it on desktop), arrows, swipe and a 1/4 counter.
    Id selectors win over the older layered skins above (hero heights, 4:5 boxes, the floating card). */
