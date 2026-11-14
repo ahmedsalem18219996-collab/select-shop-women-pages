@@ -500,7 +500,7 @@ export function renderShell(fontFaces = "", routes = {}) {
     hero: `<img alt="" width="800" height="1067" decoding="async"${HERO_READY}>`, gallery: "", count: 0, h1: "", price: "—", desc: "", picker: "", options: "",
     choice: "اختيار المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",
     noscript: `<a href="/">فتح المتجر</a>`, data: JSON.stringify({ auto: true }),
-    scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n`,
+    scripts: `<script src="/js/catalog-thumbs.js"></script>\n<script id="lp-hero">${HERO_BOOT}</script>\n<script type="module" src="/lp/image-zoom.js?v=20261114-auto-zoom"></script>\n`,
   });
 }
 
