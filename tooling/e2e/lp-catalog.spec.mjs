@@ -134,3 +134,19 @@ test("old ad links /lp/?p=CODE go to the shared model with chosen colour and mar
   expect(new URL(page.url()).pathname).toBe("/lp/");
   expect(page.external).toEqual([]);
 });
+test('generated and automatic product landing pages offer a clear link back to the home catalogue', async ({ page }) => {
+  const label = 'للرجوع للرئيسية لاختيار موديلات أكثر';
+  await page.goto('/lp/ss-1008/');
+  const generated = page.getByRole('link', { name: label });
+  await expect(generated).toBeVisible();
+  await expect(generated).toHaveAttribute('href', '/');
+  await generated.click();
+  await expect(page).toHaveURL(u => u.pathname === '/');
+
+  await page.goto('/lp/?p=SS-1099');
+  const automatic = page.getByRole('link', { name: label });
+  await expect(automatic).toBeVisible();
+  await expect(automatic).toHaveAttribute('href', '/');
+  await automatic.click();
+  await expect(page).toHaveURL(u => u.pathname === '/');
+});
