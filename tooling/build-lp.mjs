@@ -327,7 +327,7 @@ body:not([data-campaign]) .atelier-heading,body:not([data-campaign]) .head{margi
 .lp-opt .sw{border-color:var(--ring)}
 .top .theme-toggle{margin-inline-start:-6px}
 /* the switch takes 44px of the phone header: tighter gaps, and under 375px the "jump to form" link goes (the fixed bar's buy button does the same) */
-@media(max-width:420px){.top{gap:4px;padding-inline:8px}.mark{font-size:18px;letter-spacing:.18em}.top .jump{font-size:11px}#lpCartLink{font-size:11px;padding-inline:6px}.browse-home--top{font-size:10px;padding-inline:5px;gap:4px}.browse-home__wide{display:none}.browse-home__compact{display:inline}.top .theme-toggle{width:40px;min-width:40px}}
+@media(max-width:420px){.top{gap:4px;padding-inline:8px}.mark{font-size:18px;letter-spacing:.18em}.top .jump{font-size:11px}#lpCartLink{font-size:11px;padding-inline:6px}.browse-home--top{font-size:10px;padding-inline:5px;gap:4px}.browse-home__wide{display:none}.browse-home__compact{display:inline}}
 @media(max-width:374px){.top .jump{display:none}}
 ${SHARED_THEME}
 `;
