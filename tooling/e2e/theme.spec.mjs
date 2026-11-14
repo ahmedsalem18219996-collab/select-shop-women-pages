@@ -36,6 +36,31 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test("home editorial hero keeps one woman, readable theme colours and a working catalog CTA", async ({ page }) => {
+  await page.goto("/");
+  const hero = page.locator(".hero--brand");
+  const image = hero.locator(".hero-visual img");
+  await expect(image).toHaveCount(1);
+  await expect(image).toHaveAttribute("alt", ""); // editorial visual is not a stocked-product claim
+  await expect.poll(() => image.evaluate(e => e.complete && e.naturalWidth > 0)).toBe(true);
+  const backgrounds = [];
+  for (const theme of ["dark", "light"]) {
+    await page.evaluate(([key, value]) => localStorage.setItem(key, value), [KEY, theme]);
+    await page.reload();
+    await expect(hero.locator("h1")).toBeVisible();
+    await expect(hero.locator(".hero-cta a")).toBeVisible();
+    const view = await hero.evaluate(e => ({ bg: getComputedStyle(e).backgroundImage,
+      wallpaper: getComputedStyle(document.querySelector(".app")).backgroundImage,
+      bodyWidth: document.documentElement.scrollWidth, viewport: innerWidth }));
+    expect(view.wallpaper).toContain("radial-gradient");
+    expect(view.bodyWidth).toBeLessThanOrEqual(view.viewport);
+    backgrounds.push(view.bg);
+  }
+  expect(backgrounds[0]).not.toBe(backgrounds[1]);
+  await hero.locator(".hero-cta a").click();
+  await expect(page).toHaveURL(/#shop$/);
+});
+
 test("Dark by default; the Sun/Moon switch works from the keyboard, instantly, and is remembered", async ({ page }) => {
   await page.goto("/lp/ss-1008/");
   await page.locator("#lpOrder:enabled").waitFor();
