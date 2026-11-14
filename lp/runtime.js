@@ -370,6 +370,47 @@ function paintPhotos(/** @type {any[]} */ list, /** @type {string} */ alt) {
   setShots(shots); // a curated <picture> source never overrides the live colour photo: showShot replaces the sources
 }
 
+/** The same photo-first description position applies to pre-rendered LPs and every future automatic LP.
+ * Move existing nodes (never clone text): changing colour still updates the original #lpDesc and #lpMore.
+ * No edits to product descriptions, prices, quotes or checkout are required. */
+function placeDescriptionBelowPhoto() {
+  const media = document.querySelector(".media");
+  const lead = document.getElementById("lpDesc");
+  const more = document.getElementById("lpMore");
+  if (!media || !lead || !more || document.getElementById("lpPhotoDescription")) return;
+  const panel = document.createElement("section");
+  panel.id = "lpPhotoDescription";
+  panel.setAttribute("aria-label", "وصف المنتج");
+  const heading = document.createElement("h2");
+  heading.textContent = "وصف المنتج";
+  panel.append(heading, lead, more);
+  media.append(panel); // after the hero and photo thumbnails, before price/colour/order on mobile
+  const style = document.createElement("style");
+  style.id = "lpPhotoDescriptionStyle";
+  style.textContent = `
+    #lpPhotoDescription{grid-column:1/-1;grid-row:2;min-width:0;margin:0;padding:14px 16px;
+      background:var(--paper);border-top:1px solid var(--line);overflow-wrap:anywhere}
+    #lpPhotoDescription[hidden]{display:none!important}
+    #lpPhotoDescription h2{font:600 15px/1.5 var(--f);margin:0 0 8px;color:var(--ink)}
+    #lpPhotoDescription .desc{margin:0;white-space:pre-line;line-height:1.8;color:var(--muted)}
+    #lpPhotoDescription #lpMore{margin:6px 0 0}
+    #lpPhotoDescription #lpMore:empty{display:none}
+    #lpPhotoDescription #lpMore:not(:empty)::before{content:none}
+    #lpPhotoDescription #lpMore p{margin:6px 0 0}
+    @media(max-width:899px){#lpPhotoDescription{order:0;padding:14px 16px;margin:0}}
+  `;
+  document.head.append(style);
+  syncDescriptionVisibility();
+}
+
+function syncDescriptionVisibility() {
+  const panel = document.getElementById("lpPhotoDescription");
+  if (!panel) return;
+  const lead = document.getElementById("lpDesc");
+  const more = document.getElementById("lpMore");
+  panel.hidden = !(lead?.textContent?.trim() || more?.textContent?.trim());
+}
+
 /** Automatic page: fill the pre-rendered layout from the live product (title, photos, description). */
 function fillFromProduct(/** @type {any} */ p) {
   const title = String(p.title || "").trim().slice(0, 200);
@@ -384,6 +425,7 @@ function fillFromProduct(/** @type {any} */ p) {
   const lines = String(p.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
   /** @type {HTMLElement} */ (document.getElementById("lpDesc")).textContent = lines[0] || "";
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
+  syncDescriptionVisibility();
 }
 
 async function init() {
@@ -398,6 +440,7 @@ async function init() {
     if (!validCode(page.code)) { location.replace("/"); return; }
   }
   if (!validCode(page.code) || !/^[a-z0-9-]{3,40}$/.test(page.id || "")) return;
+  placeDescriptionBelowPhoto();
   // An old /lp/ss-1009/ (or /lp/?p=SS-1009) is a single-colour page.
   // Redirect it to the shared model without losing the chosen SKU or ad attribution.
   if (!Array.isArray(page.colors) || page.colors.length < 2) {
