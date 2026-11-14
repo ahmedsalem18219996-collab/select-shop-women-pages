@@ -127,11 +127,12 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 .notes{margin:0;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;gap:6px;font-size:14px;color:#4A3F49;list-style:none}
 .desc{margin:0;font-size:14px;color:#4A3F49}
 .desc:empty{display:none}
-.browse-home{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;width:fit-content;max-width:100%;min-height:40px;margin-top:8px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font-size:13px;line-height:1.5;text-decoration:none}
-.browse-home::before{content:"↩";color:var(--gold);font-size:15px;line-height:1}
-.browse-home:hover{border-color:var(--gold);background:var(--bg)}
-.browse-home:focus-visible{outline:2px solid var(--mauve);outline-offset:3px}
-@media(max-width:360px){.browse-home{font-size:12px;padding-inline:10px}}
+.browse-home{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;width:fit-content;max-width:100%;min-height:40px;margin-top:8px;padding:8px 12px;border:1px solid var(--cyan);border-radius:0;background:transparent;color:var(--ink);font-size:13px;line-height:1.5;text-decoration:none}
+.browse-home::before{content:"↩";color:var(--cyan);font-size:15px;line-height:1}
+.browse-home:hover{border-color:var(--gold);background:var(--elev)}
+.browse-home:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.browse-home--top{align-self:auto;flex:none;margin:0;min-height:40px;padding:0 10px;font-size:12px;white-space:nowrap}
+.browse-home__compact{display:none}
 .desc p{margin:0}
 .video{width:100%;aspect-ratio:16/9;border:0;border-radius:14px;background:var(--ink);color:#fff;font:600 16px var(--f);cursor:pointer}
 .lp-video{width:100%;border-radius:14px}
@@ -326,8 +327,8 @@ body:not([data-campaign]) .atelier-heading,body:not([data-campaign]) .head{margi
 .lp-opt .sw{border-color:var(--ring)}
 .top .theme-toggle{margin-inline-start:-6px}
 /* the switch takes 44px of the phone header: tighter gaps, and under 375px the "jump to form" link goes (the fixed bar's buy button does the same) */
-@media(max-width:420px){.top{gap:6px;padding-inline:12px}.mark{letter-spacing:.24em}}
-@media(max-width:374px){.top .jump{display:none}.top>#lpCartLink{margin-inline-start:auto}}
+@media(max-width:420px){.top{gap:6px;padding-inline:12px}.mark{letter-spacing:.24em}.top .jump{display:none}.browse-home--top{font-size:11px;padding-inline:7px}.browse-home__wide{display:none}.browse-home__compact{display:inline}}
+@media(max-width:374px){.top{gap:4px;padding-inline:8px}.mark{font-size:18px;letter-spacing:.18em}#lpCartLink{font-size:11px;padding-inline:6px}.browse-home--top{font-size:10px;padding-inline:5px;gap:4px}.top .theme-toggle{width:40px;min-width:40px}}
 ${SHARED_THEME}
 `;
 
@@ -400,7 +401,7 @@ ${o.fontFaces}
 ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
 <body${campaign ? ' data-campaign="focused"' : ""}>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}${THEME_TOGGLE}</header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a><a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">موديلات أكثر</span></a>'}${THEME_TOGGLE}</header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">
@@ -411,7 +412,7 @@ ${stageControls(o.count)}
 </div>
 <div class="info">
 <p class="atelier-heading">${campaign ? esc(campaign.headline) : "تفاصيل تكمّل إطلالتك"}</p>
-<div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p><a class="browse-home" href="/" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر">للرجوع للرئيسية لاختيار موديلات أكثر</a></div>
+<div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p><div class="desc product-details" id="lpMore">${o.more}</div></div>
 ${campaign ? "" : `<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>\n`}${o.picker}
 <div id="lpOptions">${o.options}</div>
 ${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · الشحن واضح قبل التأكيد</p><a class="campaign-jump" href="#lpForm">اختيار الكمية وتسجيل الطلب</a>\n` : ""}${orderForm}
@@ -419,7 +420,7 @@ ${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · ا
 <div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="button" id="lpAddCart"${campaign?.directOnly ? " hidden" : ""} disabled>إضافة للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
 <h2 class="reassurance">طلبك واضح من البداية</h2>
 <ul class="notes">${o.benefits.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
-<div class="desc" id="lpMore">${o.more}</div>
+
 ${o.video}
 </div>
 </main>
