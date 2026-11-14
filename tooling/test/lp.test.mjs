@@ -212,6 +212,12 @@ test("every generated product page: zoomable original photos, trust strip, in-fo
     const data = JSON.parse(page.match(/<script type="application\/json" id="lp-data">([^<]*)<\/script>/)[1]);
     for (const c of data.colors) assert.ok(c.zoom.length >= 1 && c.zoom.every(u => u.startsWith("https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/")), d.name);
     if (!data.campaign) assert.match(page, /<ul class="trust"/, d.name);
+    const header = page.slice(page.indexOf('<header class="top">'), page.indexOf("</header>"));
+    assert.match(header, /class="browse-home browse-home--top"/, d.name);
+    if (header.includes('id="lpCartLink"')) assert.match(header, /id="lpCartLink"[\s\S]*?class="browse-home browse-home--top"/, d.name);
+    assert.match(header, /aria-label="للرجوع للرئيسية لاختيار موديلات أكثر"/, d.name);
+    assert.ok(page.indexOf('id="lpMore"') < page.indexOf('id="lpForm"'), d.name + ": product details must precede the order form");
+    assert.match(page, /\.browse-home\{[^}]*background:transparent[^}]*color:var\(--ink\)/, d.name + ": theme-safe catalogue link");
     const form = page.slice(page.indexOf('id="lpForm"'));
     if (form.includes('id="lpFormColors"')) assert.ok(form.indexOf("</h2>") < form.indexOf('id="lpFormColors"'), d.name);
   }

@@ -73,6 +73,7 @@ test("320px shopping: bag link and both order actions fit without sideways scrol
   for (const route of ["/lp/ss-1041/", "/lp/?p=SS-1099"]) {
     await page.goto(route);
     await expect(page.locator("#lpCartLink")).toBeVisible();
+    await expect(page.locator(".top .browse-home--top")).toBeVisible();
     await expect(page.locator("#lpAddCart")).toBeEnabled();
     await expect(page.locator("#lpOrder")).toBeEnabled();
     const metrics=await page.evaluate(() => {
@@ -161,4 +162,30 @@ test('automatic product landing page opens the full-size original when its hero 
   await expect(page.locator('#lpZoomImage')).toHaveAttribute('src', /54d164fae59c4f5dbbd137670802fc7c\.jpg$/);
   await page.getByRole('button', { name: 'إغلاق الصورة' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
+});
+test('LP catalogue link is readable in dark/light themes and product details sit above the order form', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ssw.theme.v1', 'dark'));
+  const label = 'للرجوع للرئيسية لاختيار موديلات أكثر';
+  for (const route of ['/lp/ss-1008/', '/lp/?p=SS-1099']) {
+    await page.goto(route);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    const home = page.locator('.top #lpCartLink + .browse-home--top');
+    await expect(home).toBeVisible();
+    await expect(home).toHaveAttribute('href', '/');
+    await expect(home).toHaveAttribute('aria-label', label);
+    await expect(home).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await expect(home).toHaveCSS('border-top-color', 'rgb(46, 217, 209)');
+    await expect(page.locator('#lpMore')).toContainText('ONE SIZE');
+    const detailsBeforeForm = await page.evaluate(() => {
+      const details = document.querySelector('#lpMore');
+      const form = document.querySelector('#lpForm');
+      return !!details && !!form && !!(details.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(detailsBeforeForm, route).toBe(true);
+
+    await page.locator('[data-theme-toggle]').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expect(home).toHaveCSS('color', 'rgb(11, 23, 48)');
+    await expect(home).toHaveCSS('border-top-color', 'rgb(0, 114, 122)');
+  }
 });
