@@ -324,6 +324,6 @@ body:not([data-campaign]) .atelier-heading,body:not([data-campaign]) .head{margi
 <script src="/js/catalog-thumbs.js"></script>
 <script id="lp-hero">(()=>{const w=window,l=w.__lp;if(!l||!l.product)return;l.product.then(r=>r.ok?r.clone().json():null).then(d=>{const m=((d&&d.product&&d.product.media)||[]).filter(x=>/^https:\/\/byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\/media\/[0-9a-f]{32}\.(jpg|png|webp)$/.test(x.url||"")).sort((a,b)=>(b.isPrimary===true)-(a.isPrimary===true)||a.position-b.position)[0],img=document.querySelector("#lpHero img");if(!m||!img||img.src)return;const f=m.url.split("/").pop(),b="/assets/catalog-thumbs/"+f;img.fetchPriority="high";if(new Set(w.SELECT_THUMBNAILS||[]).has(f)){img.sizes="(min-width: 900px) 560px, 100vw";img.srcset=b+".w400.webp 400w, "+b+".webp 559w";img.src=b+".webp"}else img.src=m.url}).catch(()=>{})})()</script>
 <script type="module" src="/lp/image-zoom.js?v=20261114-auto-zoom"></script>
-<script type="module" src="/lp/runtime.js?v=20261030-4-gallery1106"></script>
+<script type="module" src="/lp/runtime.js?v=20261114-auto-zoom-gallery1106"></script>
 </body>
 </html>
