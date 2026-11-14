@@ -266,8 +266,8 @@ body:not([data-campaign]) .atelier-heading,body:not([data-campaign]) .head{margi
 .lp-opt .sw{border-color:var(--ring)}
 .top .theme-toggle{margin-inline-start:-6px}
 /* the switch takes 44px of the phone header: tighter gaps, and under 375px the "jump to form" link goes (the fixed bar's buy button does the same) */
-@media(max-width:420px){.top{gap:6px;padding-inline:12px}.mark{letter-spacing:.24em}.top .jump{display:none}.browse-home--top{font-size:11px;padding-inline:7px}.browse-home__wide{display:none}.browse-home__compact{display:inline}}
-@media(max-width:374px){.top{gap:4px;padding-inline:8px}.mark{font-size:18px;letter-spacing:.18em}#lpCartLink{font-size:11px;padding-inline:6px}.browse-home--top{font-size:10px;padding-inline:5px;gap:4px}.top .theme-toggle{width:40px;min-width:40px}}
+@media(max-width:420px){.top{gap:4px;padding-inline:8px}.mark{font-size:18px;letter-spacing:.18em}.top .jump{font-size:11px}#lpCartLink{font-size:11px;padding-inline:6px}.browse-home--top{font-size:10px;padding-inline:5px;gap:4px}.browse-home__wide{display:none}.browse-home__compact{display:inline}.top .theme-toggle{width:40px;min-width:40px}}
+@media(max-width:374px){.top .jump{display:none}}
 /* theme:shared (2026-11-06) Light mode + the Sun/Moon switch. tooling/build-lp.mjs copies this block verbatim into every landing page,
    so storefront and LPs share one set of tokens. Dark stays the default; the inline THEME_BOOT script sets <html data-theme> before paint.
    Light: ivory grounds, deep navy text, same neon purple buy buttons (white text 4.5:1), a deeper cyan so links and selection stay AA on ivory. */
