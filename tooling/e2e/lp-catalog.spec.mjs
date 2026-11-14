@@ -73,6 +73,7 @@ test("320px shopping: bag link and both order actions fit without sideways scrol
   for (const route of ["/lp/ss-1041/", "/lp/?p=SS-1099"]) {
     await page.goto(route);
     await expect(page.locator("#lpCartLink")).toBeVisible();
+    await expect(page.locator(".top .browse-home--top")).toBeVisible();
     await expect(page.locator("#lpAddCart")).toBeEnabled();
     await expect(page.locator("#lpOrder")).toBeEnabled();
     const metrics=await page.evaluate(() => {
