@@ -35,8 +35,8 @@ test("Atelier preserves storefront controls, legacy checkout and the isolated ad
   const done = await source("order-success/index.html");
   const admin = await source("admin/index.html");
   assert.match(home, /id="feed"/);
-  assert.match(home, /<picture>/);
-  assert.match(home, /assets\/hero-woman-luxe\.avif/);
+  assert.match(home, /assets\/hero-woman-luxe\.webp/);
+  assert.doesNotMatch(home, /assets\/hero-woman-luxe\.avif/);
   assert.match(await source("css/atelier-site.css"), /luxury-silk-bg\.svg/);
   assert.match(home, /id="shop"/);
   assert.match(product, /id="addToCart"/);

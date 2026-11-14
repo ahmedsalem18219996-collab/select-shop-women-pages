@@ -41,8 +41,7 @@ test("home editorial hero keeps one woman, readable theme colours and a working 
   const hero = page.locator(".hero--brand");
   const image = hero.locator(".hero-visual img");
   await expect(image).toHaveCount(1);
-  const heroSource = await image.evaluate(img => img.parentElement?.querySelector("source")?.getAttribute("srcset"));
-  expect(heroSource).toBe("assets/hero-woman-luxe.avif");
+  await expect(image).toHaveAttribute("src", "assets/hero-woman-luxe.webp");
   await expect(image).toHaveAttribute("alt", ""); // editorial visual is not a stocked-product claim
   await expect.poll(() => image.evaluate(e => e.complete && e.naturalWidth > 0)).toBe(true);
   const backgrounds = [];
