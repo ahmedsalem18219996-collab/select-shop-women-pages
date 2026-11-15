@@ -104,9 +104,10 @@ test("mobile gallery explains that more colours exist and jumps to the colour se
   const order = await page.evaluate(() => {
     const hint = document.getElementById("lpColourDiscovery");
     const gallery = document.getElementById("lpGallery");
-    return { hintY: hint?.getBoundingClientRect().top, galleryBottom: gallery?.getBoundingClientRect().bottom };
+    return { hintY: hint?.getBoundingClientRect().top, galleryBottom: gallery?.getBoundingClientRect().bottom, detailsTop: document.querySelector(".head")?.getBoundingClientRect().top };
   });
   expect(order.hintY).toBeGreaterThanOrEqual(order.galleryBottom - 2);
+  expect(order.hintY).toBeLessThan(order.detailsTop); // notice is visible before product details
   await hint.click();
   await expect(page).toHaveURL(/#lpOptions$/);
 });
