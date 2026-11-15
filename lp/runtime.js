@@ -330,7 +330,9 @@ function showShot(/** @type {number} */ i, warm = false) {
 
 /** One colour's photos; `paint` false = the pre-rendered markup already shows exactly these. */
 function setShots(/** @type {Shot[]} */ shots, paint = true) {
-  gallery.shots = shots.slice(0, 4); gallery.at = 0;
+  gallery.shots = shots.slice(); gallery.at = 0; // keep all uploaded views; lazy thumbs keep the initial load light
+  const galleryElement = document.getElementById("lpGallery");
+  if (galleryElement) galleryElement.dataset.layout = gallery.shots.length <= 4 ? "centered" : "strip";
   if (!paint) return;
   const n = gallery.shots.length;
   for (const id of ["lpPrev", "lpNext", "lpCount"]) { const el = document.getElementById(id); if (el) el.hidden = n < 2; }
@@ -454,15 +456,39 @@ async function init() {
   colourDiscovery.setAttribute("aria-label", "عرض الألوان المتاحة لهذا المنتج");
   document.getElementById("lpGallery")?.after(colourDiscovery);
   const discoveryStyle = document.createElement("style");
-  discoveryStyle.textContent = "#lpColourDiscovery{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin-top:8px;padding:11px 14px;background:var(--elev);border:1px solid var(--cyan);color:var(--ink);font:600 14px/1.6 var(--f);text-decoration:none;max-width:100%}\n#lpColourDiscovery::after{content:\"↓\";color:var(--cyan);font-size:19px;line-height:1}\n#lpColourDiscovery[hidden]{display:none}\n#lpColourDiscovery:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}\n@media(max-width:899px){#lpColourDiscovery{order:0;margin:0 0 4px;font-size:13px}}\n@media(min-width:900px){#lpColourDiscovery{grid-column:1/-1;grid-row:2}}\n#lpColors,#lpOptions{scroll-margin-top:140px}";
+  discoveryStyle.textContent = "#lpColourDiscovery{box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;min-height:44px;margin-top:8px;padding:11px 14px;background:var(--elev);border:1px solid var(--cyan);color:var(--ink);font:600 14px/1.6 var(--f);text-decoration:none;max-width:100%}\n#lpColourDiscovery::after{content:\"↓\";color:var(--cyan);font-size:19px;line-height:1}\n#lpColourDiscovery[hidden]{display:none}\n#lpColourDiscovery:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}\n@media(max-width:899px){#lpColourDiscovery{order:0;margin:0 0 4px;font-size:13px}}\n@media(min-width:900px){#lpColourDiscovery{grid-column:1/-1;grid-row:2}}\n#lpColors,#lpOptions{scroll-margin-top:140px}\n#lpColourDiscovery .lp-discovery-copy{flex:1 1 205px;min-width:0}\n#lpColourDiscovery .lp-discovery-swatches{display:inline-flex;gap:6px;align-items:center}\n#lpColourDiscovery .lp-discovery-swatch{display:inline-block;flex:0 0 16px;width:16px;height:16px;border-radius:50%;border:1px solid var(--line);box-shadow:0 0 0 1px var(--ring)}\n@media(max-width:899px){#lpGallery{width:100%;max-width:100%;box-sizing:border-box;gap:10px;min-width:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;padding:7px 4px 12px;scrollbar-width:thin}#lpGallery[data-layout=\"centered\"]{justify-content:center}#lpGallery[data-layout=\"strip\"]{justify-content:flex-start}#lpGallery button{flex:0 0 64px;width:64px;scroll-snap-align:start}}\n@media(min-width:560px) and (max-width:899px){#lpGallery{width:min(100%,520px)}}\n@media(min-width:900px){#lpGallery{max-height:min(70vh,640px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}}";
   document.head.append(discoveryStyle);
   const updateColourDiscovery = (/** @type {any} */ p) => {
     const label = colourDiscoveryText(p, colors.length);
     colourDiscovery.hidden = !label;
-    if (label) {
-      colourDiscovery.textContent = label;
-      colourDiscovery.href = colors.length > 1 ? "#lpColors" : "#lpOptions";
-    }
+    if (!label) return;
+    const copy = document.createElement("span");
+    copy.className = "lp-discovery-copy";
+    copy.textContent = label;
+    colourDiscovery.replaceChildren(copy);
+    colourDiscovery.href = colors.length > 1 ? "#lpColors" : "#lpOptions";
+    // Only draw actual buyable colour swatches. Some model pages have unverified grouped colours.
+    const ci = colors.length > 1 ? -1 : colourIndex(p);
+    if (ci < 0) return;
+    const ok = sellableValues(p, ci);
+    const names = (p.options[ci]?.values || []).filter((/** @type {any} */ v) => ok.has(v.position)).map((/** @type {any} */ v) => String(v.value || "")).slice(0, 7);
+    if (!names.length) return;
+    const swatches = document.createElement("span");
+    swatches.className = "lp-discovery-swatches";
+    swatches.setAttribute("aria-hidden", "true");
+    colourDiscovery.append(swatches);
+    void import("../js/colour-palette.js").then(m => {
+      if (colourDiscovery.hidden || !swatches.isConnected) return;
+      for (const name of names) {
+        const hex = m.hexOf(name);
+        if (!hex) continue;
+        const dot = document.createElement("i");
+        dot.className = "lp-discovery-swatch";
+        dot.style.background = hex;
+        swatches.append(dot);
+      }
+      if (!swatches.childElementCount) swatches.remove();
+    }).catch(() => swatches.remove());
   };
   const choiceEl = document.getElementById("lpBarChoice");
   /** @type {Map<string, Promise<any>>} */
