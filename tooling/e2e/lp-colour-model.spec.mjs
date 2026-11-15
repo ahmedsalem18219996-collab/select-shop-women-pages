@@ -101,6 +101,8 @@ test("mobile gallery explains that more colours exist and jumps to the colour se
   await expect(hint).toContainText("لونين");
   await expect(hint).toHaveAttribute("href", "#lpOptions");
   await expect(page.locator('input[name="opt0"]')).toHaveCount(3);
+  await expect(hint.locator(".lp-discovery-swatch")).toHaveCount(2); // blue and brown; pink sold out
+  await expect(page.locator("#lpGallery")).toHaveCSS("justify-content", "center");
   const order = await page.evaluate(() => {
     const hint = document.getElementById("lpColourDiscovery");
     const gallery = document.getElementById("lpGallery");
@@ -110,4 +112,29 @@ test("mobile gallery explains that more colours exist and jumps to the colour se
   expect(order.hintY).toBeLessThan(order.detailsTop); // notice is visible before product details
   await hint.click();
   await expect(page).toHaveURL(/#lpOptions$/);
+});
+
+test("gallery offers every uploaded shared photo, with a swipeable strip after four", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/women-checkout/product/SS-9101", async route => {
+    const response = await route.fetch();
+    const data = await response.json();
+    const original = data.product.media[0];
+    const extra = Array.from({ length: 6 }, (_, i) => ({
+      ...original,
+      url: original.url.replace("aaaa0000000000000000000000000000", String(i + 1).repeat(32)),
+      position: i + 4,
+      isPrimary: false,
+    }));
+    data.product.media.push(...extra);
+    await route.fulfill({ response, json: data });
+  });
+  await page.goto("/lp/?p=SS-9101");
+  const thumbs = page.locator("#lpGallery button");
+  await expect(thumbs).toHaveCount(7);
+  await expect(page.locator("#lpCount")).toHaveText("1/7");
+  await expect(page.locator("#lpGallery")).toHaveAttribute("data-layout", "strip");
+  await expect(page.locator("#lpGallery")).toHaveCSS("overflow-x", "auto");
+  await thumbs.last().click();
+  await expect(page.locator("#lpCount")).toHaveText("7/7");
 });
