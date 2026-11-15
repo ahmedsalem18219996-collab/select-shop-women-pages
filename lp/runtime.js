@@ -88,6 +88,17 @@ export function openValues(/** @type {any} */ product, /** @type {number[]} */ c
 /** Index of the colour option ("اللون" / colour), or -1. */
 export const colourIndex = (/** @type {any} */ product) => (product.options || []).findIndex((/** @type {any} */ o) => /لون|colou?r/i.test(String(o?.name || "")));
 
+/** Public-only colour discovery text. The gallery photo count is NOT the number of colours.
+ *  An automatic product counts purchasable colour options; grouped model pages avoid an unverified count. */
+export function colourDiscoveryText(/** @type {any} */ product, /** @type {number} */ modelColourCount = 0) {
+  if (modelColourCount > 1) return "القطعة دي ليها ألوان تانية — اضغط واختار لونك";
+  const i = colourIndex(product);
+  const count = i < 0 ? 0 : sellableValues(product, i).size;
+  if (count < 2) return "";
+  const amount = count === 2 ? "لونين" : new Intl.NumberFormat("ar-EG").format(count) + " ألوان";
+  return "القطعة دي متاحة بـ" + amount + " — اضغط واختار لونك";
+}
+
 /** Distinct buyable colour × size selections for a new Admin model (one public product code).
  *  Each selection becomes its own order line, never a combined/ambiguous quantity.
  */
@@ -436,6 +447,23 @@ async function init() {
   wireGallery();
   setShots(shotsOf(colors[0]), false); // the HTML already shows the first colour's photos
   const holder = $("#lpOptions");
+  // One compact cue under the gallery: available colours are separate from the number of photos.
+  const colourDiscovery = document.createElement("a");
+  colourDiscovery.id = "lpColourDiscovery";
+  colourDiscovery.hidden = true;
+  colourDiscovery.setAttribute("aria-label", "عرض الألوان المتاحة لهذا المنتج");
+  document.getElementById("lpGallery")?.after(colourDiscovery);
+  const discoveryStyle = document.createElement("style");
+  discoveryStyle.textContent = "#lpColourDiscovery{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin-top:8px;padding:11px 14px;background:var(--elev);border:1px solid var(--cyan);color:var(--ink);font:600 14px/1.6 var(--f);text-decoration:none;max-width:100%}\n#lpColourDiscovery::after{content:\"↓\";color:var(--cyan);font-size:19px;line-height:1}\n#lpColourDiscovery[hidden]{display:none}\n#lpColourDiscovery:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}\n@media(max-width:899px){#lpColourDiscovery{order:6;margin:0 0 4px;font-size:13px}}\n@media(min-width:900px){#lpColourDiscovery{grid-column:1/-1;grid-row:2}}\n#lpColors,#lpOptions{scroll-margin-top:140px}";
+  document.head.append(discoveryStyle);
+  const updateColourDiscovery = (/** @type {any} */ p) => {
+    const label = colourDiscoveryText(p, colors.length);
+    colourDiscovery.hidden = !label;
+    if (label) {
+      colourDiscovery.textContent = label;
+      colourDiscovery.href = colors.length > 1 ? "#lpColors" : "#lpOptions";
+    }
+  };
   const choiceEl = document.getElementById("lpBarChoice");
   /** @type {Map<string, Promise<any>>} */
   const cache = new Map();
@@ -723,7 +751,7 @@ async function init() {
   };
   const show = async (/** @type {typeof colors[number]} */ c) => {
     const mine = ++ticket;
-    current = c; product = null; variant = null; quote = null; cta.disabled = true; cartBtn.disabled = true; say("");
+    current = c; product = null; variant = null; quote = null; cta.disabled = true; cartBtn.disabled = true; say(""); colourDiscovery.hidden = true;
     let p;
     try { p = await load(c.code); }
     catch (e) {
@@ -736,6 +764,7 @@ async function init() {
     if (page.auto) fillFromProduct(p);
     if (p.purchasable !== true || priceLabel(p, null) === "—") { unavailable(colors.length > 1 ? "اللون ده خلص حاليًا؛ اختيار لون آخر." : "القطعة دي خلصت حاليًا."); return false; }
     product = p;
+    updateColourDiscovery(p);
     variantMixChoices = page.auto ? variantColourChoices(p) : [];
     mixBox.hidden = !(colors.length > 1 || variantMixChoices.length > 1);
     if (variantMixChoices.length) {
