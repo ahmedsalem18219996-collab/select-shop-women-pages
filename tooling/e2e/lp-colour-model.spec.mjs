@@ -91,3 +91,23 @@ test("new model mixed mode excludes unavailable colour and disables empty orders
   await page.locator('#lpMixRows [data-mix-code="SS-9101@0.0,1.0"][data-delta="-1"]').click();
   await expect(page.locator("#lpOrder")).toBeDisabled();
 });
+
+
+test("mobile gallery explains that more colours exist and jumps to the colour selector", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/lp/?p=SS-9101");
+  const hint = page.locator("#lpColourDiscovery");
+  await expect(hint).toBeVisible();
+  await expect(hint).toContainText("لونين");
+  await expect(hint).toHaveAttribute("href", "#lpOptions");
+  await expect(page.locator('input[name="opt0"]')).toHaveCount(3);
+  const gallery = page.locator("#lpGallery");
+  const order = await page.evaluate(() => {
+    const hint = document.getElementById("lpColourDiscovery");
+    const gallery = document.getElementById("lpGallery");
+    return { hintY: hint?.getBoundingClientRect().top, galleryBottom: gallery?.getBoundingClientRect().bottom };
+  });
+  expect(order.hintY).toBeGreaterThanOrEqual(order.galleryBottom - 2);
+  await hint.click();
+  await expect(page).toHaveURL(/#lpOptions$/);
+});
