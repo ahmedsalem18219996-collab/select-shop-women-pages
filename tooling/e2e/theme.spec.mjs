@@ -41,9 +41,9 @@ test("home editorial hero keeps one woman, readable theme colours and a working 
   const hero = page.locator(".hero--brand");
   const image = hero.locator(".hero-visual img");
   await expect(image).toHaveCount(1);
-  await expect(image).toHaveAttribute("src", "assets/hero-woman-luxe-720.png");
+  await expect(image).toHaveAttribute("src", "assets/hero-woman-casual-900.png");
   await expect(image).toHaveAttribute("alt", ""); // editorial visual is not a stocked-product claim
-  await expect.poll(() => image.evaluate(e => e.complete && e.naturalWidth >= 720 && e.naturalHeight >= 960)).toBe(true);
+  await expect.poll(() => image.evaluate(e => e.complete && e.naturalWidth >= 900 && e.naturalHeight >= 1200)).toBe(true);
   const backgrounds = [];
   for (const theme of ["dark", "light"]) {
     await page.evaluate(([key, value]) => localStorage.setItem(key, value), [KEY, theme]);
