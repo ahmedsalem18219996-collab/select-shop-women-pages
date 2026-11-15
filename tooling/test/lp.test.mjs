@@ -217,6 +217,10 @@ test("every generated product page: zoomable original photos, trust strip, in-fo
     if (header.includes('id="lpCartLink"')) assert.match(header, /id="lpCartLink"[\s\S]*?class="browse-home browse-home--top"/, d.name);
     assert.match(header, /aria-label="للرجوع للرئيسية لاختيار موديلات أكثر"/, d.name);
     assert.ok(page.indexOf('id="lpMore"') < page.indexOf('id="lpForm"'), d.name + ": product details must precede the order form");
+    assert.ok(page.indexOf('id="lpOptions"') < page.indexOf('id="lpDesc"'), d.name + ": choices must come before the product description");
+    if (page.includes('id="lpColors"')) assert.ok(page.indexOf('id="lpColors"') < page.indexOf('id="lpDesc"'), d.name + ": model colours must come before the description");
+    assert.match(page, /grid-template-areas:"brand jump cart theme" "browse browse browse browse"/, d.name + ": mobile header must give browsing its own row");
+    assert.match(page, /browse-home__compact">اكتشف موديلات أكتر<\/span>/, d.name + ": clear mobile browse CTA");
     assert.match(page, /\.browse-home\{[^}]*background:transparent[^}]*color:var\(--ink\)/, d.name + ": theme-safe catalogue link");
     const form = page.slice(page.indexOf('id="lpForm"'));
     if (form.includes('id="lpFormColors"')) assert.ok(form.indexOf("</h2>") < form.indexOf('id="lpFormColors"'), d.name);

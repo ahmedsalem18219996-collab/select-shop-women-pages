@@ -100,7 +100,7 @@ h1:empty{min-height:31px;border-radius:8px;background:var(--surface)}
 .gallery img{width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:10px;background:var(--surface)}
 .info{padding:18px 20px 0;display:flex;flex-direction:column;gap:18px;min-width:0}
 .head{display:flex;flex-direction:column;gap:2px}
-.head .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.head > .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
 .price{margin:0;font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 .price small{font-size:13px;font-weight:400;color:var(--muted);margin-inline-start:3px}
@@ -244,7 +244,7 @@ body{font-weight:400}
 #lpCartLink{background:transparent;color:var(--ink);border:0;box-shadow:inset 0 0 0 1px var(--cyan)}
 body:not([data-campaign]) .atelier-heading{font:400 11px/1.6 var(--f);letter-spacing:.22em;color:var(--cyan);margin:0}
 .head{gap:8px}
-.head .row{flex-direction:column;align-items:flex-start;gap:6px}
+.head > .row{flex-direction:column;align-items:flex-start;gap:6px}
 h1{font-weight:300;font-size:30px;line-height:1.25;letter-spacing:-.015em}
 .price{font-size:24px;font-weight:600}
 .price small{font-size:13px}
@@ -334,6 +334,22 @@ body:not([data-campaign]) .atelier-heading,body:not([data-campaign]) .head{margi
 /* the switch takes 44px of the phone header: tighter gaps, and under 375px the "jump to form" link goes (the fixed bar's buy button does the same) */
 @media(max-width:420px){.top{gap:4px;padding-inline:8px}.mark{font-size:18px;letter-spacing:.18em}.top .jump{font-size:11px}#lpCartLink{font-size:11px;padding-inline:6px}.browse-home--top{font-size:10px;padding-inline:5px;gap:4px}.browse-home__wide{display:none}.browse-home__compact{display:inline}}
 @media(max-width:374px){.top .jump{display:none}}
+/* LP mobile purchase flow: options before descriptions, an unclipped catalogue return link. */
+html .head > .pick,html .head > #lpOptions{order:0}
+html .head > #lpDesc,html .head > #lpMore{order:1}
+.head > #lpOptions:empty{display:none}
+@media(max-width:899px){
+.top{display:grid;grid-template-columns:auto minmax(0,1fr) auto 44px;grid-template-areas:"brand jump cart theme" "browse browse browse browse";gap:8px;padding:10px 12px}
+.top .mark{grid-area:brand;min-width:0}
+.top .jump{grid-area:jump;justify-self:center;margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.top #lpCartLink{grid-area:cart}
+.top .theme-toggle{grid-area:theme;margin:0}
+.top .browse-home--top{grid-area:browse;justify-self:stretch;justify-content:center;width:100%;min-width:0;min-height:44px;margin:0;padding:9px 12px;border:1px solid var(--cyan);border-radius:10px;background:var(--elev);color:var(--ink);font-size:14px;font-weight:600;white-space:normal}
+.top .browse-home__wide{display:none}
+.top .browse-home__compact{display:inline}
+}
+@media(max-width:374px){.top{grid-template-columns:auto minmax(0,1fr) 44px;grid-template-areas:"brand cart theme" "browse browse browse"}}
+
 ${SHARED_THEME}
 `;
 
@@ -406,7 +422,7 @@ ${o.fontFaces}
 ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
 <body${campaign ? ' data-campaign="focused"' : ""}>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}<a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">موديلات أكثر</span></a>${THEME_TOGGLE}</header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}<a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a>${THEME_TOGGLE}</header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">
@@ -417,9 +433,10 @@ ${stageControls(o.count)}
 </div>
 <div class="info">
 <p class="atelier-heading">${campaign ? esc(campaign.headline) : "تفاصيل تكمّل إطلالتك"}</p>
-<div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div><p class="desc" id="lpDesc">${o.desc}</p>\n<div class="desc product-details" id="lpMore">${o.more}</div></div>
-${campaign ? "" : `<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>\n`}${o.picker}
-<div id="lpOptions">${o.options}</div>
+<div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div>
+${o.picker ? o.picker + "\n" : ""}<div id="lpOptions">${o.options}</div>
+<p class="desc" id="lpDesc">${o.desc}</p>\n<div class="desc product-details" id="lpMore">${o.more}</div></div>
+${campaign ? "" : `<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>\n`}
 ${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · الشحن واضح قبل التأكيد</p><a class="campaign-jump" href="#lpForm">اختيار الكمية وتسجيل الطلب</a>\n` : ""}${orderForm}
 <p id="lpStatus" role="status" aria-live="polite"></p>
 <div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="button" id="lpAddCart"${campaign?.directOnly ? " hidden" : ""} disabled>إضافة للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
