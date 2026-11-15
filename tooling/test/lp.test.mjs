@@ -254,7 +254,7 @@ test("new Admin model: colour and size choices share a public code but never a v
 
 test("colour discovery below the gallery counts buyable colours, not photos or sold-out shades", async () => {
   const { product } = JSON.parse(await readFile(new URL("../fixtures/SS-9101.product.json", import.meta.url), "utf8"));
-  assert.equal(colourDiscoveryText(product), "القطعة دي متاحة بـلونين — اضغط واختار لونك");
+  assert.equal(colourDiscoveryText(product), "القطعة دي متاحة بلونين — اضغط واختار لونك");
   assert.equal(colourDiscoveryText(product, 3), "القطعة دي ليها ألوان تانية — اضغط واختار لونك");
   assert.equal(colourDiscoveryText(sized), "", "only size choices: no colour invitation");
   assert.equal(colourDiscoveryText({ ...product, variants: [product.variants[0]] }), "", "one purchasable colour: no more-colours invitation");
