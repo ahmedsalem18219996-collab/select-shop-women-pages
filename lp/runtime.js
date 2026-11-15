@@ -95,8 +95,8 @@ export function colourDiscoveryText(/** @type {any} */ product, /** @type {numbe
   const i = colourIndex(product);
   const count = i < 0 ? 0 : sellableValues(product, i).size;
   if (count < 2) return "";
-  const amount = count === 2 ? "لونين" : new Intl.NumberFormat("ar-EG").format(count) + " ألوان";
-  return "القطعة دي متاحة بـ" + amount + " — اضغط واختار لونك";
+  if (count === 2) return "القطعة دي متاحة بلونين — اضغط واختار لونك";
+  return "القطعة دي متاحة بـ" + new Intl.NumberFormat("ar-EG").format(count) + " ألوان — اضغط واختار لونك";
 }
 
 /** Distinct buyable colour × size selections for a new Admin model (one public product code).
