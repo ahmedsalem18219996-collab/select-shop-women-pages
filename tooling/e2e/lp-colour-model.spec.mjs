@@ -101,7 +101,6 @@ test("mobile gallery explains that more colours exist and jumps to the colour se
   await expect(hint).toContainText("لونين");
   await expect(hint).toHaveAttribute("href", "#lpOptions");
   await expect(page.locator('input[name="opt0"]')).toHaveCount(3);
-  const gallery = page.locator("#lpGallery");
   const order = await page.evaluate(() => {
     const hint = document.getElementById("lpColourDiscovery");
     const gallery = document.getElementById("lpGallery");
