@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
-import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet, photoFiles, openValues, colourIndex, colourMedia, variantColourChoices } from "../../lp/runtime.js";
+import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet, photoFiles, openValues, colourIndex, colourMedia, variantColourChoices, colourDiscoveryText } from "../../lp/runtime.js";
 import { render, renderShell, shellRoutes, photos, esc, AB_SNIPPET, PREFETCH, colorsOf, colorData, readexFaces } from "../build-lp.mjs";
 
 test("landing copy states availability is pending and makes no inspection promise", () => {
@@ -249,4 +249,18 @@ test("new Admin model: colour and size choices share a public code but never a v
   assert.ok(choices.every(c => c.product.publicCode === "SS-9101" && c.variant.purchasable));
   assert.deepEqual(choices[3].variant.selection, [{ optionPosition: 0, valuePosition: 1 }, { optionPosition: 1, valuePosition: 3 }]);
   assert.deepEqual(variantColourChoices({ ...product, options: [] }), []);
+});
+
+
+test("colour discovery below the gallery counts buyable colours, not photos or sold-out shades", async () => {
+  const { product } = JSON.parse(await readFile(new URL("../fixtures/SS-9101.product.json", import.meta.url), "utf8"));
+  assert.equal(colourDiscoveryText(product), "القطعة دي متاحة بـلونين — اضغط واختار لونك");
+  assert.equal(colourDiscoveryText(product, 3), "القطعة دي ليها ألوان تانية — اضغط واختار لونك");
+  assert.equal(colourDiscoveryText(sized), "", "only size choices: no colour invitation");
+  assert.equal(colourDiscoveryText({ ...product, variants: [product.variants[0]] }), "", "one purchasable colour: no more-colours invitation");
+  const five = {
+    options: [{ name: "اللون", values: ["أسود","رمادي","بني","كحلي","أحمر"].map((value,position) => ({ value,position })) }],
+    variants: [0,1,2,3,4].map(valuePosition => ({ purchasable: true, selection: [{ optionPosition: 0, valuePosition }], unitPrice: { currency: "EGP", amountMinor: 110000 } })),
+  };
+  assert.equal(colourDiscoveryText(five), "القطعة دي متاحة بـ٥ ألوان — اضغط واختار لونك");
 });
