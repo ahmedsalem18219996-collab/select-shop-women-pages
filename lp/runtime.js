@@ -303,6 +303,20 @@ async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ p
   try {
     if (preview) {
       const m = await loadStudio();
+      document.addEventListener("click", event => {
+        const target = event.target instanceof Element
+          ? event.target.closest("[data-studio-edit],[data-studio-image]") : null;
+        if (!target) return;
+        const slot = target.dataset.studioImage || "";
+        const field = target.dataset.studioEdit || (slot ? "image" : "");
+        if (!field) return;
+        event.preventDefault();
+        event.stopPropagation();
+        parent.postMessage({
+          type: "lp-studio-select", field, slot,
+          index: target.dataset.studioIndex === undefined ? -1 : Number(target.dataset.studioIndex),
+        }, location.origin);
+      }, true);
       addEventListener("message", e => {
         if (e.origin !== location.origin || e.source !== parent || e.data?.type !== "lp-studio-design") return;
         m.applyDesign(document, m.normalizeDesign(e.data.design, { urls: true }));

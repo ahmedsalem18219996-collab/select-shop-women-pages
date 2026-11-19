@@ -275,7 +275,7 @@ export default {
       previewCol.append(wrap);
       frames[kind] = { wrap, frame, w, h };
     });
-    previewCol.append(make('p', 'muted', 'المعاينة هي صفحة المنتج الحقيقية بالتصميم اللي لسه بتعدله. الطلب متوقف داخل المعاينة.'));
+    previewCol.append(make('p', 'muted', 'اضغط على العنوان أو الصورة أو زر الطلب داخل المعاينة علشان يفتح مكان تعديله هنا. الطلب متوقف داخل المعاينة.'));
     const fit = () => Object.values(frames).forEach(({ wrap, frame, w, h }) => {
       const scale = Math.min(1, (previewCol.clientWidth || w) / w);
       frame.style.transform = `scale(${scale})`;
@@ -356,9 +356,30 @@ export default {
     controls.addEventListener('input', (e) => { if (e.target.closest('details')) return; readControls(); dirty = true; paintStatus(); Object.values(frames).forEach(f => send(f.frame)); });
     controls.addEventListener('change', (e) => { if (e.target.closest('details') || e.target.type === 'file' || e.target.dataset.sectionVisible) return; readControls(); dirty = true; paintStatus(); Object.values(frames).forEach(f => send(f.frame)); });
     const onMessage = (e) => {
-      if (e.origin !== location.origin || e.data?.type !== 'lp-studio-ready') return;
-      const f = Object.values(frames).find(x => x.frame.contentWindow === e.source);
-      if (f) send(f.frame);
+      if (e.origin !== location.origin) return;
+      const frame = Object.values(frames).find(x => x.frame.contentWindow === e.source);
+      if (!frame) return;
+      if (e.data?.type === 'lp-studio-ready') {
+        send(frame.frame);
+        return;
+      }
+      if (e.data?.type !== 'lp-studio-select' || !editor) return;
+      const { field: selected, slot, index } = e.data;
+      let target = null;
+      if (selected === 'image' && ['hero', 'features', 'closing'].includes(slot)) {
+        target = controls.querySelector('[data-slot-upload="' + slot + '"]');
+      } else if (selected === 'title') target = iTitle;
+      else if (selected === 'description') target = iDesc;
+      else if (selected === 'feature') target = featureInputs[Math.max(0, Math.min(5, Number(index) || 0))];
+      else if (selected === 'cta') target = iCta;
+      else if (selected === 'orderCard' || selected === 'orderCard.title') target = iCardTitle;
+      else if (selected === 'background') target = sBg;
+      else if (selected === 'template') target = sTemplate;
+      if (!target) return;
+      const card = target.closest('.field, .studio-slot') || target;
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.focus({ preventScroll: true });
+      if (target instanceof HTMLInputElement && target.type !== 'file') target.select();
     };
     addEventListener('message', onMessage);
     if (!editor) controls.querySelectorAll('input,select,textarea,button').forEach(x => { if (!x.closest('details')) x.disabled = true; });

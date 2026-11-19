@@ -143,6 +143,12 @@ export function applyDesign(/** @type {Document} */ doc, /** @type {ReturnType<t
   const main = doc.querySelector("main.page");
   if (!main || !form) return [];
   const head = form.querySelector("h2");
+  if (head) {
+    head.dataset.studioEdit = "orderCard.title";
+    form.dataset.studioEdit = "orderCard";
+  }
+  const orderButton = doc.getElementById("lpOrder");
+  if (orderButton) orderButton.dataset.studioEdit = "cta";
   if (head && !head.dataset.studioOriginal) head.dataset.studioOriginal = head.firstChild?.textContent || "";
   if (isEmptyDesign(d)) {
     ["studio", "studioColor", "studioBg", "studioFont", "studioTemplate", "studioShape", "studioSize"].forEach(k => delete root.dataset[k]);
@@ -174,7 +180,7 @@ export function applyDesign(/** @type {Document} */ doc, /** @type {ReturnType<t
   const cta = () => {
     const a = /** @type {HTMLAnchorElement} */ (make("a", "studio-cta", d.cta.text || DEFAULT_CTA));
     a.href = "#lpForm";
-    Object.assign(a.dataset, { shape: d.cta.shape, size: d.cta.size, anim: d.cta.animation, studioCta: "1" });
+    Object.assign(a.dataset, { shape: d.cta.shape, size: d.cta.size, anim: d.cta.animation, studioCta: "1", studioEdit: "cta" });
     a.addEventListener("click", e => {
       e.preventDefault();
       form.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -182,9 +188,10 @@ export function applyDesign(/** @type {Document} */ doc, /** @type {ReturnType<t
     });
     return a;
   };
-  const media = (/** @type {string|null} */ src, /** @type {string} */ alt, eager = false) => {
+  const media = (/** @type {string|null} */ src, /** @type {string} */ alt, eager = false, slot = "") => {
     if (!src) return null;
     const fig = make("figure", "studio-media");
+    if (slot) fig.dataset.studioImage = slot;
     const img = /** @type {HTMLImageElement} */ (make("img"));
     img.src = src; img.alt = alt; img.decoding = "async";
     if (!eager) img.loading = "lazy";
@@ -198,10 +205,11 @@ export function applyDesign(/** @type {Document} */ doc, /** @type {ReturnType<t
     hero: () => {
       if (!d.images.hero && !d.title && !d.description) return null;
       const s = make("section", "studio-sec studio-hero");
-      const m = media(d.images.hero, d.title || "صورة العرض", d.order[0] === "hero");
+      s.dataset.studioEdit = "template";
+      const m = media(d.images.hero, d.title || "صورة العرض", d.order[0] === "hero", "hero");
       const copy = make("div", "studio-copy");
-      if (d.title) copy.append(make("h2", "", d.title));
-      if (d.description) copy.append(make("p", "", d.description));
+      if (d.title) { const h = make("h2", "", d.title); h.dataset.studioEdit = "title"; copy.append(h); }
+      if (d.description) { const p = make("p", "", d.description); p.dataset.studioEdit = "description"; copy.append(p); }
       if (wantsBelow || !m) copy.append(cta());
       if (m) s.append(m);
       if (copy.childElementCount) s.append(copy);
@@ -210,11 +218,17 @@ export function applyDesign(/** @type {Document} */ doc, /** @type {ReturnType<t
     features: () => {
       if (!d.images.features && !d.features.length) return null;
       const s = make("section", "studio-sec studio-features");
-      const m = media(d.images.features, "مميزات القطعة");
+      s.dataset.studioEdit = "template";
+      const m = media(d.images.features, "مميزات القطعة", false, "features");
       const copy = make("div", "studio-copy");
       if (d.features.length) {
         const ul = make("ul");
-        d.features.forEach(f => ul.append(make("li", "", f)));
+        d.features.forEach((f, i) => {
+          const li = make("li", "", f);
+          li.dataset.studioEdit = "feature";
+          li.dataset.studioIndex = String(i);
+          ul.append(li);
+        });
         copy.append(ul);
       }
       if (wantsBelow || !m) copy.append(cta());
@@ -225,7 +239,8 @@ export function applyDesign(/** @type {Document} */ doc, /** @type {ReturnType<t
     closing: () => {
       if (!d.images.closing) return null;
       const s = make("section", "studio-sec studio-closing");
-      const m = media(d.images.closing, "اطلبي قطعتك");
+      s.dataset.studioEdit = "template";
+      const m = media(d.images.closing, "اطلبي قطعتك", false, "closing");
       if (m) s.append(m);
       if (wantsBelow) { const copy = make("div", "studio-copy"); copy.append(cta()); s.append(copy); }
       return s;

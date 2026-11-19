@@ -94,6 +94,12 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
   // The live preview is the real page fed the unsaved draft; ordering is off inside it.
   const mobile = page.frameLocator('[data-preview-frame=mobile]');
   await expect(mobile.locator('.studio-hero h2')).toHaveText('جاكيت جلد للشتا');
+  await mobile.locator('.studio-hero h2').click();
+  await expect(page.locator('[name=title]')).toBeFocused();
+  await mobile.locator('.studio-hero [data-studio-cta]').first().click();
+  await expect(page.locator('[name=ctaText]')).toBeFocused();
+  await mobile.locator('#lpForm h2').click();
+  await expect(page.locator('[name=cardTitle]')).toBeFocused();
   await expect(mobile.locator('.studio-closing')).toHaveCount(0);
   await expect(mobile.locator('.studio-media [data-studio-cta]').first()).toHaveText('احجزي قطعتك');
   await mobile.locator('#lpForm').evaluate(f => f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
