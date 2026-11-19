@@ -306,7 +306,7 @@ async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ p
       document.addEventListener("click", event => {
         const target = event.target instanceof Element
           ? event.target.closest("[data-studio-edit],[data-studio-image]") : null;
-        if (!target) return;
+        if (!(target instanceof HTMLElement)) return;
         const slot = target.dataset.studioImage || "";
         const field = target.dataset.studioEdit || (slot ? "image" : "");
         if (!field) return;
