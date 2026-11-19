@@ -73,7 +73,7 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   await expect(page.locator("#lpRelatedProducts")).toBeVisible();
   await expect(page.locator("#lpRelatedProducts [data-related-code]")).toHaveCount(3);
   await expect(page.locator("#lpRelatedProducts a[data-related-code='SS-1011']")).toHaveAttribute(
-    "href", /p=SS-1011.*collection=group-001.*utm_source=meta/
+    "href", /p=SS-1011.*collection=group-001.*utm_source=meta.*utm_content=SS-1008/
   );
   await expect(page.locator("#lpAddCart")).toBeEnabled();
   await expect(page.locator("#lpOrder")).toHaveText("اطلبي مباشرة");
@@ -106,6 +106,8 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   expect(log.orders.at(-1).lines.map(line => line.publicCode)).toEqual(
     expect.arrayContaining(["SS-1008", "SS-1011"])
   );
+  expect(log.attributions.at(-1).params.content).toBe("SS-1008");
+  expect(log.attributions.at(-1).params.landing).toContain("group-001");
 });
 
 test("hidden sections and an empty design: hidden parts disappear, no design = the standard page", async ({ page, request }) => {
