@@ -9,7 +9,7 @@ test('published collection shows 3–5 models and keeps campaign attribution on 
   await expect(page.getByText('اختاري الموديل المناسب')).toBeVisible();
 });
 
-test('collection with stale supplier stock is not rendered as a purchasable group', async ({ page }) => {
+test('collection with an unavailable catalog item is not rendered as a purchasable group', async ({ page }) => {
   await page.goto('/collections/?slug=sold-out');
   await expect(page.getByRole('heading', { name: 'بنحدّث توافر المجموعة' })).toBeVisible();
   await expect(page.locator('[data-product-link]')).toHaveCount(0);
