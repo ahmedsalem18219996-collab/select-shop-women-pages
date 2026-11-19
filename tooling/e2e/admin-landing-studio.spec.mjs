@@ -31,7 +31,7 @@ async function signIn(page, user, store) {
     const url = new URL(req.url());
     const reply = (json) => route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*', 'content-type': 'application/json' }, body: JSON.stringify(json) });
     if (req.url().startsWith(STORAGE)) return route.fulfill({ contentType: 'image/webp', body: img });
-    if (url.pathname.endsWith('/women-admin/storefront/upload')) {
+    if (url.pathname.endsWith('/women-admin/landing/upload')) {
       store.ops.push({ op: 'upload' });
       const path = `storefront/studio-${++uploads}.webp`;
       return reply({ outcome: 'saved', path, url: STORAGE + path });
@@ -130,6 +130,9 @@ test('Staff with edit rights saves drafts but has no publish control', async ({ 
   await signIn(page, STAFF, store);
   await openStudio(page);
   await expect(page.locator('[data-studio-publish], [data-studio-unpublish]')).toHaveCount(0);
+  await page.locator('[data-slot-input=hero]').setInputFiles(fileURLToPath(IMG));
+  await expect(page.locator('[data-slot=hero] img')).toHaveAttribute('src', /storefront\\/studio-1\\.webp$/);
+  expect(store.ops.filter(o => o.op === 'upload')).toHaveLength(1);
   await page.locator('[name=title]').fill('عنوان من الموظفة');
   await page.locator('[data-studio-save]').click();
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
