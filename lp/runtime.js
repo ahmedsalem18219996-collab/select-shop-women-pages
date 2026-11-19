@@ -486,7 +486,7 @@ async function renderRelatedProducts(currentCode) {
       const target = new URL("/lp/", location.origin);
       target.searchParams.set("p", item.publicCode);
       target.searchParams.set("collection", slug);
-      ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_id", "fbclid", "gclid", "adset", "utm_adset", "ad", "utm_ad"]
+      ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "fbclid", "gclid", "adset", "utm_adset", "ad", "utm_ad"]
         .forEach(key => { const value = params.get(key); if (value) target.searchParams.set(key, value); });
       if (!target.searchParams.has("utm_content")) target.searchParams.set("utm_content", item.publicCode);
       link.href = target.pathname + target.search;
