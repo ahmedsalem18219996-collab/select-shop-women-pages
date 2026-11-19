@@ -452,6 +452,87 @@ function fillFromProduct(/** @type {any} */ p) {
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
 }
 
+async function renderRelatedProducts(currentCode) {
+  const params = new URLSearchParams(location.search);
+  const slug = (params.get("collection") || "").trim();
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || params.get("studio_preview") === "1") return;
+  try {
+    const response = await fetch(BRIDGE + "/collections/" + encodeURIComponent(slug), {
+      headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000),
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    const items = Array.isArray(payload?.items)
+      ? payload.items.filter(item => validCode(item?.publicCode) && item.publicCode !== currentCode).slice(0, 4)
+      : [];
+    if (!items.length) return;
+
+    const section = document.createElement("section");
+    section.id = "lpRelatedProducts";
+    section.className = "lp-related";
+    section.setAttribute("aria-labelledby", "lpRelatedTitle");
+    const heading = document.createElement("h2");
+    heading.id = "lpRelatedTitle";
+    heading.textContent = "موديلات تانية ممكن تعجبك";
+    const intro = document.createElement("p");
+    intro.textContent = "اختاري أكتر من موديل، أضيفي كل قطعة للشنطة، وكمّليهم في طلب كاش واحد عند الاستلام.";
+    const grid = document.createElement("div");
+    grid.className = "lp-related-grid";
+
+    for (const item of items) {
+      const link = document.createElement("a");
+      link.className = "lp-related-card";
+      link.dataset.relatedCode = item.publicCode;
+      const target = new URL("/lp/", location.origin);
+      target.searchParams.set("p", item.publicCode);
+      target.searchParams.set("collection", slug);
+      ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_id", "fbclid", "gclid", "adset", "utm_adset", "ad", "utm_ad"]
+        .forEach(key => { const value = params.get(key); if (value) target.searchParams.set(key, value); });
+      target.searchParams.set("utm_content", item.publicCode);
+      link.href = target.pathname + target.search;
+
+      const media = document.createElement("div");
+      media.className = "lp-related-image";
+      let imageUrl = null;
+      try {
+        const candidate = new URL(item.image);
+        if (candidate.origin === "https://byluoipdunralsurwebt.supabase.co"
+          && candidate.pathname.startsWith("/storage/v1/object/public/product-media/")) imageUrl = candidate.href;
+      } catch { /* an absent or untrusted image gets a placeholder */ }
+      if (imageUrl) {
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.alt = String(item.title || "موديل آخر");
+        img.loading = "lazy";
+        img.decoding = "async";
+        media.append(img);
+      } else {
+        const placeholder = document.createElement("span");
+        placeholder.textContent = "SELECT SHOP";
+        media.append(placeholder);
+      }
+
+      const body = document.createElement("div");
+      body.className = "lp-related-body";
+      const title = document.createElement("strong");
+      title.textContent = String(item.title || "موديل من SELECT SHOP");
+      const price = document.createElement("span");
+      price.className = "lp-related-price";
+      price.textContent = okMinor(item.priceMinor) ? egp(item.priceMinor) + " ج" : "السعر داخل صفحة المنتج";
+      const action = document.createElement("span");
+      action.className = "lp-related-action";
+      action.textContent = "اختاري اللون والمقاس";
+      body.append(title, price, action);
+      link.append(media, body);
+      grid.append(link);
+    }
+
+    section.append(heading, intro, grid);
+    const main = document.querySelector("main.page");
+    if (main) main.after(section);
+  } catch { /* Related products are optional; never block the current product or its order. */ }
+}
+
 async function init() {
   const dataEl = document.getElementById("lp-data");
   if (!dataEl) return;
@@ -464,6 +545,9 @@ async function init() {
     if (!validCode(page.code)) { location.replace("/"); return; }
   }
   if (!validCode(page.code) || !/^[a-z0-9-]{3,40}$/.test(page.id || "")) return;
+  const query = new URLSearchParams(location.search);
+  const relatedCurrentCode = validCode(query.get("color")) ? query.get("color") : page.code;
+  void renderRelatedProducts(relatedCurrentCode);
   // An old /lp/ss-1009/ (or /lp/?p=SS-1009) is a single-colour page.
   // Redirect it to the shared model without losing the chosen SKU or ad attribution.
   if (!Array.isArray(page.colors) || page.colors.length < 2) {
@@ -485,7 +569,7 @@ async function init() {
   const region = /** @type {HTMLSelectElement} */ (form.elements.namedItem("region"));
   const status = $("#lpStatus");
   const say = (/** @type {string} */ t, error = false) => { status.textContent = t; status.dataset.error = String(error); };
-  const ctaText = "تأكيد الطلب";
+  const ctaText = "اطلبي مباشرة";
 
   // Admin Studio preview (an iframe of this same origin): show the draft, never order, never count a view.
   const preview = new URLSearchParams(location.search).get("studio_preview") === "1" && window.parent !== window;
@@ -1097,6 +1181,20 @@ async function init() {
   funnel("view_item", { currency: "EGP", items: [{ item_id: product.publicCode, item_name: String(product.title || "").slice(0, 100) }] });
   await regionsReady;
 }
+
+/* Related products from the same ad group; each model keeps its own product page and shared bag. */
+.lp-related{box-sizing:border-box;max-width:1120px;margin:38px auto 0;padding:0 18px 132px;direction:rtl;color:var(--ink,#242126);font-family:var(--f,inherit)}
+.lp-related h2{margin:0 0 7px;font-size:clamp(20px,3vw,27px);font-weight:700;line-height:1.45}
+.lp-related>p{margin:0 0 17px;color:var(--muted,#777);font-size:13px;line-height:1.8}
+.lp-related-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.lp-related-card{display:flex;min-width:0;flex-direction:column;overflow:hidden;border:1px solid var(--line,#ded9d6);border-radius:15px;background:var(--paper,#fff);color:inherit;text-decoration:none}
+.lp-related-image{display:grid;aspect-ratio:4/5;place-items:center;overflow:hidden;background:var(--bg,#f5f2ef);color:var(--muted,#777);font-size:12px}
+.lp-related-image img{width:100%;height:100%;object-fit:cover}
+.lp-related-body{display:flex;min-width:0;flex-direction:column;gap:7px;padding:11px}
+.lp-related-body strong{font-size:13px;line-height:1.6}
+.lp-related-price{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.lp-related-action{display:flex;min-height:38px;align-items:center;justify-content:center;border-radius:9px;background:var(--accent,#303c2d);color:#fff;font-size:12px;font-weight:600;text-align:center}
+@media(max-width:620px){.lp-related{margin-top:28px;padding-inline:12px}.lp-related-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.lp-related-body{padding:9px}.lp-related-body strong{font-size:12px}.lp-related-action{font-size:11px}}
 
 if (typeof document !== "undefined") {
   try { localStorage.setItem(VARIANT_KEY, document.documentElement.dataset.v === "b" ? "b" : "a"); } catch { /* private mode */ }
