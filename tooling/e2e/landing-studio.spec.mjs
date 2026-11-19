@@ -12,7 +12,7 @@ const publish = (request, design) => request.post("/__mock/landing", { data: { c
 const DESIGN = {
   v: 1, template: "editorial", order: ["hero", "product", "features", "closing"], hidden: [], background: "navy", font: "readex", divider: "dots",
   title: "جاكيت جلد للشتا", description: "خامة تقيلة\nوقصّة مظبوطة", features: ["جلد صناعي ناعم", "بطانة دافية"],
-  images: { hero: "storefront/studio-hero.webp", features: "storefront/studio-features.webp", closing: "storefront/studio-closing.webp" },
+  images: { hero: "women-storefront/storefront/studio-hero.webp", features: "women-storefront/storefront/studio-features.webp", closing: "women-storefront/storefront/studio-closing.webp" },
   cta: { text: "اطلبي دلوقتي", color: "gold", position: "both", shape: "square", size: "xl", animation: "pulse" },
   orderCard: { style: "glass", fields: "compact", title: "سجّلي طلبك" },
 };
@@ -32,7 +32,7 @@ test("published design: 3 marketing images, texts, CTA options, order card look;
   const hero = page.locator(".studio-hero");
   await expect(hero.locator("h2")).toHaveText("جاكيت جلد للشتا");
   await expect(page.locator(".studio-features li")).toHaveText(["جلد صناعي ناعم", "بطانة دافية"]);
-  await expect(page.locator(".studio-closing img")).toHaveAttribute("src", STORAGE + "storefront/studio-closing.webp");
+  await expect(page.locator(".studio-closing img")).toHaveAttribute("src", STORAGE + "women-storefront/storefront/studio-closing.webp");
   // hero before the product section, features and closing after it
   expect(await page.evaluate(() => {
     const main = document.querySelector("main.page"), pos = (s) => main.compareDocumentPosition(document.querySelector(s));
