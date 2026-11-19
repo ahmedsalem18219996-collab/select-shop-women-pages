@@ -1,0 +1,38 @@
+name: WOMEN live sales read-only gate
+on:
+  pull_request:
+    paths:
+      - 'tooling/live-sales-readonly-smoke.mjs'
+      - 'tooling/e2e/live-sales-readonly.spec.mjs'
+      - 'tooling/playwright.live.config.mjs'
+      - '.github/workflows/women-live-sales-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sale-readiness:
+    name: Real-domain and COD public quote check — NO ORDERS
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify production public pages and READ-ONLY quotes, do not place any order
+        run: node tooling/live-sales-readonly-smoke.mjs
+  browser-readonly:
+    name: Live storefront + Admin browser — mobile and desktop, NO ORDERS
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tooling/package-lock.json
+      - run: npm ci --prefix tooling --no-audit --no-fund
+      - run: cd tooling && npx playwright install --with-deps chromium
+      - name: Browser smoke on live domain (block customer, analytics and third-party writes)
+        run: cd tooling && npx playwright test --config playwright.live.config.mjs
