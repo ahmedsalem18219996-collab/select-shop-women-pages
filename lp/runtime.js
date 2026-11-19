@@ -1182,7 +1182,7 @@ async function init() {
   await regionsReady;
 }
 
-/* Related products from the same ad group; each model keeps its own product page and shared bag. */
+const RELATED_PRODUCTS_CSS = `
 .lp-related{box-sizing:border-box;max-width:1120px;margin:38px auto 0;padding:0 18px 132px;direction:rtl;color:var(--ink,#242126);font-family:var(--f,inherit)}
 .lp-related h2{margin:0 0 7px;font-size:clamp(20px,3vw,27px);font-weight:700;line-height:1.45}
 .lp-related>p{margin:0 0 17px;color:var(--muted,#777);font-size:13px;line-height:1.8}
@@ -1195,8 +1195,16 @@ async function init() {
 .lp-related-price{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
 .lp-related-action{display:flex;min-height:38px;align-items:center;justify-content:center;border-radius:9px;background:var(--accent,#303c2d);color:#fff;font-size:12px;font-weight:600;text-align:center}
 @media(max-width:620px){.lp-related{margin-top:28px;padding-inline:12px}.lp-related-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.lp-related-body{padding:9px}.lp-related-body strong{font-size:12px}.lp-related-action{font-size:11px}}
+`;
+
 
 if (typeof document !== "undefined") {
+  if (!document.getElementById("lp-related-style")) {
+    const style = document.createElement("style");
+    style.id = "lp-related-style";
+    style.textContent = RELATED_PRODUCTS_CSS;
+    document.head.append(style);
+  }
   try { localStorage.setItem(VARIANT_KEY, document.documentElement.dataset.v === "b" ? "b" : "a"); } catch { /* private mode */ }
   void init();
 }
