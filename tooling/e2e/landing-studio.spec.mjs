@@ -67,6 +67,44 @@ for (const position of ["below", "overlay"]) {
   });
 }
 
+test("campaign-linked landing pages show the other models and share one COD bag", async ({ page, request }) => {
+  const before = await mockLog(request);
+  await page.goto(LP + "?collection=group-001&utm_source=meta&utm_medium=paid_social&utm_campaign=group-001");
+  await expect(page.locator("#lpRelatedProducts")).toBeVisible();
+  await expect(page.locator("#lpRelatedProducts [data-related-code]")).toHaveCount(2);
+  await expect(page.locator("#lpRelatedProducts a[data-related-code='SS-1011']")).toHaveAttribute(
+    "href", /p=SS-1011.*collection=group-001.*utm_source=meta/
+  );
+  await expect(page.locator("#lpOrder")).toHaveText("اطلبي مباشرة");
+
+  await page.locator("#lpAddCart").click();
+  await expect(page.locator("#lpStatus")).toContainText("اتضافت للشنطة");
+  await page.locator("#lpRelatedProducts a[data-related-code='SS-1011']").click();
+  await expect(page).toHaveURL(/p=SS-1011/);
+  await expect(page.locator("#lpAddCart")).toBeEnabled();
+  await page.locator("#lpAddCart").click();
+  await expect(page.locator("#lpStatus")).toContainText("اتضافت للشنطة");
+
+  await page.goto("/cart/");
+  await expect(page.locator("#cartItems .commerce-row")).toHaveCount(2);
+  await page.locator("#toCheckout").click();
+  await page.locator("#region").selectOption("cairo");
+  await page.locator('[name="name"]').fill("اختبار آلي");
+  await page.locator('[name="phone"]').fill("01012345678");
+  await page.locator('[name="area"]').fill("مدينة نصر");
+  await page.locator('[name="address"]').fill("عنوان اختبار فقط، شارع 1");
+  await expect(page.locator("#placeOrder")).toBeEnabled();
+  await page.locator("#placeOrder").click();
+  await expect(page).toHaveURL(/\\/order-success\\/\\?order=/);
+  await expect(page.locator("#orderCode")).toHaveText(/^ORD-/);
+
+  const log = await mockLog(request);
+  expect(log.orders.length - before.orders.length).toBe(1);
+  expect(log.orders.at(-1).lines.map(line => line.publicCode)).toEqual(
+    expect.arrayContaining(["SS-1008", "SS-1011"])
+  );
+});
+
 test("hidden sections and an empty design: hidden parts disappear, no design = the standard page", async ({ page, request }) => {
   await publish(request, { ...DESIGN, hidden: ["hero", "closing"] });
   await page.goto(LP);
