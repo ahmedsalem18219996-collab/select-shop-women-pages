@@ -22,7 +22,7 @@ export const CHOICES = {
   cardStyle: ["card", "outlined", "glass", "flat"],
   fields: ["labeled", "compact"],
 };
-export const IMAGE_PATH = /^[a-z0-9][a-z0-9-]{1,40}\/[A-Za-z0-9][A-Za-z0-9/_-]{0,160}\.(?:webp|jpg|jpeg|png)$/;
+export const IMAGE_PATH = /^women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(?:webp|jpg|jpeg|png)$/;
 export const STORAGE = "https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/";
 const DEFAULT_CTA = "اطلبي الآن";
 
