@@ -1,0 +1,46 @@
+name: WOMEN Admin and collections CI
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - "admin/**"
+      - "collections/**"
+      - "tooling/**"
+      - ".github/workflows/women-admin-campaigns-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  admin-and-collection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tooling/package-lock.json
+      - name: Install tooling
+        working-directory: tooling
+        run: npm ci
+      - name: Check Admin module syntax
+        run: |
+          node --check admin/js/views/products.js
+          node --check admin/js/views/campaigns.js
+          node --check admin/js/views/studio.js
+          node --check admin/js/supplier-field.js
+          node --check admin/js/supplier-stock.js
+          node --check admin/js/campaigns-model.js
+          node --check admin/js/studio-prompts.js
+          node --check collections/collections.js
+      - name: Unit tests
+        working-directory: tooling
+        run: npm run test:unit
+      - name: Install Chromium
+        working-directory: tooling
+        run: npx playwright install --with-deps chromium
+      - name: Collection landing page E2E
+        working-directory: tooling
+        run: npx playwright test e2e/collections.spec.mjs

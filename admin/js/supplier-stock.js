@@ -4,6 +4,7 @@ export function supplierStockState(snapshot, now = Date.now()) {
   if (!snapshot) return { state: 'missing', fresh: false, label: 'لم يتم تأكيد كمية المورد' };
   const checked = Date.parse(snapshot.checked_at || '');
   const fresh = Number.isFinite(checked) && checked <= now && now - checked <= SUPPLIER_STOCK_TTL_MS;
+  if (snapshot.supplier_active === false) return { state: 'supplier_inactive', fresh: false, label: 'المورد موقوف — راجع تعيين مورد آخر' };
   if (snapshot.matches_assigned_supplier === false) return { state: 'supplier_changed', fresh: false, label: 'المورد اتغير — أكد الكمية من جديد' };
   if (!fresh || snapshot.is_fresh === false) return { state: 'stale', fresh: false, label: 'تأكيد المورد أقدم من 24 ساعة' };
   const quantity = Number(snapshot.quantity);
