@@ -26,5 +26,5 @@ test('single-product landing page redirects to the product page without forcing 
     }),
   }));
   await page.goto('/collections/?slug=single-001&utm_source=meta&utm_campaign=single-001');
-  await expect(page).toHaveURL(/\\/lp\\/\\?p=SS-1023.*utm_campaign=single-001/);
+  await expect(page).toHaveURL(url => url.pathname === '/lp/' && url.searchParams.get('p') === 'SS-1023' && url.searchParams.get('utm_campaign') === 'single-001');
 });
