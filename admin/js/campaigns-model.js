@@ -1,5 +1,3 @@
-import { productCampaignEligibility } from './supplier-stock.js';
-
 export const MIN_COLLECTION_PRODUCTS = 3;
 export const MAX_COLLECTION_PRODUCTS = 5;
 
@@ -7,7 +5,7 @@ export function normalizeProductCodes(codes) {
   return [...new Set((Array.isArray(codes) ? codes : []).map(x => String(x || '').trim()).filter(Boolean))];
 }
 
-export function validateCampaignSelection(codes, productsByCode, stockByCode, now = Date.now()) {
+export function validateCampaignSelection(codes, productsByCode) {
   const unique = normalizeProductCodes(codes);
   const errors = [];
   if (unique.length < MIN_COLLECTION_PRODUCTS || unique.length > MAX_COLLECTION_PRODUCTS) {
@@ -16,8 +14,7 @@ export function validateCampaignSelection(codes, productsByCode, stockByCode, no
   for (const code of unique) {
     const product = productsByCode.get(code);
     if (!product) { errors.push(code + ': المنتج غير موجود في الكتالوج.'); continue; }
-    const eligibility = productCampaignEligibility(product, stockByCode.get(code), now);
-    if (!eligibility.ok) errors.push(code + ': ' + eligibility.reason);
+    if (product.status !== 'public') errors.push(code + ': المنتج لازم يكون منشورًا.');
   }
   return { ok: errors.length === 0, codes: unique, errors };
 }
