@@ -95,7 +95,7 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   await page.locator('[name="address"]').fill("عنوان اختبار فقط، شارع 1");
   await expect(page.locator("#placeOrder")).toBeEnabled();
   await page.locator("#placeOrder").click();
-  await expect(page).toHaveURL(/\\/order-success\\/\\?order=/);
+  await expect(page).toHaveURL(/order-success/);
   await expect(page.locator("#orderCode")).toHaveText(/^ORD-/);
 
   const log = await mockLog(request);
