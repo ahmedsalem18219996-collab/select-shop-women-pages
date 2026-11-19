@@ -475,7 +475,7 @@ async function renderRelatedProducts(currentCode) {
     heading.id = "lpRelatedTitle";
     heading.textContent = "موديلات تانية ممكن تعجبك";
     const intro = document.createElement("p");
-    intro.textContent = "اختاري أكتر من موديل، أضيفي كل قطعة للشنطة، وكمّليهم في طلب كاش واحد عند الاستلام.";
+    intro.textContent = "اختاري أكتر من موديل، أضيفي كل قطعة للشنطة، وكمّليهم في طلب واحد والدفع عند الاستلام.";
     const grid = document.createElement("div");
     grid.className = "lp-related-grid";
 
@@ -1167,7 +1167,7 @@ async function init() {
       // Order taking switched off by the store, or the server could not verify the request: nothing was saved.
       else if (error?.message === "orders_not_enabled" || error?.message === "source_unavailable") say("استقبال الطلبات متوقف مؤقتًا، ومفيش طلب اتسجل. إعادة المحاولة بعد شوية.", true);
       // Unknown outcome (timeout, network, 5xx): the SAME key is reused on retry, so the server returns the same order.
-      else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. يرجى الضغط على «تأكيد الطلب» مرة أخرى؛ الطلب مش هيتكرر.", true);
+      else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. يرجى الضغط على «اطلبي مباشرة» مرة أخرى؛ الطلب مش هيتكرر.", true);
     } finally { busy = false; }
     cta.disabled = !product || (mixMode && !currentLines().length);
     cartBtn.disabled = mixMode || !lineNow() || cartBusy;
