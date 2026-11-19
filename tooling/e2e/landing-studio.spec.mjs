@@ -49,7 +49,7 @@ test("published design: 3 marketing images, texts, CTA options, order card look;
   await expect(page.locator("#lpForm")).toHaveAttribute("data-studio-style", "glass");
   await expect(page.locator("#lpForm > h2")).toContainText("سجّلي طلبك");
   await expect(page.locator("#lpForm [name=name]")).toHaveAttribute("placeholder", /.+/);
-  expect(await page.locator("#lpOrder").evaluate(b => getComputedStyle(b).backgroundColor)).toBe("rgb(216, 179, 106)");
+  await expect(page.locator("#lpOrder")).toHaveCSS("background-color", "rgb(216, 179, 106)"); // wait for the async design + CSS transition
   await expect(page.locator("#lpPrice")).toHaveText("١٬٢٠٠"); // from women-checkout, not from the design
   expect(page.hosts.filter(h => GENERATIVE.test(h))).toEqual([]);
 });
