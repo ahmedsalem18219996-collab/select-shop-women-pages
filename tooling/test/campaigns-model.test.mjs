@@ -12,7 +12,11 @@ test('accepts one product or any number of distinct public products without supp
   assert.equal(validateCampaignSelection(['SS-1001'], products).ok, true);
   assert.equal(validateCampaignSelection(['SS-1001','SS-1002'], products).ok, true);
   assert.equal(validateCampaignSelection(['SS-1001','SS-1002','SS-1003','SS-1004'], products).ok, true);
-  assert.equal(validateCampaignSelection(Array.from({ length: 12 }, (_, i) => 'SS-' + String(1001 + (i % 4)).padStart(4, '0')), products).ok, true);
+  const manyProducts = new Map(Array.from({ length: 12 }, (_, i) => {
+    const code = 'SS-' + String(1100 + i);
+    return [code, { public_code: code, status: 'public' }];
+  }));
+  assert.equal(validateCampaignSelection([...manyProducts.keys()], manyProducts).ok, true);
 });
 
 test('rejects an empty selection and products that are not public', () => {

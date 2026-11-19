@@ -28,7 +28,7 @@ export function validateCampaignSelection(codes, productsByCode) {
 
 export function slugFromTitle(title, fallback = 'collection') {
   const ascii = String(title || '').trim().toLowerCase()
-    .normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
   return ascii.length >= 3 ? ascii : fallback;
 }
