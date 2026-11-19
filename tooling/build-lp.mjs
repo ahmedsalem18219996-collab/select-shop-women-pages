@@ -397,10 +397,8 @@ function layout(o) {
   const orderForm = checkoutPicker
     ? ORDER_FORM.replace('</small></h2>', '</small></h2>\n' + checkoutPicker)
     : ORDER_FORM;
-  // Refresh the browser-cached runtime only on affected grouped and legacy
-  // product pages. Unrelated generated LPs retain their exact original HTML.
-  const choiceVersion = String(o.source || "").includes("automatic product page") ? "20261114-auto-zoom" : campaign ? "20261031-sweater-3" : /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
-    ? "20261030-7" : checkoutPicker ? "20261030-5" : "20261030-4";
+  // Product Landing Studio is part of the shared runtime, so every LP must fetch this release.
+  const choiceVersion = "20261119-landing-studio";
   return `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -449,7 +447,7 @@ ${o.video}
 <footer><strong dir="ltr">SELECT SHOP</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
-${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}-gallery1106"></script>
+${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}"></script>
 </body>
 </html>
 `;
