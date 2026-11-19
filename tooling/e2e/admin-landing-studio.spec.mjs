@@ -86,7 +86,7 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
     await page.locator(`select[name=${name}]`).selectOption(value);
   }
   await page.locator('[name=ctaText]').fill('احجزي قطعتك');
-  await page.locator('[data-section-up=features]').click(); // features above the product section
+  await page.locator('[data-section-up=closing]').click(); // verify manual reorder while keeping the product/order block last
   await page.locator('label.switch', { has: page.locator('[data-section-visible=closing]') }).click();
   await expect(page.locator('[data-section-visible=closing]')).not.toBeChecked();
   // The live preview is the real page fed the unsaved draft; ordering is off inside it.
@@ -105,7 +105,7 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
   const saved = store.ops.find(o => o.op === 'landing.save').args;
   expect(saved.version).toBe(0);
   expect(saved.design.images).toEqual({ hero: 'storefront/studio-1.webp', features: 'storefront/studio-2.webp', closing: 'storefront/studio-3.webp' });
-  expect(saved.design.order).toEqual(['hero', 'features', 'product', 'closing']);
+  expect(saved.design.order).toEqual(['hero', 'closing', 'features', 'product']);
   expect(saved.design.hidden).toEqual(['closing']);
   expect(saved.design.cta).toEqual({ text: 'احجزي قطعتك', color: 'cyan', position: 'overlay', shape: 'rounded', size: 'lg', animation: 'shine' });
   expect(JSON.stringify(saved.design)).not.toMatch(/price|amount|shipping|stock|supplier/);
