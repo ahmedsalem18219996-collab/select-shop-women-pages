@@ -6,14 +6,14 @@
    The server (women_landing_clean) is the trust boundary; normalizeDesign mirrors it for the browser.
    Every text is written with textContent; image URLs must be WOMEN public storage URLs. */
 
-export const SECTIONS = ["hero", "product", "features", "closing"];
+export const SECTIONS = ["hero", "features", "closing", "product"];
 export const HIDEABLE = ["hero", "features", "closing"];
 export const SLOTS = ["hero", "features", "closing"];
 export const CHOICES = {
   template: ["classic", "editorial", "minimal"],
   background: ["midnight", "navy", "elevated", "light"],
   font: ["readex", "rakkas", "system"],
-  divider: ["none", "line", "dots", "wave"],
+  divider: ["line", "none", "dots", "wave"],
   color: ["purple", "cyan", "white", "gold"],
   position: ["below", "overlay", "both"],
   shape: ["pill", "rounded", "square"],
