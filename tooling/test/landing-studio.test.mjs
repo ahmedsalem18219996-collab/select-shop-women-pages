@@ -39,10 +39,12 @@ test('a broken section order falls back to the standard three-image layout', () 
 });
 
 test('images: storage paths only; in the page only WOMEN public storage URLs', () => {
-  const d = normalizeDesign({ images: { hero: 'storefront/hero-1.webp', features: '../etc/passwd.png', closing: 'https://evil.example/x.webp' } });
-  assert.deepEqual(d.images, { hero: 'storefront/hero-1.webp', features: null, closing: null });
-  const u = normalizeDesign({ images: { hero: STORAGE + 'storefront/hero-1.webp', features: 'storefront/x.webp', closing: STORAGE + 'storefront//x.webp' } }, { urls: true });
-  assert.deepEqual(u.images, { hero: STORAGE + 'storefront/hero-1.webp', features: null, closing: null });
+  const heroPath = 'women-storefront/storefront/hero-1.webp';
+  const d = normalizeDesign({ images: { hero: heroPath, features: '../etc/passwd.png', closing: 'https://evil.example/x.webp' } });
+  assert.deepEqual(d.images, { hero: heroPath, features: null, closing: null });
+  const u = normalizeDesign({ images: { hero: STORAGE + heroPath, features: 'storefront/x.webp', closing: STORAGE + 'women-storefront/storefront//x.webp' } }, { urls: true });
+  assert.deepEqual(u.images, { hero: STORAGE + heroPath, features: null, closing: null });
+  assert.equal(normalizeDesign({ images: { hero: 'product-media/media/0123456789abcdef.webp' } }).images.hero, null);
   assert.equal(normalizeDesign({ images: { hero: 'javascript:alert(1).png' } }).images.hero, null);
 });
 
