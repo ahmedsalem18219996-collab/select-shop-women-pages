@@ -1,4 +1,4 @@
-import { money, fmtNum, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
+import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { slugFromTitle } from '../campaigns-model.js';
 
@@ -23,11 +23,6 @@ const campaignAdLinks = (item) => (item.product_codes || []).map(code => {
 const statusLabel = (status) => ({ draft: 'مسودة', published: 'منشورة', archived: 'مؤرشفة' }[status] || status);
 const blockerLabel = (reason) => ({
   product_not_public: 'المنتج مش منشور',
-  stock_missing: 'مفيش كمية مؤكدة عند المورد',
-  out_of_stock: 'الكمية عند المورد صفر',
-  stock_stale: 'تأكيد المورد انتهت صلاحيته',
-  supplier_changed: 'المورد المرتبط اتغير',
-  supplier_inactive: 'المورد موقوف',
 }[reason] || 'محتاج مراجعة');
 const actionButton = (label, cls, handler) => {
   const b = make('button', 'btn ' + cls, label);
