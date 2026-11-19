@@ -527,7 +527,11 @@ async function renderRelatedProducts(currentCode) {
       grid.append(link);
     }
 
-    section.append(heading, intro, grid);
+    const bagLink = document.createElement("a");
+    bagLink.className = "lp-related-bag";
+    bagLink.href = "/cart/";
+    bagLink.textContent = "راجعي الشنطة وكمّلي طلبك";
+    section.append(heading, intro, grid, bagLink);
     const main = document.querySelector("main.page");
     if (main) main.after(section);
   } catch { /* Related products are optional; never block the current product or its order. */ }
@@ -1194,6 +1198,7 @@ const RELATED_PRODUCTS_CSS = `
 .lp-related-body strong{font-size:13px;line-height:1.6}
 .lp-related-price{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
 .lp-related-action{display:flex;min-height:38px;align-items:center;justify-content:center;border-radius:9px;background:var(--accent,#303c2d);color:#fff;font-size:12px;font-weight:600;text-align:center}
+.lp-related-bag{display:flex;width:min(100%,320px);min-height:46px;margin:20px auto 0;align-items:center;justify-content:center;border-radius:12px;background:var(--accent,#303c2d);color:#fff;text-decoration:none;font-size:14px;font-weight:700}
 @media(max-width:620px){.lp-related{margin-top:28px;padding-inline:12px}.lp-related-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.lp-related-body{padding:9px}.lp-related-body strong{font-size:12px}.lp-related-action{font-size:11px}}
 `;
 
