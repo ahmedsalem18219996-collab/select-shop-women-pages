@@ -71,7 +71,7 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   const before = await mockLog(request);
   await page.goto(LP + "?collection=group-001&utm_source=meta&utm_medium=paid_social&utm_campaign=group-001");
   await expect(page.locator("#lpRelatedProducts")).toBeVisible();
-  await expect(page.locator("#lpRelatedProducts [data-related-code]")).toHaveCount(2);
+  await expect(page.locator("#lpRelatedProducts [data-related-code]")).toHaveCount(3);
   await expect(page.locator("#lpRelatedProducts a[data-related-code='SS-1011']")).toHaveAttribute(
     "href", /p=SS-1011.*collection=group-001.*utm_source=meta/
   );
