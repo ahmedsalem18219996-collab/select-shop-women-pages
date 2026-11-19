@@ -124,6 +124,7 @@ export const call = (op, args = {}) => post('/call', { op, args });
 export const uploadProductImage = (form) => post('/media/upload', form, true);
 export const deleteProductImage = (code, mediaId) => post('/media/delete', { code, media_id: mediaId });
 export const uploadStorefrontImage = (form) => post('/storefront/upload', form, true);
+export const uploadLandingImage = (form) => post('/landing/upload', form, true);
 export const uploadStoreAsset = (form) => post('/settings/asset', form, true);
 export const inviteStaff = (email, permissions) => post('/users/invite', { email, permissions });
 
