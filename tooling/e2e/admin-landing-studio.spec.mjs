@@ -32,7 +32,7 @@ async function signIn(page, user, store) {
     const reply = (json) => route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*', 'content-type': 'application/json' }, body: JSON.stringify(json) });
     if (req.url().startsWith(STORAGE)) return route.fulfill({ contentType: 'image/webp', body: img });
     if (url.pathname.endsWith('/women-admin/landing/upload')) {
-      store.ops.push({ op: 'upload' });
+      store.ops.push({ op: 'upload', code: url.searchParams.get('code') });
       const path = `women-storefront/storefront/studio-${++uploads}.webp`;
       return reply({ outcome: 'saved', path, url: STORAGE + path });
     }
@@ -78,7 +78,9 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
     await page.locator(`[data-slot-input=${slot}]`).setInputFiles(fileURLToPath(IMG));
     await expect(page.locator(`[data-slot=${slot}] img`)).toHaveAttribute('src', /women-storefront\/storefront\/studio-\d\.webp$/);
   }
-  expect(store.ops.filter(o => o.op === 'upload')).toHaveLength(3);
+  expect(store.ops.filter(o => o.op === 'upload')).toEqual([
+    { op: 'upload', code: 'SS-1008' }, { op: 'upload', code: 'SS-1008' }, { op: 'upload', code: 'SS-1008' },
+  ]);
   await page.locator('[name=title]').fill('جاكيت جلد للشتا');
   await page.locator('[name=feature0]').fill('بطانة دافية');
   for (const [name, value] of [['template', 'editorial'], ['background', 'navy'], ['font', 'rakkas'], ['divider', 'wave'], ['ctaColor', 'cyan'],
@@ -132,7 +134,7 @@ test('Staff with edit rights saves drafts but has no publish control', async ({ 
   await expect(page.locator('[data-studio-publish], [data-studio-unpublish]')).toHaveCount(0);
   await page.locator('[data-slot-input=hero]').setInputFiles(fileURLToPath(IMG));
   await expect(page.locator('[data-slot=hero] img')).toHaveAttribute('src', /women-storefront\/storefront\/studio-1\.webp$/);
-  expect(store.ops.filter(o => o.op === 'upload')).toHaveLength(1);
+  expect(store.ops.filter(o => o.op === 'upload')).toEqual([{ op: 'upload', code: 'SS-1008' }]);
   await page.locator('[name=title]').fill('عنوان من الموظفة');
   await page.locator('[data-studio-save]').click();
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
