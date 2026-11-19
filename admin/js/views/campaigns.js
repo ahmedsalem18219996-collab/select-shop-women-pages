@@ -19,7 +19,7 @@ const campaignAdLinks = (item) => (item.product_codes || []).map(code => {
   url.searchParams.set('utm_campaign', item.slug);
   url.searchParams.set('utm_content', code);
   return code + ' — ' + url.href;
-}).join('\\n');
+}).join('\n');
 const statusLabel = (status) => ({ draft: 'مسودة', published: 'منشورة', archived: 'مؤرشفة' }[status] || status);
 const blockerLabel = (reason) => ({
   product_not_public: 'المنتج مش منشور',
