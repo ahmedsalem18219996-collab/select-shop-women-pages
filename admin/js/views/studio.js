@@ -275,7 +275,7 @@ export default {
       previewCol.append(wrap);
       frames[kind] = { wrap, frame, w, h };
     });
-    previewCol.append(make('p', 'muted', 'اضغط على العنوان أو الصورة أو زر الطلب داخل المعاينة علشان يفتح مكان تعديله هنا. الطلب متوقف داخل المعاينة.'));
+    previewCol.append(make('p', 'muted', 'اضغط على العنوان أو الصورة أو زر الطلب أو كارت الطلب داخل المعاينة علشان يحدد مكان تعديله في لوحة التحكم. الطلب متوقف داخل المعاينة.'));
     const fit = () => Object.values(frames).forEach(({ wrap, frame, w, h }) => {
       const scale = Math.min(1, (previewCol.clientWidth || w) / w);
       frame.style.transform = `scale(${scale})`;
