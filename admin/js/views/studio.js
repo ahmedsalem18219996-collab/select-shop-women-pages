@@ -152,9 +152,8 @@ export default {
           try { prepared = await optimizeUploadImage(file, 'storefront'); }
           catch { island('error', 'الصورة دي مش مدعومة. استخدم JPG أو PNG أو WebP.'); return; }
           const fd = new FormData();
-          fd.append('code', code);
           fd.append('image', prepared.file);
-          const r = await uploadLandingImage(fd);
+          const r = await uploadLandingImage(code, fd);
           if (r.outcome !== 'saved') { fail(r); return; }
           // Store "<bucket>/<object>" (what the server validates), taken from the public URL when the reply has one.
           const stored = typeof r.url === 'string' && r.url.startsWith(STORAGE) ? r.url.slice(STORAGE.length) : r.path;
