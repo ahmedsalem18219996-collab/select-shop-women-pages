@@ -33,7 +33,7 @@ async function signIn(page, user, store) {
     if (req.url().startsWith(STORAGE)) return route.fulfill({ contentType: 'image/webp', body: img });
     if (url.pathname.endsWith('/women-admin/landing/upload')) {
       store.ops.push({ op: 'upload' });
-      const path = `storefront/studio-${++uploads}.webp`;
+      const path = `women-storefront/storefront/studio-${++uploads}.webp`;
       return reply({ outcome: 'saved', path, url: STORAGE + path });
     }
     if (url.pathname.endsWith('/women-admin/call')) {
@@ -76,7 +76,7 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'new');
   for (const slot of ['hero', 'features', 'closing']) {
     await page.locator(`[data-slot-input=${slot}]`).setInputFiles(fileURLToPath(IMG));
-    await expect(page.locator(`[data-slot=${slot}] img`)).toHaveAttribute('src', /storefront\/studio-\d\.webp$/);
+    await expect(page.locator(`[data-slot=${slot}] img`)).toHaveAttribute('src', /women-storefront\/storefront\/studio-\d\.webp$/);
   }
   expect(store.ops.filter(o => o.op === 'upload')).toHaveLength(3);
   await page.locator('[name=title]').fill('جاكيت جلد للشتا');
@@ -104,7 +104,7 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
   const saved = store.ops.find(o => o.op === 'landing.save').args;
   expect(saved.version).toBe(0);
-  expect(saved.design.images).toEqual({ hero: 'storefront/studio-1.webp', features: 'storefront/studio-2.webp', closing: 'storefront/studio-3.webp' });
+  expect(saved.design.images).toEqual({ hero: 'women-storefront/storefront/studio-1.webp', features: 'women-storefront/storefront/studio-2.webp', closing: 'women-storefront/storefront/studio-3.webp' });
   expect(saved.design.order).toEqual(['hero', 'closing', 'features', 'product']);
   expect(saved.design.hidden).toEqual(['closing']);
   expect(saved.design.cta).toEqual({ text: 'احجزي قطعتك', color: 'cyan', position: 'overlay', shape: 'rounded', size: 'lg', animation: 'shine' });
@@ -115,7 +115,7 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
   await expect(page.locator('[name=title]')).toHaveValue('جاكيت جلد للشتا');
   await expect(page.locator('select[name=ctaColor]')).toHaveValue('cyan');
   await expect(page.locator('select[name=cardFields]')).toHaveValue('compact');
-  await expect(page.locator('[data-slot=closing] img')).toHaveAttribute('src', STORAGE + 'storefront/studio-3.webp');
+  await expect(page.locator('[data-slot=closing] img')).toHaveAttribute('src', STORAGE + 'women-storefront/storefront/studio-3.webp');
   await expect(page.locator('[data-section-visible=closing]')).not.toBeChecked();
 
   await page.locator('[data-studio-publish]').click();
@@ -131,7 +131,7 @@ test('Staff with edit rights saves drafts but has no publish control', async ({ 
   await openStudio(page);
   await expect(page.locator('[data-studio-publish], [data-studio-unpublish]')).toHaveCount(0);
   await page.locator('[data-slot-input=hero]').setInputFiles(fileURLToPath(IMG));
-  await expect(page.locator('[data-slot=hero] img')).toHaveAttribute('src', /storefront\/studio-1\.webp$/);
+  await expect(page.locator('[data-slot=hero] img')).toHaveAttribute('src', /women-storefront\/storefront\/studio-1\.webp$/);
   expect(store.ops.filter(o => o.op === 'upload')).toHaveLength(1);
   await page.locator('[name=title]').fill('عنوان من الموظفة');
   await page.locator('[data-studio-save]').click();
