@@ -75,7 +75,10 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   await expect(page.locator("#lpRelatedProducts a[data-related-code='SS-1011']")).toHaveAttribute(
     "href", /p=SS-1011.*collection=group-001.*utm_source=meta/
   );
+  await expect(page.locator("#lpAddCart")).toBeEnabled();
   await expect(page.locator("#lpOrder")).toHaveText("اطلبي مباشرة");
+  await page.setViewportSize({ width: 360, height: 800 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   await page.locator("#lpAddCart").click();
   await expect(page.locator("#lpStatus")).toContainText("اتضافت للشنطة");
