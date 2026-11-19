@@ -131,7 +131,7 @@ test('Staff with edit rights saves drafts but has no publish control', async ({ 
   await openStudio(page);
   await expect(page.locator('[data-studio-publish], [data-studio-unpublish]')).toHaveCount(0);
   await page.locator('[data-slot-input=hero]').setInputFiles(fileURLToPath(IMG));
-  await expect(page.locator('[data-slot=hero] img')).toHaveAttribute('src', /storefront\\/studio-1\\.webp$/);
+  await expect(page.locator('[data-slot=hero] img')).toHaveAttribute('src', /storefront\/studio-1\.webp$/);
   expect(store.ops.filter(o => o.op === 'upload')).toHaveLength(1);
   await page.locator('[name=title]').fill('عنوان من الموظفة');
   await page.locator('[data-studio-save]').click();
