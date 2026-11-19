@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const VERSION = '20261113-admin-audit-p2';
-const APP_VERSION = '20261114-qty100-v1';
+const APP_VERSION = '20261119-landing-studio';
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
 test('Admin media modules use one release cache key so phones cannot keep stale upload code', () => {

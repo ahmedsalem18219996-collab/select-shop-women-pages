@@ -169,9 +169,24 @@ async function renderDetail(ctx, code) {
         <dl class="kv"><dt>${t('orders.customer')}</dt><dd>${o.buyer_name}</dd><dt>${t('settings.phone')}</dt><dd class="ltr">${o.buyer_phone}</dd>
           <dt>${t('orders.region')}</dt><dd>${o.delivery_region_label}</dd><dt>${t('orders.address')}</dt><dd style="white-space:pre-line">${o.delivery_address}</dd>
           ${o.delivery_notes ? html`<dt>${t('orders.notes')}</dt><dd>${o.delivery_notes}</dd>` : ''}<dt>${t('orders.payment')}</dt><dd>${o.payment_method === 'cod' ? t('orders.cod') : o.payment_method}</dd></dl></section>
+      <section class="card order-attribution" id="order-attribution" hidden><div class="card-head"><h3>مصدر الطلب (الإعلان)</h3></div><dl></dl></section>
       <section class="card"><div class="card-head"><h3>${t('orders.history')}</h3></div><ul class="timeline">${history.map((h) => html`<li>${h.text}<small>${date(h.at)}</small></li>`)}</ul></section>
       ${activity?.length ? html`<section class="card"><div class="card-head"><h3>${t('nav.activity')}</h3></div><ul class="timeline">${activity.map((a) => html`<li>${activityLine(a)}<small>${date(a.at)}</small></li>`)}</ul></section>` : ''}
     </aside></div></div>`);
+  // Campaign parameters recorded with the order (utm_*, ad set). Optional: older orders or a server without it show nothing.
+  call('orders.attribution', { code }).then((a) => {
+    const box = $('#order-attribution', el);
+    if (!box || a?.outcome !== 'ok' || !a.data || typeof a.data !== 'object') return;
+    const names = { source: 'المصدر', medium: 'الوسيلة', campaign: 'الحملة', adset: 'مجموعة الإعلانات', ad: 'الإعلان', content: 'المحتوى', term: 'الكلمة', landing: 'صفحة الهبوط' };
+    const dl = box.querySelector('dl');
+    Object.entries(names).forEach(([k, label]) => {
+      if (typeof a.data[k] !== 'string' || !a.data[k]) return;
+      const dt = document.createElement('dt'); dt.textContent = label;
+      const dd = document.createElement('dd'); dd.textContent = a.data[k]; dd.dataset.attr = k;
+      dl.append(dt, dd);
+    });
+    box.hidden = !dl.childElementCount;
+  }).catch(() => null);
   $$('[data-to]', el).forEach((b) => b.addEventListener('click', async () => {
     const to = b.dataset.to;
     if (!(await confirmDialog({ title: to === 'confirmed' ? t('orders.confirm') : t('orders.cancel'), text: to === 'confirmed' ? 'هل تمت مراجعة بيانات العميل وتوافر اللون والمقاس والسعر عند المورد، وتحديد ميعاد الشحن؟ تأكيد الطلب يعني أن الطلب جاهز للتجهيز والشحن.' : t('orders.cancelQ'), okText: to === 'confirmed' ? t('orders.confirm') : t('orders.cancel'), danger: to === 'cancelled' }))) return;

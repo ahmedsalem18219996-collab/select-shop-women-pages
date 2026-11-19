@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeminiPrompt, STUDIO_STYLES } from '../admin/js/studio-prompts.js';
+import { buildGeminiPrompt, STUDIO_STYLES } from '../../admin/js/studio-prompts.js';
 
 test('Gemini prompt preserves product truth and avoids invented claims', () => {
   const prompt = buildGeminiPrompt({ title: 'بلوفر مقلم أحمر', description: 'أكمام طويلة', style: 'model' });

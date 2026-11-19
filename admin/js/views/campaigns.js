@@ -16,7 +16,7 @@ const blockerLabel = (reason) => ({
   product_not_public: 'المنتج مش منشور',
   stock_missing: 'مفيش كمية مؤكدة عند المورد',
   out_of_stock: 'الكمية عند المورد صفر',
-  stock_stale: 'تأكيد المورد أقدم من 24 ساعة',
+  stock_stale: 'تأكيد المورد انتهت صلاحيته',
   supplier_changed: 'المورد المرتبط اتغير',
   supplier_inactive: 'المورد موقوف',
 }[reason] || 'محتاج مراجعة');
@@ -42,14 +42,17 @@ export default {
     const stockByCode = new Map();
     let editing = null;
     let selected = new Set();
+    let validHours = 24;
 
     const load = async () => {
       el.replaceChildren(make('div', 'page-loading', 'جاري تحميل مجموعات الإعلانات والمنتجات...'));
-      const [c, p, s] = await Promise.all([
+      const [c, p, s, h] = await Promise.all([
         call('campaigns.list'),
         call('products.list', { limit: 100 }),
         call('supplier-stock.list'),
+        call('supplier-settings.get').catch(() => null),
       ]);
+      if (h?.outcome === 'ok' && Number.isInteger(h.data?.confirmation_valid_hours)) validHours = h.data.confirmation_valid_hours;
       if (c.outcome !== 'ok' || p.outcome !== 'ok') {
         fail(c.outcome !== 'ok' ? c : p);
         return false;
@@ -255,7 +258,23 @@ export default {
       explainerHead.append(make('b', '', 'الكتالوج منفصل عن الإعلانات'), make('span', 'space'), make('span', 'badge info', '3–5 موديلات'));
       explainer.append(explainerHead);
       explainer.append(make('p', 'muted', 'الموديلات غير المختارة تفضل في الموقع. المجموعة المنشورة تعرض المنتجات المتاحة فقط، وروابطها تفتح صفحة كل موديل.'));
-      explainer.append(make('p', 'muted', 'شرط النشر: المنتج منشور، مربوط بمورد نشط، والكمية موجبة ومؤكدة خلال آخر 24 ساعة. لا يتم إنشاء حملة Meta أو صرف ميزانية من هنا.'));
+      explainer.append(make('p', 'muted', 'شرط النشر: المنتج منشور، مربوط بمورد نشط، والكمية موجبة ومؤكدة خلال آخر ' + validHours + ' ساعة. لا يتم إنشاء حملة Meta أو صرف ميزانية من هنا.'));
+      // Owner setting: how long a supplier confirmation stays valid (it also gates new orders on supplier products).
+      const hoursInput = make('input', 'input');
+      hoursInput.type = 'number'; hoursInput.min = '1'; hoursInput.max = '168'; hoursInput.step = '1';
+      hoursInput.value = String(validHours); hoursInput.id = 'supplier-valid-hours'; hoursInput.style.maxWidth = '120px';
+      const hoursLabel = make('label', 'field');
+      hoursLabel.append(make('span', '', 'صلاحية تأكيد المورد (ساعات)'), hoursInput);
+      const hoursRow = make('div', 'row wrap');
+      hoursRow.append(hoursLabel, actionButton('حفظ المدة', 'btn-soft btn-sm', async (e) => {
+        const hours = Number(hoursInput.value);
+        if (!Number.isInteger(hours) || hours < 1 || hours > 168) { island('error', 'المدة من 1 إلى 168 ساعة.'); return; }
+        await withBusy(e.currentTarget, async () => {
+          const r = await call('supplier-settings.set', { confirmation_valid_hours: hours });
+          if (r.outcome === 'saved') { done('اتحفظت مدة الصلاحية.'); await load(); } else fail(r);
+        });
+      }));
+      explainer.append(hoursRow, make('p', 'muted', 'أول ما كمية موديل تتأكد عند المورد، الموديل بيدخل نظام المورد: الخادم بيوقف الطلبات الجديدة عليه لو التأكيد انتهى أو الكمية خلصت، وصفحته بتفضل شغالة. الموديلات القديمة اللي ملهاش تأكيد شغالة زي ما هي. مفيش خصم تلقائي من الكمية.'));
       page.append(explainer);
 
       if (editing) paintEditor(page);

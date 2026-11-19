@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeProductCodes, validateCampaignSelection, slugFromTitle } from '../admin/js/campaigns-model.js';
+import { normalizeProductCodes, validateCampaignSelection, slugFromTitle } from '../../admin/js/campaigns-model.js';
 
 const now = Date.parse('2026-11-19T12:00:00Z');
 const products = new Map(['SS-1001','SS-1002','SS-1003','SS-1004'].map(code => [code, { public_code: code, status: 'public' }]));

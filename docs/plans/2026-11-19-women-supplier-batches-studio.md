@@ -46,3 +46,11 @@ Keep the current WOMEN storefront and its existing catalog untouched while build
 - Collections contain 3–5 different products; each product card links to its own product LP.
 - Gemini output remains hidden until manually reviewed and accepted.
 - All available CI checks pass; no production action occurs.
+
+## Update — Product Landing Studio (replaces the Gemini-to-gallery Studio above)
+- The Studio no longer uploads anything into the product gallery. Per product there are 3 marketing image slots (Hero, Features, Closing), uploaded by hand; supplier/gallery photos stay separate. Nothing calls any image-generation service (the prompt helper is copy-only).
+- Controls: template, section order and visibility, background, font, title/description/features, CTA (text, colour, position, shape, size, animation), dividers, order-card style and field layout. Live Mobile + Desktop preview = the real landing page in an iframe fed the unsaved draft; ordering is disabled inside the preview.
+- Lifecycle: save draft (Staff with edit rights or Owner), reopen, preview, publish/unpublish (Owner only). The old link `/lp/?p=SS-XXXX` is unchanged; a design never carries a price, shipping or stock value.
+- Orders: the CTA scrolls to the existing order form; the order is the unchanged checkout flow. After a confirmed order the visit's ad parameters (utm_*, ad set) are recorded separately, fire-and-forget, never with buyer data; Admin order detail shows them.
+- Supplier confirmation validity is Owner-configurable (default 24h). Products that have a supplier confirmation can only take new orders while it is valid and covers the quantity; products without one behave as before. No automatic deduction.
+- Server work (migrations, rollback, bridge routes) lives in the private backend repository and is NOT applied or deployed.

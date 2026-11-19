@@ -21,7 +21,9 @@ const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; ch
   ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".webp": "image/webp", ".avif": "image/avif",
   ".jpg": "image/jpeg", ".png": "image/png", ".woff2": "font/woff2", ".txt": "text/plain" };
 
-export const log = { orders: [], cartAdds: [], views: 0 };
+export const log = { orders: [], cartAdds: [], views: 0, attributions: [] };
+// Published Landing Studio designs per product code, set by tests via POST /__mock/landing { code, design } (design null = none).
+const landings = new Map();
 const keys = new Map(); // idempotencyKey -> { code, body, total }
 // Units left per product code (all variants), set by tests via POST /__mock/stock { code, units } ; absent = unlimited.
 const stock = new Map();
@@ -54,6 +56,19 @@ async function mockApi(req, url, body) {
     return [200, JSON.parse(await readFile(path.join(FIX, "collection.json"), "utf8"))];
   }
   if (p === "/women-product-views" && req.method === "POST") { log.views++; return [204, null]; }
+  if (req.method === "GET" && p.startsWith("/women-store-bridge/landing/")) {
+    // Same shape as the bridge: stored image paths come back as public storage URLs.
+    const d = landings.get(decodeURIComponent(p.split("/").pop()));
+    if (!d) return [404, { error: "not_found" }];
+    const images = Object.fromEntries(Object.entries(d.images || {}).map(([k, v]) => [k, v ? PROD + "/storage/v1/object/public/" + v : null]));
+    return [200, { design: { ...d, images } }];
+  }
+  if (p === "/women-store-bridge/orders/attribution" && req.method === "POST") {
+    const known = [...keys.entries()].some(([k, v]) => k === body?.idempotencyKey && v.code === body?.publicOrderCode);
+    if (!known) return [404, { error: "not_found" }];
+    log.attributions.push(body);
+    return [200, { outcome: "saved" }];
+  }
   const c = p.replace(/^\/women-checkout/, "");
   if (req.method === "GET" && c.startsWith("/product/")) {
     const data = await product(decodeURIComponent(c.slice(9)));
@@ -142,6 +157,12 @@ export function start(port = PORT) {
         let raw = ""; for await (const chunk of req) raw += chunk;
         const { code, units } = JSON.parse(raw || "{}");
         if (units === null) stock.delete(code); else stock.set(code, units);
+        res.writeHead(204).end(); return;
+      }
+      if (url.pathname === "/__mock/landing" && req.method === "POST") {
+        let raw = ""; for await (const chunk of req) raw += chunk;
+        const { code, design } = JSON.parse(raw || "{}");
+        if (design) landings.set(code, design); else landings.delete(code);
         res.writeHead(204).end(); return;
       }
       if (url.pathname === "/__mock/log") { res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(log)); return; }

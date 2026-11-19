@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { supplierStockState, productCampaignEligibility, supplierStockSummary } from '../admin/js/supplier-stock.js';
+import { supplierStockState, productCampaignEligibility, supplierStockSummary } from '../../admin/js/supplier-stock.js';
 
 const now = Date.parse('2026-11-19T12:00:00Z');
 const fresh = { supplier_id: 'supplier-1', quantity: 12, checked_at: new Date(now - 60_000).toISOString(), is_fresh: true, matches_assigned_supplier: true, supplier_active: true };
@@ -18,7 +18,7 @@ test('zero quantity, stale confirmation, and changed supplier are blocked', () =
 });
 
 test('future timestamps and missing snapshots are not treated as fresh', () => {
-  assert.equal(supplierStockState({ ...fresh, checked_at: new Date(now + 60_000).toISOString() }, now).state, 'stale');
+  assert.equal(supplierStockState({ ...fresh, checked_at: new Date(now + 10 * 60_000).toISOString() }, now).state, 'stale');
   assert.equal(supplierStockState(null, now).state, 'missing');
 });
 

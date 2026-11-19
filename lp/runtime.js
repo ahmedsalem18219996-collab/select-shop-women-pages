@@ -17,6 +17,10 @@ const PURCHASE_SEEN_KEY = "women.meta.purchase.sent.v1"; // same dedupe list as 
 const ANALYTICS_SRC = "/js/analytics.js?v=lp-20261030";
 const THUMBS = "/assets/catalog-thumbs/";
 const MAX_QTY = 10;
+const BRIDGE = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge";
+const AD_KEY = "women.ad.params.v1"; // campaign parameters of this visit (never customer data), read by js/commerce.js too
+const AD_PARAMS = /** @type {Record<string,string>} */ ({ utm_source: "source", utm_medium: "medium", utm_campaign: "campaign",
+  utm_content: "content", utm_term: "term", adset: "adset", utm_adset: "adset", ad: "ad", utm_ad: "ad" });
 // Legacy single-colour LP URLs must resolve to the verified shared-model chooser.
 // Keep the original SKU as ?color= to honour old ad links without altering orders or stock.
 const SHARED_MODEL_URLS = new Map([
@@ -265,6 +269,55 @@ function orderKey() {
   return k;
 }
 orderKey.mem = "";
+/** Keep this visit's ad parameters (utm_*, ad set) for the order's attribution; the newest ad click wins. */
+export function readAdParams(/** @type {string} */ search, /** @type {string} */ landing) {
+  const q = new URLSearchParams(search);
+  /** @type {Record<string,string>} */ const out = {};
+  for (const [key, name] of Object.entries(AD_PARAMS)) {
+    // eslint-disable-next-line no-control-regex -- strip control characters from untrusted ad parameters
+    const v = String(q.get(key) || "").replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, 120);
+    if (v && !out[name]) out[name] = v;
+  }
+  if (!Object.keys(out).length) return null;
+  const collection = String(q.get("collection") || "");
+  out.landing = (landing + (/^[a-z0-9-]{3,80}$/.test(collection) ? " · " + collection : "")).slice(0, 120);
+  return out;
+}
+function rememberAdParams(/** @type {string} */ landing) {
+  try { const a = readAdParams(location.search, landing); if (a) sessionStorage.setItem(AD_KEY, JSON.stringify(a)); } catch { /* optional */ }
+}
+/** Fire-and-forget after a CONFIRMED order: never delays or blocks checkout, never carries buyer data. */
+function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) {
+  try {
+    const params = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
+    if (!params || typeof params !== "object" || !key) return;
+    void fetch(BRIDGE + "/orders/attribution", { method: "POST", mode: "cors", credentials: "omit", keepalive: true,
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: key, publicOrderCode: code, params }) }).catch(() => null);
+  } catch { /* attribution is optional */ }
+}
+
+/** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
+const STUDIO_MODULE = "./studio-design.js?v=20261119";
+const loadStudio = async () => /** @type {typeof import("./studio-design.js")} */ (await import(STUDIO_MODULE));
+async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ preview) {
+  try {
+    if (preview) {
+      const m = await loadStudio();
+      addEventListener("message", e => {
+        if (e.origin !== location.origin || e.source !== parent || e.data?.type !== "lp-studio-design") return;
+        m.applyDesign(document, m.normalizeDesign(e.data.design, { urls: true }));
+      });
+      parent.postMessage({ type: "lp-studio-ready", code }, location.origin);
+      return;
+    }
+    const r = await fetch(BRIDGE + "/landing/" + encodeURIComponent(code), { headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000) });
+    if (!r.ok) return; // no published design: the standard page
+    const data = await r.json();
+    const m = await loadStudio();
+    m.applyDesign(document, m.normalizeDesign(data?.design, { urls: true }));
+  } catch { /* the design is optional: the page and its order form work without it */ }
+}
+
 function forgetOrderKey() { orderKey.mem = ""; try { sessionStorage.removeItem(ORDER_KEY); } catch { /* private mode */ } }
 
 /** True the first time this browser reports a confirmed order code (a replay of the same order is not a 2nd sale). */
@@ -434,11 +487,21 @@ async function init() {
   const say = (/** @type {string} */ t, error = false) => { status.textContent = t; status.dataset.error = String(error); };
   const ctaText = "تأكيد الطلب";
 
-  emit(() => { const w = /** @type {any} */ (window); if (typeof w.gtag === "function") w.gtag("set", "user_properties", { lp_variant: variantId }); });
-  funnel("lp_view", { lp_id: page.id, lp_variant: variantId, item_id: page.code });
-  loadAnalyticsWhenIdle();
+  // Admin Studio preview (an iframe of this same origin): show the draft, never order, never count a view.
+  const preview = new URLSearchParams(location.search).get("studio_preview") === "1" && window.parent !== window;
+  void studioDesign(page.code, preview);
+  if (preview) {
+    const stop = (/** @type {Event} */ e) => { e.preventDefault(); e.stopImmediatePropagation(); say("معاينة فقط: الطلب غير متاح داخل الـ Studio.", true); };
+    document.addEventListener("submit", stop, true);
+    document.addEventListener("click", e => { if (/** @type {Element} */ (e.target)?.closest?.("#lpAddCart")) stop(e); }, true);
+  } else {
+    rememberAdParams(page.id);
+    emit(() => { const w = /** @type {any} */ (window); if (typeof w.gtag === "function") w.gtag("set", "user_properties", { lp_variant: variantId }); });
+    funnel("lp_view", { lp_id: page.id, lp_variant: variantId, item_id: page.code });
+    loadAnalyticsWhenIdle();
+    void recordView(page.code);
+  }
   lazyVideo();
-  void recordView(page.code);
 
   // One page = one model. Each colour is its own real product (public code); the default colour is pre-rendered.
   /** @type {{code:string,name:string,hex?:string,alt?:string,dir?:string,zoom?:string[]}[]} */
@@ -997,10 +1060,11 @@ async function init() {
       const reply = await api("/orders", "POST", payload, 20000);
       if (!ORDER_CODE.test(reply.publicOrderCode)) throw Object.assign(new Error("write_unconfirmed"), { status: 503 });
       done(reply.publicOrderCode, q, lines);
+      sendAttribution(reply.publicOrderCode, payload.idempotencyKey);
       return;
     } catch (err) {
       const error = /** @type {any} */ (err), data = error?.data || {};
-      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines); return; }
+      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines); sendAttribution(data.publicOrderCode, payload.idempotencyKey); return; }
       if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب السابق اتلغى من المتجر. يمكن تسجيل طلب جديد.", true); }
       else if (error?.message === "checkout_changed") {
         say("السعر أو الشحن اتغير. يرجى مراجعة الإجمالي الجديد ثم إعادة التأكيد.", true);

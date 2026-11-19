@@ -404,7 +404,7 @@ function createSheet(ctx) {
     <p class="err" id="c-error" role="alert" aria-live="polite" hidden></p>
     <ol class="blockers" id="c-steps" hidden></ol>`,
     foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>حفظ المسودة واستكمال الألوان</button>` });
-  $('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
+  $$('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
   const supplierState = initSupplierPicker({ root: box, selectId: '#c-supplier', statusId: '#c-supplier-note', call, isOwner: ctx.can('owner') });
   try { mountDescriptionEnhancer(box, { textarea: '#c-desc', titleInput: '#c-title' }); }
   catch {
@@ -713,7 +713,7 @@ const TABS = {
           if (notes && sameSupplier) notes.value = stockSnapshot.notes || '';
           if (meta) meta.textContent = !stockSnapshot ? 'لم يتم تأكيد كمية عند المورد لهذا الموديل بعد.'
             : !sameSupplier ? 'المورد المرتبط اتغير؛ لازم تأكيد كمية جديدة للمورد الحالي.'
-              : !stockSnapshot.is_fresh ? 'آخر تأكيد أقدم من 24 ساعة؛ أدخل الكمية الحالية لتحديث التأكيد.'
+              : !stockSnapshot.is_fresh ? `آخر تأكيد أقدم من ${stockSnapshot.valid_hours || 24} ساعة؛ أدخل الكمية الحالية لتحديث التأكيد. الطلبات الجديدة على الموديل ده متوقفة لحد التأكيد.`
                 : `آخر تأكيد: ${ago(stockSnapshot.checked_at)} · ${fmtNum(stockSnapshot.quantity)} قطعة`;
         } else {
           const meta = $('#e-supplier-stock-meta', body); if (meta) meta.textContent = 'تعذّر قراءة تأكيد المورد. يمكنك إعادة المحاولة بعد تحديث الصفحة.';
