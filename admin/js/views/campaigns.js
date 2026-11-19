@@ -1,6 +1,6 @@
 import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
-import { slugFromTitle } from '../campaigns-model.js';
+import { moveProductCode, slugFromTitle, validateCampaignSelection } from '../campaigns-model.js';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
@@ -9,17 +9,18 @@ const make = (tag, cls = '', text = '') => {
   return el;
 };
 const imgUrl = (path) => path ? mediaUrl(/^media\//.test(path) ? 'product-media/' + path : path) : null;
-const collectionUrl = (slug) => location.origin + '/collections/?slug=' + encodeURIComponent(slug);
-const campaignAdLinks = (item) => (item.product_codes || []).map(code => {
-  const url = new URL('/lp/', location.origin);
-  url.searchParams.set('p', code);
-  url.searchParams.set('collection', item.slug);
+const campaignPageUrl = (item) => {
+  const codes = Array.isArray(item.product_codes) ? item.product_codes : [];
+  const single = codes.length === 1;
+  const url = new URL(single ? '/lp/' : '/collections/', location.origin);
+  if (single) url.searchParams.set('p', codes[0]);
+  else url.searchParams.set('slug', item.slug);
   url.searchParams.set('utm_source', 'meta');
   url.searchParams.set('utm_medium', 'paid_social');
   url.searchParams.set('utm_campaign', item.slug);
-  url.searchParams.set('utm_content', code);
-  return code + ' — ' + url.href;
-}).join('\n');
+  url.searchParams.set('utm_content', single ? codes[0] : 'collection');
+  return url.href;
+};
 const statusLabel = (status) => ({ draft: 'مسودة', published: 'منشورة', archived: 'مؤرشفة' }[status] || status);
 const blockerLabel = (reason) => ({
   product_not_public: 'المنتج مش منشور',
@@ -62,15 +63,17 @@ export default {
       return true;
     };
 
-    const previewProducts = (container) => {
+    const previewProducts = (container, onMove = () => {}, onRemove = () => {}) => {
       container.replaceChildren();
       const chosen = [...selected].map(code => products.find(p => p.public_code === code)).filter(Boolean);
       if (!chosen.length) {
-        container.append(make('p', 'muted', 'اختار الموديلات علشان تشوف معاينة المجموعة هنا.'));
+        container.append(make('p', 'muted', 'اختار منتجًا واحدًا أو أكثر.'));
         return;
       }
-      chosen.forEach(p => {
+      chosen.forEach((p, index) => {
         const card = make('div', 'campaign-preview-item');
+        card.draggable = true;
+        card.dataset.code = p.public_code;
         if (p.image) {
           const img = make('img');
           img.src = imgUrl(p.image);
@@ -80,6 +83,21 @@ export default {
         } else card.append(make('div', 'campaign-image-placeholder', 'صورة المنتج'));
         card.append(make('b', '', p.title));
         card.append(make('small', '', p.price_min_minor === null ? 'السعر يحدد لاحقًا' : money(p.price_min_minor)));
+        const controls = make('div', 'row wrap');
+        controls.append(actionButton('↑', 'btn-ghost btn-sm', () => onMove(p.public_code, index - 1)));
+        controls.append(actionButton('↓', 'btn-ghost btn-sm', () => onMove(p.public_code, index + 1)));
+        controls.append(actionButton('إزالة', 'btn-ghost btn-sm', () => onRemove(p.public_code)));
+        card.append(controls);
+        card.addEventListener('dragstart', event => {
+          event.dataTransfer?.setData('text/plain', p.public_code);
+          if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+        });
+        card.addEventListener('dragover', event => event.preventDefault());
+        card.addEventListener('drop', event => {
+          event.preventDefault();
+          const code = event.dataTransfer?.getData('text/plain');
+          if (code && code !== p.public_code) onMove(code, index);
+        });
         container.append(card);
       });
     };
@@ -93,9 +111,9 @@ export default {
     const paintEditor = (page) => {
       const panel = make('section', 'card stack campaign-editor');
       const header = make('div', 'row');
-      header.append(make('h3', '', editing ? 'تعديل مجموعة الإعلانات' : 'إنشاء مجموعة إعلانية'));
+      header.append(make('h3', '', editing ? 'تعديل Landing Page' : 'إنشاء Landing Page'));
       header.append(make('span', 'space'));
-      header.append(make('span', 'badge info', '3–5 موديلات'));
+      header.append(make('span', 'badge info', 'منتج واحد أو أكثر'));
       panel.append(header);
 
       const fields = make('div', 'grid2');
@@ -135,7 +153,7 @@ export default {
       const countRow = make('div', 'row');
       countRow.append(make('b', '', 'اختيار الموديلات'));
       countRow.append(make('span', 'space'));
-      const count = make('span', 'badge info', selected.size + '/5');
+      const count = make('span', 'badge info', selected.size + ' منتج');
       countRow.append(count);
       panel.append(countRow);
       panel.append(make('p', 'muted', 'اختار موديلات منشورة. قبل تشغيل الإعلان، اتأكد من توافر كل موديل مع المورد بالتليفون.'));
@@ -143,9 +161,9 @@ export default {
       const options = make('div', 'campaign-product-options');
       const previewWrap = make('div', 'campaign-preview-wrap');
       const previewHead = make('div', 'row');
-      previewHead.append(make('b', '', 'معاينة المجموعة'));
+      previewHead.append(make('b', '', 'ترتيب المنتجات في الصفحة'));
       previewHead.append(make('span', 'space'));
-      previewHead.append(make('small', 'muted', 'شكل مبدئي قبل النشر'));
+      previewHead.append(make('small', 'muted', 'اسحب المنتج أو استخدم الأسهم لتغيير ترتيبه'));
       const preview = make('div', 'campaign-preview');
       previewWrap.append(previewHead, preview);
       const error = make('p', 'err');
@@ -171,20 +189,27 @@ export default {
         info.append(make('small', '', eligible ? 'منشور — راجع توافره مع المورد بالتليفون' : 'غير منشور — انشر المنتج أولًا'));
         label.append(checkbox, thumb, info, make('span', 'campaign-product-price', p.price_min_minor === null ? 'بدون سعر' : money(p.price_min_minor)));
         checkbox.addEventListener('change', () => {
-          if (checkbox.checked) {
-            if (selected.size >= 5) {
-              checkbox.checked = false;
-              island('error', 'المجموعة الواحدة حدها الأقصى 5 موديلات.');
-              return;
-            }
-            selected.add(p.public_code);
-          } else selected.delete(p.public_code);
-          count.textContent = selected.size + '/5';
-          previewProducts(preview);
+          if (checkbox.checked) selected.add(p.public_code);
+          else selected.delete(p.public_code);
+          count.textContent = selected.size + ' منتج';
+          previewProducts(preview, moveSelected, removeSelected);
         });
         options.append(label);
       });
       panel.append(options, previewWrap, error);
+
+      const moveSelected = (code, targetIndex) => {
+        const ordered = moveProductCode([...selected], code, targetIndex);
+        selected = new Set(ordered);
+        count.textContent = selected.size + ' منتج';
+        previewProducts(preview, moveSelected, removeSelected);
+      };
+      const removeSelected = (code) => {
+        selected.delete(code);
+        options.querySelectorAll('input[data-code]').forEach(input => { input.checked = selected.has(input.dataset.code); });
+        count.textContent = selected.size + ' منتج';
+        previewProducts(preview, moveSelected, removeSelected);
+      };
 
       const footer = make('div', 'row wrap');
       const cancel = actionButton('إلغاء', 'btn-ghost', () => { editing = null; paint(); });
@@ -197,7 +222,8 @@ export default {
         error.hidden = true;
         if (title.length < 2) { showError('اكتب اسم واضح للمجموعة.'); titleInput.focus(); return; }
         if (!/^[a-z0-9]+([a-z0-9-]*[a-z0-9])?$/.test(slug) || slug.length < 3) { showError('الرابط لازم يكون إنجليزي صغير ومن غير مسافات، مثال: new-arrivals.'); slugInput.focus(); return; }
-        if (codes.length < 3 || codes.length > 5) { showError('لازم تختار من 3 إلى 5 موديلات.'); return; }
+        const validation = validateCampaignSelection(codes, new Map(products.map(p => [p.public_code, p])));
+        if (!validation.ok) { showError(validation.errors.join(' ')); return; }
         await withBusy(save, async () => {
           const res = await call('campaigns.save', {
             ...(editing ? { id: editing.id, version: editing.version } : {}),
@@ -214,7 +240,7 @@ export default {
       });
       footer.append(cancel, make('span', 'space'), save);
       panel.append(footer);
-      previewProducts(preview);
+      previewProducts(preview, moveSelected, removeSelected);
       page.append(panel);
     };
 
@@ -244,24 +270,24 @@ export default {
       const head = make('div', 'page-head');
       const copy = make('div');
       copy.append(make('h2', '', 'مجموعات الإعلانات'));
-      copy.append(make('p', '', 'اجمع 3 أو 4 أو 5 موديلات في صفحة واحدة، وكل موديل يحتفظ بصفحة البيع الخاصة به.'));
+      copy.append(make('p', '', 'أنشئ صفحة لمنتج واحد أو مجموعة منتجات، وعدّل الترتيب والرابط والتصميم في أي وقت.'));
       head.append(copy);
       head.append(actionButton('＋ إنشاء مجموعة', 'btn-primary', () => openEditor()));
       page.append(head);
 
       const explainer = make('section', 'card stack campaign-explainer');
       const explainerHead = make('div', 'row');
-      explainerHead.append(make('b', '', 'الكتالوج منفصل عن الإعلانات'), make('span', 'space'), make('span', 'badge info', '3–5 موديلات'));
+      explainerHead.append(make('b', '', 'الكتالوج منفصل عن صفحات الإعلانات'), make('span', 'space'), make('span', 'badge info', 'عدد اختياري'));
       explainer.append(explainerHead);
-      explainer.append(make('p', 'muted', 'الموديلات غير المختارة تفضل في الموقع. المجموعة المنشورة تعرض من 3 إلى 5 موديلات، وكل موديل يحتفظ بصفحة البيع الخاصة به.'));
+      explainer.append(make('p', 'muted', 'صفحة المنتج الواحد تستخدم صفحة المنتج المستقلة. وعند اختيار عدة منتجات، تتجمع في صفحة واحدة. يمكنك إضافة المنتجات أو إزالتها وتغيير ترتيبها دون حذفها من الكتالوج.'));
       explainer.append(make('p', 'muted', 'قبل نشر المجموعة أو تشغيل الإعلانات، اتأكد من توافر كل موديل مع المورد بالتليفون. مفيش ربط آلي بالمورد أو خصم تلقائي للمخزون؛ الطلبات تفضل على نظام COD الحالي.'));
       page.append(explainer);
 
       if (editing) paintEditor(page);
       else if (!collections.length) {
         const empty = make('div', 'empty');
-        empty.append(make('b', '', 'لسه مفيش مجموعات إعلانية'), make('p', '', 'ابدأ بمجموعة من 3 إلى 5 موديلات منشورة، بعد التأكد من توافرها بالتليفون.'));
-        empty.append(actionButton('إنشاء أول مجموعة', 'btn-primary', () => openEditor()));
+        empty.append(make('b', '', 'لسه مفيش صفحات إعلانية'), make('p', '', 'ابدأ بصفحة لمنتج واحد أو مجموعة من المنتجات المنشورة.'));
+        empty.append(actionButton('إنشاء أول صفحة', 'btn-primary', () => openEditor()));
         page.append(empty);
       } else {
         const grid = make('div', 'campaign-grid');
@@ -283,12 +309,8 @@ export default {
           const actions = make('div', 'row wrap');
           if (item.status !== 'archived') actions.append(actionButton('تعديل', 'btn-soft btn-sm', () => openEditor(item)));
           if (item.status === 'draft') actions.append(actionButton('نشر الصفحة', 'btn-primary btn-sm', (e) => publishCollection(item, e.currentTarget)));
-          if (item.status === 'published') actions.append(actionButton('نسخ رابط الصفحة', 'btn-soft btn-sm', async () => {
-            try { await navigator.clipboard.writeText(collectionUrl(item.slug)); done('اتنسخ رابط المجموعة.'); }
-            catch { island('error', 'تعذّر النسخ تلقائيًا.'); }
-          }));
-          if (item.status === 'published') actions.append(actionButton('نسخ روابط إعلانات الموديلات', 'btn-primary btn-sm', async () => {
-            try { await navigator.clipboard.writeText(campaignAdLinks(item)); done('اتنسخت روابط صفحات الموديلات.'); }
+          if (item.status === 'published') actions.append(actionButton('نسخ رابط الصفحة', 'btn-primary btn-sm', async () => {
+            try { await navigator.clipboard.writeText(campaignPageUrl(item)); done('اتنسخ رابط الصفحة.'); }
             catch { island('error', 'تعذّر النسخ تلقائيًا.'); }
           }));
           if (item.status !== 'archived') actions.append(actionButton('أرشفة', 'btn-ghost btn-sm', (e) => archiveCollection(item, e.currentTarget)));

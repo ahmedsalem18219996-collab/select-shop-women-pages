@@ -47,8 +47,12 @@ async function boot() {
       return;
     }
     const data = await response.json();
-    if (!data.collection || !Array.isArray(data.items) || data.items.length < 3 || data.items.length > 5) {
-      showState('المجموعة غير مكتملة', 'بنراجع الموديلات المتاحة حاليًا. ارجعي للمتجر لاكتشاف باقي المنتجات.', true);
+    if (!data.collection || !Array.isArray(data.items) || data.items.length < 1) {
+      showState('الصفحة غير مكتملة', 'بنراجع المنتجات المتاحة حاليًا. ارجعي للمتجر لاكتشاف باقي المنتجات.', true);
+      return;
+    }
+    if (data.items.length === 1) {
+      window.location.replace(productUrl(data.items[0].publicCode));
       return;
     }
     document.title = data.collection.title + ' · SELECT SHOP WOMEN';
