@@ -12,7 +12,6 @@ import { saveFamilyCategory } from '../model-category.js';
 import { mountQuickProductEditor } from '../quick-product.js?v=20261113-admin-audit-p2';
 import { countStatuses, PRODUCT_STATES, statusAction, prepublishHints } from '../product-lifecycle.js';
 import { initSupplierPicker, supplierChoice, createSupplierIfNeeded } from '../supplier-field.js?v=20261119';
-import { supplierStockSummary } from '../supplier-stock.js?v=20261119';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
 let categories = [];
@@ -66,17 +65,9 @@ async function renderList(ctx) {
   const results = $('#results', el);
   let listedGroups = [];
   const load = async () => {
-    const [r, stockR] = await Promise.all([
-      call('products.list', { q: state.q || null, status: state.status || null, category: state.category || null }),
-      call('supplier-stock.list').catch(() => ({ outcome: 'network', data: [] })),
-    ]);
+    const r = await call('products.list', { q: state.q || null, status: state.status || null, category: state.category || null });
     if (r.outcome !== 'ok') { fail(r); return; }
-    const stockByCode = new Map((stockR?.outcome === 'ok' && Array.isArray(stockR.data) ? stockR.data : []).map((s) => [s.code, s]));
-    const enriched = r.data.map((p) => {
-      const supplierStock = stockByCode.get(p.public_code) || null;
-      return { ...p, supplier_stock: supplierStock, supplier_name: p.supplier_name || supplierStock?.supplier_name || null };
-    });
-    const items = enriched.filter(p => state.status === 'archived' ? p.status === 'archived' : p.status !== 'archived');
+    const items = r.data.filter(p => state.status === 'archived' ? p.status === 'archived' : p.status !== 'archived');
     listedGroups = groupAdminProducts(items);
     if (!items.length) {
       render(results, html`<div class="empty">${icon('box')}<b>${state.q || state.status || state.category ? t('products.empty') : t('products.emptyAll')}</b>
@@ -97,7 +88,6 @@ async function renderList(ctx) {
             <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
             ${p.supplier_name ? html`<span>المورد: ${p.supplier_name}</span>` : html`<span class="muted">المورد غير محدد</span>`}
-            <span class="supplier-stock-inline">${supplierStockSummary(p.supplier_stock)}</span>
             ${p.stock_low ? html`<span class="badge warn">${t('products.lowStock')}</span>` : ''}</span></span>
             <span class="row-end"><b class="num">${priceText(p)}</b>${statusBadge(p.status)}</span>
           </a>
@@ -109,7 +99,7 @@ async function renderList(ctx) {
         </div>`;
       })}</div>
       <div class="table-wrap desk-only"><table class="t">
-        <thead><tr><th>${t('products.title')}</th><th>${t('products.category')}</th><th>${t('products.price')}</th><th title="حد تنظيمي افتراضي وليس قطع مخزنة">كمية افتراضية</th><th>المورد والتوافر الحقيقي</th><th>${t('products.views')}</th><th>${t('products.status')}</th><th></th></tr></thead>
+        <thead><tr><th>${t('products.title')}</th><th>${t('products.category')}</th><th>${t('products.price')}</th><th title="حد تنظيمي افتراضي وليس قطع مخزنة">كمية افتراضية</th><th>المورد</th><th>${t('products.views')}</th><th>${t('products.status')}</th><th></th></tr></thead>
         <tbody>${listedGroups.map(g => {
           const p = g.members[0].product;
           if (g.family) {
@@ -138,7 +128,7 @@ async function renderList(ctx) {
           <td>${can('products.edit') ? html`<select class="select" data-cat style="min-width:140px;min-height:36px" aria-label="${t('products.category')}">${categories.map((c) => html`<option ${c.name === p.category ? 'selected' : ''}>${c.name}</option>`)}</select>` : p.category}</td>
           <td class="num">${can('products.price') ? html`<button class="btn btn-ghost btn-sm" data-price title="${t('products.quickPrice')}">${priceText(p)}</button>` : priceText(p)}</td>
           <td class="num">${p.stock_total === null ? html`<span class="muted">—</span>` : html`${fmtNum(p.stock_total)}${p.stock_low ? html` <span class="badge warn">${t('products.lowStock')}</span>` : ''}`}</td>
-          <td><div class="supplier-stock-cell"><b>${p.supplier_name || 'غير محدد'}</b><small>${supplierStockSummary(p.supplier_stock)}</small></div></td>
+          <td>${p.supplier_name || 'غير محدد'}</td>
           <td class="num muted">${fmtNum(p.views_30d)}</td>
           <td>${statusBadge(p.status)}</td>
           <td><div class="row">
