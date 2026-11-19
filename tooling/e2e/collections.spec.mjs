@@ -17,14 +17,6 @@ test('collection with an unavailable catalog item is not rendered as a purchasab
 
 
 test('single-product landing page redirects to the product page without forcing related products', async ({ page }) => {
-  await page.route('https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge/collections/single-001', route => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify({
-      collection: { slug: 'single-001', title: 'طقم 23', description: '' },
-      items: [{ publicCode: 'SS-1023', title: 'طقم 23 الرمادي', priceMinor: 159900, image: null }],
-    }),
-  }));
   await page.goto('/collections/?slug=single-001&utm_source=meta&utm_campaign=single-001');
   await expect(page).toHaveURL(url => url.pathname === '/lp/' && url.searchParams.get('p') === 'SS-1023' && url.searchParams.get('utm_campaign') === 'single-001');
 });

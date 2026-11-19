@@ -53,6 +53,10 @@ async function mockApi(req, url, body) {
   if (p.startsWith("/women-store-bridge/collections/")) {
     const slug = p.split("/").pop();
     if (slug === "sold-out") return [409, { error: "temporarily_unavailable" }];
+    if (slug === "single-001") return [200, {
+      collection: { slug: "single-001", title: "طقم 23", description: "" },
+      items: [{ publicCode: "SS-1023", title: "طقم 23 الرمادي", priceMinor: 159900, image: null }],
+    }];
     return [200, JSON.parse(await readFile(path.join(FIX, "collection.json"), "utf8"))];
   }
   if (p === "/women-product-views" && req.method === "POST") { log.views++; return [204, null]; }
