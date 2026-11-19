@@ -96,6 +96,8 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
   await expect(mobile.locator('.studio-hero h2')).toHaveText('جاكيت جلد للشتا');
   await mobile.locator('.studio-hero h2').click();
   await expect(page.locator('[name=title]')).toBeFocused();
+  await mobile.locator('.studio-hero [data-studio-image=hero]').click();
+  await expect(page.locator('[data-slot-upload=hero]')).toBeFocused();
   await mobile.locator('.studio-hero [data-studio-cta]').first().click();
   await expect(page.locator('[name=ctaText]')).toBeFocused();
   await mobile.locator('#lpForm h2').click();
