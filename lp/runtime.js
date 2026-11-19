@@ -297,7 +297,7 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 }
 
 /** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
-const STUDIO_MODULE = "./studio-design.js?v=20261119-landing-studio";
+const STUDIO_MODULE = "./studio-design.js?v=20261119-studio-click-edit";
 const loadStudio = async () => /** @type {typeof import("./studio-design.js")} */ (await import(STUDIO_MODULE));
 async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ preview) {
   try {

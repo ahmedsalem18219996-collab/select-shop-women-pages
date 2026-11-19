@@ -7,7 +7,7 @@ import { withBusy, island, done, fail, ago, confirmDialog } from '../ui.js';
 import { call, mediaUrl, uploadLandingImage } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
 import { buildGeminiPrompt, STUDIO_STYLES } from '../studio-prompts.js';
-import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE } from '../../../lp/studio-design.js?v=20261119-landing-studio';
+import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE } from '../../../lp/studio-design.js?v=20261119-studio-click-edit';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
