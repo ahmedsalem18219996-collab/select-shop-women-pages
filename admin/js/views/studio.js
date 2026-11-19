@@ -4,7 +4,7 @@
 // The design is presentation only: prices, shipping and stock stay server-side. Save = draft; only the
 // Owner publishes. The live preview is the real landing page in an iframe, fed the unsaved draft.
 import { withBusy, island, done, fail, ago, confirmDialog } from '../ui.js';
-import { call, mediaUrl, uploadStorefrontImage } from '../api.js';
+import { call, mediaUrl, uploadLandingImage } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
 import { buildGeminiPrompt, STUDIO_STYLES } from '../studio-prompts.js';
 import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE } from '../../../lp/studio-design.js?v=20261119';
@@ -152,8 +152,9 @@ export default {
           try { prepared = await optimizeUploadImage(file, 'storefront'); }
           catch { island('error', 'الصورة دي مش مدعومة. استخدم JPG أو PNG أو WebP.'); return; }
           const fd = new FormData();
+          fd.append('code', code);
           fd.append('image', prepared.file);
-          const r = await uploadStorefrontImage(fd);
+          const r = await uploadLandingImage(fd);
           if (r.outcome !== 'saved') { fail(r); return; }
           // Store "<bucket>/<object>" (what the server validates), taken from the public URL when the reply has one.
           const stored = typeof r.url === 'string' && r.url.startsWith(STORAGE) ? r.url.slice(STORAGE.length) : r.path;
