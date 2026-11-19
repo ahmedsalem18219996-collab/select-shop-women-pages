@@ -1,6 +1,5 @@
 import { money, fmtNum, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
-import { productCampaignEligibility, supplierStockSummary } from '../supplier-stock.js';
 import { slugFromTitle } from '../campaigns-model.js';
 
 const make = (tag, cls = '', text = '') => {
@@ -11,6 +10,16 @@ const make = (tag, cls = '', text = '') => {
 };
 const imgUrl = (path) => path ? mediaUrl(/^media\//.test(path) ? 'product-media/' + path : path) : null;
 const collectionUrl = (slug) => location.origin + '/collections/?slug=' + encodeURIComponent(slug);
+const campaignAdLinks = (item) => (item.product_codes || []).map(code => {
+  const url = new URL('/lp/', location.origin);
+  url.searchParams.set('p', code);
+  url.searchParams.set('collection', item.slug);
+  url.searchParams.set('utm_source', 'meta');
+  url.searchParams.set('utm_medium', 'paid_social');
+  url.searchParams.set('utm_campaign', item.slug);
+  url.searchParams.set('utm_content', code);
+  return code + ' — ' + url.href;
+}).join('\\n');
 const statusLabel = (status) => ({ draft: 'مسودة', published: 'منشورة', archived: 'مؤرشفة' }[status] || status);
 const blockerLabel = (reason) => ({
   product_not_public: 'المنتج مش منشور',
@@ -39,28 +48,21 @@ export default {
 
     let collections = [];
     let products = [];
-    const stockByCode = new Map();
     let editing = null;
     let selected = new Set();
-    let validHours = 24;
 
     const load = async () => {
       el.replaceChildren(make('div', 'page-loading', 'جاري تحميل مجموعات الإعلانات والمنتجات...'));
-      const [c, p, s, h] = await Promise.all([
+      const [c, p] = await Promise.all([
         call('campaigns.list'),
         call('products.list', { limit: 100 }),
-        call('supplier-stock.list'),
-        call('supplier-settings.get').catch(() => null),
       ]);
-      if (h?.outcome === 'ok' && Number.isInteger(h.data?.confirmation_valid_hours)) validHours = h.data.confirmation_valid_hours;
       if (c.outcome !== 'ok' || p.outcome !== 'ok') {
         fail(c.outcome !== 'ok' ? c : p);
         return false;
       }
       collections = Array.isArray(c.data) ? c.data : [];
       products = (p.data || []).filter(x => x.status !== 'archived');
-      stockByCode.clear();
-      if (s?.outcome === 'ok' && Array.isArray(s.data)) s.data.forEach(x => stockByCode.set(x.code, x));
       paint();
       return true;
     };
@@ -141,7 +143,7 @@ export default {
       const count = make('span', 'badge info', selected.size + '/5');
       countRow.append(count);
       panel.append(countRow);
-      panel.append(make('p', 'muted', 'الموديلات غير المؤكدة أو غير المنشورة مش هتكون قابلة للإضافة الجديدة. لو تأكيد مورد قديم، حدّث الكمية من صفحة المنتج الأول.'));
+      panel.append(make('p', 'muted', 'اختار موديلات منشورة. قبل تشغيل الإعلان، اتأكد من توافر كل موديل مع المورد بالتليفون.'));
 
       const options = make('div', 'campaign-product-options');
       const previewWrap = make('div', 'campaign-preview-wrap');
@@ -155,8 +157,7 @@ export default {
       error.hidden = true;
 
       products.slice().sort((a,b) => String(a.title).localeCompare(String(b.title), 'ar')).forEach(p => {
-        const stock = stockByCode.get(p.public_code);
-        const eligible = productCampaignEligibility(p, stock).ok;
+        const eligible = p.status === 'public';
         const checked = selected.has(p.public_code);
         const label = make('label', 'campaign-product-option' + (!eligible ? ' is-blocked' : ''));
         const checkbox = make('input');
@@ -172,7 +173,7 @@ export default {
         } else thumb.textContent = 'صورة';
         const info = make('span', 'campaign-product-info');
         info.append(make('b', '', p.title), make('small', 'code', p.public_code));
-        info.append(make('small', '', (stock?.supplier_name || 'مورد غير محدد') + ' · ' + supplierStockSummary(stock)));
+        info.append(make('small', '', eligible ? 'منشور — راجع توافره مع المورد بالتليفون' : 'غير منشور — انشر المنتج أولًا'));
         label.append(checkbox, thumb, info, make('span', 'campaign-product-price', p.price_min_minor === null ? 'بدون سعر' : money(p.price_min_minor)));
         checkbox.addEventListener('change', () => {
           if (checkbox.checked) {
@@ -257,30 +258,14 @@ export default {
       const explainerHead = make('div', 'row');
       explainerHead.append(make('b', '', 'الكتالوج منفصل عن الإعلانات'), make('span', 'space'), make('span', 'badge info', '3–5 موديلات'));
       explainer.append(explainerHead);
-      explainer.append(make('p', 'muted', 'الموديلات غير المختارة تفضل في الموقع. المجموعة المنشورة تعرض المنتجات المتاحة فقط، وروابطها تفتح صفحة كل موديل.'));
-      explainer.append(make('p', 'muted', 'شرط النشر: المنتج منشور، مربوط بمورد نشط، والكمية موجبة ومؤكدة خلال آخر ' + validHours + ' ساعة. لا يتم إنشاء حملة Meta أو صرف ميزانية من هنا.'));
-      // Owner setting: how long a supplier confirmation stays valid (it also gates new orders on supplier products).
-      const hoursInput = make('input', 'input');
-      hoursInput.type = 'number'; hoursInput.min = '1'; hoursInput.max = '168'; hoursInput.step = '1';
-      hoursInput.value = String(validHours); hoursInput.id = 'supplier-valid-hours'; hoursInput.style.maxWidth = '120px';
-      const hoursLabel = make('label', 'field');
-      hoursLabel.append(make('span', '', 'صلاحية تأكيد المورد (ساعات)'), hoursInput);
-      const hoursRow = make('div', 'row wrap');
-      hoursRow.append(hoursLabel, actionButton('حفظ المدة', 'btn-soft btn-sm', async (e) => {
-        const hours = Number(hoursInput.value);
-        if (!Number.isInteger(hours) || hours < 1 || hours > 168) { island('error', 'المدة من 1 إلى 168 ساعة.'); return; }
-        await withBusy(e.currentTarget, async () => {
-          const r = await call('supplier-settings.set', { confirmation_valid_hours: hours });
-          if (r.outcome === 'saved') { done('اتحفظت مدة الصلاحية.'); await load(); } else fail(r);
-        });
-      }));
-      explainer.append(hoursRow, make('p', 'muted', 'أول ما كمية موديل تتأكد عند المورد، الموديل بيدخل نظام المورد: الخادم بيوقف الطلبات الجديدة عليه لو التأكيد انتهى أو الكمية خلصت، وصفحته بتفضل شغالة. الموديلات القديمة اللي ملهاش تأكيد شغالة زي ما هي. مفيش خصم تلقائي من الكمية.'));
+      explainer.append(make('p', 'muted', 'الموديلات غير المختارة تفضل في الموقع. المجموعة المنشورة تعرض من 3 إلى 5 موديلات، وكل موديل يحتفظ بصفحة البيع الخاصة به.'));
+      explainer.append(make('p', 'muted', 'قبل نشر المجموعة أو تشغيل الإعلانات، اتأكد من توافر كل موديل مع المورد بالتليفون. مفيش ربط آلي بالمورد أو خصم تلقائي للمخزون؛ الطلبات تفضل على نظام COD الحالي.'));
       page.append(explainer);
 
       if (editing) paintEditor(page);
       else if (!collections.length) {
         const empty = make('div', 'empty');
-        empty.append(make('b', '', 'لسه مفيش مجموعات إعلانية'), make('p', '', 'ابدأ بمجموعة من 3 إلى 5 موديلات مؤكدة عند المورد.'));
+        empty.append(make('b', '', 'لسه مفيش مجموعات إعلانية'), make('p', '', 'ابدأ بمجموعة من 3 إلى 5 موديلات منشورة، بعد التأكد من توافرها بالتليفون.'));
         empty.append(actionButton('إنشاء أول مجموعة', 'btn-primary', () => openEditor()));
         page.append(empty);
       } else {
@@ -305,6 +290,10 @@ export default {
           if (item.status === 'draft') actions.append(actionButton('نشر الصفحة', 'btn-primary btn-sm', (e) => publishCollection(item, e.currentTarget)));
           if (item.status === 'published') actions.append(actionButton('نسخ رابط الصفحة', 'btn-soft btn-sm', async () => {
             try { await navigator.clipboard.writeText(collectionUrl(item.slug)); done('اتنسخ رابط المجموعة.'); }
+            catch { island('error', 'تعذّر النسخ تلقائيًا.'); }
+          }));
+          if (item.status === 'published') actions.append(actionButton('نسخ روابط إعلانات الموديلات', 'btn-primary btn-sm', async () => {
+            try { await navigator.clipboard.writeText(campaignAdLinks(item)); done('اتنسخت روابط صفحات الموديلات.'); }
             catch { island('error', 'تعذّر النسخ تلقائيًا.'); }
           }));
           if (item.status !== 'archived') actions.append(actionButton('أرشفة', 'btn-ghost btn-sm', (e) => archiveCollection(item, e.currentTarget)));
