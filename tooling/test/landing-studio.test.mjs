@@ -31,8 +31,10 @@ test('every CTA option survives normalisation', () => {
   }
 });
 
-test('a broken section order falls back to the standard order', () => {
-  assert.deepEqual(normalizeDesign({ order: ['hero', 'hero', 'product', 'closing'] }).order, ['hero', 'features', 'closing', 'product']);
+test('a broken section order falls back to the standard three-image layout', () => {
+  const fallback = normalizeDesign({ order: ['hero', 'hero', 'product', 'closing'] });
+  assert.deepEqual(fallback.order, ['hero', 'features', 'closing', 'product']);
+  assert.equal(fallback.divider, 'line');
   assert.deepEqual(normalizeDesign({ order: ['hero', 'product'] }).order, ['hero', 'features', 'closing', 'product']);
 });
 
