@@ -48,6 +48,11 @@ async function quote(lines, regionKey = "cairo") {
 async function mockApi(req, url, body) {
   const p = url.pathname.replace(/^\/__mock\/functions\/v1/, "");
   if (p === "/women-store-bridge/catalog") return [200, JSON.parse(await readFile(path.join(FIX, "catalog.json"), "utf8"))];
+  if (p.startsWith("/women-store-bridge/collections/")) {
+    const slug = p.split("/").pop();
+    if (slug === "sold-out") return [409, { error: "temporarily_unavailable" }];
+    return [200, JSON.parse(await readFile(path.join(FIX, "collection.json"), "utf8"))];
+  }
   if (p === "/women-product-views" && req.method === "POST") { log.views++; return [204, null]; }
   const c = p.replace(/^\/women-checkout/, "");
   if (req.method === "GET" && c.startsWith("/product/")) {
