@@ -97,8 +97,9 @@ test("WOMEN Admin and storefront share the Dark Luxury palette without touching 
   }
   assert.match(admin, /--bg:#F7F3EC/);
   assert.match(admin, /\.btn-primary:hover:not\(:disabled\)\{background:#AE00B8/);
-  assert.match(html, /data-theme="dark"/);
+  assert.match(html, /data-theme="light"/); // owner choice 2026-11-20: White & Blue Glass, day mode first
   assert.match(html, /atelier-admin\.css\?v=[a-z0-9-]+/);
-  assert.match(app, /\|\| 'dark'/);
+  assert.match(app, /\|\| 'light'/);
+  assert.match(html, /atelier-admin\.css[^\n]*\n<link rel="stylesheet" href="css\/admin-theme\.css\?v=[a-z0-9-]+">/); // glass layer loads last
   assert.match(app, /localStorage\.getItem\('wa\.theme'\)/); // retain staff preference
 });
