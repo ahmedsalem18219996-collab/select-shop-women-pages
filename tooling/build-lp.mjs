@@ -147,6 +147,7 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 #lpAddCart{flex:0 1 43%;min-width:0;height:52px;padding:0 8px;border:1.5px solid var(--accent);border-radius:11px;background:transparent;color:var(--accent);font:600 14px var(--f);cursor:pointer}
 #lpAddCart:disabled{opacity:.48;cursor:default}
 #lpCartLink{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+#lpCartCount:empty{display:none!important}#lpCartCount{margin-inline-start:5px}#lpCartCount::before{content:"("}#lpCartCount::after{content:")"}
 .bar>div{gap:8px}#lpOrder{min-width:0}
 @media(max-width:899px){.bar button{min-width:0!important}#lpAddCart{font-size:12px}}
 
@@ -397,10 +398,8 @@ function layout(o) {
   const orderForm = checkoutPicker
     ? ORDER_FORM.replace('</small></h2>', '</small></h2>\n' + checkoutPicker)
     : ORDER_FORM;
-  // Refresh the browser-cached runtime only on affected grouped and legacy
-  // product pages. Unrelated generated LPs retain their exact original HTML.
-  const choiceVersion = String(o.source || "").includes("automatic product page") ? "20261114-auto-zoom" : campaign ? "20261031-sweater-3" : /tooling\/pages\/(?:ballon-suit|ss-1008|ss-1009|ss-1010|ss-1035|ss-1036|ss-1038|ss-1039|ss-1040|striped-knit|pra-sweatshirt|chinese-jacket|button-knit|zebra-knit|checked-jacket)\.json/.test(o.source || "")
-    ? "20261030-7" : checkoutPicker ? "20261030-5" : "20261030-4";
+  // Product Landing Studio is part of the shared runtime, so every LP must fetch this release.
+  const choiceVersion = "20261120-motion";
   return `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -422,7 +421,7 @@ ${o.fontFaces}
 ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
 <body${campaign ? ' data-campaign="focused"' : ""}>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}<a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a>${THEME_TOGGLE}</header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة <span id="lpCartCount"></span></a>'}<a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a>${THEME_TOGGLE}</header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">
@@ -449,7 +448,7 @@ ${o.video}
 <footer><strong dir="ltr">SELECT SHOP</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
-${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}-gallery1106"></script>
+${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}"></script>
 </body>
 </html>
 `;

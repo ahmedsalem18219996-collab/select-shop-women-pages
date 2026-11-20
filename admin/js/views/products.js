@@ -11,6 +11,7 @@ import { groupAdminProducts } from '../model-families.js';
 import { saveFamilyCategory } from '../model-category.js';
 import { mountQuickProductEditor } from '../quick-product.js?v=20261113-admin-audit-p2';
 import { countStatuses, PRODUCT_STATES, statusAction, prepublishHints } from '../product-lifecycle.js';
+import { initSupplierPicker, supplierChoice, createSupplierIfNeeded } from '../supplier-field.js?v=20261119';
 
 const imgUrl = (p) => (p ? mediaUrl(/^media\//.test(p) ? 'product-media/' + p : p) : null);
 let categories = [];
@@ -86,6 +87,7 @@ async function renderList(ctx) {
           <a class="catalog-mobile-open" href="#/products/${p.public_code}" aria-label="فتح تفاصيل ${p.title}">
             <span class="thumb">${p.image ? html`<img src="${imgUrl(p.image)}" alt="" loading="lazy">` : icon('image')}</span>
             <span class="row-main"><b>${p.title}</b><span class="row-meta"><span class="code">${p.public_code}</span><span>${p.category}</span>
+            ${p.supplier_name ? html`<span>المورد: ${p.supplier_name}</span>` : html`<span class="muted">المورد غير محدد</span>`}
             ${p.stock_low ? html`<span class="badge warn">${t('products.lowStock')}</span>` : ''}</span></span>
             <span class="row-end"><b class="num">${priceText(p)}</b>${statusBadge(p.status)}</span>
           </a>
@@ -97,7 +99,7 @@ async function renderList(ctx) {
         </div>`;
       })}</div>
       <div class="table-wrap desk-only"><table class="t">
-        <thead><tr><th>${t('products.title')}</th><th>${t('products.category')}</th><th>${t('products.price')}</th><th title="حد تنظيمي افتراضي وليس قطع مخزنة">كمية افتراضية</th><th>${t('products.views')}</th><th>${t('products.status')}</th><th></th></tr></thead>
+        <thead><tr><th>${t('products.title')}</th><th>${t('products.category')}</th><th>${t('products.price')}</th><th title="حد تنظيمي افتراضي وليس قطع مخزنة">كمية افتراضية</th><th>المورد</th><th>${t('products.views')}</th><th>${t('products.status')}</th><th></th></tr></thead>
         <tbody>${listedGroups.map(g => {
           const p = g.members[0].product;
           if (g.family) {
@@ -114,6 +116,7 @@ async function renderList(ctx) {
               <td>${p.category}</td>
               <td class="num">${low === null || high === null ? '—' : low === high ? money(low) : html`${money(low)} – ${money(high)}`}</td>
               <td class="num">${stock === null ? '—' : fmtNum(stock)}</td>
+              <td><span class="muted">حسب اللون والمورد</span></td>
               <td class="num muted">${fmtNum(views)}</td>
               <td><span class="muted">حسب كل لون</span></td>
               <td><button type="button" class="btn btn-primary btn-sm" data-manage-model="${g.key}">تعديل الموديل والنشر</button></td>
@@ -125,6 +128,7 @@ async function renderList(ctx) {
           <td>${can('products.edit') ? html`<select class="select" data-cat style="min-width:140px;min-height:36px" aria-label="${t('products.category')}">${categories.map((c) => html`<option ${c.name === p.category ? 'selected' : ''}>${c.name}</option>`)}</select>` : p.category}</td>
           <td class="num">${can('products.price') ? html`<button class="btn btn-ghost btn-sm" data-price title="${t('products.quickPrice')}">${priceText(p)}</button>` : priceText(p)}</td>
           <td class="num">${p.stock_total === null ? html`<span class="muted">—</span>` : html`${fmtNum(p.stock_total)}${p.stock_low ? html` <span class="badge warn">${t('products.lowStock')}</span>` : ''}`}</td>
+          <td>${p.supplier_name || 'غير محدد'}</td>
           <td class="num muted">${fmtNum(p.views_30d)}</td>
           <td>${statusBadge(p.status)}</td>
           <td><div class="row">
@@ -373,6 +377,11 @@ function createSheet(ctx) {
     </div>
     ${!ctx.can('products.price') ? html`<p class="muted">صلاحيتك تسمح بإضافة الموديل، لكن السعر هيحدده فريق التسعير بعد الحفظ.</p>` : ''}
     ${ctx.can('products.edit') ? html`<label class="field"><span>تكلفة المورد (اختياري، للفريق والإدارة)</span><div class="input-money"><input id="c-cost" inputmode="decimal" autocomplete="off" placeholder="مثال: 350"><span>EGP</span></div><small data-c-profit role="status">التكلفة مش بتظهر للعملاء ولا في المتجر.</small></label>` : ''}
+    <section class="card stack supplier-create-card"><div class="card-head"><h3>المورد المسؤول عن الموديل</h3><span class="muted">معلومة داخلية</span></div>
+      <label class="field"><span>المورد</span><select class="select" id="c-supplier"><option value="">بدون مورد محدد</option></select></label>
+      ${ctx.can('owner') ? html`<label class="field"><span>أو إضافة مورد جديد</span><input class="input" id="c-supplier-new" maxlength="200" placeholder="اسم مكتب المورد"></label>` : ''}
+      <small class="muted" id="c-supplier-note">اختيار المورد لا ينشر المنتج ولا يغيّر الكمية الافتراضية.</small>
+    </section>
     <label class="field"><span>${t('create.description')} (اختياري)</span><textarea class="textarea" id="c-desc" rows="3" maxlength="10000" placeholder="مثال: خامة ناعمة، مناسبة للخروج، تعليمات الغسيل"></textarea></label>
     <div class="desc-helper" data-description-helper>
       <div class="row" style="flex-wrap:wrap;gap:8px">
@@ -386,6 +395,7 @@ function createSheet(ctx) {
     <ol class="blockers" id="c-steps" hidden></ol>`,
     foot: html`<button class="btn btn-ghost" data-close>${t('app.cancel')}</button><button class="btn btn-primary" data-create>حفظ المسودة واستكمال الألوان</button>` });
   $$('[data-close]', box).forEach((b) => b.addEventListener('click', closeLayer));
+  const supplierState = initSupplierPicker({ root: box, selectId: '#c-supplier', statusId: '#c-supplier-note', call, isOwner: ctx.can('owner') });
   try { mountDescriptionEnhancer(box, { textarea: '#c-desc', titleInput: '#c-title' }); }
   catch {
     const feature = $('[data-description-helper]', box);
@@ -442,6 +452,14 @@ function createSheet(ctx) {
     const costText = costIn?.value.trim() || '';
     const cost = costText ? toMinor(costText) : null;
     if (costText && (cost === null || cost < 1)) { message('يجب إدخال تكلفة المورد رقمًا بالجنيه، مثل 350، أو ترك الخانة فارغة.', costIn); return; }
+    await supplierState.ready;
+    const chosenSupplier = supplierChoice({
+      selected: $('#c-supplier', box)?.value || '',
+      newName: $('#c-supplier-new', box)?.value || '',
+      suppliers: supplierState.items,
+      owner: ctx.can('owner'),
+    });
+    if (!chosenSupplier.ok) { message(chosenSupplier.error, $('#c-supplier-new', box) || $('#c-supplier', box)); return; }
     // Staff without price permission may still draft the catalogue; a price manager finishes it.
     $('#c-title', box).removeAttribute('aria-invalid');
     $('#c-price', box)?.removeAttribute('aria-invalid');
@@ -449,7 +467,7 @@ function createSheet(ctx) {
     const step = (label) => { const li = document.createElement('li'); li.textContent = `… ${label}`; steps.append(li); return li; };
     await withBusy(e.currentTarget, async () => {
       let li = step(t('create.steps.create'));
-      const r = await call('products.create', { idempotency_key: key, title, description: $('#c-desc', box).value.trim(), category: catSel.value || null, is_new: $('#c-new', box).checked });
+      const r = await call('products.create', { idempotency_key: key, title, description: $('#c-desc', box).value.trim(), category: catSel.value || null, is_new: $('#c-new', box).checked, ...(chosenSupplier.id ? { supplier_id: chosenSupplier.id } : {}) });
       if (!['created', 'existing'].includes(r.outcome)) { fail(r); li.remove(); return; }
       li.textContent = '✓ ' + t('create.steps.create');
       const code = r.code;
@@ -463,6 +481,19 @@ function createSheet(ctx) {
         // A timed-out first attempt may have created only part of the draft: never overwrite or claim success.
         goToDraft('details', 'المسودة محفوظة بالفعل. يرجى مراجعة السعر والألوان والصور قبل النشر؛ لن يتم تكرار الإنشاء.');
         return;
+      }
+      let supplierIssue = '';
+      if (chosenSupplier.create && ctx.can('owner')) {
+        li = step('تسجيل المورد');
+        const created = await createSupplierIfNeeded({ call, choice: chosenSupplier });
+        if (created.ok) {
+          const assigned = await call('suppliers.assign', { code, supplier_id: created.id }).catch(() => ({ outcome: 'network' }));
+          li.textContent = assigned.outcome === 'saved' ? '✓ المورد اتحفظ واتربط بالمنتج' : '✗ تعذّر ربط المورد';
+          if (assigned.outcome !== 'saved') supplierIssue = 'المنتج اتحفظ كمسودة، لكن ربط المورد محتاج مراجعة من تبويب بيانات المنتج.';
+        } else {
+          li.textContent = '✗ المورد محتاج مراجعة';
+          supplierIssue = created.error;
+        }
       }
       if (price) {
         li = step(t('create.steps.price'));
@@ -482,6 +513,7 @@ function createSheet(ctx) {
         // The cost table ships with this release for approval; until it is live the draft is still fine.
         li.textContent = cr.outcome === 'saved' ? '✓ تكلفة المورد' : COST_OPS_MISSING.has(cr.outcome) ? '– تكلفة المورد: يتطلب تفعيلًا من الخادم' : '✗ تكلفة المورد';
       }
+      if (supplierIssue) { goToDraft('details', supplierIssue); return; }
       // Shipping is a separate explicit product assignment: the WOMEN default, else the first active profile.
       let shippingReady = false;
       if (ctx.can('shipping.manage')) {
@@ -526,6 +558,7 @@ async function renderEditor(ctx, code) {
       <h2 style="margin-top:8px">${p.title}</h2><p class="row"><span class="code">${p.public_code}</span>${statusBadge(p.status)}<span class="muted">${ago(p.updated_at)}</span></p></div>
       <div class="actions">
         ${can('products.edit') || can('owner') ? html`<button type="button" class="btn btn-soft" data-setup-tab="colours" data-open-cost>${can('owner') ? 'سعر المورد والربح' : 'تكلفة المورد'}</button>` : ''}
+        <button type="button" class="btn btn-soft" data-studio>Studio الصور وLanding Page</button>
         <button type="button" class="btn btn-soft" data-quick-single>تعديل سريع للمقاس والسعر والصور</button></div>
       ${can('products.publish') && p.status !== 'archived' ? html`<div class="actions"><button class="btn ${p.status === 'public' ? 'btn-ghost' : 'btn-primary'}" data-pub>${p.status === 'public' ? t('products.hide') : t('products.publish')}</button></div>` : ''}
       ${ctx.session?.role === 'owner' && p.status !== 'archived' ? html`<div class="actions"><button type="button" class="btn btn-danger" data-archive-editor>${icon('trash')} أرشفة المنتج</button></div>` : ''}</div>
@@ -546,6 +579,7 @@ async function renderEditor(ctx, code) {
           <dt>${t('editor.d30')}</dt><dd class="num">${fmtNum(d.views?.last_30_days)}</dd><dt>${t('editor.total')}</dt><dd class="num">${fmtNum(d.views?.total)}</dd></dl></section>
         ${publishCard(p, d)}
       </aside></div></div>`);
+  $('[data-studio]', el)?.addEventListener('click', () => ctx.go('studio/' + code));
   $('[data-quick-single]', el)?.addEventListener('click', () => {
     const box = sheet({
       title: p.title + ' · تعديل سريع',
@@ -647,8 +681,71 @@ const TABS = {
         <label class="switch"><input type="checkbox" id="e-new" ${d.card.is_new ? 'checked' : ''} ${can('products.edit') ? '' : 'disabled'}><i></i>${t('editor.isNew')}</label>
         <label class="field"><span>${t('editor.shipping')}</span><select class="select" id="e-ship" ${can('shipping.manage') ? '' : 'disabled'}>
           <option value="">${t('editor.shippingNone')}</option>${(d.shipping_profiles || []).map((s) => html`<option value="${s.key}" ${p.shipping_profile?.key === s.key ? 'selected' : ''}>${s.name}</option>`)}</select></label>
-        ${can('products.edit') || can('products.price') || can('shipping.manage') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-display>${t('app.save')}</button></div>` : ''}</section></div>`);
+        ${can('products.edit') || can('products.price') || can('shipping.manage') ? html`<div class="row"><span class="space"></span><button class="btn btn-primary" data-save-display>${t('app.save')}</button></div>` : ''}</section>
+      ${can('products.edit') ? html`<section class="card stack supplier-stock-panel"><div class="card-head"><h3>المورد والكمية المتاحة فعليًا</h3><span class="muted">منفصلة عن الكمية الافتراضية</span></div>
+        <label class="field"><span>المورد المسؤول</span><select class="select" id="e-supplier"></select></label>
+        ${can('owner') ? html`<label class="field"><span>إضافة مورد جديد</span><input class="input" id="e-supplier-new" maxlength="200" placeholder="اسم مكتب المورد"></label>` : ''}
+        <small class="muted" id="e-supplier-note">اسم المورد معلومة داخلية لا تظهر للعميلات.</small>
+        <div class="grid2"><label class="field"><span>الكمية المؤكدة عند المورد</span><input class="input" id="e-supplier-qty" type="number" min="0" max="1000000" step="1" inputmode="numeric" placeholder="مثال: 25"></label>
+          <label class="field"><span>ملاحظة (اختياري)</span><input class="input" id="e-supplier-notes" maxlength="300" placeholder="مثال: تم التأكيد مع المكتب اليوم"></label></div>
+        <p class="muted" id="e-supplier-stock-meta">جاري قراءة آخر تأكيد للمخزون...</p>
+        ${p.status !== 'archived' ? html`<div class="row"><span class="space"></span><button type="button" class="btn btn-primary" data-save-supplier-stock>حفظ المورد وتأكيد الكمية</button></div>` : ''}
+      </section>` : ''}</div>`);
     if (can('products.edit')) {
+      const supplierState = initSupplierPicker({ root: body, selectId: '#e-supplier', statusId: '#e-supplier-note', call, currentId: d.supplier_id, isOwner: can('owner'), editable: can('owner') && p.status !== 'archived' });
+      let stockSnapshot = null;
+      const stockRequest = call('supplier-stock.get', { code }).then((res) => {
+        if (res?.outcome === 'ok') {
+          stockSnapshot = res.data || null;
+          const sameSupplier = stockSnapshot && stockSnapshot.supplier_id === d.supplier_id && stockSnapshot.matches_assigned_supplier;
+          const qty = $('#e-supplier-qty', body), notes = $('#e-supplier-notes', body), meta = $('#e-supplier-stock-meta', body);
+          if (qty && sameSupplier && stockSnapshot.is_fresh) qty.value = String(stockSnapshot.quantity);
+          if (notes && sameSupplier) notes.value = stockSnapshot.notes || '';
+          if (meta) meta.textContent = !stockSnapshot ? 'لم يتم تأكيد كمية عند المورد لهذا الموديل بعد.'
+            : !sameSupplier ? 'المورد المرتبط اتغير؛ لازم تأكيد كمية جديدة للمورد الحالي.'
+              : !stockSnapshot.is_fresh ? `آخر تأكيد أقدم من ${stockSnapshot.valid_hours || 24} ساعة؛ أدخل الكمية الحالية لتحديث التأكيد. الطلبات الجديدة على الموديل ده متوقفة لحد التأكيد.`
+                : `آخر تأكيد: ${ago(stockSnapshot.checked_at)} · ${fmtNum(stockSnapshot.quantity)} قطعة`;
+        } else {
+          const meta = $('#e-supplier-stock-meta', body); if (meta) meta.textContent = 'تعذّر قراءة تأكيد المورد. يمكنك إعادة المحاولة بعد تحديث الصفحة.';
+        }
+        return res;
+      }).catch(() => ({ outcome: 'network' }));
+      $('#e-supplier', body)?.addEventListener('change', () => {
+        const qty = $('#e-supplier-qty', body), meta = $('#e-supplier-stock-meta', body);
+        if (qty && $('#e-supplier', body).value !== stockSnapshot?.supplier_id) qty.value = '';
+        if (meta && $('#e-supplier', body).value !== stockSnapshot?.supplier_id) meta.textContent = 'تم اختيار مورد مختلف؛ يلزم إدخال الكمية المؤكدة لديه.';
+      });
+      $('#e-supplier-new', body)?.addEventListener('input', () => {
+        const qty = $('#e-supplier-qty', body); if (qty) qty.value = '';
+      });
+      $('[data-save-supplier-stock]', body)?.addEventListener('click', async (e) => {
+        await supplierState.ready;
+        await stockRequest;
+        let supplierId = d.supplier_id || null;
+        if (can('owner')) {
+          const choice = supplierChoice({ selected: $('#e-supplier', body)?.value || '', newName: $('#e-supplier-new', body)?.value || '', suppliers: supplierState.items, owner: true });
+          if (!choice.ok) { island('error', choice.error); return; }
+          if (choice.create) {
+            const created = await createSupplierIfNeeded({ call, choice });
+            if (!created.ok) { island('error', created.error); return; }
+            supplierId = created.id;
+          } else supplierId = choice.id;
+          if (!supplierId) { island('error', 'اختار المورد الأول.'); return; }
+          if (supplierId !== (d.supplier_id || null)) {
+            const assigned = await call('suppliers.assign', { code, supplier_id: supplierId }).catch(() => ({ outcome: 'network' }));
+            if (assigned.outcome !== 'saved') { fail(assigned); return; }
+          }
+        }
+        if (!supplierId) { island('error', 'المالك لازم يحدد المورد للمنتج الأول.'); return; }
+        const quantityText = $('#e-supplier-qty', body)?.value.trim() || '';
+        if (!/^\d{1,7}$/.test(quantityText) || Number(quantityText) > 1000000) { island('error', 'اكتب كمية صحيحة من 0 إلى 1,000,000 قطعة.'); $('#e-supplier-qty', body)?.focus(); return; }
+        await withBusy(e.currentTarget, async () => {
+          const saved = await call('supplier-stock.set', { code, supplier_id: supplierId, quantity: Number(quantityText), notes: $('#e-supplier-notes', body)?.value.trim() || '' }).catch(() => ({ outcome: 'network' }));
+          if (saved.outcome === 'saved') { done('اتحفظ المورد واتأكدت الكمية.'); reload(); }
+          else if (saved.outcome === 'supplier_mismatch') island('error', 'المورد المختار مش مرتبط بالمنتج. احفظ ربط المورد الأول ثم أعد المحاولة.');
+          else fail(saved);
+        });
+      });
       try { mountDescriptionEnhancer(body, { textarea: '#e-desc', titleInput: '#e-title' }); }
       catch {
         const btn = $('[data-desc-improve]', body);

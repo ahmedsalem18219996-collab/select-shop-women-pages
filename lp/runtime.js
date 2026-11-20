@@ -17,6 +17,10 @@ const PURCHASE_SEEN_KEY = "women.meta.purchase.sent.v1"; // same dedupe list as 
 const ANALYTICS_SRC = "/js/analytics.js?v=lp-20261030";
 const THUMBS = "/assets/catalog-thumbs/";
 const MAX_QTY = 10;
+const BRIDGE = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge";
+const AD_KEY = "women.ad.params.v1"; // campaign parameters of this visit (never customer data), read by js/commerce.js too
+const AD_PARAMS = /** @type {Record<string,string>} */ ({ utm_source: "source", utm_medium: "medium", utm_campaign: "campaign",
+  utm_content: "content", utm_term: "term", adset: "adset", utm_adset: "adset", ad: "ad", utm_ad: "ad" });
 // Legacy single-colour LP URLs must resolve to the verified shared-model chooser.
 // Keep the original SKU as ?color= to honour old ad links without altering orders or stock.
 const SHARED_MODEL_URLS = new Map([
@@ -178,7 +182,7 @@ let flushed = false;
 let analyticsLoaded = null;
 const safe = (/** @type {() => void} */ fn) => { try { fn(); } catch { /* analytics never breaks the page */ } };
 function emit(/** @type {() => void} */ fn) { if (flushed) safe(fn); else queue.push(fn); }
-function loadAnalytics() {
+export function loadAnalytics() {
   if (!analyticsLoaded) {
     analyticsLoaded = new Promise(resolve => {
       const s = document.createElement("script");
@@ -196,7 +200,7 @@ function loadAnalyticsWhenIdle() {
   if (document.readyState === "complete") start(); else addEventListener("load", start, { once: true });
 }
 /** GA4 event + the matching Meta standard event, public product codes only (never buyer data or the order code). */
-function funnel(/** @type {string} */ name, /** @type {Record<string, any>} */ fields, eventId = "") {
+export function funnel(/** @type {string} */ name, /** @type {Record<string, any>} */ fields, eventId = "") {
   emit(() => {
     const w = /** @type {any} */ (window);
     if (typeof w.gtag === "function") w.gtag("event", name, fields);
@@ -205,7 +209,7 @@ function funnel(/** @type {string} */ name, /** @type {Record<string, any>} */ f
   });
 }
 
-async function recordView(/** @type {string} */ code) {
+export async function recordView(/** @type {string} */ code) {
   // Mirrors js/commerce.js: anonymous, deduplicated per browser key on the server; never blocks the page.
   try {
     if (/** @type {any} */ (navigator).globalPrivacyControl === true || navigator.doNotTrack === "1") return;
@@ -265,6 +269,109 @@ function orderKey() {
   return k;
 }
 orderKey.mem = "";
+/** This visit's ad parameters (utm_*, ad set) for the order's attribution. */
+export function readAdParams(/** @type {string} */ search, /** @type {string} */ landing, adProduct = "") {
+  const q = new URLSearchParams(search);
+  /** @type {Record<string,string>} */ const out = {};
+  for (const [key, name] of Object.entries(AD_PARAMS)) {
+    // eslint-disable-next-line no-control-regex -- strip control characters from untrusted ad parameters
+    const v = String(q.get(key) || "").replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, 120);
+    if (v && !out[name]) out[name] = v;
+  }
+  if (!Object.keys(out).length) return null;
+  // An ad URL without utm_content advertised the product it lands on.
+  if (!out.content && validCode(adProduct)) out.content = adProduct;
+  const collection = String(q.get("collection") || "");
+  out.landing = (landing + (/^[a-z0-9-]{3,80}$/.test(collection) ? " · " + collection : "")).slice(0, 120);
+  return out;
+}
+/** First touch per ad click: moving between products of the same ad (same source / medium / campaign / ad set / ad)
+ *  keeps the original landing page and ad content; only a different ad click replaces them. */
+export function mergeAdParams(/** @type {Record<string,string>|null} */ prev, /** @type {Record<string,string>|null} */ next) {
+  if (!next) return prev;
+  const same = !!prev && ["source", "medium", "campaign", "adset", "ad"].every(k => (prev[k] || "") === (next[k] || ""));
+  return same ? prev : next;
+}
+export function rememberAdParams(/** @type {string} */ landing, adProduct = "") {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
+    const prev = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+    const merged = mergeAdParams(prev, readAdParams(location.search, landing, adProduct));
+    if (merged && merged !== prev) sessionStorage.setItem(AD_KEY, JSON.stringify(merged));
+  } catch { /* optional */ }
+}
+/** Page credit for the cart checkout (js/commerce.js): which landing page the bag lines came from. Never buyer data. */
+export const PAGE_ATTRIBUTION_KEY = "women.lp.attribution.v1";
+export function rememberPageCredit(/** @type {string} */ id, /** @type {string} */ variant, /** @type {string} */ code) {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(PAGE_ATTRIBUTION_KEY) || "null");
+    const codes = raw?.id === id && Array.isArray(raw.codes) ? raw.codes.filter(validCode) : [];
+    if (!codes.includes(code)) codes.push(code);
+    // The ad's product (utm_content) stays separate from the products actually added to the bag.
+    const ad = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
+    const adProduct = validCode(String(ad?.content || "").toUpperCase()) ? String(ad.content).toUpperCase() : undefined;
+    sessionStorage.setItem(PAGE_ATTRIBUTION_KEY, JSON.stringify({ id, variant, code: codes[0], codes: codes.slice(-50), adProduct }));
+  } catch { /* optional */ }
+}
+/** Fire-and-forget after a CONFIRMED order: never delays or blocks checkout, never carries buyer data. */
+function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) {
+  try {
+    const params = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
+    if (!params || typeof params !== "object" || !key) return;
+    void fetch(BRIDGE + "/orders/attribution", { method: "POST", mode: "cors", credentials: "omit", keepalive: true,
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: key, publicOrderCode: code, params }) }).catch(() => null);
+  } catch { /* attribution is optional */ }
+}
+
+/** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
+const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
+const RELATED_MODULE = "./related.js?v=20261120-motion";
+const MOTION_MODULE = "./motion.js?v=20261120-motion";
+const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
+let motionOn = false;
+/** motion.js loads only for a design with a motion mode. */
+function motionFor(/** @type {any} */ d, /** @type {any} */ s) {
+  motionOn ||= d.motion.mode !== "none";
+  if (motionOn) void loadMotion().then(m => m.pageMotion(d, s, gallery.shots));
+}
+const loadStudio = async () => /** @type {typeof import("./studio-design.js")} */ (await import(STUDIO_MODULE));
+async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ preview) {
+  try {
+    if (preview) {
+      const m = await loadStudio();
+      document.addEventListener("click", event => {
+        const target = event.target instanceof Element
+          ? event.target.closest("[data-studio-edit],[data-studio-image]") : null;
+        if (!(target instanceof HTMLElement)) return;
+        const slot = target.dataset.studioImage || "";
+        const field = target.dataset.studioEdit || (slot ? "image" : "");
+        if (!field) return;
+        event.preventDefault();
+        event.stopPropagation();
+        parent.postMessage({
+          type: "lp-studio-select", field, slot,
+          index: target.dataset.studioIndex === undefined ? -1 : Number(target.dataset.studioIndex),
+        }, location.origin);
+      }, true);
+      addEventListener("message", e => {
+        if (e.origin !== location.origin || e.source !== parent || e.data?.type !== "lp-studio-design") return;
+        const d = m.normalizeDesign(e.data.design, { urls: true });
+        m.applyDesign(document, d);
+        motionFor(d, m);
+      });
+      parent.postMessage({ type: "lp-studio-ready", code }, location.origin);
+      return;
+    }
+    const r = await fetch(BRIDGE + "/landing/" + encodeURIComponent(code), { headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000) });
+    if (!r.ok) return; // no published design: the standard page
+    const data = await r.json();
+    const m = await loadStudio();
+    const d = m.normalizeDesign(data?.design, { urls: true });
+    m.applyDesign(document, d);
+    motionFor(d, m);
+  } catch { /* the design is optional: the page and its order form work without it */ }
+}
+
 function forgetOrderKey() { orderKey.mem = ""; try { sessionStorage.removeItem(ORDER_KEY); } catch { /* private mode */ } }
 
 /** True the first time this browser reports a confirmed order code (a replay of the same order is not a 2nd sale). */
@@ -331,6 +438,7 @@ function showShot(/** @type {number} */ i, warm = false) {
 /** One colour's photos; `paint` false = the pre-rendered markup already shows exactly these. */
 function setShots(/** @type {Shot[]} */ shots, paint = true) {
   gallery.shots = shots.slice(); gallery.at = 0; // keep all uploaded views; lazy thumbs keep the initial load light
+  if (motionOn) void loadMotion().then(m => m.pageShots(gallery.shots));
   const galleryElement = document.getElementById("lpGallery");
   if (galleryElement) galleryElement.dataset.layout = gallery.shots.length <= 4 ? "centered" : "strip";
   if (!paint) return;
@@ -399,6 +507,7 @@ function fillFromProduct(/** @type {any} */ p) {
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
 }
 
+
 async function init() {
   const dataEl = document.getElementById("lp-data");
   if (!dataEl) return;
@@ -411,6 +520,12 @@ async function init() {
     if (!validCode(page.code)) { location.replace("/"); return; }
   }
   if (!validCode(page.code) || !/^[a-z0-9-]{3,40}$/.test(page.id || "")) return;
+  const query = new URLSearchParams(location.search);
+  const relatedCurrentCode = validCode(query.get("color")) ? query.get("color") : page.code;
+  // Related models only matter on a visit from a multi-product page: load that code only then (script budget).
+  if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(query.get("collection") || "") && query.get("studio_preview") !== "1")
+    void import(RELATED_MODULE)
+      .then((/** @type {typeof import("./related.js")} */ m) => m.renderRelatedProducts(relatedCurrentCode, { BRIDGE, timeout, validCode, okMinor, egp })).catch(() => {});
   // An old /lp/ss-1009/ (or /lp/?p=SS-1009) is a single-colour page.
   // Redirect it to the shared model without losing the chosen SKU or ad attribution.
   if (!Array.isArray(page.colors) || page.colors.length < 2) {
@@ -429,16 +544,31 @@ async function init() {
   const form = /** @type {HTMLFormElement} */ ($("#lpForm"));
   const cta = /** @type {HTMLButtonElement} */ ($("#lpOrder"));
   const cartBtn = /** @type {HTMLButtonElement} */ ($("#lpAddCart"));
+  // A direct-only ad page still offers the shared bag when the visitor came from a multi-product page (?collection=).
+  const directOnly = page.directOnly === true
+    && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(new URLSearchParams(location.search).get("collection") || "");
+  if (!directOnly) cartBtn.hidden = false;
   const region = /** @type {HTMLSelectElement} */ (form.elements.namedItem("region"));
   const status = $("#lpStatus");
   const say = (/** @type {string} */ t, error = false) => { status.textContent = t; status.dataset.error = String(error); };
   const ctaText = "تأكيد الطلب";
 
-  emit(() => { const w = /** @type {any} */ (window); if (typeof w.gtag === "function") w.gtag("set", "user_properties", { lp_variant: variantId }); });
-  funnel("lp_view", { lp_id: page.id, lp_variant: variantId, item_id: page.code });
-  loadAnalyticsWhenIdle();
+  // Admin Studio preview (an iframe of this same origin): show the draft, never order, never count a view.
+  const preview = new URLSearchParams(location.search).get("studio_preview") === "1" && window.parent !== window;
+  void studioDesign(page.code, preview);
+  if (preview) {
+    const stop = (/** @type {Event} */ e) => { e.preventDefault(); e.stopImmediatePropagation(); say("معاينة فقط: الطلب غير متاح داخل الـ Studio.", true); };
+    document.addEventListener("submit", stop, true);
+    document.addEventListener("click", e => { if (/** @type {Element} */ (e.target)?.closest?.("#lpAddCart")) stop(e); }, true);
+  } else {
+    const shown = new URLSearchParams(location.search).get("color");
+    rememberAdParams(page.id, validCode(shown) ? String(shown) : page.code);
+    emit(() => { const w = /** @type {any} */ (window); if (typeof w.gtag === "function") w.gtag("set", "user_properties", { lp_variant: variantId }); });
+    funnel("lp_view", { lp_id: page.id, lp_variant: variantId, item_id: page.code });
+    loadAnalyticsWhenIdle();
+    void recordView(page.code);
+  }
   lazyVideo();
-  void recordView(page.code);
 
   // One page = one model. Each colour is its own real product (public code); the default colour is pre-rendered.
   /** @type {{code:string,name:string,hex?:string,alt?:string,dir?:string,zoom?:string[]}[]} */
@@ -624,8 +754,9 @@ async function init() {
   const refreshCartCount = () => {
     const count = $("#lpCartCount");
     if (!count) return; // Focused direct-order pages deliberately have no bag link.
-    try { count.textContent = String(readBag().reduce((n,l)=>n+l.quantity,0)); }
-    catch { count.textContent = '0'; }
+    // An empty bag shows no number: CSS hides the empty count and its brackets.
+    try { count.textContent = String(readBag().reduce((n,l)=>n+l.quantity,0) || ''); }
+    catch { count.textContent = ''; }
   };
   refreshCartCount();
   cartBtn.addEventListener("click", async () => {
@@ -644,14 +775,16 @@ async function init() {
         lines[index].quantity += line.quantity;
       } else lines.push(line);
       localStorage.setItem(BAG_KEY, JSON.stringify(lines));
+      rememberPageCredit(page.id, variantId, line.publicCode);
       refreshCartCount();
+      void loadMotion().then(m => m.flyToBag(cartBtn, gallery.shots[0]?.src, $("#lpCartLink"), $("#lpCartCount"))).catch(() => {});
       funnel('add_to_cart', { currency: 'EGP',
         ...(okMinor(variant.unitPrice?.amountMinor) ? { value: variant.unitPrice.amountMinor * line.quantity / 100 } : {}),
         items: [{ item_id: line.publicCode, item_variant: variantLabel(), quantity: line.quantity }] });
       say('اتضافت للشنطة ✓ يمكن استكمال التسوق أو فتح الشنطة من أعلى.');
     } catch (e) {
       say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة وصلت للحد الأقصى. يمكن فتح الشنطة لتعديلها.' :
-        'مش قادرين نضيف للشنطة دلوقتي. ممكن تطلبي مباشرة من نفس الصفحة.', true);
+        'مش قادرين نضيف للشنطة دلوقتي. ممكن الطلب مباشرة من نفس الصفحة.', true);
     } finally {
       cartBusy = false; cartBtn.textContent = 'إضافة للشنطة'; cartBtn.disabled = !lineNow() || busy;
     }
@@ -847,7 +980,7 @@ async function init() {
       mixToggle.setAttribute("aria-expanded", "false");
     }
     if (singleQtyBox) singleQtyBox.style.display = mixMode ? "none" : "";
-    cartBtn.hidden = page.directOnly === true || mixMode; // the direct COD form handles all selected colours
+    cartBtn.hidden = directOnly || mixMode; // the direct COD form handles all selected colours
     say("");
     void requote();
   });
@@ -997,10 +1130,11 @@ async function init() {
       const reply = await api("/orders", "POST", payload, 20000);
       if (!ORDER_CODE.test(reply.publicOrderCode)) throw Object.assign(new Error("write_unconfirmed"), { status: 503 });
       done(reply.publicOrderCode, q, lines);
+      sendAttribution(reply.publicOrderCode, payload.idempotencyKey);
       return;
     } catch (err) {
       const error = /** @type {any} */ (err), data = error?.data || {};
-      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines); return; }
+      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines); sendAttribution(data.publicOrderCode, payload.idempotencyKey); return; }
       if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب السابق اتلغى من المتجر. يمكن تسجيل طلب جديد.", true); }
       else if (error?.message === "checkout_changed") {
         say("السعر أو الشحن اتغير. يرجى مراجعة الإجمالي الجديد ثم إعادة التأكيد.", true);
@@ -1034,7 +1168,31 @@ async function init() {
   await regionsReady;
 }
 
-if (typeof document !== "undefined") {
+const RELATED_PRODUCTS_CSS = `
+.lp-related{box-sizing:border-box;max-width:1120px;margin:38px auto 0;padding:0 18px 132px;direction:rtl;color:var(--ink,#242126);font-family:var(--f,inherit)}
+.lp-related h2{margin:0 0 7px;font-size:clamp(20px,3vw,27px);font-weight:700;line-height:1.45}
+.lp-related>p{margin:0 0 17px;color:var(--muted,#777);font-size:13px;line-height:1.8}
+.lp-related-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.lp-related-card{display:flex;min-width:0;flex-direction:column;overflow:hidden;border:1px solid var(--line,#ded9d6);border-radius:15px;background:var(--paper,#fff);color:inherit;text-decoration:none}
+.lp-related-image{display:grid;aspect-ratio:4/5;place-items:center;overflow:hidden;background:var(--bg,#f5f2ef);color:var(--muted,#777);font-size:12px}
+.lp-related-image img{width:100%;height:100%;object-fit:cover}
+.lp-related-body{display:flex;min-width:0;flex-direction:column;gap:7px;padding:11px}
+.lp-related-body strong{font-size:13px;line-height:1.6}
+.lp-related-price{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.lp-related-action{display:flex;min-height:38px;align-items:center;justify-content:center;border-radius:9px;background:var(--accent,#303c2d);color:#fff;font-size:12px;font-weight:600;text-align:center}
+.lp-related-bag{display:flex;width:min(100%,320px);min-height:46px;margin:20px auto 0;align-items:center;justify-content:center;border-radius:12px;background:var(--accent,#303c2d);color:#fff;text-decoration:none;font-size:14px;font-weight:700}
+@media(max-width:620px){.lp-related{margin-top:28px;padding-inline:12px}.lp-related-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.lp-related-body{padding:9px}.lp-related-body strong{font-size:12px}.lp-related-action{font-size:11px}}
+`;
+
+
+// Side effects only on a landing page: other pages (e.g. /collections/) import the helpers above without them.
+if (typeof document !== "undefined" && document.getElementById("lp-data")) {
+  if (!document.getElementById("lp-related-style")) {
+    const style = document.createElement("style");
+    style.id = "lp-related-style";
+    style.textContent = RELATED_PRODUCTS_CSS;
+    document.head.append(style);
+  }
   try { localStorage.setItem(VARIANT_KEY, document.documentElement.dataset.v === "b" ? "b" : "a"); } catch { /* private mode */ }
   void init();
 }

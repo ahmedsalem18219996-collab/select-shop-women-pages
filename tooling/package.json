@@ -5,7 +5,7 @@
   "description": "Build + QA tooling for SELECT SHOP WOMEN landing pages. Not part of the site runtime.",
   "scripts": {
     "build:lp": "node build-lp.mjs",
-    "lint": "cd .. && eslint -c tooling/eslint.config.mjs lp/runtime.js tooling",
+    "lint": "cd .. && eslint -c tooling/eslint.config.mjs lp/runtime.js lp/related.js lp/motion.js tooling",
     "typecheck": "tsc -p tsconfig.json",
     "test:unit": "node --test",
     "test:e2e": "playwright test",

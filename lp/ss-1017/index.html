@@ -86,6 +86,7 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 #lpAddCart{flex:0 1 43%;min-width:0;height:52px;padding:0 8px;border:1.5px solid var(--accent);border-radius:11px;background:transparent;color:var(--accent);font:600 14px var(--f);cursor:pointer}
 #lpAddCart:disabled{opacity:.48;cursor:default}
 #lpCartLink{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+#lpCartCount:empty{display:none!important}#lpCartCount{margin-inline-start:5px}#lpCartCount::before{content:"("}#lpCartCount::after{content:")"}
 .bar>div{gap:8px}#lpOrder{min-width:0}
 @media(max-width:899px){.bar button{min-width:0!important}#lpAddCart{font-size:12px}}
 
@@ -307,7 +308,7 @@ html .head > #lpDesc,html .head > #lpMore{order:1}
 </style>
 </head>
 <body>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a><a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a><button type="button" class="theme-toggle" data-theme-toggle aria-label="التحويل للوضع الفاتح" title="التحويل للوضع الفاتح"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button></header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة <span id="lpCartCount"></span></a><a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a><button type="button" class="theme-toggle" data-theme-toggle aria-label="التحويل للوضع الفاتح" title="التحويل للوضع الفاتح"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button></header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">
@@ -346,6 +347,6 @@ html .head > #lpDesc,html .head > #lpMore{order:1}
 <footer><strong dir="ltr">SELECT SHOP</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center"><a href="/p/?code=SS-1017">فتح صفحة المنتج لإتمام الطلب</a></p></noscript>
 <script type="application/json" id="lp-data">{"id":"ss-1017","code":"SS-1017","colors":[{"code":"SS-1017","name":"","hex":"","alt":"سويت شيرت Everything Comes To You","zoom":["https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/953df44b14e2433ba269cebbfcf16bf9.jpg","https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/4df598f41d754fc2b759c8bc687f0e9c.jpg"],"dir":"img/SS-1017/"}]}</script>
-<script type="module" src="/lp/image-zoom.js?v=20261106-theme"></script><script type="module" src="/lp/runtime.js?v=20261030-4-gallery1106"></script>
+<script type="module" src="/lp/image-zoom.js?v=20261106-theme"></script><script type="module" src="/lp/runtime.js?v=20261120-motion"></script>
 </body>
 </html>

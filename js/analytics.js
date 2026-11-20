@@ -23,7 +23,7 @@ window.__womenNoTrack = (() => {
   const cleanUrl = new URL(location.href);
   // Marketing parameters only (never form values or order references). "p" is the product code of /lp/?p=SS-....
   const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "code", "p", "gclid", "fbclid", "igshid", "lpv",
-    "campaign_id", "adset_id", "ad_id", "placement", "site_source_name"]);
+    "campaign_id", "adset_id", "ad_id", "placement", "site_source_name", "slug", "collection"]);
   for (const key of [...cleanUrl.searchParams.keys()]) {
     if (!allowed.has(key)) cleanUrl.searchParams.delete(key);
   }
@@ -48,11 +48,11 @@ window.__womenNoTrack = (() => {
   if (window.__womenNoTrack) return;
   if (!["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase())) return;
   if (new URLSearchParams(location.search).get("design-preview") === "1") return;
-  if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname) && !location.pathname.startsWith("/lp/")) return;
+  if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname) && !location.pathname.startsWith("/lp/") && location.pathname !== "/collections/") return;
   // Do not expose arbitrary URL parameters to Meta's automatic page context.
   // Same marketing allowlist: before, /lp/?p=SS-... (p) and Meta's URL builder (utm_id) silently disabled the Pixel.
   const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","utm_id","code","p","fbclid","igshid","lpv",
-    "campaign_id","adset_id","ad_id","placement","site_source_name"]);
+    "campaign_id","adset_id","ad_id","placement","site_source_name","slug","collection"]);
   if ([...new URLSearchParams(location.search).keys()].some(k => !permitted.has(k))) return;
   const pixelId = "992616030526349";
   const fbq = window.fbq = window.fbq || function () {

@@ -43,7 +43,8 @@ function lpAttribution(lines) {
   try {
     const a = JSON.parse(sessionStorage.getItem(LP_ATTRIBUTION_KEY) || "null");
     if (a && /^[a-z0-9-]{3,40}$/.test(a.id) && (a.variant === a.id + ":a" || a.variant === a.id + ":b")
-      && lines.some(l => l.publicCode === a.code)) return { lp_id: a.id, lp_variant: a.variant };
+      && lines.some(l => l.publicCode === a.code || (Array.isArray(a.codes) && a.codes.includes(l.publicCode))))
+      return { lp_id: a.id, lp_variant: a.variant, ...(/^SS-\d{4,19}$/.test(a.adProduct || "") ? { ad_product: a.adProduct } : {}) };
   } catch { /* attribution is optional */ }
   return {};
 }
@@ -459,6 +460,12 @@ async function showCheckout(){
     try{
       const reply=await api("/orders","POST",payload);
       if(!/^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(reply.publicOrderCode))throw new Error("write_unconfirmed");
+      // Ad attribution (utm_*, ad set from the landing page visit): write-once, after the confirmed order, never blocking.
+      try {
+        const ad=JSON.parse(sessionStorage.getItem("women.ad.params.v1")||"null");
+        if(ad&&typeof ad==="object")void fetch(API.replace("/women-checkout","/women-store-bridge")+"/orders/attribution",{method:"POST",mode:"cors",credentials:"omit",keepalive:true,
+          headers:{"Content-Type":"application/json"},body:JSON.stringify({idempotencyKey:payload.idempotencyKey,publicOrderCode:reply.publicOrderCode,params:ad})}).catch(()=>null);
+      } catch { /* attribution is optional */ }
       // Meta Purchase is emitted only here, after the server confirms /orders.
       // The public order code stays local; no buyer or address data goes to Meta.
       try {
