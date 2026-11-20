@@ -118,6 +118,10 @@ export function cleanPageTheme(/** @type {any} */ raw) {
   const t = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   /** @type {Record<string, any>} */ const out = { enabled: t.enabled === true };
   for (const [k, allowed] of Object.entries(PAGE_THEME)) out[k] = pick(t[k], allowed);
+  // Campaign-level main colour, scroll hint and buy-button text: they apply even when the look switch is off.
+  out.accent = typeof t.accent === "string" && HEX.test(t.accent.toLowerCase()) ? t.accent.toLowerCase() : "";
+  out.hint = text(t.hint, 60);
+  out.cta = text(t.cta, 40);
   return out;
 }
 
