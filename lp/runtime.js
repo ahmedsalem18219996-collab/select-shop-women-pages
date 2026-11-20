@@ -324,8 +324,16 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 }
 
 /** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
-const STUDIO_MODULE = "./studio-design.js?v=20261120-multi-product";
-const RELATED_MODULE = "./related.js?v=20261120-multi-product";
+const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
+const RELATED_MODULE = "./related.js?v=20261120-motion";
+const MOTION_MODULE = "./motion.js?v=20261120-motion";
+const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
+let motionOn = false;
+/** motion.js loads only for a design with a motion mode. */
+function motionFor(/** @type {any} */ d, /** @type {any} */ s) {
+  motionOn ||= d.motion.mode !== "none";
+  if (motionOn) void loadMotion().then(m => m.pageMotion(d, s, gallery.shots));
+}
 const loadStudio = async () => /** @type {typeof import("./studio-design.js")} */ (await import(STUDIO_MODULE));
 async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ preview) {
   try {
@@ -347,7 +355,9 @@ async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ p
       }, true);
       addEventListener("message", e => {
         if (e.origin !== location.origin || e.source !== parent || e.data?.type !== "lp-studio-design") return;
-        m.applyDesign(document, m.normalizeDesign(e.data.design, { urls: true }));
+        const d = m.normalizeDesign(e.data.design, { urls: true });
+        m.applyDesign(document, d);
+        motionFor(d, m);
       });
       parent.postMessage({ type: "lp-studio-ready", code }, location.origin);
       return;
@@ -356,7 +366,9 @@ async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ p
     if (!r.ok) return; // no published design: the standard page
     const data = await r.json();
     const m = await loadStudio();
-    m.applyDesign(document, m.normalizeDesign(data?.design, { urls: true }));
+    const d = m.normalizeDesign(data?.design, { urls: true });
+    m.applyDesign(document, d);
+    motionFor(d, m);
   } catch { /* the design is optional: the page and its order form work without it */ }
 }
 
@@ -426,6 +438,7 @@ function showShot(/** @type {number} */ i, warm = false) {
 /** One colour's photos; `paint` false = the pre-rendered markup already shows exactly these. */
 function setShots(/** @type {Shot[]} */ shots, paint = true) {
   gallery.shots = shots.slice(); gallery.at = 0; // keep all uploaded views; lazy thumbs keep the initial load light
+  if (motionOn) void loadMotion().then(m => m.pageShots(gallery.shots));
   const galleryElement = document.getElementById("lpGallery");
   if (galleryElement) galleryElement.dataset.layout = gallery.shots.length <= 4 ? "centered" : "strip";
   if (!paint) return;
@@ -763,6 +776,7 @@ async function init() {
       localStorage.setItem(BAG_KEY, JSON.stringify(lines));
       rememberPageCredit(page.id, variantId, line.publicCode);
       refreshCartCount();
+      void loadMotion().then(m => m.flyToBag(cartBtn, gallery.shots[0]?.src, $("#lpCartLink"), $("#lpCartCount"))).catch(() => {});
       funnel('add_to_cart', { currency: 'EGP',
         ...(okMinor(variant.unitPrice?.amountMinor) ? { value: variant.unitPrice.amountMinor * line.quantity / 100 } : {}),
         items: [{ item_id: line.publicCode, item_variant: variantLabel(), quantity: line.quantity }] });

@@ -21,7 +21,12 @@ export const CHOICES = {
   animation: ["none", "pulse", "shine", "bounce"],
   cardStyle: ["card", "outlined", "glass", "flat"],
   fields: ["labeled", "compact"],
+  motion: ["none", "cinematic", "calm", "bold"],
+  direction: ["side", "top"],
 };
+export const MAX_MOTION_IMAGES = 8;
+export const DEFAULT_HINT = "تفاصيل أكتر تحت";
+const HEX = /^#[0-9a-f]{6}$/;
 export const IMAGE_PATH = /^women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(?:webp|jpg|jpeg|png)$/;
 export const STORAGE = "https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/";
 const DEFAULT_CTA = "اطلب الآن";
@@ -53,6 +58,8 @@ export function normalizeDesign(/** @type {any} */ raw, { urls = false } = {}) {
   const imgs = d.images && typeof d.images === "object" ? d.images : {};
   const cta = d.cta && typeof d.cta === "object" ? d.cta : {};
   const card = d.orderCard && typeof d.orderCard === "object" ? d.orderCard : {};
+  const motion = d.motion && typeof d.motion === "object" && !Array.isArray(d.motion) ? d.motion : {};
+  const accent = typeof d.accent === "string" ? d.accent.toLowerCase() : "";
   return {
     v: 1,
     template: pick(d.template, CHOICES.template),
@@ -67,7 +74,38 @@ export function normalizeDesign(/** @type {any} */ raw, { urls = false } = {}) {
     cta: { text: text(cta.text, 40), color: pick(cta.color, CHOICES.color), position: pick(cta.position, CHOICES.position),
       shape: pick(cta.shape, CHOICES.shape), size: pick(cta.size, CHOICES.size), animation: pick(cta.animation, CHOICES.animation) },
     orderCard: { style: pick(card.style, CHOICES.cardStyle), fields: pick(card.fields, CHOICES.fields), title: text(card.title, 60) },
+    // Motion mode of the page; dirs[i] = how photo i+1 enters (the first photo always opens with a circle).
+    motion: { mode: pick(motion.mode, CHOICES.motion), hint: text(motion.hint, 60),
+      dirs: (Array.isArray(motion.dirs) ? motion.dirs : []).slice(0, MAX_MOTION_IMAGES).map((/** @type {unknown} */ x) => pick(x, CHOICES.direction)) },
+    accent: HEX.test(accent) ? accent : "",
   };
+}
+
+/** Readable text on a main colour: dark ink on light colours, white on dark ones (WCAG relative luminance). */
+export function inkFor(/** @type {string} */ hex) {
+  if (!HEX.test(hex)) return "#FFFFFF";
+  const lin = (/** @type {number} */ c) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const [r, g, b] = [1, 3, 5].map(i => lin(parseInt(hex.slice(i, i + 2), 16)));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.36 ? "#050B1C" : "#FFFFFF";
+}
+
+/** Main colour suggested from a photo's RGBA pixels: the strongest saturated hue, else "" (greys, white, black).
+ *  The photo background (#F4F6FA-like) and skin-dark pixels are ignored by the saturation / brightness gates. */
+export function suggestAccent(/** @type {ArrayLike<number>} */ rgba) {
+  /** @type {{w:number,r:number,g:number,b:number}[]} */ const bins = Array.from({ length: 24 }, () => ({ w: 0, r: 0, g: 0, b: 0 }));
+  for (let i = 0; i + 3 < rgba.length; i += 4) {
+    const r = rgba[i], g = rgba[i + 1], b = rgba[i + 2];
+    if (rgba[i + 3] < 128) continue;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), v = max / 255, sat = max ? (max - min) / max : 0;
+    if (sat < 0.38 || v < 0.22 || v > 0.98) continue;
+    const d = max - min;
+    const h = max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    const bin = bins[Math.floor(h * 4) % 24], w = sat * sat * v;
+    bin.w += w; bin.r += r * w; bin.g += g * w; bin.b += b * w;
+  }
+  const best = bins.reduce((a, b) => (b.w > a.w ? b : a));
+  if (best.w < 0.004 * (rgba.length / 4)) return "";
+  return "#" + [best.r, best.g, best.b].map(c => Math.round(c / best.w).toString(16).padStart(2, "0")).join("");
 }
 
 /** Optional unified look of a multi-product page (same whitelist as the server's women_campaign_theme_clean). */
@@ -168,6 +206,8 @@ html[data-studio-size="lg"] #lpOrder{min-height:54px;font-size:18px}html[data-st
 #lpForm[data-studio-style="flat"]{background:transparent;border:0;box-shadow:none;padding-inline:0}
 #lpForm[data-studio-fields="compact"] label.f>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #lpForm{scroll-margin-top:80px}
+html[data-studio-accent] #lpAddCart{background:var(--st-cta);color:var(--st-cta-ink);border-color:var(--st-cta)}
+html[data-studio-accent] #lpCartCount{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;margin-inline:3px;border-radius:11px;background:var(--st-cta);color:var(--st-cta-ink);font-weight:800}
 `;
 
 /** Paint (or repaint) a normalized design (urls=true) on a landing page. Returns the nodes it added. */
@@ -186,13 +226,22 @@ export function applyDesign(/** @type {Document} */ doc, /** @type {ReturnType<t
   if (orderButton) orderButton.dataset.studioEdit = "cta";
   if (head && !head.dataset.studioOriginal) head.dataset.studioOriginal = head.firstChild?.textContent || "";
   if (isEmptyDesign(d)) {
-    ["studio", "studioColor", "studioBg", "studioFont", "studioTemplate", "studioShape", "studioSize"].forEach(k => delete root.dataset[k]);
+    ["studio", "studioColor", "studioBg", "studioFont", "studioTemplate", "studioShape", "studioSize", "studioAccent"].forEach(k => delete root.dataset[k]);
+    ["--st-cta", "--st-cta-hover", "--st-cta-ink"].forEach(v => root.style.removeProperty(v));
     delete form.dataset.studioStyle; delete form.dataset.studioFields;
     if (head?.firstChild && head.dataset.studioOriginal) head.firstChild.textContent = head.dataset.studioOriginal;
     return [];
   }
   Object.assign(root.dataset, { studio: "1", studioColor: d.cta.color, studioBg: d.background, studioFont: d.font,
     studioTemplate: d.template, studioShape: d.cta.shape, studioSize: d.cta.size });
+  // A main colour (suggested from the photos in the Studio) overrides the button colour, the bag counter and the add button.
+  if (d.accent) {
+    root.dataset.studioAccent = "1";
+    root.style.setProperty("--st-cta", d.accent); root.style.setProperty("--st-cta-hover", d.accent); root.style.setProperty("--st-cta-ink", inkFor(d.accent));
+  } else {
+    delete root.dataset.studioAccent;
+    ["--st-cta", "--st-cta-hover", "--st-cta-ink"].forEach(v => root.style.removeProperty(v));
+  }
   form.dataset.studioStyle = d.orderCard.style;
   form.dataset.studioFields = d.orderCard.fields;
   if (head?.firstChild) head.firstChild.textContent = d.orderCard.title || head.dataset.studioOriginal || "";
@@ -275,7 +324,7 @@ export function applyDesign(/** @type {Document} */ doc, /** @type {ReturnType<t
       if (!d.images.closing) return null;
       const s = make("section", "studio-sec studio-closing");
       s.dataset.studioEdit = "template";
-      const m = media(d.images.closing, "اطلبي قطعتك", false, "closing");
+      const m = media(d.images.closing, "صورة ختامية", false, "closing");
       if (m) s.append(m);
       if (wantsBelow) { const copy = make("div", "studio-copy"); copy.append(cta()); s.append(copy); }
       return s;

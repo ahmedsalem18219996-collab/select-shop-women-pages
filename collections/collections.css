@@ -8,8 +8,8 @@
 :root[data-page-bg="light"]{color-scheme:light;--ground:#F4F6FA;--card:#FFFFFF;--elev:#FFFFFF;--ink:#0B1730;--muted:#4A5874;--line:#CBD3E1;--cyan:#00727A}
 :root[data-page-bg="navy"]{--ground:#0B1730}
 *{box-sizing:border-box}
-html{overflow-x:hidden}
-body{margin:0;background:var(--ground);color:var(--ink);font-family:Readex,system-ui,sans-serif;overflow-x:hidden}
+html{overflow-x:clip}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:Readex,system-ui,sans-serif;overflow-x:clip}
 a{color:inherit;text-decoration:none}
 img{max-width:100%}
 button{font:inherit}
@@ -54,6 +54,14 @@ button{font:inherit}
 .cp-chip{min-height:44px;min-width:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--elev);color:inherit;cursor:pointer;font-size:13px}
 .cp-chip[aria-pressed="true"]{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
 .cp-chip:disabled{opacity:.38;cursor:not-allowed;text-decoration:line-through}
+.cp-fixed{align-items:center;gap:10px}
+.cp-fixed-label{font-size:13px;font-weight:700}
+.cp-onesize{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--elev);font-size:13px;font-weight:800}
+.cp-product[data-accent] .cp-add{background:var(--accent);color:var(--accent-ink)}
+.cp-product[data-accent] .cp-add:hover:not(:disabled){background:var(--accent);filter:brightness(.92)}
+.cp-media[data-motion] .cp-main,.cp-media[data-motion] .cp-thumbs{display:none}
+.cp-media[data-motion]{overflow:clip;border-radius:16px}
+.cp-count:not(:empty){display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;margin-inline-start:4px;border-radius:11px;background:var(--buy);color:#fff;font-weight:800;font-size:12px}
 .cp-qty{display:flex;align-items:center;gap:8px}
 .cp-qty-label{font-size:13px;font-weight:700;margin-left:auto}
 .cp-qty button{width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--elev);color:inherit;font-size:20px;cursor:pointer}

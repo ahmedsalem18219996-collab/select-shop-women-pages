@@ -30,6 +30,9 @@ async function signIn(page, user, store) {
     const req = route.request();
     const url = new URL(req.url());
     const reply = (json) => route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*', 'content-type': 'application/json' }, body: JSON.stringify(json) });
+    // Product photos are a solid garment colour (CORS open like public storage) so the colour suggestion is predictable.
+    if (req.url().startsWith(STORAGE + 'product-media/')) return route.fulfill({ contentType: 'image/svg+xml', headers: { 'access-control-allow-origin': '*' },
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="100"><rect width="80" height="100" fill="#c8102e"/></svg>' });
     if (req.url().startsWith(STORAGE)) return route.fulfill({ contentType: 'image/webp', body: img });
     if (url.pathname.endsWith('/women-admin/landing/upload')) {
       store.ops.push({ op: 'upload', code: url.searchParams.get('code') });
@@ -43,7 +46,7 @@ async function signIn(page, user, store) {
       let r = { outcome: 'forbidden' };
       if (op === 'session.get') r = { outcome: 'ok', data: user };
       else if (op === 'products.list') r = { outcome: 'ok', data: [{ public_code: 'SS-1008', title: product.title, status: 'public' }] };
-      else if (op === 'products.get') r = { outcome: 'ok', data: { product } };
+      else if (op === 'products.get') r = { outcome: 'ok', data: { product, media: { media: store.media || [] } } };
       else if (op === 'landing.get') r = { outcome: 'ok', data: { version: L.version, draft: L.draft, published: L.published, published_at: L.published_at } };
       else if (op === 'landing.save') {
         if (!user.permissions.includes('products.edit') && user.role !== 'owner') r = { outcome: 'forbidden' };
@@ -159,4 +162,42 @@ test('Staff without edit rights does not get the Studio; the order shows its ad 
   await expect(box.locator('[data-attr=campaign]')).toHaveText('winter-jackets');
   await expect(page.locator('a[href="#/studio"]')).toHaveCount(0);
   expect(store.ops.some(o => o.op.startsWith('landing.'))).toBe(false);
+});
+
+test('Owner: motion mode, per-photo entry direction, hint text and a main colour suggested from the photos', async ({ page }) => {
+  const store = newStore();
+  store.media = [1, 2, 3, 4].map(i => ({ media_id: 'm' + i, storage_path: 'media/photo' + i + '.webp', position: i, hidden: false }));
+  await signIn(page, OWNER, store);
+  await openStudio(page);
+  // A new design gets a main colour from the product photos; the Owner can change or clear it.
+  await expect(page.locator('input[name=accent]')).toHaveValue('#c8102e');
+  await expect(page.locator('.studio-dir-thumb')).toHaveCount(3);
+  await page.locator('select[name=motionMode]').selectOption('cinematic');
+  await page.locator('select[name=motionDir1]').selectOption('top');
+  await page.locator('[name=motionHint]').fill('اسحبي لتحت');
+  const mobile = page.frameLocator('[data-preview-frame=mobile]');
+  await expect(mobile.locator('html')).toHaveAttribute('data-motion', 'cinematic');
+  await expect(mobile.locator('.mo-hint .mo-txt')).toHaveText('اسحبي لتحت');
+  await expect(mobile.locator('#lpAddCart')).toHaveCSS('background-color', 'rgb(200, 16, 46)');
+  await page.locator('[data-studio-save]').click();
+  await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
+  const saved = store.ops.find(o => o.op === 'landing.save').args.design;
+  expect(saved.motion).toEqual({ mode: 'cinematic', hint: 'اسحبي لتحت', dirs: ['side', 'top', 'side'] });
+  expect(saved.accent).toBe('#c8102e');
+  if (test.info().project.name === 'mobile') {
+    await page.locator('select[name=motionMode]').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: test.info().outputPath('studio-motion.png') });
+  }
+
+  await page.locator('[data-accent-clear]').click();
+  await expect(mobile.locator('html')).not.toHaveAttribute('data-studio-accent', /.*/);
+  await page.locator('select[name=motionMode]').selectOption('none');
+  await expect(mobile.locator('html')).not.toHaveAttribute('data-motion', /.*/);
+  await expect(mobile.locator('.mo-stack')).toHaveCount(0);
+  await expect(mobile.locator('#lpStage')).toBeVisible();
+  await page.locator('[data-studio-save]').click();
+  await expect.poll(() => store.ops.filter(o => o.op === 'landing.save').length).toBe(2);
+  const second = store.ops.filter(o => o.op === 'landing.save')[1].args.design;
+  expect(second.accent).toBe('');
+  expect(second.motion.mode).toBe('none');
 });

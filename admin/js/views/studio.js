@@ -7,7 +7,7 @@ import { withBusy, island, done, fail, ago, confirmDialog } from '../ui.js';
 import { call, mediaUrl, uploadLandingImage } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
 import { buildGeminiPrompt, STUDIO_STYLES } from '../studio-prompts.js';
-import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-multi-product';
+import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE, parseDesignImport, suggestAccent, DEFAULT_HINT, MAX_MOTION_IMAGES } from '../../../lp/studio-design.js?v=20261120-motion';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
@@ -37,6 +37,8 @@ const LABELS = {
   animation: { none: 'بدون حركة', pulse: 'نبض', shine: 'لمعة', bounce: 'قفزة خفيفة' },
   cardStyle: { card: 'كارت', outlined: 'إطار سماوي', glass: 'زجاجي', flat: 'بدون إطار' },
   fields: { labeled: 'العنوان فوق كل خانة', compact: 'مضغوط (العنوان داخل الخانة)' },
+  motion: { none: 'بدون حركة', cinematic: 'سينمائي', calm: 'فخم وهادي', bold: 'جريء وسريع' },
+  direction: { side: 'من الجنب', top: 'من فوق' },
 };
 
 function field(label, control, hint = '') {
@@ -233,6 +235,56 @@ export default {
     cardCard.append(g6, make('p', 'muted', 'الخانات ثابتة: الاسم، الموبايل، المحافظة، العنوان، اللون والمقاس والكمية، والإجمالي والشحن والدفع عند الاستلام.'));
     controls.append(cardCard);
 
+    // ---------- 7. motion and main colour (presentation only; reduced-motion visitors get a still page)
+    const motionCard = make('section', 'card stack');
+    motionCard.append(make('h3', '', '7. الحركة واللون الأساسي'));
+    const sMotion = select('motionMode', CHOICES.motion, LABELS.motion, design.motion.mode);
+    const iHint = make('input', 'input'); iHint.name = 'motionHint'; iHint.maxLength = 60; iHint.value = design.motion.hint; iHint.placeholder = DEFAULT_HINT;
+    const photos = [...(pr.data.media?.media || [])].filter(m => !m.hidden && !m.delete_pending).sort((a, b) => a.position - b.position);
+    const dirSelects = Array.from({ length: Math.min(MAX_MOTION_IMAGES, Math.max(photos.length - 1, 3)) }, (_, i) =>
+      select('motionDir' + i, CHOICES.direction, LABELS.direction, design.motion.dirs[i] || 'side'));
+    const dirWrap = make('div', 'grid2');
+    dirSelects.forEach((s, i) => {
+      const box = make('div', 'row');
+      const m = photos[i + 1];
+      if (m) { const img = make('img', 'studio-dir-thumb'); img.src = imgUrl(m.storage_path); img.alt = ''; img.loading = 'lazy'; box.append(img); }
+      box.append(field('الصورة ' + (i + 2), s));
+      dirWrap.append(box);
+    });
+    const iAccent = make('input', 'input studio-accent'); iAccent.type = 'color'; iAccent.name = 'accent'; iAccent.value = design.accent || '#d100d1';
+    let accentOn = !!design.accent;
+    const accentNote = make('small', 'muted', '');
+    const paintAccentNote = () => { accentNote.textContent = accentOn ? 'اللون الأساسي: ' + iAccent.value : 'بدون لون أساسي: الزرار بالبنفسجي الأساسي للمتجر.'; };
+    iAccent.addEventListener('input', () => { accentOn = true; paintAccentNote(); });
+    const suggestBtn = button('اقتراح من صور المنتج', 'btn-soft btn-sm', () => suggest(true), { 'data-accent-suggest': '' });
+    const clearBtn = button('بدون لون أساسي', 'btn-ghost btn-sm', () => { accentOn = false; paintAccentNote(); readControls(); changed(); }, { 'data-accent-clear': '' });
+    // Reads the dominant garment colour from the first product photos (needs CORS-enabled public storage).
+    const suggest = async (manual) => {
+      for (const m of photos.slice(0, 3)) {
+        const hex = await new Promise((resolve) => {
+          const img = new Image(); img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            try {
+              const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+              const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, 64, 64);
+              resolve(suggestAccent(g.getImageData(0, 0, 64, 64).data));
+            } catch { resolve(''); }
+          };
+          img.onerror = () => resolve('');
+          img.src = imgUrl(m.storage_path);
+        });
+        if (hex) { iAccent.value = hex; accentOn = true; paintAccentNote(); readControls(); changed(); if (manual) done('اتقترح لون من صور المنتج. تقدر تغيّره.'); return; }
+      }
+      if (manual) island('error', 'مقدرناش نطلع لون واضح من الصور. اختار اللون بنفسك.');
+    };
+    paintAccentNote();
+    const accentRow = make('div', 'row wrap');
+    accentRow.append(iAccent, suggestBtn, clearBtn);
+    motionCard.append(field('مود الحركة', sMotion, 'أول صورة بتفتح بدايرة، والباقي بيدخل مع السكرول. بتقف تلقائيًا عند اللي مفعّل تقليل الحركة.'),
+      field('اتجاه دخول كل صورة', dirWrap), field('نص توجيه السحب', iHint, 'بيظهر تحت لحد أول سكرول.'),
+      field('اللون الأساسي (الزرار، التوجيه، الشريط المتحرك، عداد الشنطة)', accentRow), accentNote);
+    controls.append(motionCard);
+
     // ---------- Structured Design Import: JSON only (e.g. a Claude design), never HTML or scripts
     const importCard = make('details', 'card stack studio-import');
     importCard.append(make('summary', '', 'استيراد تصميم منظم (JSON)'));
@@ -248,6 +300,8 @@ export default {
       featureInputs.forEach((f, i) => { f.value = design.features[i] || ''; });
       iCta.value = design.cta.text; sColor.value = design.cta.color; sPos.value = design.cta.position; sShape.value = design.cta.shape; sSize.value = design.cta.size; sAnim.value = design.cta.animation;
       sCard.value = design.orderCard.style; sFields.value = design.orderCard.fields; iCardTitle.value = design.orderCard.title;
+      sMotion.value = design.motion.mode; iHint.value = design.motion.hint; dirSelects.forEach((x, i) => { x.value = design.motion.dirs[i] || 'side'; });
+      accentOn = !!design.accent; if (design.accent) iAccent.value = design.accent; paintAccentNote();
       changed();
       done('اتطبق التصميم على المسودة' + (r.dropped.length ? ' — اتشال: ' + r.dropped.join('، ') : '') + '. راجعه في المعاينة واحفظ.');
     }, { 'data-design-import-apply': '' });
@@ -315,6 +369,8 @@ export default {
         title: iTitle.value, description: iDesc.value, features: featureInputs.map(f => f.value),
         cta: { text: iCta.value, color: sColor.value, position: sPos.value, shape: sShape.value, size: sSize.value, animation: sAnim.value },
         orderCard: { style: sCard.value, fields: sFields.value, title: iCardTitle.value },
+        motion: { mode: sMotion.value, hint: iHint.value, dirs: dirSelects.map(x => x.value) },
+        accent: accentOn ? iAccent.value : '',
       });
     };
     const previewDesign = () => normalizeDesign({ ...design, images: Object.fromEntries(Object.entries(design.images).map(([k, v]) => [k, v ? mediaUrl(v) : null])) }, { urls: true });
@@ -405,6 +461,8 @@ export default {
     addEventListener('message', onMessage);
     if (!editor) controls.querySelectorAll('input,select,textarea,button').forEach(x => { if (!x.closest('details')) x.disabled = true; });
     paintOrder(); paintSlots(); paintStatus();
+    // A new design starts with a main colour suggested from the product photos; the Owner can change or clear it.
+    if (!state.draft && !design.accent && editor) void suggest(false);
 
     async function save() {
       readControls();

@@ -2,8 +2,9 @@
 // All products go into the SAME first-party bag (women.cart.v1) and ONE COD order through /cart/ → /checkout/.
 // Prices, availability and totals stay server-side: /cart/add validates every line, the Quote API prices the order.
 import { findVariant, openValues, lineOk, priceLabel, colourIndex, colourMedia, funnel, loadAnalytics, recordView,
-  rememberAdParams, rememberPageCredit } from '../lp/runtime.js?v=20261120-multi-product';
-import { normalizeDesign, cleanPageTheme } from '../lp/studio-design.js?v=20261120-multi-product';
+  rememberAdParams, rememberPageCredit } from '../lp/runtime.js?v=20261120-motion';
+import { normalizeDesign, cleanPageTheme, inkFor, DEFAULT_HINT } from '../lp/studio-design.js?v=20261120-motion';
+const loadMotion = () => import('../lp/motion.js?v=20261120-motion');
 
 const BRIDGE = 'https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge';
 const CHECKOUT = 'https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout';
@@ -31,10 +32,12 @@ async function getJson(url, init = {}) {
 }
 /** The look of one product section: the page theme when it is switched on, else that product's own design. */
 export function sectionLook(design, theme) {
-  if (theme.enabled) return theme;
+  if (theme.enabled) return { ...theme, accent: '' };
   return { background: design.background, font: design.font, divider: design.divider,
-    ctaColor: design.cta.color, ctaShape: design.cta.shape, ctaAnimation: design.cta.animation };
+    ctaColor: design.cta.color, ctaShape: design.cta.shape, ctaAnimation: design.cta.animation, accent: design.accent };
 }
+/** True for an option that is the garment size (a product without one is One Size). */
+const isSize = (option) => /مقاس|size/i.test(String(option?.name || ''));
 /** Single-product page: the product's own landing page, keeping every ad parameter (utm_content only if absent). */
 const productUrl = (code) => {
   const q = new URLSearchParams(location.search);
@@ -74,16 +77,22 @@ bagBar.setAttribute('aria-live', 'polite');
 bagBar.append(bagCount, bagLink);
 function refreshBag() {
   const n = readBag().reduce((sum, l) => sum + l.quantity, 0);
+  const headerCount = document.getElementById('cpBagCount');
+  if (headerCount) headerCount.textContent = n ? new Intl.NumberFormat('ar-EG').format(n) : '';
   bagCount.textContent = n ? 'الشنطة فيها ' + new Intl.NumberFormat('ar-EG').format(n) + ' قطعة' : 'الشنطة فاضية';
   bagBar.hidden = n === 0;
 }
 
-function productSection(item, product, design, look, index) {
+function productSection(item, product, design, look, index, motion) {
   const code = item.publicCode;
   const section = make('section', 'cp-product');
   section.id = 'p-' + code;
   section.dataset.code = code;
   section.dataset.bg = look.background; section.dataset.font = look.font; section.dataset.divider = look.divider;
+  if (look.accent) {
+    section.dataset.accent = '1';
+    section.style.setProperty('--accent', look.accent); section.style.setProperty('--accent-ink', inkFor(look.accent));
+  }
   const media = make('div', 'cp-media');
   const main = make('img', 'cp-main');
   main.alt = design.title || product.title || item.title;
@@ -94,8 +103,10 @@ function productSection(item, product, design, look, index) {
   const productShots = (product.media || []).filter(m => MEDIA.test(m?.url || '')).sort((a, b) => (b.isPrimary === true) - (a.isPrimary === true) || a.position - b.position);
   const hidden = new Set(design.hidden);
   const marketing = (slot) => (!hidden.has(slot) && design.images[slot] ? [{ url: design.images[slot], altText: main.alt }] : []);
+  let stack = null; // the animated photo stack when this product's design has a motion mode
   const setShots = (list) => {
     const shots = list.length ? list : [{ url: item.image, altText: main.alt }].filter(s => s.url);
+    stack?.setImages(shots.map(s => ({ src: s.url, alt: main.alt })));
     thumbs.replaceChildren();
     shots.forEach((s, i) => {
       const b = make('button', 'cp-thumb');
@@ -109,8 +120,13 @@ function productSection(item, product, design, look, index) {
     if (shots[0]) { main.src = shots[0].url; thumbs.firstElementChild?.setAttribute('aria-current', 'true'); }
     thumbs.hidden = shots.length < 2;
   };
-  setShots([...marketing('hero'), ...productShots, ...marketing('features'), ...marketing('closing')]);
   media.append(main, thumbs);
+  if (motion && design.motion.mode !== 'none') {
+    media.dataset.motion = design.motion.mode;
+    stack = motion.mountStack(main, [], { mode: design.motion.mode, dirs: design.motion.dirs, accent: look.accent,
+      ink: look.accent ? inkFor(look.accent) : '#fff', marquee: (design.title || product.title || item.title) + ' · الدفع عند الاستلام' });
+  }
+  setShots([...marketing('hero'), ...productShots, ...marketing('features'), ...marketing('closing')]);
 
   const info = make('div', 'cp-info');
   const title = make('h2', 'cp-title', design.title || product.title || item.title);
@@ -129,6 +145,15 @@ function productSection(item, product, design, look, index) {
   const options = product.options || [];
   const chosen = options.map(o => (o.values?.length === 1 ? o.values[0].position : -1));
   const rows = options.map((option, i) => {
+    if ((option.values || []).length === 1) {
+      // Nothing to choose (e.g. One Size): show the value; the choice is already made.
+      const fixed = make('div', 'cp-option cp-fixed');
+      const value = String(option.values[0].value);
+      fixed.append(make('span', 'cp-fixed-label', option.name),
+        make('span', 'cp-onesize', isSize(option) && /one\s*size/i.test(value) ? 'One Size · مقاس واحد' : value));
+      info.append(fixed);
+      return [];
+    }
     const row = make('fieldset', 'cp-option');
     row.append(make('legend', '', option.name));
     const chips = (option.values || []).map(v => {
@@ -151,6 +176,12 @@ function productSection(item, product, design, look, index) {
     info.append(row);
     return chips;
   });
+
+  if (!options.some(isSize)) {
+    const fixed = make('div', 'cp-option cp-fixed');
+    fixed.append(make('span', 'cp-fixed-label', 'المقاس'), make('span', 'cp-onesize', 'One Size · مقاس واحد'));
+    info.append(fixed);
+  }
 
   const qty = make('div', 'cp-qty');
   const minus = make('button', '', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'تقليل الكمية');
@@ -209,6 +240,8 @@ function productSection(item, product, design, look, index) {
       localStorage.setItem(BAG_KEY, JSON.stringify(lines));
       rememberPageCredit(pageId, pageId + ':a', code);
       refreshBag();
+      void loadMotion().then(m => m.flyToBag(add, main.currentSrc || main.src, document.getElementById('cpBagLink'),
+        document.getElementById('cpBagCount'))).catch(() => {});
       const unit = v.unitPrice?.currency === 'EGP' && Number.isSafeInteger(v.unitPrice.amountMinor) ? v.unitPrice.amountMinor : null;
       funnel('add_to_cart', { currency: 'EGP', ...(unit ? { value: unit * quantity / 100 } : {}), page_id: pageId,
         ...(adProduct() ? { ad_product: adProduct() } : {}),
@@ -247,7 +280,14 @@ async function render(collection, items, rawTheme) {
     getJson(CHECKOUT + '/product/' + encodeURIComponent(item.publicCode)).then(d => d.product).catch(() => null),
     getJson(BRIDGE + '/landing/' + encodeURIComponent(item.publicCode)).then(d => d.design).catch(() => null),
   ])));
-  loaded.forEach(([product, raw], i) => {
+  const designs = loaded.map(([, raw]) => normalizeDesign(raw, { urls: true }));
+  const moving = designs.find(d => d.motion.mode !== 'none');
+  const motion = moving ? await loadMotion().catch(() => null) : null;
+  if (motion && moving) {
+    const accent = theme.enabled ? '' : moving.accent;
+    motion.mountHint(moving.motion.hint || DEFAULT_HINT, accent, accent ? inkFor(accent) : '#fff');
+  }
+  loaded.forEach(([product], i) => {
     const item = items[i];
     if (!product || product.publicCode !== item.publicCode) {
       const off = make('section', 'cp-product cp-off');
@@ -256,9 +296,9 @@ async function render(collection, items, rawTheme) {
       list.append(off);
       return;
     }
-    const design = normalizeDesign(raw, { urls: true });
+    const design = designs[i];
     if (jump.children[i]) jump.children[i].textContent = design.title || product.title || item.title;
-    list.append(productSection(item, product, design, sectionLook(design, theme), i));
+    list.append(productSection(item, product, design, sectionLook(design, theme), i, motion));
   });
   list.append(make('p', 'collection-note', 'كل الموديلات اللي تتضاف للشنطة بتتجمع في طلب واحد. الدفع عند الاستلام، والسعر النهائي والشحن بيتحسبوا قبل التأكيد.'));
   document.body.append(bagBar);

@@ -1,0 +1,43 @@
+/* Motion modes (lp/motion.js). A file, not an inline <style>, so pages with style-src 'self' accept it. */
+.mo-stack{position:relative;width:100%;max-width:560px;margin:0 auto;--accent:#D100D1;--accent-ink:#fff}
+.mo-sec{position:sticky;top:var(--top,0px);overflow:hidden;background:#F4F6FA;perspective:1000px;transform-origin:50% 0;margin:0}
+.mo-sec+.mo-sec{box-shadow:0 -30px 60px rgba(0,0,0,.55)}
+.mo-wrap{position:relative;transform-origin:50% 50%}
+.mo-sec img{display:block;width:100%;height:auto;aspect-ratio:auto 4/5}
+.mo-stack[data-ready] .mo-first .mo-wrap{animation:mo-open var(--open,1.5s) cubic-bezier(.7,0,.2,1) both}
+@keyframes mo-open{0%{clip-path:circle(0% at 50% 42%);transform:scale(1.5) rotate(-6deg)}60%{clip-path:circle(75% at 50% 42%)}100%{clip-path:circle(150% at 50% 42%);transform:none}}
+.mo-flash{position:absolute;inset:0;background:#fff;pointer-events:none;opacity:0}
+.mo-stack[data-ready][data-flash] .mo-first .mo-flash{animation:mo-flash .9s calc(var(--open,1.5s) * .7) ease-out both}
+@keyframes mo-flash{0%{opacity:.55}100%{opacity:0}}
+.mo-glint{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.28) 50%,transparent 65%);transform:translateX(-130%)}
+.mo-stack[data-ready] .mo-first .mo-glint{animation:mo-sweep 1.3s calc(var(--open,1.5s) * .85) ease-out both}
+.mo-glint.go{animation:mo-sweep 1.2s ease-out both}
+@keyframes mo-sweep{to{transform:translateX(130%)}}
+.mo-stack.mo-nudge{animation:mo-nudge 1.1s cubic-bezier(.3,.7,.3,1)}
+@keyframes mo-nudge{0%{transform:none}35%{transform:translateY(-70px)}62%{transform:translateY(0)}78%{transform:translateY(-18px)}100%{transform:none}}
+.mo-marq{position:relative;z-index:3;overflow:hidden;background:var(--accent);color:var(--accent-ink);transform:rotate(-3deg) scale(1.08);margin:-14px 0 8px;padding:10px 0}
+.mo-track{display:flex;width:max-content;animation:mo-marq 16s linear infinite}
+.mo-track span{font-weight:800;font-size:18px;white-space:nowrap;padding:0 18px}
+@keyframes mo-marq{from{transform:translateX(0)}to{transform:translateX(50%)}}
+.mo-hint{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));z-index:16;transform:translateX(-50%);pointer-events:none;transition:opacity .4s,transform .4s;animation:mo-hintin .7s 1.7s both;--accent:#D100D1;--accent-ink:#fff}
+.mo-hint.hide{animation:none;opacity:0;transform:translate(-50%,30px)}
+@keyframes mo-hintin{from{opacity:0;transform:translate(-50%,30px)}to{opacity:1;transform:translate(-50%,0)}}
+.mo-pill{display:flex;align-items:center;gap:12px;padding:8px 20px 8px 8px;border-radius:999px;background:rgba(5,11,28,.72);color:#fff;border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.45);animation:mo-float 2.4s ease-in-out infinite}
+.mo-ico{position:relative;width:40px;height:40px;border-radius:50%;background:var(--accent);overflow:hidden;flex:none;animation:mo-ring 2.4s infinite}
+.mo-ico svg{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;stroke:var(--accent-ink);stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round;animation:mo-up 1.2s cubic-bezier(.5,0,.3,1) infinite}
+.mo-txt{font-size:16px;font-weight:800;white-space:nowrap}
+@keyframes mo-up{0%{transform:translateY(16px);opacity:0}35%{opacity:1}70%{transform:translateY(-2px);opacity:1}100%{transform:translateY(-18px);opacity:0}}
+@keyframes mo-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes mo-ring{0%{box-shadow:0 0 0 0 rgba(255,255,255,.45)}70%,100%{box-shadow:0 0 0 14px rgba(255,255,255,0)}}
+.mo-fly{position:fixed;z-index:60;width:64px;height:64px;border-radius:50%;background:#F4F6FA center top/cover;border:3px solid #fff;pointer-events:none;transition:transform .8s cubic-bezier(.5,-.3,.6,1),opacity .8s}
+.mo-shake{animation:mo-shake .6s}
+@keyframes mo-shake{20%{transform:rotate(-14deg) scale(1.15)}40%{transform:rotate(12deg) scale(1.15)}60%{transform:rotate(-8deg)}80%{transform:rotate(4deg)}}
+.mo-pop{display:inline-block;animation:mo-pop .4s}
+@keyframes mo-pop{50%{transform:scale(1.5)}}
+html[data-motion] #lpStage,html[data-motion] #lpGallery{display:none}
+@media (prefers-reduced-motion:reduce){
+  .mo-sec{position:relative;top:auto}
+  .mo-wrap{animation:none!important;transform:none!important;opacity:1!important}
+  .mo-flash,.mo-glint{display:none}
+  .mo-track,.mo-stack,.mo-hint,.mo-hint *,.mo-shake,.mo-pop{animation:none!important}
+}

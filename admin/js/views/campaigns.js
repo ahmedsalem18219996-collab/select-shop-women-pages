@@ -1,7 +1,7 @@
 import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { moveProductCode, slugFromTitle, validateCampaignSelection } from '../campaigns-model.js';
-import { PAGE_THEME, cleanPageTheme, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-multi-product';
+import { PAGE_THEME, cleanPageTheme, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-motion';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
