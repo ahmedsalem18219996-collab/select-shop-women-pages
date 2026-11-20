@@ -11,7 +11,7 @@ const state = { session: null, route: null, view: null };
 // ---------- theme ----------
 function applyTheme(next) {
   const theme = next || (() => { try { return localStorage.getItem('wa.theme'); } catch { return null; } })()
-    || 'dark'; // Same dark-first default as the storefront; preserve explicit saved light theme
+    || 'light'; // Owner choice 2026-11-20: day mode (White & Blue Glass) is the default; a saved choice still wins
   document.documentElement.dataset.theme = theme;
   try { if (next) localStorage.setItem('wa.theme', next); } catch { /* ignore */ }
 }

@@ -26,19 +26,15 @@ test("Atelier storefront + admin route styles are served", async ({ request }) =
   }
 });
 
-test("Admin palette defaults to the storefront navy/fuchsia/cyan and preserves accessible light mode", async ({ page }) => {
+test("Admin palette defaults to the White & Blue Glass day mode and keeps a matching dark mode", async ({ page }) => {
   await page.goto("/admin/");
-  const tokens = await page.evaluate(() => {
+  const read = () => page.evaluate(() => {
     const root = document.documentElement, css = getComputedStyle(root);
     return { theme: root.dataset.theme, bg: css.getPropertyValue("--bg").trim(),
-      surface: css.getPropertyValue("--surface").trim(),
-      primary: css.getPropertyValue("--primary").trim(), cyan: css.getPropertyValue("--tape").trim() };
+      surface: css.getPropertyValue("--surface").trim(), primary: css.getPropertyValue("--primary").trim() };
   });
-  expect(tokens).toEqual({theme:"dark",bg:"#050B1C",surface:"#0B1730",primary:"#D100D1",cyan:"#2ED9D1"});
-  await page.evaluate(() => { document.documentElement.dataset.theme="light"; });
-  const light = await page.evaluate(() => {
-    const css = getComputedStyle(document.documentElement);
-    return {bg: css.getPropertyValue("--bg").trim(), primary: css.getPropertyValue("--primary").trim()};
-  });
-  expect(light).toEqual({bg:"#F7F3EC",primary:"#D100D1"});
+  // Owner choice 2026-11-20: 60% #F5F8FF, 30% #FFFFFF, 10% #2563EB; day mode first.
+  expect(await read()).toEqual({theme:"light",bg:"#F5F8FF",surface:"#FFFFFF",primary:"#2563EB"});
+  await page.evaluate(() => { document.documentElement.dataset.theme="dark"; });
+  expect(await read()).toEqual({theme:"dark",bg:"#0B1220",surface:"#111A2E",primary:"#3B82F6"});
 });
