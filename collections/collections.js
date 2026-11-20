@@ -145,23 +145,30 @@ function orderBox() {
   const box = make('section', 'cp-order');
   box.id = 'cpOrder';
   box.setAttribute('aria-labelledby', 'cpOrderTitle');
-  box.innerHTML = '<h2 id="cpOrderTitle">إتمام الطلب</h2>'
-    + '<div id="cpLines" class="cp-lines" aria-live="polite"></div>'
-    + '<form id="orderForm" novalidate>'
-    + '<label>المحافظة<select name="region" id="region" required autocomplete="address-level1"><option value="">اختيار المحافظة</option></select></label>'
-    + '<label>الاسم بالكامل<input name="name" maxlength="100" autocomplete="name" enterkeyhint="next" required></label>'
-    + '<label>رقم الموبايل<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="18" placeholder="01xxxxxxxxx" dir="ltr" enterkeyhint="next" required></label>'
-    + '<label>المنطقة<input name="area" maxlength="100" autocomplete="address-level2" enterkeyhint="next" required></label>'
-    + '<label>العنوان بالتفصيل<input name="address" maxlength="350" autocomplete="street-address" enterkeyhint="done" required></label>'
-    + '<details><summary>إضافة ملاحظة للمندوب (اختياري)</summary><label>ملاحظات<textarea name="notes" maxlength="500"></textarea></label></details>'
-    + '<div id="checkoutItems" hidden></div>'
-    + '<div class="cp-sum"><span>المنتجات</span><b id="subtotal">—</b></div>'
-    + '<div class="cp-sum"><span>الشحن</span><b id="shipping">—</b></div>'
-    + '<div class="cp-sum cp-grand"><span>الإجمالي</span><b id="grandTotal">—</b></div>'
-    + '<p id="status" class="cp-status" role="status"></p>'
-    + '<button id="placeOrder" class="cp-add" type="submit" disabled>تأكيد الطلب</button>'
-    + '<p class="collection-note">الدفع كاش عند الاستلام. الشحن والإجمالي بيتحسبوا من السيرفر قبل التأكيد.</p>'
-    + '</form>';
+  const field = (label, el, attrs) => {
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    const l = make('label', '', label); l.append(el); return l;
+  };
+  const input = (attrs) => field(attrs.label, make('input'), { maxlength: '100', enterkeyhint: 'next', required: '', ...attrs.a });
+  const region = make('select'); region.append(Object.assign(make('option', '', 'اختيار المحافظة'), { value: '' }));
+  const notes = make('details');
+  notes.append(make('summary', '', 'إضافة ملاحظة للمندوب (اختياري)'), field('ملاحظات', make('textarea'), { name: 'notes', maxlength: '500' }));
+  const items = make('div'); items.id = 'checkoutItems'; items.hidden = true;
+  const sum = (label, id, cls = '') => { const row = make('div', 'cp-sum ' + cls); const b = make('b', '', '—'); b.id = id; row.append(make('span', '', label), b); return row; };
+  const out = make('p', 'cp-status'); out.id = 'status'; out.setAttribute('role', 'status');
+  const submit = make('button', 'cp-add', 'تأكيد الطلب'); submit.id = 'placeOrder'; submit.type = 'submit'; submit.disabled = true;
+  const form = make('form'); form.id = 'orderForm'; form.noValidate = true;
+  // Same fields, names and order as /checkout/ (js/commerce.js reads them by these ids and names).
+  form.append(field('المحافظة', region, { name: 'region', id: 'region', required: '', autocomplete: 'address-level1' }),
+    input({ label: 'الاسم بالكامل', a: { name: 'name', autocomplete: 'name' } }),
+    input({ label: 'رقم الموبايل', a: { name: 'phone', type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: '18', placeholder: '01xxxxxxxxx', dir: 'ltr' } }),
+    input({ label: 'المنطقة', a: { name: 'area', autocomplete: 'address-level2' } }),
+    input({ label: 'العنوان بالتفصيل', a: { name: 'address', maxlength: '350', autocomplete: 'street-address', enterkeyhint: 'done' } }),
+    notes, items, sum('المنتجات', 'subtotal'), sum('الشحن', 'shipping'), sum('الإجمالي', 'grandTotal', 'cp-grand'), out, submit,
+    make('p', 'collection-note', 'الدفع كاش عند الاستلام. الشحن والإجمالي بيتحسبوا من السيرفر قبل التأكيد.'));
+  const title = make('h2', '', 'إتمام الطلب'); title.id = 'cpOrderTitle';
+  const lines = make('div', 'cp-lines'); lines.id = 'cpLines'; lines.setAttribute('aria-live', 'polite');
+  box.append(title, lines, form);
   return box;
 }
 /** "موديلات تانية": every model of the campaign, linking to its section on this page. */
