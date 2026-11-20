@@ -65,7 +65,7 @@ export function paintAccent(/** @type {HTMLElement} */ el, /** @type {string} */
  * Builds a photo stack before `anchor`. `marquee` = the running band text under the photos ("" = no band).
  * @param {Element} anchor
  * @param {Shot[]} shots
- * @param {{ mode: string, dirs: string[], accent?: string, ink?: string, marquee?: string, caption?: { title: string, price: string } | null }} o
+ * @param {{ mode: string, dirs: string[], accent?: string, ink?: string, marquee?: string, caption?: { title: string, price: string, badge?: string } | null }} o
  * @returns {Stack}
  */
 export function mountStack(anchor, shots, o) {
@@ -115,8 +115,10 @@ export function mountStack(anchor, shots, o) {
         if (i === 0 && o.caption) {
           // Name and price over the first photo (campaign pages without a campaign photo of their own).
           const cap = document.createElement("div"); cap.className = "mo-cap";
-          const b = document.createElement("b"); b.textContent = o.caption.title; cap.append(b);
-          if (o.caption.price) { const p = document.createElement("span"); p.textContent = o.caption.price; cap.append(p); }
+          const b = document.createElement("b"), mark = document.createElement("span");
+          mark.className = "mo-mark"; mark.textContent = o.caption.title; b.append(mark); cap.append(b);
+          if (o.caption.price) { const p = document.createElement("span"); p.className = "mo-price"; p.textContent = o.caption.price; cap.append(p); }
+          if (o.caption.badge) { const n = document.createElement("span"); n.className = "mo-badge"; n.textContent = o.caption.badge; wrap.append(n); }
           wrap.append(cap);
         }
         const g = document.createElement("div"); g.className = "mo-glint"; wrap.append(g);

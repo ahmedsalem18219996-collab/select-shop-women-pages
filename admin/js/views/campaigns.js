@@ -1,7 +1,7 @@
 import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { moveProductCode, slugFromTitle, validateCampaignSelection } from '../campaigns-model.js';
-import { PAGE_THEME, cleanPageTheme, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-motion';
+import { PAGE_THEME, cleanPageTheme, parseDesignImport, suggestAccent, campaignAccent } from '../../../lp/studio-design.js?v=20261120-campaign';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
@@ -263,8 +263,48 @@ export default {
         themeSelects[key] = sel;
       });
       themeCard.append(themeGrid);
-      const readTheme = () => { theme = cleanPageTheme({ enabled: themeOn.checked, ...Object.fromEntries(Object.entries(themeSelects).map(([k, sel]) => [k, sel.value])) }); };
-      const paintTheme = () => { themeOn.checked = theme.enabled; Object.entries(themeSelects).forEach(([k, sel]) => { sel.value = theme[k]; sel.disabled = !theme.enabled || !themeReady; }); };
+      // One main colour for the whole campaign (theme.accent, PR #65): buy buttons, band, bag count, buy bar.
+      // Empty = the button colour above.
+      const accentWrap = make('div', 'field');
+      const accentRow = make('div', 'row wrap');
+      const accentOn = make('input'); accentOn.type = 'checkbox'; accentOn.dataset.themeAccentOn = '';
+      accentOn.setAttribute('aria-label', 'لون خاص للحملة');
+      const accentIn = make('input', 'input'); accentIn.type = 'color'; accentIn.value = '#d100d1'; accentIn.dataset.themeAccent = '';
+      accentIn.setAttribute('aria-label', 'اللون الأساسي للحملة');
+      const suggestBtn = actionButton('اقتراح من صور أول موديل', 'btn-soft btn-sm', async () => {
+        const first = products.find(p => p.public_code === [...selected][0]);
+        // Reads the dominant garment colour of the first model's photo (public storage, CORS).
+        const hex = !first?.image ? '' : await new Promise((resolve) => {
+          const img = new Image(); img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            try {
+              const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+              const g = c.getContext('2d', { willReadFrequently: true });
+              if (!g) { resolve(''); return; }
+              g.drawImage(img, 0, 0, 64, 64);
+              resolve(suggestAccent(g.getImageData(0, 0, 64, 64).data));
+            } catch { resolve(''); }
+          };
+          img.onerror = () => resolve('');
+          img.src = imgUrl(first.image) || '';
+        });
+        if (!hex) { island('error', 'مقدرناش نطلع لون واضح من الصور. اختار اللون بنفسك.'); return; }
+        accentIn.value = hex; accentOn.checked = true; readTheme(); themeTouched = true; paintTheme(); refreshPreview();
+        done('اتقترح لون من صور أول موديل. تقدر تغيّره.');
+      });
+      suggestBtn.dataset.themeAccentSuggest = '';
+      const accentNow = make('span', 'muted');
+      accentRow.append(accentOn, accentIn, suggestBtn, accentNow);
+      accentWrap.append(make('span', '', 'اللون الأساسي للحملة (زراير الشراء، الشريط، عدد الشنطة)'), accentRow);
+      themeCard.append(accentWrap);
+      const readTheme = () => { theme = cleanPageTheme({ enabled: themeOn.checked, ...Object.fromEntries(Object.entries(themeSelects).map(([k, sel]) => [k, sel.value])),
+        accent: accentOn.checked ? accentIn.value : '' }); };
+      const paintTheme = () => {
+        themeOn.checked = theme.enabled; Object.entries(themeSelects).forEach(([k, sel]) => { sel.value = theme[k]; sel.disabled = !theme.enabled || !themeReady; });
+        accentOn.checked = !!theme.accent; if (theme.accent) accentIn.value = theme.accent;
+        [accentOn, accentIn, suggestBtn].forEach(x => { x.disabled = !theme.enabled || !themeReady; });
+        accentNow.textContent = theme.enabled ? 'المستخدم: ' + campaignAccent(theme) : '';
+      };
       if (!themeReady) { themeOn.disabled = true; themeCard.append(make('p', 'err', 'الشكل الموحد محتاج تحديث الخادم (Migration) قبل الحفظ.')); }
       panel.append(themeCard);
 

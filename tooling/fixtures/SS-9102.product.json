@@ -1,0 +1,215 @@
+{
+  "product": {
+    "publicCode": "SS-9102",
+    "title": "طقم تريكو تجريبي",
+    "description": "منتج تجريبي للاختبار فقط: 3 ألوان × 3 مقاسات",
+    "structureVersion": 3,
+    "purchasable": true,
+    "price": {
+      "currency": "EGP",
+      "minAmountMinor": 45000,
+      "maxAmountMinor": 45000
+    },
+    "options": [
+      {
+        "name": "اللون",
+        "position": 0,
+        "values": [
+          {
+            "value": "أسود",
+            "position": 0
+          },
+          {
+            "value": "بيج",
+            "position": 1
+          },
+          {
+            "value": "زيتي",
+            "position": 2
+          }
+        ]
+      },
+      {
+        "name": "المقاس",
+        "position": 1,
+        "values": [
+          {
+            "value": "S",
+            "position": 0
+          },
+          {
+            "value": "M",
+            "position": 1
+          },
+          {
+            "value": "L",
+            "position": 2
+          }
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "selection": [
+          {
+            "optionPosition": 0,
+            "valuePosition": 0
+          },
+          {
+            "optionPosition": 1,
+            "valuePosition": 0
+          }
+        ],
+        "purchasable": true,
+        "unitPrice": {
+          "currency": "EGP",
+          "amountMinor": 45000
+        }
+      },
+      {
+        "selection": [
+          {
+            "optionPosition": 0,
+            "valuePosition": 0
+          },
+          {
+            "optionPosition": 1,
+            "valuePosition": 1
+          }
+        ],
+        "purchasable": true,
+        "unitPrice": {
+          "currency": "EGP",
+          "amountMinor": 45000
+        }
+      },
+      {
+        "selection": [
+          {
+            "optionPosition": 0,
+            "valuePosition": 0
+          },
+          {
+            "optionPosition": 1,
+            "valuePosition": 2
+          }
+        ],
+        "purchasable": true,
+        "unitPrice": {
+          "currency": "EGP",
+          "amountMinor": 45000
+        }
+      },
+      {
+        "selection": [
+          {
+            "optionPosition": 0,
+            "valuePosition": 1
+          },
+          {
+            "optionPosition": 1,
+            "valuePosition": 0
+          }
+        ],
+        "purchasable": true,
+        "unitPrice": {
+          "currency": "EGP",
+          "amountMinor": 45000
+        }
+      },
+      {
+        "selection": [
+          {
+            "optionPosition": 0,
+            "valuePosition": 1
+          },
+          {
+            "optionPosition": 1,
+            "valuePosition": 1
+          }
+        ],
+        "purchasable": true,
+        "unitPrice": {
+          "currency": "EGP",
+          "amountMinor": 45000
+        }
+      },
+      {
+        "selection": [
+          {
+            "optionPosition": 0,
+            "valuePosition": 1
+          },
+          {
+            "optionPosition": 1,
+            "valuePosition": 2
+          }
+        ],
+        "purchasable": true,
+        "unitPrice": {
+          "currency": "EGP",
+          "amountMinor": 45000
+        }
+      },
+      {
+        "selection": [
+          {
+            "optionPosition": 0,
+            "valuePosition": 2
+          },
+          {
+            "optionPosition": 1,
+            "valuePosition": 0
+          }
+        ],
+        "purchasable": true,
+        "unitPrice": {
+          "currency": "EGP",
+          "amountMinor": 45000
+        }
+      },
+      {
+        "selection": [
+          {
+            "optionPosition": 0,
+            "valuePosition": 2
+          },
+          {
+            "optionPosition": 1,
+            "valuePosition": 1
+          }
+        ],
+        "purchasable": true,
+        "unitPrice": {
+          "currency": "EGP",
+          "amountMinor": 45000
+        }
+      },
+      {
+        "selection": [
+          {
+            "optionPosition": 0,
+            "valuePosition": 2
+          },
+          {
+            "optionPosition": 1,
+            "valuePosition": 2
+          }
+        ],
+        "purchasable": false,
+        "unitPrice": {
+          "currency": "EGP",
+          "amountMinor": 45000
+        }
+      }
+    ],
+    "media": [
+      {
+        "url": "https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/9102aaaa000000000000000000000000.webp",
+        "altText": "",
+        "position": 0,
+        "isPrimary": true
+      }
+    ]
+  }
+}

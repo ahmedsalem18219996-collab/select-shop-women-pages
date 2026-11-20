@@ -72,6 +72,10 @@ test('Owner: the list loads, live preview shows every product as its own section
   await page.locator('select[data-theme="ctaShape"]').selectOption('square');
   await expect(frame.locator('.cp-product[data-code="SS-1012"]')).toHaveAttribute('data-bg', 'light');
   await expect(frame.locator('.cp-product[data-code="SS-1013"] .cp-add')).toHaveAttribute('data-shape', 'square');
+  // One campaign colour (PR #65 theme.accent): replaces the button colour on every buy button of the page.
+  await page.locator('[data-theme-accent-on]').check();
+  await page.locator('[data-theme-accent]').fill('#c62828');
+  await expect.poll(() => frame.locator('.cp-product[data-code="SS-1013"] .cp-add').evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(198, 40, 40)');
 
   // Click-to-edit: the page title focuses the Admin field; a product field points to that product's Studio.
   await frame.locator('.collection-hero h1').click();
@@ -92,7 +96,7 @@ test('Owner: the list loads, live preview shows every product as its own section
   const saved = store.ops.find(o => o.op === 'campaigns.save');
   expect(saved.args.product_codes).toEqual(['SS-9101', 'SS-1012', 'SS-1013']);
   const theme = store.ops.find(o => o.op === 'campaigns.theme.save');
-  expect(theme.args).toMatchObject({ id: store.collection.id, version: 0, theme: { enabled: true, background: 'light', ctaShape: 'square' } });
+  expect(theme.args).toMatchObject({ id: store.collection.id, version: 0, theme: { enabled: true, background: 'light', ctaShape: 'square', accent: '#c62828' } });
 
   await page.locator('.campaign-card').getByRole('button', { name: 'نشر الصفحة' }).click();
   await expect.poll(() => store.ops.map(o => o.op)).toContain('campaigns.theme.publish');

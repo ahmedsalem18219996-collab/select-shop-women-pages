@@ -83,7 +83,7 @@ button{font:inherit}
 @keyframes cp-shine{to{background-position:-150% 0}}
 .cp-status{margin:0;min-height:1.6em;font-size:13px;color:var(--muted);line-height:1.7}
 .cp-off{opacity:.7}
-.cp-bag{position:fixed;inset:auto 0 0 0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(11,23,48,.96);border-top:1px solid var(--line)}
+.cp-bag{position:fixed;inset:auto 0 0 0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(11,23,48,.78);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
 .cp-bag[hidden]{display:none}
 .cp-bag-count{font-size:13px;color:#AAB5C8}
 .cp-bag-link{min-height:48px;display:inline-flex;align-items:center;padding:0 22px;border-radius:14px;background:var(--buy);color:#fff;font-weight:800;font-size:14px}
@@ -101,14 +101,23 @@ button{font:inherit}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 /* Campaign phase 1: caption over the first photo, other models, order box, fixed buy bar. */
 .cp-media{position:relative}
-.cp-cap{position:absolute;inset:12px 12px auto;z-index:1;display:grid;gap:2px;padding:10px 14px;border-radius:14px;background:rgba(5,11,28,.72);color:#fff;pointer-events:none}
-.cp-cap b{font-size:18px;line-height:1.4;overflow-wrap:anywhere}
-.cp-cap span{justify-self:start;padding:2px 12px;border-radius:99px;font-size:16px;font-weight:800;background:var(--accent,var(--buy));color:var(--accent-ink,#fff)}
+.cp-photo{position:relative;border-radius:16px;overflow:hidden}
+.cp-photo .cp-main{border-radius:0}
+.cp-shade{position:absolute;inset:0;pointer-events:none}
+.cp-cap{position:absolute;inset:auto 0 0;z-index:1;display:grid;gap:8px;padding:56px 14px 14px;background:linear-gradient(to top,rgba(5,11,28,.88),rgba(5,11,28,.55) 55%,transparent);color:#fff;pointer-events:none}
+.cp-cap b{font-size:22px;line-height:1.5;overflow-wrap:anywhere}
+.cp-mark{padding:0 8px;border-radius:6px;background:var(--accent,var(--buy));color:var(--accent-ink,#fff);-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.cp-cap-price{justify-self:start;padding:6px 16px;border-radius:99px;background:#fff;color:#050B1C;font-size:17px;font-weight:800}
+.cp-badge{position:absolute;top:12px;right:12px;padding:6px 12px;border-radius:99px;background:rgba(5,11,28,.72);color:#fff;font-size:13px;font-weight:700}
+.cp-marq{overflow:hidden;background:var(--accent,var(--buy));color:var(--accent-ink,#fff);transform:rotate(-3deg) scale(1.06);margin:6px 0 10px;padding:9px 0}
+.cp-track{display:flex;width:max-content;animation:cp-marq 18s linear infinite}
+.cp-track span{font-weight:800;font-size:16px;white-space:nowrap;padding:0 16px}
+@keyframes cp-marq{from{transform:translateX(0)}to{transform:translateX(50%)}}
 .cp-others,.cp-order{margin-top:var(--gap);padding:18px 16px;border-radius:22px;background:var(--card);border:1px solid var(--line);min-width:0}
 .cp-others h2,.cp-order h2{margin:0 0 12px;font-size:var(--title)}
-.cp-others-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
-.cp-other{display:grid;gap:6px;min-width:0;padding-bottom:8px;border-radius:16px;background:var(--elev);overflow:hidden}
-.cp-other img{width:100%;aspect-ratio:4/5;object-fit:cover;background:var(--photo);display:block}
+.cp-others-grid{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;overscroll-behavior-x:contain}
+.cp-other{flex:0 0 150px;scroll-snap-align:start;display:grid;align-content:start;gap:6px;min-width:0;padding-bottom:8px;border-radius:16px;background:var(--elev);overflow:hidden}
+.cp-other img{width:100%;height:190px;object-fit:cover;background:var(--photo);display:block}
 .cp-other b{padding:0 10px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .cp-other span{padding:0 10px;font-size:13px;font-weight:800;color:var(--cyan)}
 .cp-order{display:grid;gap:12px;scroll-margin-top:12px}
@@ -127,3 +136,27 @@ button{font:inherit}
 .cp-grand{padding-top:10px;border-top:1px solid var(--line);font-size:16px;color:var(--ink)}
 .cp-order .cp-add{max-width:none}
 .cp-bag-link{border:0;cursor:pointer;font:inherit;font-weight:800;font-size:14px}
+/* Order box: one card per model (colour, size, quantity, or a quantity for each colour). */
+.cp-order-intro{margin:-6px 0 0;font-size:13px;color:var(--muted)}
+.cp-cards{display:grid;gap:12px}
+.cp-card{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--elev);min-width:0}
+.cp-card-head{display:flex;align-items:center;gap:10px;min-width:0}
+.cp-card-head img{width:56px;height:70px;flex:none;object-fit:cover;border-radius:10px;background:var(--photo)}
+.cp-card-name{display:grid;gap:2px;min-width:0;flex:1}
+.cp-card-name b{font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.cp-card-name span{font-size:13px;font-weight:800;color:var(--cyan)}
+.cp-pill{flex:none;padding:4px 10px;border:1px solid var(--line);border-radius:99px;font-size:11px;font-weight:700;color:var(--muted)}
+.cp-card-opt{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.cp-card-opt-name{flex:0 0 100%;font-size:12px;font-weight:700;color:var(--muted)}
+.cp-card-qty{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cp-card-qty .cp-card-opt-name{flex:none}
+.cp-mix{min-height:44px;width:100%;border:1px dashed var(--cyan);border-radius:12px;background:transparent;color:var(--cyan);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.cp-colours{display:grid;gap:8px}
+.cp-colour{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cp-colour-name{display:flex;align-items:center;gap:8px;font-size:14px;min-width:0;overflow-wrap:anywhere}
+.cp-dot{width:20px;height:20px;flex:none;border-radius:50%;background:var(--muted);border:1px solid rgba(255,255,255,.35)}
+.cp-card .cp-status{margin:0;font-size:12px;color:var(--muted)}
+/* One campaign colour (PR #65 accent, else the ctaColor palette entry) on buy buttons, band, bag count and bar. */
+html[data-accent] .cp-add,html[data-accent] .cp-bag-link{background:var(--accent);color:var(--accent-ink)}
+html[data-accent] .cp-add:hover:not(:disabled),html[data-accent] .cp-bag-link:hover{background:var(--accent);filter:brightness(.92)}
+html[data-accent] #cpBagCount:not(:empty){background:var(--accent);color:var(--accent-ink)}
