@@ -310,7 +310,7 @@ test("automatic page for any product: old /lp/?p= and ?code= links order directl
   expect(orders.length - before).toBe(1);
   expect(orders.at(-1).lines[0].publicCode).toBe("SS-1099");
   await page.goto("/lp/?p=SS-99999");
-  await expect(page.locator("#lpStatus")).toHaveText("القطعة دي مش متاحة دلوقتي.");
+  await expect(page.locator("#lpStatus")).toHaveText("الموديل ده مش متاح دلوقتي.");
   await expect(page.locator("#lpOrder")).toBeDisabled();
   await page.goto("/p/?code=SS-1008&utm_source=facebook&fbclid=abc123");
   await page.waitForURL(u => u.pathname === "/lp/ss-1008/");
@@ -319,7 +319,8 @@ test("automatic page for any product: old /lp/?p= and ?code= links order directl
   await expect(page.locator("#lpForm")).toBeVisible();
   await page.goto("/lp/?p=bad");
   await page.waitForURL(u => u.pathname === "/");
-  expect(page.external).toEqual([]);
+  // The "available now" row of the gone SS-99999 shows public catalog photos (read-only GETs); nothing else leaves.
+  expect(page.external.filter(x => !/^GET byluoipdunralsurwebt\.supabase\.co\/storage\/v1\/object\/public\/product-media\//.test(x))).toEqual([]);
 });
 
 test("Facebook/Instagram in-app browser: no AbortSignal.timeout, blocked sessionStorage, still one order", async ({ browser, request }) => {

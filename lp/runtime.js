@@ -914,20 +914,15 @@ async function init() {
     let p;
     try { p = await load(c.code); }
     catch (e) {
-      // A missing product is unavailable; a network failure leaves no verified price either, so neither is shown.
+      // 404 = gone; a network failure = no verified price.
+      if (mine !== ticket) return false;
       const gone = /** @type {any} */ (e)?.status === 404;
-      if (mine === ticket) unavailable(gone ? "الموديل ده مش متاح دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. إعادة المحاولة بعد شوية.");
-      if (mine === ticket && gone && colors.length < 2) {
-        // The whole page is gone (hidden or removed model): keep it out of search, offer what is on sale now.
-        const robots = document.querySelector('meta[name="robots"]') || document.head.appendChild(Object.assign(document.createElement("meta"), { name: "robots" }));
-        robots.setAttribute("content", "noindex, follow");
-        void import(RELATED_MODULE)
-          .then((/** @type {typeof import("./related.js")} */ m) => m.renderAvailableModels(c.code, { BRIDGE, timeout, validCode, okMinor, egp })).catch(() => {});
-      }
+      unavailable(gone ? "الموديل ده مش متاح دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. إعادة المحاولة بعد شوية.");
+      if (gone && colors.length < 2) void import(RELATED_MODULE).then(m => m.renderAvailableModels(c.code, { BRIDGE, timeout, validCode, okMinor, egp })).catch(() => {});
       return false;
     }
     if (mine !== ticket) return false;
-    if (!p || p.publicCode !== c.code || !Array.isArray(p.variants) || !Array.isArray(p.options)) { unavailable("القطعة دي مش متاحة دلوقتي."); return false; }
+    if (!p || p.publicCode !== c.code || !Array.isArray(p.variants) || !Array.isArray(p.options)) { unavailable("الموديل ده مش متاح دلوقتي."); return false; }
     if (page.auto) fillFromProduct(p);
     if (p.purchasable !== true || priceLabel(p, null) === "—") { unavailable(colors.length > 1 ? "اللون ده خلص حاليًا؛ اختيار لون آخر." : "القطعة دي خلصت حاليًا."); return false; }
     product = p;

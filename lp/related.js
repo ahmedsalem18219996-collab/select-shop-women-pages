@@ -25,6 +25,9 @@ export async function renderRelatedProducts(currentCode, { BRIDGE, timeout, vali
 /** @param {string} currentCode @param {{ BRIDGE: string, timeout: (ms: number) => AbortSignal|undefined, validCode: (x: unknown) => boolean, okMinor: (x: unknown) => boolean, egp: (x: number) => string }} h */
 export async function renderAvailableModels(currentCode, { BRIDGE, timeout, validCode, okMinor, egp }) {
   if (document.getElementById("lpAvailableModels")) return;
+  // The whole page is gone (hidden or removed model): keep it out of search.
+  const robots = document.querySelector('meta[name="robots"]') || document.head.appendChild(Object.assign(document.createElement("meta"), { name: "robots" }));
+  robots.setAttribute("content", "noindex, follow");
   try {
     const response = await fetch(BRIDGE + "/catalog", {
       headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000),
