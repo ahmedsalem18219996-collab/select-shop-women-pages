@@ -204,7 +204,7 @@ export function funnel(/** @type {string} */ name, /** @type {Record<string, any
   emit(() => {
     const w = /** @type {any} */ (window);
     if (typeof w.gtag === "function") w.gtag("event", name, fields);
-    const metaName = /** @type {Record<string,string>} */ ({ view_item: "ViewContent", add_to_cart: "AddToCart", begin_checkout: "InitiateCheckout", purchase: "Lead" })[name];
+    const metaName = /** @type {Record<string,string>} */ ({ view_item: "ViewContent", add_to_cart: "AddToCart", begin_checkout: "InitiateCheckout" })[name];
     if (metaName && typeof w.womenMetaEvent === "function") w.womenMetaEvent(metaName, fields, eventId || undefined);
   });
 }
@@ -316,10 +316,11 @@ export function rememberPageCredit(/** @type {string} */ id, /** @type {string} 
 /** Fire-and-forget after a CONFIRMED order: never delays or blocks checkout, never carries buyer data. */
 function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) {
   try {
-    const params = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
-    if (!params || typeof params !== "object" || !key) return;
+    const ad = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
+    const params = { ...(ad && typeof ad === "object" ? ad : {}), .../** @type {any} */ (window).womenMetaIds?.() }; // + Meta's fbp/fbc
+    if (!Object.keys(params).length || !key) return;
     void fetch(BRIDGE + "/orders/attribution", { method: "POST", mode: "cors", credentials: "omit", keepalive: true,
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: key, publicOrderCode: code, params, .../** @type {any} */ (window).womenMetaIds?.() }) }).catch(() => null);
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: key, publicOrderCode: code, params }) }).catch(() => null);
   } catch { /* attribution is optional */ }
 }
 
@@ -1075,10 +1076,14 @@ async function init() {
     forgetOrderKey();
     if (firstReport(code)) {
       const value = (minorOf(q.merchandiseSubtotal) ?? 0) / 100;
-      funnel("purchase", { currency: "EGP", value, shipping: (minorOf(q.shippingTotal) ?? 0) / 100, transaction_id: hex(16),
+      const fields = { currency: "EGP", value, shipping: (minorOf(q.shippingTotal) ?? 0) / 100, transaction_id: hex(16),
         lp_id: page.id, lp_variant: variantId,
         items: lines.map(l => ({ item_id: l.publicCode,
-          item_variant: lines.length > 1 ? "one_size" : variantLabel(), quantity: l.quantity })) }, "lead-" + key);
+          item_variant: lines.length > 1 ? "one_size" : variantLabel(), quantity: l.quantity })) };
+      funnel("purchase", fields);
+      // Meta Lead, id "lead-" + SHA-256(order key) like the server's; Purchase is the server's alone.
+      if (crypto.subtle) crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)).then(h => emit(() =>
+        /** @type {any} */ (window).womenMetaEvent?.("Lead", fields, "lead-" + Array.from(new Uint8Array(h), b => b.toString(16).padStart(2, "0")).join("")))).catch(() => {});
       void loadAnalytics(); // the conversion goes out even if the customer leaves right away
     }
     $("#lpDoneCode").textContent = code;

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { createHash } from 'node:crypto';
 
 // Multi-product campaign pages on the QA mock: every product is a full section with its own add-to-bag,
 // all products share the one first-party bag and become ONE COD order through /cart/ → /checkout/.
@@ -67,6 +68,11 @@ test('colour and size per product: only real sizes of the chosen colour, price f
 
 test('multi-product COD order: three products from one page become ONE order with three lines', async ({ page, request, baseURL }) => {
   await page.context().addCookies([{ name: '_fbc', value: 'fb.1.1763600000000.IwAR0cookie', url: baseURL }]);
+  // Meta events are recorded locally instead of loading GA4/Pixel (/js/analytics.js keeps only the browser-id helper).
+  await page.route('**/js/analytics.js*', async route => {
+    const real = await (await route.fetch()).text();
+    await route.fulfill({ contentType: 'text/javascript', body: real + ';window.womenMetaEvent=function(){const s=JSON.parse(localStorage.getItem("__cap")||"[]");s.push([...arguments]);localStorage.setItem("__cap",JSON.stringify(s))};' });
+  });
   await setPage(request, 'order-3', ['SS-9101', 'SS-1012', 'SS-1013']);
   const before = await mockLog(request);
   await page.goto('/collections/?slug=order-3&' + AD);
@@ -106,7 +112,11 @@ test('multi-product COD order: three products from one page become ONE order wit
   expect(order.lines.find(l => l.publicCode === 'SS-9101').quantity).toBe(2);
   // Attribution keeps the ORIGINAL ad (product SS-1013, ad set), separate from what was bought; no buyer data.
   const attr = log.attributions.at(-1).params;
-  expect(log.attributions.at(-1).fbc).toBe('fb.1.1763600000000.IwAR0cookie'); // the Pixel's own _fbc wins
+  expect(attr.fbc).toBe('fb.1.1763600000000.IwAR0cookie'); // the Pixel's own _fbc wins
+  // Cart checkout (js/commerce.js): one Lead, id "lead-" + SHA-256(order key), no browser Purchase.
+  const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('__cap') || '[]'));
+  expect(meta.filter(e => e[0] === 'Purchase')).toEqual([]);
+  expect(meta.filter(e => e[0] === 'Lead').map(e => e[2])).toEqual(['lead-' + createHash('sha256').update(order.key).digest('hex')]);
   expect(attr).toMatchObject({ campaign: 'multi-test', content: 'SS-1013', adset: 'cairo-25-34', landing: 'c-order-3' });
   expect(JSON.stringify(attr)).not.toContain('01012345678');
 });

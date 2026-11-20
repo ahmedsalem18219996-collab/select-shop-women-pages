@@ -210,8 +210,9 @@ test("ad order attribution carries Meta's browser ids: _fbp, and _fbc built from
   await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-[2-9A-Z]{8}$/);
   await expect.poll(async () => (await mockLog(request)).attributions.length).toBe(before + 1);
   const a = (await mockLog(request)).attributions.at(-1);
-  expect(a.fbp).toBe("fb.1.1763600000000.1234567890");
-  const [, ms, id] = a.fbc.match(/^fb\.1\.(\d{13})\.(.+)$/);
+  // Inside params, where the bridge gives them precedence (contract: docs/women-meta-capi.md, backend PR #71).
+  expect(a.params.fbp).toBe("fb.1.1763600000000.1234567890");
+  const [, ms, id] = a.params.fbc.match(/^fb\.1\.(\d{13})\.(.+)$/);
   expect(id).toBe("IwAR0abcDEF_123-xyz");
   expect(Number(ms)).toBeGreaterThanOrEqual(t0);
   expect(a.params).toMatchObject({ source: "facebook", campaign: "winter-jackets" });
@@ -231,7 +232,7 @@ test("the owner's test browser (?notrack=1) sends no Meta browser ids", async ({
   await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-[2-9A-Z]{8}$/);
   await expect.poll(async () => (await mockLog(request)).attributions.length).toBe(before + 1);
   const a = (await mockLog(request)).attributions.at(-1);
-  expect(a.fbp).toBeUndefined();
-  expect(a.fbc).toBeUndefined();
+  expect(a.params.fbp).toBeUndefined();
+  expect(a.params.fbc).toBeUndefined();
   await page.goto(LP + "?notrack=0");
 });
