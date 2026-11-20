@@ -2,9 +2,9 @@
 // All products go into the SAME first-party bag (women.cart.v1) and ONE COD order through /cart/ → /checkout/.
 // Prices, availability and totals stay server-side: /cart/add validates every line, the Quote API prices the order.
 import { findVariant, openValues, lineOk, priceLabel, colourIndex, colourMedia, funnel, loadAnalytics, recordView,
-  rememberAdParams, rememberPageCredit } from '../lp/runtime.js?v=20261120-motion';
-import { normalizeDesign, cleanPageTheme, inkFor, DEFAULT_HINT } from '../lp/studio-design.js?v=20261120-motion';
-const loadMotion = () => import('../lp/motion.js?v=20261120-motion');
+  rememberAdParams, rememberPageCredit } from '../lp/runtime.js?v=20261120-campaign';
+import { normalizeDesign, cleanPageTheme, inkFor, DEFAULT_HINT } from '../lp/studio-design.js?v=20261120-campaign';
+const loadMotion = () => import('../lp/motion.js?v=20261120-campaign');
 
 const BRIDGE = 'https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge';
 const CHECKOUT = 'https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout';
@@ -32,9 +32,11 @@ async function getJson(url, init = {}) {
 }
 /** The look of one product section: the page theme when it is switched on, else that product's own design. */
 export function sectionLook(design, theme) {
-  if (theme.enabled) return { ...theme, accent: '' };
+  // The campaign's own main colour wins everywhere; without it each product keeps its Studio colour (look switch off).
+  const accent = theme.accent || (theme.enabled ? '' : design.accent);
+  if (theme.enabled) return { ...theme, accent };
   return { background: design.background, font: design.font, divider: design.divider,
-    ctaColor: design.cta.color, ctaShape: design.cta.shape, ctaAnimation: design.cta.animation, accent: design.accent };
+    ctaColor: design.cta.color, ctaShape: design.cta.shape, ctaAnimation: design.cta.animation, accent };
 }
 /** True for an option that is the garment size (a product without one is One Size). */
 const isSize = (option) => /مقاس|size/i.test(String(option?.name || ''));
@@ -69,18 +71,116 @@ function showState(title, description) {
   root.replaceChildren(card);
 }
 
+// Fixed buy bar: appears after the first screen and hides while the order box is on screen.
 const bagBar = make('aside', 'cp-bag');
 const bagCount = make('span', 'cp-bag-count');
-const bagLink = make('a', 'cp-bag-link', 'إتمام الطلب');
-bagLink.href = '/cart/';
+const buyNow = make('button', 'cp-bag-link', 'اطلب الآن');
+buyNow.type = 'button';
 bagBar.setAttribute('aria-live', 'polite');
-bagBar.append(bagCount, bagLink);
+bagBar.hidden = true;
+bagBar.append(bagCount, buyNow);
+const smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+buyNow.addEventListener('click', () => {
+  // Bag has pieces: go to the order box. Empty bag: the buy part of the model on screen.
+  const order = document.getElementById('cpOrder');
+  if (order && readBag().length) { order.scrollIntoView({ behavior: smooth(), block: 'start' }); return; }
+  const sections = [...document.querySelectorAll('.cp-product[data-code]')];
+  const here = sections.find(x => x.getBoundingClientRect().bottom > innerHeight / 2) || sections[0];
+  here?.querySelector('.cp-add')?.scrollIntoView({ behavior: smooth(), block: 'center' });
+});
+let orderOnScreen = false;
+const placeBar = () => { bagBar.hidden = scrollY < innerHeight * 0.9 || orderOnScreen; };
+const nf = (n) => new Intl.NumberFormat('ar-EG').format(n);
 function refreshBag() {
   const n = readBag().reduce((sum, l) => sum + l.quantity, 0);
   const headerCount = document.getElementById('cpBagCount');
-  if (headerCount) headerCount.textContent = n ? new Intl.NumberFormat('ar-EG').format(n) : '';
-  bagCount.textContent = n ? 'الشنطة فيها ' + new Intl.NumberFormat('ar-EG').format(n) + ' قطعة' : 'الشنطة فاضية';
-  bagBar.hidden = n === 0;
+  if (headerCount) headerCount.textContent = n ? nf(n) : '';
+  bagCount.textContent = n ? 'الشنطة فيها ' + nf(n) + ' قطعة' : '';
+}
+/** Products of this page by code, for the order box line labels. */
+const catalog = new Map();
+/** Every bag change: header count, order box lines and a fresh server quote (js/commerce.js listens for "women:cart"). */
+function bagChanged() {
+  refreshBag();
+  paintLines();
+  dispatchEvent(new Event('women:cart'));
+}
+const lineText = (l) => {
+  const p = catalog.get(l.publicCode);
+  const values = l.selection.map(x => p?.product.options?.find(o => o.position === x.optionPosition)?.values
+    ?.find(v => v.position === x.valuePosition)?.value).filter(Boolean).map(String);
+  if (p && !(p.product.options || []).some(isSize)) values.push('One Size');
+  return { title: p?.title || l.publicCode, values: values.join(' · ') };
+};
+function paintLines() {
+  const holder = document.getElementById('cpLines');
+  if (!holder) return;
+  const lines = readBag();
+  holder.replaceChildren(...lines.map(l => {
+    const row = make('div', 'cp-line');
+    const { title, values } = lineText(l);
+    const text = make('div', 'cp-line-text');
+    text.append(make('b', '', title), make('span', '', values));
+    const qty = make('div', 'cp-qty');
+    const minus = make('button', '', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'تقليل ' + title);
+    const plus = make('button', '', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'زيادة ' + title);
+    plus.disabled = l.quantity >= 99;
+    const key = bagKey(l);
+    const bump = (d) => {
+      const all = readBag(), i = all.findIndex(x => bagKey(x) === key);
+      if (i < 0) return;
+      all[i].quantity = Math.min(99, all[i].quantity + d);
+      if (all[i].quantity < 1) all.splice(i, 1);
+      try { localStorage.setItem(BAG_KEY, JSON.stringify(all)); } catch { /* storage blocked: nothing changes */ }
+      bagChanged();
+    };
+    minus.addEventListener('click', () => bump(-1));
+    plus.addEventListener('click', () => bump(1));
+    qty.append(minus, make('output', '', nf(l.quantity)), plus);
+    row.append(text, qty);
+    return row;
+  }));
+  if (!lines.length) holder.append(make('p', 'cp-status', 'الشنطة لسه فاضية. اختيار موديل من فوق وإضافته للشنطة.'));
+}
+/** The order box: the same fields and order as /checkout/, run by the same code (js/commerce.js showCheckout). */
+function orderBox() {
+  const box = make('section', 'cp-order');
+  box.id = 'cpOrder';
+  box.setAttribute('aria-labelledby', 'cpOrderTitle');
+  box.innerHTML = '<h2 id="cpOrderTitle">إتمام الطلب</h2>'
+    + '<div id="cpLines" class="cp-lines" aria-live="polite"></div>'
+    + '<form id="orderForm" novalidate>'
+    + '<label>المحافظة<select name="region" id="region" required autocomplete="address-level1"><option value="">اختيار المحافظة</option></select></label>'
+    + '<label>الاسم بالكامل<input name="name" maxlength="100" autocomplete="name" enterkeyhint="next" required></label>'
+    + '<label>رقم الموبايل<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="18" placeholder="01xxxxxxxxx" dir="ltr" enterkeyhint="next" required></label>'
+    + '<label>المنطقة<input name="area" maxlength="100" autocomplete="address-level2" enterkeyhint="next" required></label>'
+    + '<label>العنوان بالتفصيل<input name="address" maxlength="350" autocomplete="street-address" enterkeyhint="done" required></label>'
+    + '<details><summary>إضافة ملاحظة للمندوب (اختياري)</summary><label>ملاحظات<textarea name="notes" maxlength="500"></textarea></label></details>'
+    + '<div id="checkoutItems" hidden></div>'
+    + '<div class="cp-sum"><span>المنتجات</span><b id="subtotal">—</b></div>'
+    + '<div class="cp-sum"><span>الشحن</span><b id="shipping">—</b></div>'
+    + '<div class="cp-sum cp-grand"><span>الإجمالي</span><b id="grandTotal">—</b></div>'
+    + '<p id="status" class="cp-status" role="status"></p>'
+    + '<button id="placeOrder" class="cp-add" type="submit" disabled>تأكيد الطلب</button>'
+    + '<p class="collection-note">الدفع كاش عند الاستلام. الشحن والإجمالي بيتحسبوا من السيرفر قبل التأكيد.</p>'
+    + '</form>';
+  return box;
+}
+/** "موديلات تانية": every model of the campaign, linking to its section on this page. */
+function otherModels(entries) {
+  const box = make('section', 'cp-others');
+  box.append(make('h2', '', 'موديلات تانية'));
+  const grid = make('div', 'cp-others-grid');
+  entries.forEach(({ code, title, image, price }) => {
+    const a = make('a', 'cp-other');
+    a.href = '#p-' + code;
+    if (image) { const img = make('img'); img.src = image; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; a.append(img); }
+    a.append(make('b', '', title));
+    if (price) a.append(make('span', '', price));
+    grid.append(a);
+  });
+  box.append(grid);
+  return box;
 }
 
 function productSection(item, product, design, look, index, motion) {
@@ -121,10 +221,21 @@ function productSection(item, product, design, look, index, motion) {
     thumbs.hidden = shots.length < 2;
   };
   media.append(main, thumbs);
+  const name = design.title || product.title || item.title;
+  const from = priceLabel(product, null);
+  const priceText = from === '—' ? '' : from + ' جنيه';
+  // Without a campaign photo (its own text and price), the page writes the name and price over the first photo.
+  const caption = marketing('hero').length ? null : { title: name, price: priceText };
   if (motion && design.motion.mode !== 'none') {
     media.dataset.motion = design.motion.mode;
     stack = motion.mountStack(main, [], { mode: design.motion.mode, dirs: design.motion.dirs, accent: look.accent,
-      ink: look.accent ? inkFor(look.accent) : '#fff', marquee: (design.title || product.title || item.title) + ' · الدفع عند الاستلام' });
+      ink: look.accent ? inkFor(look.accent) : '#fff', caption,
+      marquee: name + (priceText ? ' · ' + priceText : '') + ' · الدفع عند الاستلام' });
+  } else if (caption) {
+    const cap = make('div', 'cp-cap');
+    cap.append(make('b', '', caption.title));
+    if (caption.price) cap.append(make('span', '', caption.price));
+    media.append(cap);
   }
   setShots([...marketing('hero'), ...productShots, ...marketing('features'), ...marketing('closing')]);
 
@@ -239,7 +350,7 @@ function productSection(item, product, design, look, index, motion) {
       } else lines.push(line);
       localStorage.setItem(BAG_KEY, JSON.stringify(lines));
       rememberPageCredit(pageId, pageId + ':a', code);
-      refreshBag();
+      bagChanged();
       void loadMotion().then(m => m.flyToBag(add, main.currentSrc || main.src, document.getElementById('cpBagLink'),
         document.getElementById('cpBagCount'))).catch(() => {});
       const unit = v.unitPrice?.currency === 'EGP' && Number.isSafeInteger(v.unitPrice.amountMinor) ? v.unitPrice.amountMinor : null;
@@ -262,6 +373,12 @@ function productSection(item, product, design, look, index, motion) {
 
 async function render(collection, items, rawTheme) {
   const theme = cleanPageTheme(rawTheme);
+  if (theme.accent) {
+    document.documentElement.dataset.accent = '1';
+    document.documentElement.style.setProperty('--accent', theme.accent);
+    document.documentElement.style.setProperty('--accent-ink', inkFor(theme.accent));
+  } else delete document.documentElement.dataset.accent;
+  buyNow.textContent = theme.cta || 'اطلب الآن';
   document.title = collection.title + ' · SELECT SHOP';
   document.documentElement.dataset.titleSize = theme.enabled ? theme.titleSize : 'md';
   document.documentElement.dataset.spacing = theme.enabled ? theme.spacing : 'normal';
@@ -284,8 +401,8 @@ async function render(collection, items, rawTheme) {
   const moving = designs.find(d => d.motion.mode !== 'none');
   const motion = moving ? await loadMotion().catch(() => null) : null;
   if (motion && moving) {
-    const accent = theme.enabled ? '' : moving.accent;
-    motion.mountHint(moving.motion.hint || DEFAULT_HINT, accent, accent ? inkFor(accent) : '#fff');
+    const accent = theme.accent || (theme.enabled ? '' : moving.accent);
+    motion.mountHint(theme.hint || moving.motion.hint || DEFAULT_HINT, accent, accent ? inkFor(accent) : '#fff');
   }
   loaded.forEach(([product], i) => {
     const item = items[i];
@@ -297,13 +414,33 @@ async function render(collection, items, rawTheme) {
       return;
     }
     const design = designs[i];
-    if (jump.children[i]) jump.children[i].textContent = design.title || product.title || item.title;
+    const title = design.title || product.title || item.title;
+    if (jump.children[i]) jump.children[i].textContent = title;
+    catalog.set(item.publicCode, { title, product });
     list.append(productSection(item, product, design, sectionLook(design, theme), i, motion));
   });
   list.append(make('p', 'collection-note', 'كل الموديلات اللي تتضاف للشنطة بتتجمع في طلب واحد. الدفع عند الاستلام، والسعر النهائي والشحن بيتحسبوا قبل التأكيد.'));
+  if (catalog.size > 1) {
+    root.append(otherModels([...catalog].map(([code, { title, product }]) => {
+      const shots = (product.media || []).filter(m => MEDIA.test(m?.url || ''));
+      const shot = shots.find(m => m.isPrimary) || shots[0];
+      const from = priceLabel(product, null);
+      return { code, title, image: shot?.url || items.find(x => x.publicCode === code)?.image || '', price: from === '—' ? '' : from + ' جنيه' };
+    })));
+  }
   document.body.append(bagBar);
   refreshBag();
   if (preview) return;
+  const box = orderBox();
+  root.append(box);
+  paintLines();
+  void import('../js/commerce.js?v=20261120-campaign').then(m => m.showCheckout(true)).catch(() => {
+    const out = document.getElementById('status');
+    if (out) out.textContent = 'مش قادرين نجهز الطلب دلوقتي. ممكن تحديث الصفحة.';
+  });
+  addEventListener('scroll', placeBar, { passive: true });
+  if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => { orderOnScreen = e.isIntersecting; placeBar(); }).observe(box);
+  placeBar();
   // One view_item and one anonymous view per product section actually seen (no customer data).
   const seen = new Set();
   const io = 'IntersectionObserver' in window ? new IntersectionObserver(entries => entries.forEach(entry => {
@@ -349,7 +486,7 @@ async function boot() {
       return;
     }
     if (data.items.length === 1) { location.replace(productUrl(data.items[0].publicCode)); return; }
-    addEventListener('storage', e => { if (e.key === BAG_KEY) refreshBag(); });
+    addEventListener('storage', e => { if (e.key === BAG_KEY) bagChanged(); });
     await render(data.collection, data.items, data.theme);
     if (document.readyState === 'complete') void loadAnalytics(); else addEventListener('load', () => void loadAnalytics(), { once: true });
   } catch (e) {
