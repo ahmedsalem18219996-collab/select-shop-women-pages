@@ -24,7 +24,7 @@ export const CHOICES = {
 };
 export const IMAGE_PATH = /^women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(?:webp|jpg|jpeg|png)$/;
 export const STORAGE = "https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/";
-const DEFAULT_CTA = "اطلبي الآن";
+const DEFAULT_CTA = "اطلب الآن";
 
 const pick = (/** @type {unknown} */ v, /** @type {string[]} */ allowed) => (typeof v === "string" && allowed.includes(v) ? v : allowed[0]);
 const text = (/** @type {unknown} */ v, /** @type {number} */ max, newlines = false) => {
@@ -68,6 +68,41 @@ export function normalizeDesign(/** @type {any} */ raw, { urls = false } = {}) {
       shape: pick(cta.shape, CHOICES.shape), size: pick(cta.size, CHOICES.size), animation: pick(cta.animation, CHOICES.animation) },
     orderCard: { style: pick(card.style, CHOICES.cardStyle), fields: pick(card.fields, CHOICES.fields), title: text(card.title, 60) },
   };
+}
+
+/** Optional unified look of a multi-product page (same whitelist as the server's women_campaign_theme_clean). */
+export const PAGE_THEME = {
+  background: CHOICES.background, font: CHOICES.font, divider: CHOICES.divider,
+  ctaColor: CHOICES.color, ctaShape: CHOICES.shape, ctaAnimation: CHOICES.animation,
+  titleSize: ["md", "sm", "lg"], spacing: ["normal", "compact", "airy"],
+};
+export function cleanPageTheme(/** @type {any} */ raw) {
+  const t = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  /** @type {Record<string, any>} */ const out = { enabled: t.enabled === true };
+  for (const [k, allowed] of Object.entries(PAGE_THEME)) out[k] = pick(t[k], allowed);
+  return out;
+}
+
+/** Structured Design Import: JSON only, never HTML or scripts. Every value goes through the same whitelist as the
+ *  editor and the server, so anything unknown (markup, prices, URLs) is dropped, not executed.
+ *  { "format": "ssw.landing.v1", "design": {...} }  → one product's landing design
+ *  { "format": "ssw.page.v1", "page": { "title", "description", "products": ["SS-1012", ...], "theme": {...} } } */
+export function parseDesignImport(/** @type {string} */ input) {
+  if (typeof input !== "string" || !input.trim()) return { ok: false, error: "empty" };
+  if (input.length > 20000) return { ok: false, error: "too_large" };
+  let raw;
+  try { raw = JSON.parse(input); } catch { return { ok: false, error: "not_json" }; }
+  if (raw?.format === "ssw.landing.v1" && raw.design && typeof raw.design === "object" && !Array.isArray(raw.design)) {
+    const design = normalizeDesign(raw.design);
+    const known = new Set(Object.keys(design));
+    return { ok: true, kind: "landing", design, dropped: Object.keys(raw.design).filter(k => !known.has(k)) };
+  }
+  if (raw?.format === "ssw.page.v1" && raw.page && typeof raw.page === "object" && !Array.isArray(raw.page)) {
+    const pg = raw.page;
+    const codes = [...new Set((Array.isArray(pg.products) ? pg.products : []).filter((/** @type {unknown} */ c) => typeof c === "string" && /^SS-\d{4,19}$/.test(c)))].slice(0, 100);
+    return { ok: true, kind: "page", page: { title: text(pg.title, 120), description: text(pg.description, 500, true), codes, theme: cleanPageTheme(pg.theme) } };
+  }
+  return { ok: false, error: "unknown_format" };
 }
 
 /** True when the design would change nothing on the page (no images, no texts, defaults). */

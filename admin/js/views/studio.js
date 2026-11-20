@@ -7,7 +7,7 @@ import { withBusy, island, done, fail, ago, confirmDialog } from '../ui.js';
 import { call, mediaUrl, uploadLandingImage } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
 import { buildGeminiPrompt, STUDIO_STYLES } from '../studio-prompts.js';
-import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE } from '../../../lp/studio-design.js?v=20261119-studio-click-edit';
+import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-multi-product';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
@@ -211,7 +211,7 @@ export default {
     // ---------- 5. CTA
     const ctaCard = make('section', 'card stack');
     ctaCard.append(make('h3', '', '5. زر الطلب'));
-    const iCta = make('input', 'input'); iCta.name = 'ctaText'; iCta.maxLength = 40; iCta.value = design.cta.text; iCta.placeholder = 'اطلبي الآن';
+    const iCta = make('input', 'input'); iCta.name = 'ctaText'; iCta.maxLength = 40; iCta.value = design.cta.text; iCta.placeholder = 'اطلب الآن';
     const sColor = select('ctaColor', CHOICES.color, LABELS.color, design.cta.color);
     const sPos = select('ctaPosition', CHOICES.position, LABELS.position, design.cta.position);
     const sShape = select('ctaShape', CHOICES.shape, LABELS.shape, design.cta.shape);
@@ -232,6 +232,27 @@ export default {
     g6.append(field('الشكل', sCard), field('شكل الخانات', sFields), field('عنوان الكارت', iCardTitle));
     cardCard.append(g6, make('p', 'muted', 'الخانات ثابتة: الاسم، الموبايل، المحافظة، العنوان، اللون والمقاس والكمية، والإجمالي والشحن والدفع عند الاستلام.'));
     controls.append(cardCard);
+
+    // ---------- Structured Design Import: JSON only (e.g. a Claude design), never HTML or scripts
+    const importCard = make('details', 'card stack studio-import');
+    importCard.append(make('summary', '', 'استيراد تصميم منظم (JSON)'));
+    importCard.append(make('p', 'muted', 'الصيغة: {"format":"ssw.landing.v1","design":{"title":"…","description":"…","features":["…"],"background":"navy","font":"readex","cta":{"text":"…","color":"purple","shape":"pill"}}}. الصور بتترفع من هنا بس، وأي HTML أو كود أو سعر بيتشال.'));
+    const importText = make('textarea', 'textarea'); importText.rows = 5; importText.dataset.designImport = '';
+    const importBtn = button('تطبيق على المسودة', 'btn-soft btn-sm', () => {
+      const r = parseDesignImport(importText.value);
+      if (!r.ok || r.kind !== 'landing') { island('error', r.ok ? 'ده تصميم صفحة كاملة؛ استورده من مجموعات الإعلانات.' : 'الملف مش بالصيغة المطلوبة (ssw.landing.v1).'); return; }
+      // Uploaded images stay unless the import carries valid uploaded paths of its own.
+      design = normalizeDesign({ ...r.design, images: Object.fromEntries(Object.entries(r.design.images).map(([k, v]) => [k, v || design.images[k]])) });
+      sTemplate.value = design.template; sBg.value = design.background; sFont.value = design.font; sDivider.value = design.divider;
+      iTitle.value = design.title; iDesc.value = design.description;
+      featureInputs.forEach((f, i) => { f.value = design.features[i] || ''; });
+      iCta.value = design.cta.text; sColor.value = design.cta.color; sPos.value = design.cta.position; sShape.value = design.cta.shape; sSize.value = design.cta.size; sAnim.value = design.cta.animation;
+      sCard.value = design.orderCard.style; sFields.value = design.orderCard.fields; iCardTitle.value = design.orderCard.title;
+      changed();
+      done('اتطبق التصميم على المسودة' + (r.dropped.length ? ' — اتشال: ' + r.dropped.join('، ') : '') + '. راجعه في المعاينة واحفظ.');
+    }, { 'data-design-import-apply': '' });
+    importCard.append(importText, importBtn);
+    controls.append(importCard);
 
     // ---------- 7. manual Gemini prompt helper (copy only; no API of any kind)
     const helper = make('details', 'card stack');

@@ -420,8 +420,10 @@ test('cost ops not live yet: the model still saves and the owner sees a clear no
   await page.locator('#c-title').fill('طقم بيتي');
   await page.locator('#c-price').fill('400');
   await page.locator('#c-cost').fill('250');
+  await expect(page.locator('[data-create]')).toBeEnabled(); // categories loaded
   await page.locator('[data-create]').click();
-  await expect(page).toHaveURL(/SS-9101$/);
+  // Create → price → cost (refused) → structure is a chain of calls; a slow CI runner needs more than 5 s.
+  await expect(page).toHaveURL(/SS-9101$/, { timeout: 15000 });
   await expect(page.locator('#tabbody')).toContainText('محتاجين تفعيل من السيرفر');
 });
 

@@ -43,7 +43,8 @@ function lpAttribution(lines) {
   try {
     const a = JSON.parse(sessionStorage.getItem(LP_ATTRIBUTION_KEY) || "null");
     if (a && /^[a-z0-9-]{3,40}$/.test(a.id) && (a.variant === a.id + ":a" || a.variant === a.id + ":b")
-      && lines.some(l => l.publicCode === a.code)) return { lp_id: a.id, lp_variant: a.variant };
+      && lines.some(l => l.publicCode === a.code || (Array.isArray(a.codes) && a.codes.includes(l.publicCode))))
+      return { lp_id: a.id, lp_variant: a.variant, ...(/^SS-\d{4,19}$/.test(a.adProduct || "") ? { ad_product: a.adProduct } : {}) };
   } catch { /* attribution is optional */ }
   return {};
 }

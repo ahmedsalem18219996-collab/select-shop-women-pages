@@ -24,6 +24,8 @@ const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; ch
 export const log = { orders: [], cartAdds: [], views: 0, attributions: [] };
 // Published Landing Studio designs per product code, set by tests via POST /__mock/landing { code, design } (design null = none).
 const landings = new Map();
+// Published campaign pages, set by tests via POST /__mock/collection { slug, title, codes, theme } (codes null = remove).
+const collections = new Map();
 const keys = new Map(); // idempotencyKey -> { code, body, total }
 // Units left per product code (all variants), set by tests via POST /__mock/stock { code, units } ; absent = unlimited.
 const stock = new Map();
@@ -53,6 +55,17 @@ async function mockApi(req, url, body) {
   if (p.startsWith("/women-store-bridge/collections/")) {
     const slug = p.split("/").pop();
     if (slug === "sold-out") return [409, { error: "temporarily_unavailable" }];
+    const set = collections.get(slug);
+    if (set) {
+      // Same shape as the bridge: safe catalog fields of each published product, in page order, plus the optional theme.
+      const items = [];
+      for (const code of set.codes) {
+        const pr = (await product(code))?.product;
+        if (!pr?.purchasable) return [409, { error: "temporarily_unavailable" }];
+        items.push({ publicCode: pr.publicCode, title: pr.title, priceMinor: pr.price?.minAmountMinor ?? null, image: pr.media?.[0]?.url || null });
+      }
+      return [200, { collection: { slug, title: set.title || "صفحة تجريبية", description: set.description || "" }, theme: set.theme || null, items }];
+    }
     if (slug === "single-001") return [200, {
       collection: { slug: "single-001", title: "طقم 23", description: "" },
       items: [{ publicCode: "SS-1023", title: "طقم 23 الرمادي", priceMinor: 159900, image: null }],
@@ -161,6 +174,12 @@ export function start(port = PORT) {
         let raw = ""; for await (const chunk of req) raw += chunk;
         const { code, units } = JSON.parse(raw || "{}");
         if (units === null) stock.delete(code); else stock.set(code, units);
+        res.writeHead(204).end(); return;
+      }
+      if (url.pathname === "/__mock/collection" && req.method === "POST") {
+        let raw = ""; for await (const chunk of req) raw += chunk;
+        const { slug, codes, ...rest } = JSON.parse(raw || "{}");
+        if (Array.isArray(codes)) collections.set(slug, { codes, ...rest }); else collections.delete(slug);
         res.writeHead(204).end(); return;
       }
       if (url.pathname === "/__mock/landing" && req.method === "POST") {

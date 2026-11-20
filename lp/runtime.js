@@ -182,7 +182,7 @@ let flushed = false;
 let analyticsLoaded = null;
 const safe = (/** @type {() => void} */ fn) => { try { fn(); } catch { /* analytics never breaks the page */ } };
 function emit(/** @type {() => void} */ fn) { if (flushed) safe(fn); else queue.push(fn); }
-function loadAnalytics() {
+export function loadAnalytics() {
   if (!analyticsLoaded) {
     analyticsLoaded = new Promise(resolve => {
       const s = document.createElement("script");
@@ -200,7 +200,7 @@ function loadAnalyticsWhenIdle() {
   if (document.readyState === "complete") start(); else addEventListener("load", start, { once: true });
 }
 /** GA4 event + the matching Meta standard event, public product codes only (never buyer data or the order code). */
-function funnel(/** @type {string} */ name, /** @type {Record<string, any>} */ fields, eventId = "") {
+export function funnel(/** @type {string} */ name, /** @type {Record<string, any>} */ fields, eventId = "") {
   emit(() => {
     const w = /** @type {any} */ (window);
     if (typeof w.gtag === "function") w.gtag("event", name, fields);
@@ -209,7 +209,7 @@ function funnel(/** @type {string} */ name, /** @type {Record<string, any>} */ f
   });
 }
 
-async function recordView(/** @type {string} */ code) {
+export async function recordView(/** @type {string} */ code) {
   // Mirrors js/commerce.js: anonymous, deduplicated per browser key on the server; never blocks the page.
   try {
     if (/** @type {any} */ (navigator).globalPrivacyControl === true || navigator.doNotTrack === "1") return;
@@ -269,8 +269,8 @@ function orderKey() {
   return k;
 }
 orderKey.mem = "";
-/** Keep this visit's ad parameters (utm_*, ad set) for the order's attribution; the newest ad click wins. */
-export function readAdParams(/** @type {string} */ search, /** @type {string} */ landing) {
+/** This visit's ad parameters (utm_*, ad set) for the order's attribution. */
+export function readAdParams(/** @type {string} */ search, /** @type {string} */ landing, adProduct = "") {
   const q = new URLSearchParams(search);
   /** @type {Record<string,string>} */ const out = {};
   for (const [key, name] of Object.entries(AD_PARAMS)) {
@@ -279,12 +279,39 @@ export function readAdParams(/** @type {string} */ search, /** @type {string} */
     if (v && !out[name]) out[name] = v;
   }
   if (!Object.keys(out).length) return null;
+  // An ad URL without utm_content advertised the product it lands on.
+  if (!out.content && validCode(adProduct)) out.content = adProduct;
   const collection = String(q.get("collection") || "");
   out.landing = (landing + (/^[a-z0-9-]{3,80}$/.test(collection) ? " · " + collection : "")).slice(0, 120);
   return out;
 }
-function rememberAdParams(/** @type {string} */ landing) {
-  try { const a = readAdParams(location.search, landing); if (a) sessionStorage.setItem(AD_KEY, JSON.stringify(a)); } catch { /* optional */ }
+/** First touch per ad click: moving between products of the same ad (same source / medium / campaign / ad set / ad)
+ *  keeps the original landing page and ad content; only a different ad click replaces them. */
+export function mergeAdParams(/** @type {Record<string,string>|null} */ prev, /** @type {Record<string,string>|null} */ next) {
+  if (!next) return prev;
+  const same = !!prev && ["source", "medium", "campaign", "adset", "ad"].every(k => (prev[k] || "") === (next[k] || ""));
+  return same ? prev : next;
+}
+export function rememberAdParams(/** @type {string} */ landing, adProduct = "") {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
+    const prev = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+    const merged = mergeAdParams(prev, readAdParams(location.search, landing, adProduct));
+    if (merged && merged !== prev) sessionStorage.setItem(AD_KEY, JSON.stringify(merged));
+  } catch { /* optional */ }
+}
+/** Page credit for the cart checkout (js/commerce.js): which landing page the bag lines came from. Never buyer data. */
+export const PAGE_ATTRIBUTION_KEY = "women.lp.attribution.v1";
+export function rememberPageCredit(/** @type {string} */ id, /** @type {string} */ variant, /** @type {string} */ code) {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(PAGE_ATTRIBUTION_KEY) || "null");
+    const codes = raw?.id === id && Array.isArray(raw.codes) ? raw.codes.filter(validCode) : [];
+    if (!codes.includes(code)) codes.push(code);
+    // The ad's product (utm_content) stays separate from the products actually added to the bag.
+    const ad = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
+    const adProduct = validCode(String(ad?.content || "").toUpperCase()) ? String(ad.content).toUpperCase() : undefined;
+    sessionStorage.setItem(PAGE_ATTRIBUTION_KEY, JSON.stringify({ id, variant, code: codes[0], codes: codes.slice(-50), adProduct }));
+  } catch { /* optional */ }
 }
 /** Fire-and-forget after a CONFIRMED order: never delays or blocks checkout, never carries buyer data. */
 function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) {
@@ -297,7 +324,8 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 }
 
 /** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
-const STUDIO_MODULE = "./studio-design.js?v=20261119-studio-click-edit";
+const STUDIO_MODULE = "./studio-design.js?v=20261120-multi-product";
+const RELATED_MODULE = "./related.js?v=20261120-multi-product";
 const loadStudio = async () => /** @type {typeof import("./studio-design.js")} */ (await import(STUDIO_MODULE));
 async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ preview) {
   try {
@@ -466,90 +494,6 @@ function fillFromProduct(/** @type {any} */ p) {
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
 }
 
-async function renderRelatedProducts(currentCode) {
-  const params = new URLSearchParams(location.search);
-  const slug = (params.get("collection") || "").trim();
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || params.get("studio_preview") === "1") return;
-  try {
-    const response = await fetch(BRIDGE + "/collections/" + encodeURIComponent(slug), {
-      headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000),
-    });
-    if (!response.ok) return;
-    const payload = await response.json();
-    const items = Array.isArray(payload?.items)
-      ? payload.items.filter(item => validCode(item?.publicCode) && item.publicCode !== currentCode).slice(0, 4)
-      : [];
-    if (!items.length) return;
-
-    const section = document.createElement("section");
-    section.id = "lpRelatedProducts";
-    section.className = "lp-related";
-    section.setAttribute("aria-labelledby", "lpRelatedTitle");
-    const heading = document.createElement("h2");
-    heading.id = "lpRelatedTitle";
-    heading.textContent = "موديلات تانية ممكن تعجبك";
-    const intro = document.createElement("p");
-    intro.textContent = "اختاري أكتر من موديل، أضيفي كل قطعة للشنطة، وكمّليهم في طلب واحد والدفع عند الاستلام.";
-    const grid = document.createElement("div");
-    grid.className = "lp-related-grid";
-
-    for (const item of items) {
-      const link = document.createElement("a");
-      link.className = "lp-related-card";
-      link.dataset.relatedCode = item.publicCode;
-      const target = new URL("/lp/", location.origin);
-      target.searchParams.set("p", item.publicCode);
-      target.searchParams.set("collection", slug);
-      ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "fbclid", "gclid", "adset", "utm_adset", "ad", "utm_ad"]
-        .forEach(key => { const value = params.get(key); if (value) target.searchParams.set(key, value); });
-      if (!target.searchParams.has("utm_content")) target.searchParams.set("utm_content", item.publicCode);
-      link.href = target.pathname + target.search;
-
-      const media = document.createElement("div");
-      media.className = "lp-related-image";
-      let imageUrl = null;
-      try {
-        const candidate = new URL(item.image);
-        if (candidate.origin === "https://byluoipdunralsurwebt.supabase.co"
-          && candidate.pathname.startsWith("/storage/v1/object/public/product-media/")) imageUrl = candidate.href;
-      } catch { /* an absent or untrusted image gets a placeholder */ }
-      if (imageUrl) {
-        const img = document.createElement("img");
-        img.src = imageUrl;
-        img.alt = String(item.title || "موديل آخر");
-        img.loading = "lazy";
-        img.decoding = "async";
-        media.append(img);
-      } else {
-        const placeholder = document.createElement("span");
-        placeholder.textContent = "SELECT SHOP";
-        media.append(placeholder);
-      }
-
-      const body = document.createElement("div");
-      body.className = "lp-related-body";
-      const title = document.createElement("strong");
-      title.textContent = String(item.title || "موديل من SELECT SHOP");
-      const price = document.createElement("span");
-      price.className = "lp-related-price";
-      price.textContent = okMinor(item.priceMinor) ? egp(item.priceMinor) + " ج" : "السعر داخل صفحة المنتج";
-      const action = document.createElement("span");
-      action.className = "lp-related-action";
-      action.textContent = "اختاري اللون والمقاس";
-      body.append(title, price, action);
-      link.append(media, body);
-      grid.append(link);
-    }
-
-    const bagLink = document.createElement("a");
-    bagLink.className = "lp-related-bag";
-    bagLink.href = "/cart/";
-    bagLink.textContent = "راجعي الشنطة وكمّلي طلبك";
-    section.append(heading, intro, grid, bagLink);
-    const main = document.querySelector("main.page");
-    if (main) main.after(section);
-  } catch { /* Related products are optional; never block the current product or its order. */ }
-}
 
 async function init() {
   const dataEl = document.getElementById("lp-data");
@@ -565,7 +509,10 @@ async function init() {
   if (!validCode(page.code) || !/^[a-z0-9-]{3,40}$/.test(page.id || "")) return;
   const query = new URLSearchParams(location.search);
   const relatedCurrentCode = validCode(query.get("color")) ? query.get("color") : page.code;
-  void renderRelatedProducts(relatedCurrentCode);
+  // Related models only matter on a visit from a multi-product page: load that code only then (script budget).
+  if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(query.get("collection") || "") && query.get("studio_preview") !== "1")
+    void import(RELATED_MODULE)
+      .then((/** @type {typeof import("./related.js")} */ m) => m.renderRelatedProducts(relatedCurrentCode, { BRIDGE, timeout, validCode, okMinor, egp })).catch(() => {});
   // An old /lp/ss-1009/ (or /lp/?p=SS-1009) is a single-colour page.
   // Redirect it to the shared model without losing the chosen SKU or ad attribution.
   if (!Array.isArray(page.colors) || page.colors.length < 2) {
@@ -584,10 +531,14 @@ async function init() {
   const form = /** @type {HTMLFormElement} */ ($("#lpForm"));
   const cta = /** @type {HTMLButtonElement} */ ($("#lpOrder"));
   const cartBtn = /** @type {HTMLButtonElement} */ ($("#lpAddCart"));
+  // A direct-only ad page still offers the shared bag when the visitor came from a multi-product page (?collection=).
+  const directOnly = page.directOnly === true
+    && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(new URLSearchParams(location.search).get("collection") || "");
+  if (!directOnly) cartBtn.hidden = false;
   const region = /** @type {HTMLSelectElement} */ (form.elements.namedItem("region"));
   const status = $("#lpStatus");
   const say = (/** @type {string} */ t, error = false) => { status.textContent = t; status.dataset.error = String(error); };
-  const ctaText = "اطلبي مباشرة";
+  const ctaText = "تأكيد الطلب";
 
   // Admin Studio preview (an iframe of this same origin): show the draft, never order, never count a view.
   const preview = new URLSearchParams(location.search).get("studio_preview") === "1" && window.parent !== window;
@@ -597,7 +548,8 @@ async function init() {
     document.addEventListener("submit", stop, true);
     document.addEventListener("click", e => { if (/** @type {Element} */ (e.target)?.closest?.("#lpAddCart")) stop(e); }, true);
   } else {
-    rememberAdParams(page.id);
+    const shown = new URLSearchParams(location.search).get("color");
+    rememberAdParams(page.id, validCode(shown) ? String(shown) : page.code);
     emit(() => { const w = /** @type {any} */ (window); if (typeof w.gtag === "function") w.gtag("set", "user_properties", { lp_variant: variantId }); });
     funnel("lp_view", { lp_id: page.id, lp_variant: variantId, item_id: page.code });
     loadAnalyticsWhenIdle();
@@ -809,6 +761,7 @@ async function init() {
         lines[index].quantity += line.quantity;
       } else lines.push(line);
       localStorage.setItem(BAG_KEY, JSON.stringify(lines));
+      rememberPageCredit(page.id, variantId, line.publicCode);
       refreshCartCount();
       funnel('add_to_cart', { currency: 'EGP',
         ...(okMinor(variant.unitPrice?.amountMinor) ? { value: variant.unitPrice.amountMinor * line.quantity / 100 } : {}),
@@ -816,7 +769,7 @@ async function init() {
       say('اتضافت للشنطة ✓ يمكن استكمال التسوق أو فتح الشنطة من أعلى.');
     } catch (e) {
       say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة وصلت للحد الأقصى. يمكن فتح الشنطة لتعديلها.' :
-        'مش قادرين نضيف للشنطة دلوقتي. ممكن تطلبي مباشرة من نفس الصفحة.', true);
+        'مش قادرين نضيف للشنطة دلوقتي. ممكن الطلب مباشرة من نفس الصفحة.', true);
     } finally {
       cartBusy = false; cartBtn.textContent = 'إضافة للشنطة'; cartBtn.disabled = !lineNow() || busy;
     }
@@ -1012,7 +965,7 @@ async function init() {
       mixToggle.setAttribute("aria-expanded", "false");
     }
     if (singleQtyBox) singleQtyBox.style.display = mixMode ? "none" : "";
-    cartBtn.hidden = page.directOnly === true || mixMode; // the direct COD form handles all selected colours
+    cartBtn.hidden = directOnly || mixMode; // the direct COD form handles all selected colours
     say("");
     void requote();
   });
@@ -1185,7 +1138,7 @@ async function init() {
       // Order taking switched off by the store, or the server could not verify the request: nothing was saved.
       else if (error?.message === "orders_not_enabled" || error?.message === "source_unavailable") say("استقبال الطلبات متوقف مؤقتًا، ومفيش طلب اتسجل. إعادة المحاولة بعد شوية.", true);
       // Unknown outcome (timeout, network, 5xx): the SAME key is reused on retry, so the server returns the same order.
-      else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. يرجى الضغط على «اطلبي مباشرة» مرة أخرى؛ الطلب مش هيتكرر.", true);
+      else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. يرجى الضغط على «تأكيد الطلب» مرة أخرى؛ الطلب مش هيتكرر.", true);
     } finally { busy = false; }
     cta.disabled = !product || (mixMode && !currentLines().length);
     cartBtn.disabled = mixMode || !lineNow() || cartBusy;
@@ -1217,7 +1170,8 @@ const RELATED_PRODUCTS_CSS = `
 `;
 
 
-if (typeof document !== "undefined") {
+// Side effects only on a landing page: other pages (e.g. /collections/) import the helpers above without them.
+if (typeof document !== "undefined" && document.getElementById("lp-data")) {
   if (!document.getElementById("lp-related-style")) {
     const style = document.createElement("style");
     style.id = "lp-related-style";

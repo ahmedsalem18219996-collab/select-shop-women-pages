@@ -70,3 +70,8 @@
 .studio-page details > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
 .order-attribution dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
 .order-attribution dd { margin: 0; overflow-wrap: anywhere; }
+.campaign-theme .grid2 select:disabled { opacity: .55; }
+.campaign-live-preview { min-width: 0; }
+.campaign-frame { width: 100%; overflow: hidden; border-radius: 14px; border: 1px solid var(--line, #e5e0ea); }
+.campaign-frame iframe { display: block; border: 0; transform-origin: top right; background: #050B1C; }
+.campaign-import textarea { font-family: ui-monospace, monospace; direction: ltr; }

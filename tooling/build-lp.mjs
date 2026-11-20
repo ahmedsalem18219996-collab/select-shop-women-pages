@@ -398,7 +398,7 @@ function layout(o) {
     ? ORDER_FORM.replace('</small></h2>', '</small></h2>\n' + checkoutPicker)
     : ORDER_FORM;
   // Product Landing Studio is part of the shared runtime, so every LP must fetch this release.
-  const choiceVersion = "20261119-studio-click-edit";
+  const choiceVersion = "20261120-multi-product";
   return `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>

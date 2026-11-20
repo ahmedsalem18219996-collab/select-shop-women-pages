@@ -77,7 +77,7 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   );
   await expect(page.locator("#lpAddCart")).toBeEnabled();
   await expect(page.locator("#lpAddCart")).toHaveText("إضافة للشنطة");
-  await expect(page.locator("#lpOrder")).toHaveText("اطلبي مباشرة");
+  await expect(page.locator("#lpOrder")).toHaveText("تأكيد الطلب");
   await expect(page.locator("#lpRelatedProducts .lp-related-bag")).toHaveAttribute("href", "/cart/");
   await page.setViewportSize({ width: 360, height: 800 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -85,7 +85,8 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   await page.locator("#lpAddCart").click();
   await expect(page.locator("#lpStatus")).toContainText("اتضافت للشنطة");
   await page.locator("#lpRelatedProducts a[data-related-code='SS-1011']").click();
-  await expect(page).toHaveURL(/p=SS-1011/);
+  // /lp/?p=SS-1011 forwards to its generated page /lp/ss-1011/; the ad product stays SS-1008 either way.
+  await expect(page).toHaveURL(/(p=SS-1011|\/lp\/ss-1011\/).*utm_content=SS-1008/);
   await expect(page.locator("#lpAddCart")).toBeEnabled();
   await page.locator("#lpAddCart").click();
   await expect(page.locator("#lpStatus")).toContainText("اتضافت للشنطة");

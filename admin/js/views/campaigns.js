@@ -1,6 +1,7 @@
 import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { moveProductCode, slugFromTitle, validateCampaignSelection } from '../campaigns-model.js';
+import { PAGE_THEME, cleanPageTheme, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-multi-product';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
@@ -21,6 +22,17 @@ const campaignPageUrl = (item) => {
   url.searchParams.set('utm_content', single ? codes[0] : 'collection');
   return url.href;
 };
+const THEME_LABELS = {
+  background: ['الخلفية', { midnight: 'كحلي غامق', navy: 'كحلي', elevated: 'كحلي فاتح', light: 'فاتح' }],
+  font: ['الخط', { readex: 'Readex', rakkas: 'Rakkas للعناوين', system: 'خط الجهاز' }],
+  divider: ['الفواصل', { line: 'خط', none: 'بدون', dots: 'نقط', wave: 'مزدوج' }],
+  ctaColor: ['لون زر الإضافة', { purple: 'بنفسجي', cyan: 'سماوي', white: 'أبيض', gold: 'ذهبي' }],
+  ctaShape: ['شكل الزر', { pill: 'دائري', rounded: 'حواف ناعمة', square: 'مربع' }],
+  ctaAnimation: ['حركة الزر', { none: 'بدون', pulse: 'نبض', shine: 'لمعة', bounce: 'قفزة' }],
+  titleSize: ['حجم العناوين', { md: 'متوسط', sm: 'صغير', lg: 'كبير' }],
+  spacing: ['المسافات بين الأقسام', { normal: 'عادية', compact: 'قليلة', airy: 'واسعة' }],
+};
+const FIELD_LABELS = { title: 'العنوان', description: 'الوصف', features: 'المميزات', image: 'الصور', cta: 'زر الإضافة' };
 const statusLabel = (status) => ({ draft: 'مسودة', published: 'منشورة', archived: 'مؤرشفة' }[status] || status);
 const blockerLabel = (reason) => ({
   product_not_public: 'المنتج مش منشور',
@@ -45,7 +57,12 @@ export default {
     let collections = [];
     let products = [];
     let editing = null;
+    let editorOpen = false; // a new page has no item yet, so `editing` alone can't say the editor is open
     let selected = new Set();
+    let theme = cleanPageTheme(null);
+    let themeVersion = 0;
+    let themeReady = true; // false when the server has no page-theme operations yet (migration not applied)
+    let onPageMessage = null;
 
     const load = async () => {
       el.replaceChildren(make('div', 'page-loading', 'جاري تحميل مجموعات الإعلانات والمنتجات...'));
@@ -87,6 +104,11 @@ export default {
         controls.append(actionButton('↑', 'btn-ghost btn-sm', () => onMove(p.public_code, index - 1)));
         controls.append(actionButton('↓', 'btn-ghost btn-sm', () => onMove(p.public_code, index + 1)));
         controls.append(actionButton('إزالة', 'btn-ghost btn-sm', () => onRemove(p.public_code)));
+        const studio = make('a', 'btn btn-ghost btn-sm', 'محتوى وتصميم المنتج');
+        studio.href = '#/studio/' + encodeURIComponent(p.public_code);
+        studio.target = '_blank'; studio.rel = 'noopener';
+        studio.dataset.studioLink = p.public_code;
+        controls.append(studio);
         card.append(controls);
         card.addEventListener('dragstart', event => {
           event.dataTransfer?.setData('text/plain', p.public_code);
@@ -102,9 +124,15 @@ export default {
       });
     };
 
-    const openEditor = (item = null) => {
-      editing = item;
+    const openEditor = async (item = null) => {
+      editing = item; editorOpen = true;
       selected = new Set(item?.product_codes || []);
+      theme = cleanPageTheme(null); themeVersion = 0; themeReady = true;
+      if (item) {
+        const t = await call('campaigns.theme.get', { id: item.id });
+        if (t.outcome === 'ok') { if (t.data) { theme = cleanPageTheme(t.data.draft); themeVersion = t.data.version; } }
+        else themeReady = false;
+      }
       paint();
     };
 
@@ -193,6 +221,7 @@ export default {
           else selected.delete(p.public_code);
           count.textContent = selected.size + ' منتج';
           previewProducts(preview, moveSelected, removeSelected);
+          refreshPreview();
         });
         options.append(label);
       });
@@ -203,16 +232,128 @@ export default {
         selected = new Set(ordered);
         count.textContent = selected.size + ' منتج';
         previewProducts(preview, moveSelected, removeSelected);
+        refreshPreview();
       };
       const removeSelected = (code) => {
         selected.delete(code);
         options.querySelectorAll('input[data-code]').forEach(input => { input.checked = selected.has(input.dataset.code); });
         count.textContent = selected.size + ' منتج';
         previewProducts(preview, moveSelected, removeSelected);
+        refreshPreview();
       };
 
+      // ---- optional unified page theme (each product keeps its own design when it is off)
+      let themeTouched = false;
+      const themeCard = make('section', 'card stack campaign-theme');
+      const themeHead = make('label', 'switch');
+      const themeOn = make('input'); themeOn.type = 'checkbox'; themeOn.checked = theme.enabled; themeOn.dataset.themeEnabled = '';
+      themeHead.append(themeOn, make('i'), make('span', '', 'شكل موحد لكل الصفحة (اختياري)'));
+      themeCard.append(themeHead, make('p', 'muted', 'لو مقفول، كل منتج بيظهر بتصميمه من Studio. لو مفتوح، الإعدادات دي بتتطبق على كل أقسام الصفحة.'));
+      const themeGrid = make('div', 'grid2');
+      const themeSelects = {};
+      Object.entries(PAGE_THEME).forEach(([key, allowed]) => {
+        const [label, names] = THEME_LABELS[key];
+        const wrap = make('label', 'field');
+        wrap.append(make('span', '', label));
+        const sel = make('select', 'input');
+        sel.dataset.theme = key;
+        allowed.forEach(v => { const o = make('option', '', names[v] || v); o.value = v; sel.append(o); });
+        wrap.append(sel);
+        themeGrid.append(wrap);
+        themeSelects[key] = sel;
+      });
+      themeCard.append(themeGrid);
+      const readTheme = () => { theme = cleanPageTheme({ enabled: themeOn.checked, ...Object.fromEntries(Object.entries(themeSelects).map(([k, sel]) => [k, sel.value])) }); };
+      const paintTheme = () => { themeOn.checked = theme.enabled; Object.entries(themeSelects).forEach(([k, sel]) => { sel.value = theme[k]; sel.disabled = !theme.enabled || !themeReady; }); };
+      if (!themeReady) { themeOn.disabled = true; themeCard.append(make('p', 'err', 'الشكل الموحد محتاج تحديث الخادم (Migration) قبل الحفظ.')); }
+      panel.append(themeCard);
+
+      // ---- Structured Design Import (JSON only; nothing is executed)
+      const importBox = make('details', 'card stack campaign-import');
+      importBox.append(make('summary', '', 'استيراد تصميم منظم (JSON)'));
+      importBox.append(make('p', 'muted', 'الصيغة: {"format":"ssw.page.v1","page":{"title":"…","description":"…","products":["SS-1012"],"theme":{…}}}. أي HTML أو كود أو أسعار بيتشالوا تلقائيًا.'));
+      const importText = make('textarea', 'textarea'); importText.rows = 4; importText.dataset.pageImport = '';
+      const importBtn = actionButton('تطبيق الاستيراد', 'btn-soft btn-sm', () => {
+        const r = parseDesignImport(importText.value);
+        if (!r.ok || r.kind !== 'page') { island('error', r.ok ? 'ده تصميم منتج واحد؛ استورده من Studio المنتج.' : 'الملف مش بالصيغة المطلوبة (ssw.page.v1).'); return; }
+        if (r.page.title) titleInput.value = r.page.title;
+        if (r.page.description) descriptionInput.value = r.page.description;
+        const byCode = new Map(products.map(p => [p.public_code, p]));
+        const usable = r.page.codes.filter(c => byCode.get(c)?.status === 'public');
+        if (usable.length) {
+          selected = new Set(usable);
+          options.querySelectorAll('input[data-code]').forEach(input => { input.checked = selected.has(input.dataset.code); });
+          count.textContent = selected.size + ' منتج';
+          previewProducts(preview, moveSelected, removeSelected);
+        }
+        if (themeReady) { theme = r.page.theme; themeTouched = true; paintTheme(); }
+        refreshPreview();
+        const skipped = r.page.codes.length - usable.length;
+        done('اتطبق الاستيراد' + (skipped ? ' — اتشال ' + skipped + ' منتج مش منشور أو مش موجود.' : '.'));
+      });
+      importBox.append(importText, importBtn);
+      panel.append(importBox);
+
+      // ---- live preview of the unsaved page (390 / 1366), click-to-edit
+      const pv = make('section', 'card stack campaign-live-preview');
+      const pvHead = make('div', 'row wrap');
+      pvHead.append(make('b', '', 'معاينة الصفحة'), make('span', 'space'));
+      const frameWrap = make('div', 'campaign-frame');
+      const frame = make('iframe');
+      frame.title = 'معاينة صفحة الإعلان';
+      frame.dataset.pagePreview = '';
+      frame.src = '/collections/?studio_preview=1';
+      frameWrap.append(frame);
+      let size = [390, 800];
+      const fit = () => {
+        const scale = Math.min(1, (frameWrap.clientWidth || size[0]) / size[0]);
+        frame.width = String(size[0]); frame.height = String(size[1]);
+        frame.style.transform = `scale(${scale})`;
+        frameWrap.style.height = Math.ceil(size[1] * scale) + 'px';
+      };
+      [['موبايل 390', [390, 800]], ['كمبيوتر 1366', [1366, 900]]].forEach(([label, dims], i) => {
+        const b = actionButton(label, 'btn-ghost btn-sm', () => { size = dims; pvHead.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); fit(); });
+        b.setAttribute('aria-pressed', String(i === 0));
+        b.dataset.previewSize = String(dims[0]);
+        pvHead.append(b);
+      });
+      const pick = make('p', 'muted', 'اضغط على أي عنوان أو صورة أو زر داخل المعاينة علشان تروح لمكان تعديله. الإضافة للشنطة متوقفة داخل المعاينة.');
+      pick.dataset.pageSelection = '';
+      pv.append(pvHead, frameWrap, pick);
+      panel.append(pv);
+      let previewTimer = 0;
+      const sendPreview = () => {
+        try {
+          frame.contentWindow?.postMessage({ type: 'ssw-page-preview', title: titleInput.value.trim(), description: descriptionInput.value.trim(),
+            codes: [...selected], theme }, location.origin);
+        } catch { /* frame still loading */ }
+      };
+      const refreshPreview = () => { clearTimeout(previewTimer); previewTimer = setTimeout(sendPreview, 350); };
+      titleInput.addEventListener('input', refreshPreview);
+      descriptionInput.addEventListener('input', refreshPreview);
+      themeCard.addEventListener('change', () => { readTheme(); themeTouched = true; paintTheme(); refreshPreview(); });
+      paintTheme();
+      if (onPageMessage) removeEventListener('message', onPageMessage);
+      onPageMessage = (e) => {
+        if (e.origin !== location.origin || e.source !== frame.contentWindow) return;
+        if (e.data?.type === 'ssw-page-ready') { sendPreview(); return; }
+        if (e.data?.type !== 'ssw-page-select') return;
+        const { field, code } = e.data;
+        if (field === 'page-title') { titleInput.focus(); titleInput.select(); return; }
+        if (field === 'page-description') { descriptionInput.focus(); return; }
+        if (!/^SS-\d{4,19}$/.test(code || '')) return;
+        // Product content lives in its own Studio page (draft, Mobile/Desktop preview, Owner publish).
+        pick.replaceChildren(make('span', '', 'تعديل ' + (FIELD_LABELS[field] || 'المحتوى') + ' للمنتج ' + code + ': '));
+        const link = make('a', '', 'افتح Studio المنتج');
+        link.href = '#/studio/' + encodeURIComponent(code); link.target = '_blank'; link.rel = 'noopener';
+        link.dataset.studioLink = code;
+        pick.append(link);
+      };
+      addEventListener('message', onPageMessage);
+      requestAnimationFrame(fit);
+
       const footer = make('div', 'row wrap');
-      const cancel = actionButton('إلغاء', 'btn-ghost', () => { editing = null; paint(); });
+      const cancel = actionButton('إلغاء', 'btn-ghost', () => { editing = null; editorOpen = false; paint(); });
       const save = actionButton('حفظ كمسودة', 'btn-primary', async () => {
         const title = titleInput.value.trim();
         const slug = slugInput.value.trim().toLowerCase();
@@ -230,7 +371,11 @@ export default {
             title, slug, description, product_codes: codes,
           });
           if (res.outcome === 'saved') {
-            editing = null;
+            if (themeReady && themeTouched && res.id) {
+              const t = await call('campaigns.theme.save', { id: res.id, version: themeVersion, theme });
+              if (t.outcome !== 'saved') island('error', t.outcome === 'conflict' ? 'الشكل الموحد اتعدل في مكان تاني؛ اتحفظت المنتجات بس.' : 'اتحفظت المنتجات، لكن الشكل الموحد ماتحفظش.');
+            }
+            editing = null; editorOpen = false;
             done('اتحفظت المجموعة كمسودة.');
             await load();
           } else if (res.outcome === 'duplicate') showError('الرابط ده مستخدم بالفعل. اختار رابط مختلف.');
@@ -247,7 +392,15 @@ export default {
     const publishCollection = async (item, button) => {
       await withBusy(button, async () => {
         const res = await call('campaigns.publish', { id: item.id, version: item.version });
-        if (res.outcome === 'published') { done('اتنشرت صفحة المجموعة.'); await load(); }
+        if (res.outcome === 'published') {
+          // The saved page theme goes live together with the page (Owner only, same click).
+          const t = await call('campaigns.theme.get', { id: item.id });
+          if (t.outcome === 'ok' && t.data) {
+            const pub = await call('campaigns.theme.publish', { id: item.id, version: t.data.version });
+            if (pub.outcome !== 'published') island('error', 'الصفحة اتنشرت، لكن الشكل الموحد ماتنشرش. جرّب تاني من التعديل.');
+          }
+          done('اتنشرت صفحة المجموعة.'); await load();
+        }
         else if (res.outcome === 'rejected') {
           const details = (res.blockers || []).map(x => x.code + ': ' + blockerLabel(x.reason)).join(' · ');
           island('error', 'مش هننشر المجموعة قبل حل: ' + details);
@@ -283,7 +436,7 @@ export default {
       explainer.append(make('p', 'muted', 'قبل نشر المجموعة أو تشغيل الإعلانات، اتأكد من توافر كل موديل مع المورد بالتليفون. مفيش ربط آلي بالمورد أو خصم تلقائي للمخزون؛ الطلبات تفضل على نظام COD الحالي.'));
       page.append(explainer);
 
-      if (editing) paintEditor(page);
+      if (editorOpen) paintEditor(page);
       else if (!collections.length) {
         const empty = make('div', 'empty');
         empty.append(make('b', '', 'لسه مفيش صفحات إعلانية'), make('p', '', 'ابدأ بصفحة لمنتج واحد أو مجموعة من المنتجات المنشورة.'));
@@ -322,6 +475,6 @@ export default {
       el.replaceChildren(page);
     };
 
-    paint();
+    await load();
   },
 };
