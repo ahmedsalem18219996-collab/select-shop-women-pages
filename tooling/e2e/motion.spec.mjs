@@ -75,6 +75,7 @@ test("empty bag shows no number on the product page; the first piece shows it (p
   await expect(count).toHaveText("1");
   await expect(count).toBeVisible();
   expect(await brackets()).toBe('"("")"');
+  await expect(count).toHaveCSS("margin-inline-start", "5px");                  // "الشنطة (1)", not "الشنطة(1)"
   await page.evaluate(() => localStorage.removeItem("women.cart.v1"));
   await withDesign(request, "SS-1008", design("none"));
   await page.goto("/lp/ss-1008/");
