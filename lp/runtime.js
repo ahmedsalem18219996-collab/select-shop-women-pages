@@ -325,7 +325,7 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 
 /** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
 const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
-const RELATED_MODULE = "./related.js?v=20261120-motion";
+const RELATED_MODULE = "./related.js?v=20261120-unavailable";
 const MOTION_MODULE = "./motion.js?v=20261120-motion";
 const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
 let motionOn = false;
@@ -915,7 +915,15 @@ async function init() {
     try { p = await load(c.code); }
     catch (e) {
       // A missing product is unavailable; a network failure leaves no verified price either, so neither is shown.
-      if (mine === ticket) unavailable(/** @type {any} */ (e)?.status === 404 ? "القطعة دي مش متاحة دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. إعادة المحاولة بعد شوية.");
+      const gone = /** @type {any} */ (e)?.status === 404;
+      if (mine === ticket) unavailable(gone ? "الموديل ده مش متاح دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. إعادة المحاولة بعد شوية.");
+      if (mine === ticket && gone && colors.length < 2) {
+        // The whole page is gone (hidden or removed model): keep it out of search, offer what is on sale now.
+        const robots = document.querySelector('meta[name="robots"]') || document.head.appendChild(Object.assign(document.createElement("meta"), { name: "robots" }));
+        robots.setAttribute("content", "noindex, follow");
+        void import(RELATED_MODULE)
+          .then((/** @type {typeof import("./related.js")} */ m) => m.renderAvailableModels(c.code, { BRIDGE, timeout, validCode, okMinor, egp })).catch(() => {});
+      }
       return false;
     }
     if (mine !== ticket) return false;
