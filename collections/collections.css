@@ -127,3 +127,8 @@ button{font:inherit}
 .cp-grand{padding-top:10px;border-top:1px solid var(--line);font-size:16px;color:var(--ink)}
 .cp-order .cp-add{max-width:none}
 .cp-bag-link{border:0;cursor:pointer;font:inherit;font-weight:800;font-size:14px}
+:root[data-page-font="rakkas"] .collection-hero h1{font-family:Rakkas,Readex,serif;font-weight:400}
+:root[data-page-font="cairo"] .collection-hero h1,.cp-product[data-font="cairo"] :is(.cp-title,.cp-cap b,.mo-cap b,.mo-track span){font-family:'Cairo',Readex,sans-serif;font-weight:800}
+:root[data-page-font="changa"] .collection-hero h1,.cp-product[data-font="changa"] :is(.cp-title,.cp-cap b,.mo-cap b,.mo-track span){font-family:'Changa',Readex,sans-serif;font-weight:700}
+:root[data-page-font="elmessiri"] .collection-hero h1,.cp-product[data-font="elmessiri"] :is(.cp-title,.cp-cap b,.mo-cap b,.mo-track span){font-family:'El Messiri',Readex,sans-serif;font-weight:700}
+:root[data-page-font="lalezar"] .collection-hero h1,.cp-product[data-font="lalezar"] :is(.cp-title,.cp-cap b,.mo-cap b,.mo-track span){font-family:'Lalezar',Readex,sans-serif;font-weight:400}

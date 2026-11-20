@@ -375,6 +375,7 @@ async function render(collection, items, rawTheme) {
   document.documentElement.dataset.titleSize = theme.enabled ? theme.titleSize : 'md';
   document.documentElement.dataset.spacing = theme.enabled ? theme.spacing : 'normal';
   document.documentElement.dataset.pageBg = theme.enabled ? theme.background : '';
+  document.documentElement.dataset.pageFont = theme.enabled ? theme.font : '';
   const hero = make('section', 'collection-hero');
   const h1 = make('h1', '', collection.title); h1.dataset.edit = 'page-title';
   hero.append(make('span', 'collection-kicker', 'SELECT SHOP · ' + new Intl.NumberFormat('ar-EG').format(items.length) + ' موديلات'), h1);

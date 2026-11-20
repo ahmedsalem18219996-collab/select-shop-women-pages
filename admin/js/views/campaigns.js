@@ -1,7 +1,7 @@
 import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { moveProductCode, slugFromTitle, validateCampaignSelection } from '../campaigns-model.js';
-import { PAGE_THEME, cleanPageTheme, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-motion';
+import { PAGE_THEME, cleanPageTheme, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-campaign';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
@@ -24,7 +24,7 @@ const campaignPageUrl = (item) => {
 };
 const THEME_LABELS = {
   background: ['الخلفية', { midnight: 'كحلي غامق', navy: 'كحلي', elevated: 'كحلي فاتح', light: 'فاتح' }],
-  font: ['الخط', { readex: 'Readex', rakkas: 'Rakkas للعناوين', system: 'خط الجهاز' }],
+  font: ['الخط', { readex: 'Readex', rakkas: 'Rakkas للعناوين', system: 'خط الجهاز', cairo: 'Cairo', changa: 'Changa', elmessiri: 'El Messiri', lalezar: 'Lalezar للعناوين' }],
   divider: ['الفواصل', { line: 'خط', none: 'بدون', dots: 'نقط', wave: 'مزدوج' }],
   ctaColor: ['لون زر الإضافة', { purple: 'بنفسجي', cyan: 'سماوي', white: 'أبيض', gold: 'ذهبي' }],
   ctaShape: ['شكل الزر', { pill: 'دائري', rounded: 'حواف ناعمة', square: 'مربع' }],
