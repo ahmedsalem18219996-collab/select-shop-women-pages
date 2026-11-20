@@ -14,7 +14,7 @@ const BAG_KEY = "women.cart.v1"; // same first-party cart as js/commerce.js
 const VARIANT_KEY = "women.lp.variant.v1"; // bucket is chosen before paint by the inline #lp-ab script
 const ORDER_KEY = "women.lp.order.key.v1"; // one attempt = one key, kept until the server confirms an order
 const PURCHASE_SEEN_KEY = "women.meta.purchase.sent.v1"; // same dedupe list as js/commerce.js
-const ANALYTICS_SRC = "/js/analytics.js?v=lp-20261030";
+const ANALYTICS_SRC = "/js/analytics.js?v=lp-20261120";
 const THUMBS = "/assets/catalog-thumbs/";
 const MAX_QTY = 10;
 const BRIDGE = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge";
@@ -204,7 +204,7 @@ export function funnel(/** @type {string} */ name, /** @type {Record<string, any
   emit(() => {
     const w = /** @type {any} */ (window);
     if (typeof w.gtag === "function") w.gtag("event", name, fields);
-    const metaName = /** @type {Record<string,string>} */ ({ view_item: "ViewContent", add_to_cart: "AddToCart", begin_checkout: "InitiateCheckout", purchase: "Purchase" })[name];
+    const metaName = /** @type {Record<string,string>} */ ({ view_item: "ViewContent", add_to_cart: "AddToCart", begin_checkout: "InitiateCheckout", purchase: "Lead" })[name];
     if (metaName && typeof w.womenMetaEvent === "function") w.womenMetaEvent(metaName, fields, eventId || undefined);
   });
 }
@@ -319,7 +319,7 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
     const params = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
     if (!params || typeof params !== "object" || !key) return;
     void fetch(BRIDGE + "/orders/attribution", { method: "POST", mode: "cors", credentials: "omit", keepalive: true,
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: key, publicOrderCode: code, params }) }).catch(() => null);
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: key, publicOrderCode: code, params, .../** @type {any} */ (window).womenMetaIds?.() }) }).catch(() => null);
   } catch { /* attribution is optional */ }
 }
 
@@ -1071,14 +1071,14 @@ async function init() {
         item_variant: mixMode ? "one_size" : variantLabel(), quantity: l.quantity })) });
   });
 
-  const done = (/** @type {string} */ code, /** @type {any} */ q, /** @type {Line[]} */ lines) => {
+  const done = (/** @type {string} */ code, /** @type {any} */ q, /** @type {Line[]} */ lines, /** @type {string} */ key) => {
     forgetOrderKey();
     if (firstReport(code)) {
       const value = (minorOf(q.merchandiseSubtotal) ?? 0) / 100;
       funnel("purchase", { currency: "EGP", value, shipping: (minorOf(q.shippingTotal) ?? 0) / 100, transaction_id: hex(16),
         lp_id: page.id, lp_variant: variantId,
         items: lines.map(l => ({ item_id: l.publicCode,
-          item_variant: lines.length > 1 ? "one_size" : variantLabel(), quantity: l.quantity })) }, hex(16));
+          item_variant: lines.length > 1 ? "one_size" : variantLabel(), quantity: l.quantity })) }, "lead-" + key);
       void loadAnalytics(); // the conversion goes out even if the customer leaves right away
     }
     $("#lpDoneCode").textContent = code;
@@ -1132,12 +1132,12 @@ async function init() {
     try {
       const reply = await api("/orders", "POST", payload, 20000);
       if (!ORDER_CODE.test(reply.publicOrderCode)) throw Object.assign(new Error("write_unconfirmed"), { status: 503 });
-      done(reply.publicOrderCode, q, lines);
+      done(reply.publicOrderCode, q, lines, payload.idempotencyKey);
       sendAttribution(reply.publicOrderCode, payload.idempotencyKey);
       return;
     } catch (err) {
       const error = /** @type {any} */ (err), data = error?.data || {};
-      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines); sendAttribution(data.publicOrderCode, payload.idempotencyKey); return; }
+      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines, payload.idempotencyKey); sendAttribution(data.publicOrderCode, payload.idempotencyKey); return; }
       if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب السابق اتلغى من المتجر. يمكن تسجيل طلب جديد.", true); }
       else if (error?.message === "checkout_changed") {
         say("السعر أو الشحن اتغير. يرجى مراجعة الإجمالي الجديد ثم إعادة التأكيد.", true);

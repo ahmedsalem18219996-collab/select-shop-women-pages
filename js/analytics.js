@@ -12,6 +12,24 @@ window.__womenNoTrack = (() => {
     return localStorage.getItem("women.notrack") === "1";
   } catch { return false; } // storage blocked (some in-app browsers): normal tracking
 })();
+/* Meta browser ids for the order's /orders/attribution (server Conversions API): _fbp, and _fbc or one built from the
+ * last ad click's fbclid when the Pixel cookie is missing. Never buyer data; nothing for the owner's test browser. */
+if (!window.__womenNoTrack) {
+  const FB = /^fb\.1\.\d{10,13}\.[\w.-]{1,500}$/;
+  try {
+    const id = new URLSearchParams(location.search).get("fbclid") || "";
+    if (/^[\w-]{10,500}$/.test(id) && JSON.parse(localStorage.getItem("women.fbclid.v1") || "{}").id !== id)
+      localStorage.setItem("women.fbclid.v1", JSON.stringify({ id, ms: Date.now() }));
+  } catch { /* optional */ }
+  window.womenMetaIds = () => {
+    try {
+      const cookie = (n) => decodeURIComponent((document.cookie.match("(?:^|; )" + n + "=([^;]*)") || [])[1] || "");
+      const click = JSON.parse(localStorage.getItem("women.fbclid.v1") || "null");
+      const fbp = cookie("_fbp"), fbc = cookie("_fbc") || (click?.id ? "fb.1." + click.ms + "." + click.id : "");
+      return { ...(FB.test(fbp) ? { fbp } : {}), ...(FB.test(fbc) ? { fbc } : {}) };
+    } catch { return {}; }
+  };
+}
 (() => {
   "use strict";
   if (window.__womenNoTrack) return;
@@ -22,7 +40,7 @@ window.__womenNoTrack = (() => {
 
   const cleanUrl = new URL(location.href);
   // Marketing parameters only (never form values or order references). "p" is the product code of /lp/?p=SS-....
-  const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "code", "p", "gclid", "fbclid", "igshid", "lpv",
+  const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "code", "p", "gclid", "fbclid", "igshid", "igsh", "mibextid", "lpv",
     "campaign_id", "adset_id", "ad_id", "placement", "site_source_name", "slug", "collection"]);
   for (const key of [...cleanUrl.searchParams.keys()]) {
     if (!allowed.has(key)) cleanUrl.searchParams.delete(key);
@@ -51,7 +69,7 @@ window.__womenNoTrack = (() => {
   if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname) && !location.pathname.startsWith("/lp/") && location.pathname !== "/collections/") return;
   // Do not expose arbitrary URL parameters to Meta's automatic page context.
   // Same marketing allowlist: before, /lp/?p=SS-... (p) and Meta's URL builder (utm_id) silently disabled the Pixel.
-  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","utm_id","code","p","fbclid","igshid","lpv",
+  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","utm_id","code","p","fbclid","igshid","igsh","mibextid","lpv",
     "campaign_id","adset_id","ad_id","placement","site_source_name","slug","collection"]);
   if ([...new URLSearchParams(location.search).keys()].some(k => !permitted.has(k))) return;
   const pixelId = "992616030526349";
@@ -65,7 +83,7 @@ window.__womenNoTrack = (() => {
   fbq("trackSingle", pixelId, "PageView");
   window.womenMetaEvent = function (name, fields, eventId) {
     try {
-      if (!["ViewContent","AddToCart","InitiateCheckout","Purchase"].includes(name)) return;
+      if (!["ViewContent","AddToCart","InitiateCheckout","Lead"].includes(name)) return; // Purchase: server only, once the order is confirmed
       const items = Array.isArray(fields.items) ? fields.items.filter(i => /^SS-\d{4,19}$/.test(i.item_id || "")) : [];
       if (!items.length) return;
       const params = {currency:"EGP",content_type:"product",

@@ -464,9 +464,10 @@ async function showCheckout(){
       try {
         const ad=JSON.parse(sessionStorage.getItem("women.ad.params.v1")||"null");
         if(ad&&typeof ad==="object")void fetch(API.replace("/women-checkout","/women-store-bridge")+"/orders/attribution",{method:"POST",mode:"cors",credentials:"omit",keepalive:true,
-          headers:{"Content-Type":"application/json"},body:JSON.stringify({idempotencyKey:payload.idempotencyKey,publicOrderCode:reply.publicOrderCode,params:ad})}).catch(()=>null);
+          headers:{"Content-Type":"application/json"},body:JSON.stringify({idempotencyKey:payload.idempotencyKey,publicOrderCode:reply.publicOrderCode,params:ad,...(window.womenMetaIds?.()||{})})}).catch(()=>null);
       } catch { /* attribution is optional */ }
-      // Meta Purchase is emitted only here, after the server confirms /orders.
+      // Meta Lead is emitted only here, after the server creates the order (Purchase comes from the server once it is
+      // confirmed). The event id is the order's idempotency key, so the server's Lead deduplicates with this one.
       // The public order code stays local; no buyer or address data goes to Meta.
       try {
         const seenKey="women.meta.purchase.sent.v1";
@@ -474,10 +475,10 @@ async function showCheckout(){
         if(Array.isArray(seen) && !seen.includes(reply.publicOrderCode)
           && typeof window.womenMetaEvent==="function") {
           localStorage.setItem(seenKey,JSON.stringify([...seen,reply.publicOrderCode].slice(-500)));
-          window.womenMetaEvent("Purchase", {
+          window.womenMetaEvent("Lead", {
             currency:"EGP", value:priceNumber(quote.merchandiseSubtotal)/100,
             items:lines.map(l=>({item_id:l.publicCode,quantity:l.quantity}))
-          },crypto.randomUUID());
+          },"lead-"+payload.idempotencyKey);
         }
       } catch { /* Fail closed if deduplication storage is unavailable. */ }
       // Only a real confirmed /orders response may arm a Purchase event.

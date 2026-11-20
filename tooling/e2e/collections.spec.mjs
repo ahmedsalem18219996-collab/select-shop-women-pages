@@ -65,7 +65,8 @@ test('colour and size per product: only real sizes of the chosen colour, price f
   await expect(s.locator('.cp-status')).toContainText('اتضافت للشنطة');
 });
 
-test('multi-product COD order: three products from one page become ONE order with three lines', async ({ page, request }) => {
+test('multi-product COD order: three products from one page become ONE order with three lines', async ({ page, request, baseURL }) => {
+  await page.context().addCookies([{ name: '_fbc', value: 'fb.1.1763600000000.IwAR0cookie', url: baseURL }]);
   await setPage(request, 'order-3', ['SS-9101', 'SS-1012', 'SS-1013']);
   const before = await mockLog(request);
   await page.goto('/collections/?slug=order-3&' + AD);
@@ -105,6 +106,7 @@ test('multi-product COD order: three products from one page become ONE order wit
   expect(order.lines.find(l => l.publicCode === 'SS-9101').quantity).toBe(2);
   // Attribution keeps the ORIGINAL ad (product SS-1013, ad set), separate from what was bought; no buyer data.
   const attr = log.attributions.at(-1).params;
+  expect(log.attributions.at(-1).fbc).toBe('fb.1.1763600000000.IwAR0cookie'); // the Pixel's own _fbc wins
   expect(attr).toMatchObject({ campaign: 'multi-test', content: 'SS-1013', adset: 'cairo-25-34', landing: 'c-order-3' });
   expect(JSON.stringify(attr)).not.toContain('01012345678');
 });
