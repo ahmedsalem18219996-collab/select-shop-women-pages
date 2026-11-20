@@ -16,7 +16,7 @@ test("ad attribution is first touch per ad click: same ad keeps the original lan
 
 test("page theme keeps whitelisted values only, defaults otherwise, never extra keys", () => {
   const t = cleanPageTheme({ enabled: true, background: "light", spacing: "airy", font: "<script>", price: 1 });
-  assert.deepEqual(Object.keys(t).sort(), ["accent", "background", "ctaAnimation", "ctaColor", "ctaShape", "divider", "enabled", "font", "spacing", "titleSize"]);
+  assert.deepEqual(Object.keys(t).sort(), ["accent", "background", "ctaAnimation", "ctaColor", "ctaShape", "ctaText", "divider", "enabled", "font", "hintText", "spacing", "titleSize"]);
   assert.equal(t.background, "light"); assert.equal(t.spacing, "airy"); assert.equal(t.font, "readex");
   assert.equal(cleanPageTheme("x").enabled, false);
   assert.equal(cleanPageTheme({ enabled: "true" }).enabled, false, "only a real boolean switches it on");
@@ -28,6 +28,20 @@ test("campaign colour (PR #65 contract): #RRGGBB lowercased, anything else empty
   assert.equal(campaignAccent(cleanPageTheme({ enabled: true, accent: "#C62828", ctaColor: "gold" })), "#c62828");
   assert.equal(campaignAccent(cleanPageTheme({ enabled: true, ctaColor: "gold" })), "#d9b45a");
   assert.equal(campaignAccent(cleanPageTheme({ enabled: true })), "#d100d1");
+});
+
+test("hint and buy-button texts (PR #68): one line, up to 60 characters after trimming; anything else is the default", () => {
+  assert.equal(cleanPageTheme({ hintText: "  اسحبي للمزيد  " }).hintText, "اسحبي للمزيد");
+  assert.equal(cleanPageTheme({ ctaText: "ا".repeat(60) }).ctaText, "ا".repeat(60));
+  for (const bad of ["ا".repeat(61), "سطر\nتاني", 5, null, undefined, "<b>x</b>".repeat(10)]) assert.equal(cleanPageTheme({ ctaText: bad }).ctaText, "");
+  assert.equal(cleanPageTheme({ hintText: "<b>اسحبي</b>" }).hintText, "<b>اسحبي</b>", "kept as plain text; the page renders it with textContent");
+});
+
+test("ad link: campaign page + utm_source=facebook + utm_campaign=<slug>, so campaigns.stats counts its orders", async () => {
+  globalThis.location = /** @type {any} */ ({ origin: "https://selectshopeg.com" });
+  const { campaignAdUrl } = await import("../../admin/js/views/campaigns.js");
+  assert.equal(campaignAdUrl({ slug: "winter-sets", product_codes: ["SS-1012", "SS-1013"] }), "https://selectshopeg.com/collections/?slug=winter-sets&utm_source=facebook&utm_campaign=winter-sets");
+  assert.equal(campaignAdUrl({ slug: "one-dress", product_codes: ["SS-1012"] }), "https://selectshopeg.com/lp/?p=SS-1012&utm_source=facebook&utm_campaign=one-dress");
 });
 
 test("page theme title sizes and spacing match the server migration (women_campaign_theme_clean)", async () => {

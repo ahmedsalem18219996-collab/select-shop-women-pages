@@ -198,6 +198,21 @@ for (const [name, theme, rgb] of [
   });
 }
 
+test("campaign texts (PR #68): ctaText on the buy buttons and the fixed bar, hintText as the swipe hint; blank = defaults", async ({ page, request }) => {
+  used.push("box-texts"); await setPage(request, "box-texts", ["SS-1013", "SS-1012"], { theme: { enabled: true, ctaText: "اشتري دلوقتي", hintText: "اسحبي للمزيد" } });
+  await setDesign(request, "SS-1013", { title: "", motion: { mode: "cinematic", dirs: ["side"], hint: "" } });
+  await page.goto("/collections/?slug=box-texts");
+  await expect(page.locator('.cp-product[data-code="SS-1012"] .cp-add')).toHaveText("اشتري دلوقتي");
+  await expect(page.locator(".mo-hint .mo-txt")).toHaveText("اسحبي للمزيد");
+  await page.locator('.cp-product[data-code="SS-1012"]').scrollIntoViewIfNeeded();
+  await page.mouse.wheel(0, 200);
+  await expect(page.locator(".cp-bag-link")).toContainText("اشتري دلوقتي");
+  await expect(page.locator("#placeOrder")).toHaveText("تأكيد الطلب · الدفع عند الاستلام");   // the final step stays explicit
+  await setPage(request, "box-texts", ["SS-1013", "SS-1012"], { theme: { enabled: true, ctaText: "", hintText: "" } });
+  await page.reload();
+  await expect(page.locator('.cp-product[data-code="SS-1012"] .cp-add')).toHaveText("إضافة للشنطة");
+});
+
 test("theme off: buy buttons keep the store's Neon Purple", async ({ page, request }) => {
   used.push("box-noaccent"); await setPage(request, "box-noaccent", ["SS-1012", "SS-1013"], { theme: { enabled: false, accent: "#C62828" } });
   await page.goto("/collections/?slug=box-noaccent");

@@ -120,6 +120,10 @@ export function cleanPageTheme(/** @type {any} */ raw) {
   for (const [k, allowed] of Object.entries(PAGE_THEME)) out[k] = pick(t[k], allowed);
   // Campaign main colour (server contract, PR #65): "#rrggbb" or "" = use the ctaColor palette entry.
   out.accent = typeof t.accent === "string" && HEX.test(t.accent.toLowerCase()) ? t.accent.toLowerCase() : "";
+  // Swipe hint and buy-button labels (server contract, PR #68): one line, up to 60 characters; "" = the default label.
+  const label = (/** @type {unknown} */ v) => (typeof v === "string" && !/[\u0000-\u001f\u007f]/.test(v) && v.trim().length <= 60 ? v.trim() : "");
+  out.hintText = label(t.hintText);
+  out.ctaText = label(t.ctaText);
   return out;
 }
 /** Palette entries of the ctaColor choice (same values as the storefront buttons). */

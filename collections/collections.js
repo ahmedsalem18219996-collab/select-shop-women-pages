@@ -73,7 +73,8 @@ function showState(title, description) {
 // Fixed buy bar (glass): appears after the first screen and hides while the order box is on screen.
 const bagBar = make('aside', 'cp-bag');
 const bagCount = make('span', 'cp-bag-count');
-const buyNow = make('button', 'cp-bag-link', 'اطلب الآن');
+let buyLabel = 'اطلب الآن'; // the campaign's ctaText when its unified theme sets one
+const buyNow = make('button', 'cp-bag-link', buyLabel);
 buyNow.type = 'button';
 bagBar.setAttribute('aria-label', 'زرار الشراء الثابت');
 bagBar.hidden = true;
@@ -94,7 +95,7 @@ let orderOnScreen = false;
 const placeBar = () => {
   bagBar.hidden = scrollY < innerHeight * 0.9 || orderOnScreen;
   const price = catalog.get(onScreen()?.dataset.code || '')?.price;
-  buyNow.textContent = 'اطلب الآن' + (price ? ' · ' + price : '');
+  buyNow.textContent = buyLabel + (price ? ' · ' + price : '');
 };
 const nf = (n) => new Intl.NumberFormat('ar-EG').format(n);
 function refreshBag() {
@@ -482,7 +483,8 @@ function productSection(item, product, design, look, index, motion, total) {
   plus.addEventListener('click', () => { quantity = Math.min(MAX_QTY, quantity + 1); paint(); });
   qty.append(make('span', 'cp-qty-label', 'الكمية'), minus, qtyValue, plus);
 
-  const add = make('button', 'cp-add', 'إضافة للشنطة');
+  const addLabel = look.ctaText || 'إضافة للشنطة';
+  const add = make('button', 'cp-add', addLabel);
   add.type = 'button';
   add.dataset.color = look.ctaColor; add.dataset.shape = look.ctaShape; add.dataset.anim = look.ctaAnimation;
   add.dataset.edit = 'cta';
@@ -542,7 +544,7 @@ function productSection(item, product, design, look, index, motion, total) {
         : e?.status === 409 ? 'الاختيار ده مش متاح دلوقتي. ممكن اختيار لون أو مقاس تاني.'
           : 'مش قادرين نضيف للشنطة دلوقتي. ممكن المحاولة مرة تانية.';
     } finally {
-      busy = false; add.textContent = 'إضافة للشنطة'; paint();
+      busy = false; add.textContent = addLabel; paint();
     }
   });
 
@@ -553,6 +555,8 @@ function productSection(item, product, design, look, index, motion, total) {
 async function render(collection, items, rawTheme) {
   const theme = cleanPageTheme(rawTheme);
   const accent = theme.enabled ? campaignAccent(theme) : '';
+  buyLabel = (theme.enabled && theme.ctaText) || 'اطلب الآن';
+  placeBar();
   if (accent) {
     document.documentElement.dataset.accent = '1';
     document.documentElement.style.setProperty('--accent', accent);
@@ -581,7 +585,7 @@ async function render(collection, items, rawTheme) {
   const motion = moving ? await loadMotion().catch(() => null) : null;
   if (motion && moving) {
     const hintAccent = theme.enabled ? accent : moving.accent;
-    motion.mountHint(moving.motion.hint || DEFAULT_HINT, hintAccent, hintAccent ? inkFor(hintAccent) : '#fff');
+    motion.mountHint((theme.enabled && theme.hintText) || moving.motion.hint || DEFAULT_HINT, hintAccent, hintAccent ? inkFor(hintAccent) : '#fff');
   }
   loaded.forEach(([product], i) => {
     const item = items[i];
