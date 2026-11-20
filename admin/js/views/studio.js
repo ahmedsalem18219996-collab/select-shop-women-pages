@@ -7,7 +7,7 @@ import { withBusy, island, done, fail, ago, confirmDialog } from '../ui.js';
 import { call, mediaUrl, uploadLandingImage } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
 import { buildGeminiPrompt, STUDIO_STYLES } from '../studio-prompts.js';
-import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE, parseDesignImport, suggestAccent, DEFAULT_HINT, MAX_MOTION_IMAGES } from '../../../lp/studio-design.js?v=20261120-campaign';
+import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE, parseDesignImport, suggestAccent, DEFAULT_HINT, MAX_MOTION_IMAGES } from '../../../lp/studio-design.js?v=20261120-motion';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);

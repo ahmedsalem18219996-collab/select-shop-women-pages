@@ -110,8 +110,7 @@ export function suggestAccent(/** @type {ArrayLike<number>} */ rgba) {
 
 /** Optional unified look of a multi-product page (same whitelist as the server's women_campaign_theme_clean). */
 export const PAGE_THEME = {
-  // Campaign pages also offer the 4 extra self-hosted Arabic fonts (css/fonts.css): 6 in all, no Google request.
-  background: CHOICES.background, font: [...CHOICES.font, "cairo", "changa", "elmessiri", "lalezar"], divider: CHOICES.divider,
+  background: CHOICES.background, font: CHOICES.font, divider: CHOICES.divider,
   ctaColor: CHOICES.color, ctaShape: CHOICES.shape, ctaAnimation: CHOICES.animation,
   titleSize: ["md", "sm", "lg"], spacing: ["normal", "compact", "airy"],
 };
