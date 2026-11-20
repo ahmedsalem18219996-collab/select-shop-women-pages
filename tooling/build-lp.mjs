@@ -147,6 +147,7 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 #lpAddCart{flex:0 1 43%;min-width:0;height:52px;padding:0 8px;border:1.5px solid var(--accent);border-radius:11px;background:transparent;color:var(--accent);font:600 14px var(--f);cursor:pointer}
 #lpAddCart:disabled{opacity:.48;cursor:default}
 #lpCartLink{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+#lpCartCount:empty{display:none!important}#lpCartCount::before{content:"("}#lpCartCount::after{content:")"}
 .bar>div{gap:8px}#lpOrder{min-width:0}
 @media(max-width:899px){.bar button{min-width:0!important}#lpAddCart{font-size:12px}}
 
@@ -420,7 +421,7 @@ ${o.fontFaces}
 ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
 <body${campaign ? ' data-campaign="focused"' : ""}>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة (<span id="lpCartCount">0</span>)</a>'}<a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a>${THEME_TOGGLE}</header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة <span id="lpCartCount"></span></a>'}<a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a>${THEME_TOGGLE}</header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">

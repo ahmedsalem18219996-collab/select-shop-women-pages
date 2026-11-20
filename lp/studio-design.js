@@ -208,6 +208,7 @@ html[data-studio-size="lg"] #lpOrder{min-height:54px;font-size:18px}html[data-st
 #lpForm{scroll-margin-top:80px}
 html[data-studio-accent] #lpAddCart{background:var(--st-cta);color:var(--st-cta-ink);border-color:var(--st-cta)}
 html[data-studio-accent] #lpCartCount{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;margin-inline:3px;border-radius:11px;background:var(--st-cta);color:var(--st-cta-ink);font-weight:800}
+html[data-studio-accent] #lpCartCount::before,html[data-studio-accent] #lpCartCount::after{content:none}
 `;
 
 /** Paint (or repaint) a normalized design (urls=true) on a landing page. Returns the nodes it added. */

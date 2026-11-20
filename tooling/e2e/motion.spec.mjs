@@ -64,6 +64,28 @@ test("calm and bold modes and an ordinary page: each mode is applied; a page wit
   }
 });
 
+test("empty bag shows no number on the product page; the first piece shows it (plain and main-colour pages)", async ({ page, request }) => {
+  const count = page.locator("#lpCartCount");
+  const brackets = () => count.evaluate(e => getComputedStyle(e, "::before").content + getComputedStyle(e, "::after").content);
+  await page.goto("/lp/ss-1008/");
+  await expect(count).toHaveText("");
+  await expect(count).toBeHidden();
+  await expect(page.locator("#lpCartLink")).toHaveText("الشنطة");
+  await page.locator("#lpAddCart").click();
+  await expect(count).toHaveText("1");
+  await expect(count).toBeVisible();
+  expect(await brackets()).toBe('"("")"');
+  await page.evaluate(() => localStorage.removeItem("women.cart.v1"));
+  await withDesign(request, "SS-1008", design("none"));
+  await page.goto("/lp/ss-1008/");
+  await expect(page.locator("html")).toHaveAttribute("data-studio-accent", /.*/);
+  await expect(count).toBeHidden();                                              // no empty accent badge
+  await page.locator("#lpAddCart").click();
+  await expect(count).toHaveText("1");
+  await expect(count).toBeVisible();
+  expect(await brackets()).toBe("nonenone");                                     // the badge replaces the brackets
+});
+
 test("reduced motion: no sticky stacking, no transforms, no fly; the page stays complete", async ({ page, request }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await withDesign(request, "SS-1008", design("cinematic"));

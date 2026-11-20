@@ -754,8 +754,9 @@ async function init() {
   const refreshCartCount = () => {
     const count = $("#lpCartCount");
     if (!count) return; // Focused direct-order pages deliberately have no bag link.
-    try { count.textContent = String(readBag().reduce((n,l)=>n+l.quantity,0)); }
-    catch { count.textContent = '0'; }
+    // An empty bag shows no number: CSS hides the empty count and its brackets.
+    try { count.textContent = String(readBag().reduce((n,l)=>n+l.quantity,0) || ''); }
+    catch { count.textContent = ''; }
   };
   refreshCartCount();
   cartBtn.addEventListener("click", async () => {
