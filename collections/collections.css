@@ -99,8 +99,7 @@ button{font:inherit}
 @media(min-width:860px){.cp-product{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);padding:24px;gap:30px}.cp-add{max-width:420px}}
 @media(max-width:480px){.collection-footer{flex-direction:column}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
-/* Campaign phase 1: one main colour, caption over the first photo, other models, order box, fixed buy bar. */
-:root[data-accent] .cp-count:not(:empty),:root[data-accent] .cp-bag-link{background:var(--accent);color:var(--accent-ink)}
+/* Campaign phase 1: caption over the first photo, other models, order box, fixed buy bar. */
 .cp-media{position:relative}
 .cp-cap{position:absolute;inset:12px 12px auto;z-index:1;display:grid;gap:2px;padding:10px 14px;border-radius:14px;background:rgba(5,11,28,.72);color:#fff;pointer-events:none}
 .cp-cap b{font-size:18px;line-height:1.4;overflow-wrap:anywhere}
@@ -127,5 +126,4 @@ button{font:inherit}
 .cp-sum b{color:var(--ink);font-variant-numeric:tabular-nums}
 .cp-grand{padding-top:10px;border-top:1px solid var(--line);font-size:16px;color:var(--ink)}
 .cp-order .cp-add{max-width:none}
-:root[data-accent] .cp-order .cp-add{background:var(--accent);color:var(--accent-ink)}
 .cp-bag-link{border:0;cursor:pointer;font:inherit;font-weight:800;font-size:14px}

@@ -32,11 +32,9 @@ async function getJson(url, init = {}) {
 }
 /** The look of one product section: the page theme when it is switched on, else that product's own design. */
 export function sectionLook(design, theme) {
-  // The campaign's own main colour wins everywhere; without it each product keeps its Studio colour (look switch off).
-  const accent = theme.accent || (theme.enabled ? '' : design.accent);
-  if (theme.enabled) return { ...theme, accent };
+  if (theme.enabled) return { ...theme, accent: '' };
   return { background: design.background, font: design.font, divider: design.divider,
-    ctaColor: design.cta.color, ctaShape: design.cta.shape, ctaAnimation: design.cta.animation, accent };
+    ctaColor: design.cta.color, ctaShape: design.cta.shape, ctaAnimation: design.cta.animation, accent: design.accent };
 }
 /** True for an option that is the garment size (a product without one is One Size). */
 const isSize = (option) => /مقاس|size/i.test(String(option?.name || ''));
@@ -373,12 +371,6 @@ function productSection(item, product, design, look, index, motion) {
 
 async function render(collection, items, rawTheme) {
   const theme = cleanPageTheme(rawTheme);
-  if (theme.accent) {
-    document.documentElement.dataset.accent = '1';
-    document.documentElement.style.setProperty('--accent', theme.accent);
-    document.documentElement.style.setProperty('--accent-ink', inkFor(theme.accent));
-  } else delete document.documentElement.dataset.accent;
-  buyNow.textContent = theme.cta || 'اطلب الآن';
   document.title = collection.title + ' · SELECT SHOP';
   document.documentElement.dataset.titleSize = theme.enabled ? theme.titleSize : 'md';
   document.documentElement.dataset.spacing = theme.enabled ? theme.spacing : 'normal';
@@ -401,8 +393,8 @@ async function render(collection, items, rawTheme) {
   const moving = designs.find(d => d.motion.mode !== 'none');
   const motion = moving ? await loadMotion().catch(() => null) : null;
   if (motion && moving) {
-    const accent = theme.accent || (theme.enabled ? '' : moving.accent);
-    motion.mountHint(theme.hint || moving.motion.hint || DEFAULT_HINT, accent, accent ? inkFor(accent) : '#fff');
+    const accent = theme.enabled ? '' : moving.accent;
+    motion.mountHint(moving.motion.hint || DEFAULT_HINT, accent, accent ? inkFor(accent) : '#fff');
   }
   loaded.forEach(([product], i) => {
     const item = items[i];

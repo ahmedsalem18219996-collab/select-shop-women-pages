@@ -1,7 +1,7 @@
 import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { moveProductCode, slugFromTitle, validateCampaignSelection } from '../campaigns-model.js';
-import { PAGE_THEME, cleanPageTheme, parseDesignImport, suggestAccent, DEFAULT_HINT } from '../../../lp/studio-design.js?v=20261120-campaign';
+import { PAGE_THEME, cleanPageTheme, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-motion';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
@@ -263,49 +263,8 @@ export default {
         themeSelects[key] = sel;
       });
       themeCard.append(themeGrid);
-      // Campaign identity: one main colour for the whole page (buy buttons, hint, band, bag count), the scroll hint and
-      // the buy-button text. They apply even when the unified look above is off.
-      const identity = make('div', 'grid2');
-      const accentOn = make('input'); accentOn.type = 'checkbox'; accentOn.dataset.themeAccentOn = '';
-      const accentIn = make('input', 'input'); accentIn.type = 'color'; accentIn.value = '#d100d1'; accentIn.dataset.themeAccent = '';
-      const accentWrap = make('label', 'field');
-      const accentRow = make('div', 'row wrap');
-      const suggestBtn = actionButton('اقتراح من صور أول موديل', 'btn-soft btn-sm', () => suggest(true));
-      suggestBtn.dataset.themeAccentSuggest = '';
-      accentRow.append(accentOn, accentIn, suggestBtn);
-      accentWrap.append(make('span', '', 'اللون الأساسي للحملة'), accentRow);
-      const hintIn = make('input', 'input'); hintIn.maxLength = 60; hintIn.placeholder = DEFAULT_HINT; hintIn.dataset.themeHint = '';
-      const ctaIn = make('input', 'input'); ctaIn.maxLength = 40; ctaIn.placeholder = 'اطلب الآن'; ctaIn.dataset.themeCta = '';
-      const textField = (label, input) => { const w = make('label', 'field'); w.append(make('span', '', label), input); return w; };
-      identity.append(accentWrap, textField('نص توجيه السحب', hintIn), textField('نص زرار الشراء', ctaIn));
-      themeCard.append(identity);
-      // Reads the dominant garment colour of the first model's photo (needs CORS-enabled public storage).
-      const suggest = async (manual) => {
-        const first = products.find(p => p.public_code === [...selected][0]);
-        const hex = !first?.image ? '' : await new Promise((resolve) => {
-          const img = new Image(); img.crossOrigin = 'anonymous';
-          img.onload = () => {
-            try {
-              const c = document.createElement('canvas'); c.width = 64; c.height = 64;
-              const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, 64, 64);
-              resolve(suggestAccent(g.getImageData(0, 0, 64, 64).data));
-            } catch { resolve(''); }
-          };
-          img.onerror = () => resolve('');
-          img.src = imgUrl(first.image);
-        });
-        if (hex) { accentIn.value = hex; accentOn.checked = true; readTheme(); themeTouched = true; paintTheme(); refreshPreview(); if (manual) done('اتقترح لون من صور أول موديل. تقدر تغيّره.'); }
-        else if (manual) island('error', 'مقدرناش نطلع لون واضح من الصور. اختار اللون بنفسك.');
-      };
-      const readTheme = () => { theme = cleanPageTheme({ enabled: themeOn.checked, ...Object.fromEntries(Object.entries(themeSelects).map(([k, sel]) => [k, sel.value])),
-        accent: accentOn.checked ? accentIn.value : '', hint: hintIn.value, cta: ctaIn.value }); };
-      const paintTheme = () => {
-        themeOn.checked = theme.enabled; Object.entries(themeSelects).forEach(([k, sel]) => { sel.value = theme[k]; sel.disabled = !theme.enabled || !themeReady; });
-        accentOn.checked = !!theme.accent; if (theme.accent) accentIn.value = theme.accent;
-        if (document.activeElement !== hintIn) hintIn.value = theme.hint;
-        if (document.activeElement !== ctaIn) ctaIn.value = theme.cta;
-        [accentOn, accentIn, suggestBtn, hintIn, ctaIn].forEach(x => { x.disabled = !themeReady; });
-      };
+      const readTheme = () => { theme = cleanPageTheme({ enabled: themeOn.checked, ...Object.fromEntries(Object.entries(themeSelects).map(([k, sel]) => [k, sel.value])) }); };
+      const paintTheme = () => { themeOn.checked = theme.enabled; Object.entries(themeSelects).forEach(([k, sel]) => { sel.value = theme[k]; sel.disabled = !theme.enabled || !themeReady; }); };
       if (!themeReady) { themeOn.disabled = true; themeCard.append(make('p', 'err', 'الشكل الموحد محتاج تحديث الخادم (Migration) قبل الحفظ.')); }
       panel.append(themeCard);
 
@@ -369,16 +328,11 @@ export default {
             codes: [...selected], theme }, location.origin);
         } catch { /* frame still loading */ }
       };
-      const refreshPreview = () => {
-        clearTimeout(previewTimer); previewTimer = setTimeout(sendPreview, 350);
-        if (themeReady && !theme.accent && !themeTouched) void suggest(false); // first model chosen: colour follows it
-      };
+      const refreshPreview = () => { clearTimeout(previewTimer); previewTimer = setTimeout(sendPreview, 350); };
       titleInput.addEventListener('input', refreshPreview);
       descriptionInput.addEventListener('input', refreshPreview);
       themeCard.addEventListener('change', () => { readTheme(); themeTouched = true; paintTheme(); refreshPreview(); });
       paintTheme();
-      // A new campaign gets its colour from the first model automatically; the Owner can change or clear it.
-      if (themeReady && !theme.accent && !themeTouched) void suggest(false);
       if (onPageMessage) removeEventListener('message', onPageMessage);
       onPageMessage = (e) => {
         if (e.origin !== location.origin || e.source !== frame.contentWindow) return;
