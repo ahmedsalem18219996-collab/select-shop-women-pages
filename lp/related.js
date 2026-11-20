@@ -38,7 +38,15 @@ export async function renderAvailableModels(codes, { BRIDGE, timeout, validCode,
     const payload = await response.json();
     const all = Array.isArray(payload?.items) ? payload.items : [];
     // A shared-model page (several colours) is gone only when none of its colours is still on sale.
-    if (codes.length > 1) { if (all.some(item => codes.includes(item?.publicCode))) return; noindex(); }
+    if (codes.length > 1) {
+      if (all.some(item => codes.includes(item?.publicCode))) {
+        // Only this colour is gone: point her to the others (unless she already picked another colour meanwhile).
+        const status = document.getElementById("lpStatus");
+        if (status?.textContent === "الموديل ده مش متاح دلوقتي.") status.textContent = "اللون ده مش متاح دلوقتي؛ اختاري لون تاني.";
+        return;
+      }
+      noindex();
+    }
     const items = all.filter(item => validCode(item?.publicCode) && !codes.includes(item.publicCode) && okMinor(item.priceMinor)).slice(0, 6);
     if (!items.length) return;
     // First thing on the page: the visitor came for this model, so she sees at once that it is gone and what is on sale.

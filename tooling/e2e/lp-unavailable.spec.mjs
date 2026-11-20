@@ -54,12 +54,11 @@ test("shared-model page whose every colour is gone: available models row and noi
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 });
 
-test("shared-model page with one colour gone but others on sale: no available-models row", async ({ page }) => {
+test("shared-model page with one colour gone but others on sale: \"choose another colour\", no row", async ({ page }) => {
   await gone(page, "SS-1012");
   const catalog = page.waitForResponse("**/women-store-bridge/catalog");
   await page.goto("/lp/zebra-knit/?color=SS-1012");
-  await expect(page.getByText("الموديل ده مش متاح دلوقتي").first()).toBeVisible();
   await catalog;
-  await page.waitForTimeout(300);
+  await expect(page.locator("#lpStatus")).toHaveText("اللون ده مش متاح دلوقتي؛ اختاري لون تاني.");
   await expect(page.locator("#lpAvailableModels")).toHaveCount(0);
 });
