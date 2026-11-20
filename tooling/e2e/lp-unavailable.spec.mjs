@@ -33,3 +33,33 @@ test("a server hiccup (not a 404) does not claim the model is gone and shows no 
   await expect(page.getByText("مش قادرين نتأكد من السعر والتوفر دلوقتي").first()).toBeVisible({ timeout: 15000 });
   await expect(page.locator("#lpAvailableModels")).toHaveCount(0);
 });
+
+// Shared-model page (/lp/zebra-knit/ = SS-1012, SS-1029, SS-1030): old ad links such as /lp/ss-1012/ land here.
+const ZEBRA = ["SS-1012", "SS-1029", "SS-1030"];
+const catalogWithout = (page, codes) => page.route("**/women-store-bridge/catalog", async r => {
+  const res = await r.fetch(); const body = await res.json();
+  await r.fulfill({ response: res, json: { ...body, items: body.items.filter(i => !codes.includes(i.publicCode)) } });
+});
+
+test("shared-model page whose every colour is gone: available models row and noindex", async ({ page }) => {
+  for (const c of ZEBRA) await gone(page, c);
+  await catalogWithout(page, ZEBRA);
+  await page.goto("/lp/zebra-knit/?color=SS-1012");
+  const row = page.locator("#lpAvailableModels");
+  await expect(row.locator("h2")).toHaveText("الموديل ده مش متاح دلوقتي");
+  await expect(row).toBeInViewport();
+  const codes = await row.locator("[data-related-code]").evaluateAll(a => a.map(x => x.dataset.relatedCode));
+  expect(codes.length).toBeGreaterThan(0);
+  for (const c of ZEBRA) expect(codes).not.toContain(c);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+});
+
+test("shared-model page with one colour gone but others on sale: no available-models row", async ({ page }) => {
+  await gone(page, "SS-1012");
+  const catalog = page.waitForResponse("**/women-store-bridge/catalog");
+  await page.goto("/lp/zebra-knit/?color=SS-1012");
+  await expect(page.getByText("الموديل ده مش متاح دلوقتي").first()).toBeVisible();
+  await catalog;
+  await page.waitForTimeout(300);
+  await expect(page.locator("#lpAvailableModels")).toHaveCount(0);
+});
