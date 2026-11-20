@@ -13,7 +13,8 @@ for (const [name, url, code] of [["pre-rendered page", "/lp/ss-1045/", "SS-1045"
     await page.goto(url);
     await expect(page.locator("#lpStatus, [role=status], .status").filter({ hasText: "الموديل ده مش متاح دلوقتي" }).first()).toBeVisible();
     const row = page.locator("#lpAvailableModels");
-    await expect(row.locator("h2")).toHaveText("موديلات متاحة دلوقتي");
+    await expect(row.locator("h2")).toHaveText("الموديل ده مش متاح دلوقتي");
+    await expect(row).toBeInViewport();                                               // the first thing she sees
     const cards = row.locator("[data-related-code]");
     await expect(cards).not.toHaveCount(0);
     expect(await cards.count()).toBeLessThanOrEqual(6);

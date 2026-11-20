@@ -17,7 +17,7 @@ export async function renderRelatedProducts(currentCode, { BRIDGE, timeout, vali
     if (!items.length) return;
     paintRow(items, { id: "lpRelatedProducts", title: "موديلات تانية من نفس المجموعة",
       intro: "ممكن اختيار أكتر من موديل وإضافة كل قطعة للشنطة، وإتمامهم في طلب واحد والدفع عند الاستلام.",
-      slug, currentCode, validCode, okMinor, egp, bag: true });
+      slug, currentCode, validCode, okMinor, egp, bag: true, top: false });
   } catch { /* Related products are optional; never block the current product or its order. */ }
 }
 
@@ -38,13 +38,14 @@ export async function renderAvailableModels(currentCode, { BRIDGE, timeout, vali
       ? payload.items.filter(item => validCode(item?.publicCode) && item.publicCode !== currentCode && okMinor(item.priceMinor)).slice(0, 6)
       : [];
     if (!items.length) return;
-    paintRow(items, { id: "lpAvailableModels", title: "موديلات متاحة دلوقتي", intro: "اختيار موديل منهم، والدفع عند الاستلام.",
-      slug: "", currentCode, validCode, okMinor, egp, bag: false });
+    // First thing on the page: the visitor came for this model, so she sees at once that it is gone and what is on sale.
+    paintRow(items, { id: "lpAvailableModels", title: "الموديل ده مش متاح دلوقتي", intro: "دي موديلات متاحة دلوقتي، والدفع عند الاستلام.",
+      slug: "", currentCode, validCode, okMinor, egp, bag: false, top: true });
   } catch { /* Optional: the page already says the model is not available. */ }
 }
 
-/** @param {any[]} items @param {{ id: string, title: string, intro: string, slug: string, currentCode: string, validCode: (x: unknown) => boolean, okMinor: (x: unknown) => boolean, egp: (x: number) => string, bag: boolean }} o */
-function paintRow(items, { id, title: titleText, intro: introText, slug, currentCode, validCode, okMinor, egp, bag }) {
+/** @param {any[]} items @param {{ id: string, title: string, intro: string, slug: string, currentCode: string, validCode: (x: unknown) => boolean, okMinor: (x: unknown) => boolean, egp: (x: number) => string, bag: boolean, top: boolean }} o */
+function paintRow(items, { id, title: titleText, intro: introText, slug, currentCode, validCode, okMinor, egp, bag, top }) {
     const params = new URLSearchParams(location.search);
     const section = document.createElement("section");
     section.id = id;
@@ -116,5 +117,6 @@ function paintRow(items, { id, title: titleText, intro: introText, slug, current
       section.append(bagLink);
     }
     const main = document.querySelector("main.page");
-    if (main) main.after(section);
+    if (main && top) { section.style.padding = "0 18px"; section.style.marginTop = "18px"; main.before(section); }
+    else if (main) main.after(section);
 }
