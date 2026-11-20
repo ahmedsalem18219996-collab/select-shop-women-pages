@@ -15,16 +15,47 @@ export async function renderRelatedProducts(currentCode, { BRIDGE, timeout, vali
       ? payload.items.filter(item => validCode(item?.publicCode) && item.publicCode !== currentCode).slice(0, 4)
       : [];
     if (!items.length) return;
+    paintRow(items, { id: "lpRelatedProducts", title: "موديلات تانية من نفس المجموعة",
+      intro: "ممكن اختيار أكتر من موديل وإضافة كل قطعة للشنطة، وإتمامهم في طلب واحد والدفع عند الاستلام.",
+      slug, currentCode, validCode, okMinor, egp, bag: true, top: false });
+  } catch { /* Related products are optional; never block the current product or its order. */ }
+}
 
+/** A landing page whose product is gone (404): the models that are on sale now, from the public catalog. */
+/** @param {string} currentCode @param {{ BRIDGE: string, timeout: (ms: number) => AbortSignal|undefined, validCode: (x: unknown) => boolean, okMinor: (x: unknown) => boolean, egp: (x: number) => string }} h */
+export async function renderAvailableModels(currentCode, { BRIDGE, timeout, validCode, okMinor, egp }) {
+  if (document.getElementById("lpAvailableModels")) return;
+  // The whole page is gone (hidden or removed model): keep it out of search.
+  const robots = document.querySelector('meta[name="robots"]') || document.head.appendChild(Object.assign(document.createElement("meta"), { name: "robots" }));
+  robots.setAttribute("content", "noindex, follow");
+  try {
+    const response = await fetch(BRIDGE + "/catalog", {
+      headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000),
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    const items = Array.isArray(payload?.items)
+      ? payload.items.filter(item => validCode(item?.publicCode) && item.publicCode !== currentCode && okMinor(item.priceMinor)).slice(0, 6)
+      : [];
+    if (!items.length) return;
+    // First thing on the page: the visitor came for this model, so she sees at once that it is gone and what is on sale.
+    paintRow(items, { id: "lpAvailableModels", title: "الموديل ده مش متاح دلوقتي", intro: "دي موديلات متاحة دلوقتي، والدفع عند الاستلام.",
+      slug: "", currentCode, validCode, okMinor, egp, bag: false, top: true });
+  } catch { /* Optional: the page already says the model is not available. */ }
+}
+
+/** @param {any[]} items @param {{ id: string, title: string, intro: string, slug: string, currentCode: string, validCode: (x: unknown) => boolean, okMinor: (x: unknown) => boolean, egp: (x: number) => string, bag: boolean, top: boolean }} o */
+function paintRow(items, { id, title: titleText, intro: introText, slug, currentCode, validCode, okMinor, egp, bag, top }) {
+    const params = new URLSearchParams(location.search);
     const section = document.createElement("section");
-    section.id = "lpRelatedProducts";
+    section.id = id;
     section.className = "lp-related";
-    section.setAttribute("aria-labelledby", "lpRelatedTitle");
+    section.setAttribute("aria-labelledby", id + "Title");
     const heading = document.createElement("h2");
-    heading.id = "lpRelatedTitle";
-    heading.textContent = "موديلات تانية من نفس المجموعة";
+    heading.id = id + "Title";
+    heading.textContent = titleText;
     const intro = document.createElement("p");
-    intro.textContent = "ممكن اختيار أكتر من موديل وإضافة كل قطعة للشنطة، وإتمامهم في طلب واحد والدفع عند الاستلام.";
+    intro.textContent = introText;
     const grid = document.createElement("div");
     grid.className = "lp-related-grid";
 
@@ -34,7 +65,7 @@ export async function renderRelatedProducts(currentCode, { BRIDGE, timeout, vali
       link.dataset.relatedCode = item.publicCode;
       const target = new URL("/lp/", location.origin);
       target.searchParams.set("p", item.publicCode);
-      target.searchParams.set("collection", slug);
+      if (slug) target.searchParams.set("collection", slug);
       ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "fbclid", "gclid", "adset", "utm_adset", "ad", "utm_ad"]
         .forEach(key => { const value = params.get(key); if (value) target.searchParams.set(key, value); });
       // The ad's product stays the one the visitor landed on, never the related model being opened.
@@ -77,12 +108,15 @@ export async function renderRelatedProducts(currentCode, { BRIDGE, timeout, vali
       grid.append(link);
     }
 
-    const bagLink = document.createElement("a");
-    bagLink.className = "lp-related-bag";
-    bagLink.href = "/cart/";
-    bagLink.textContent = "مراجعة الشنطة وإتمام الطلب";
-    section.append(heading, intro, grid, bagLink);
+    section.append(heading, intro, grid);
+    if (bag) {
+      const bagLink = document.createElement("a");
+      bagLink.className = "lp-related-bag";
+      bagLink.href = "/cart/";
+      bagLink.textContent = "مراجعة الشنطة وإتمام الطلب";
+      section.append(bagLink);
+    }
     const main = document.querySelector("main.page");
-    if (main) main.after(section);
-  } catch { /* Related products are optional; never block the current product or its order. */ }
+    if (main && top) { section.style.padding = "0 18px"; section.style.marginTop = "18px"; main.before(section); }
+    else if (main) main.after(section);
 }
