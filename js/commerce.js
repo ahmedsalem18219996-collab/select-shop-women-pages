@@ -112,6 +112,8 @@ function saveCart(lines) {
 async function api(path, method="GET", body=null, timeoutMs=15000) {
   const opts = {method, cache:"no-store", headers:{Accept:"application/json"}, signal:(typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(timeoutMs) : undefined)};
   if (body !== null) { opts.headers["Content-Type"]="application/json"; opts.body=JSON.stringify(body); }
+  // The page the order came from, for the server's Meta events (origin + path only: no query, no order data).
+  if (path==="/orders") opts.headers["x-women-event-source-url"]=location.origin+location.pathname;
   const r=await fetch(API + path,opts);
   let data={};try { data=await r.json(); } catch {}
   if (!r.ok) {
@@ -471,21 +473,25 @@ export async function showCheckout(live=false){
       // Ad attribution (utm_*, ad set from the landing page visit): write-once, after the confirmed order, never blocking.
       try {
         const ad=JSON.parse(sessionStorage.getItem("women.ad.params.v1")||"null");
-        if(ad&&typeof ad==="object")void fetch(API.replace("/women-checkout","/women-store-bridge")+"/orders/attribution",{method:"POST",mode:"cors",credentials:"omit",keepalive:true,
-          headers:{"Content-Type":"application/json"},body:JSON.stringify({idempotencyKey:payload.idempotencyKey,publicOrderCode:reply.publicOrderCode,params:ad})}).catch(()=>null);
+        const params={...(ad&&typeof ad==="object"?ad:{}),...(window.womenMetaIds?.()||{})}; // + Meta's fbp/fbc for the server's Conversions API
+        if(Object.keys(params).length)void fetch(API.replace("/women-checkout","/women-store-bridge")+"/orders/attribution",{method:"POST",mode:"cors",credentials:"omit",keepalive:true,
+          headers:{"Content-Type":"application/json"},body:JSON.stringify({idempotencyKey:payload.idempotencyKey,publicOrderCode:reply.publicOrderCode,params})}).catch(()=>null);
       } catch { /* attribution is optional */ }
-      // Meta Purchase is emitted only here, after the server confirms /orders.
+      // Meta Lead is emitted only here, after the server creates the order (Purchase comes from the server once it is
+      // confirmed). Event id = "lead-" + SHA-256 of the order's idempotency key, as the server sends it, so the two
+      // deduplicate and the key itself never reaches Meta. No crypto.subtle: no browser Lead (the server still sends it).
       // The public order code stays local; no buyer or address data goes to Meta.
       try {
         const seenKey="women.meta.purchase.sent.v1";
         const seen=JSON.parse(localStorage.getItem(seenKey)||"[]");
-        if(Array.isArray(seen) && !seen.includes(reply.publicOrderCode)
+        const hash=crypto.subtle&&await crypto.subtle.digest("SHA-256",new TextEncoder().encode(payload.idempotencyKey));
+        if(hash && Array.isArray(seen) && !seen.includes(reply.publicOrderCode)
           && typeof window.womenMetaEvent==="function") {
           localStorage.setItem(seenKey,JSON.stringify([...seen,reply.publicOrderCode].slice(-500)));
-          window.womenMetaEvent("Purchase", {
+          window.womenMetaEvent("Lead", {
             currency:"EGP", value:priceNumber(quote.merchandiseSubtotal)/100,
             items:lines.map(l=>({item_id:l.publicCode,quantity:l.quantity}))
-          },crypto.randomUUID());
+          },"lead-"+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,"0")).join(""));
         }
       } catch { /* Fail closed if deduplication storage is unavailable. */ }
       // Only a real confirmed /orders response may arm a Purchase event.

@@ -618,7 +618,7 @@ async function render(collection, items, rawTheme) {
   root.append(box);
   if (others) root.append(others);
   paintCards();
-  void import('../js/commerce.js?v=20261120-campaign').then(m => m.showCheckout(true)).catch(() => {
+  void import('../js/commerce.js?v=lead-20261120').then(m => m.showCheckout(true)).catch(() => {
     const out = document.getElementById('status');
     if (out) out.textContent = 'مش قادرين نجهز الطلب دلوقتي. ممكن تحديث الصفحة.';
   });

@@ -194,3 +194,49 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1366, 900]]) {
     expect(box.x + box.width).toBeLessThanOrEqual(w);
   });
 }
+
+test("ad order attribution carries Meta's browser ids: _fbp, and _fbc built from fbclid when the Pixel cookie is missing", async ({ page, request, baseURL }) => {
+  await page.context().addCookies([{ name: "_fbp", value: "fb.1.1763600000000.1234567890", url: baseURL }]);
+  const before = (await mockLog(request)).attributions.length;
+  const t0 = Date.now();
+  const sourceUrls = [];
+  page.on("request", r => { if (r.method() === "POST" && /\/orders$/.test(new URL(r.url()).pathname)) sourceUrls.push(r.headers()["x-women-event-source-url"]); });
+  await page.goto(LP + "?utm_source=facebook&utm_campaign=winter-jackets&fbclid=IwAR0abcDEF_123-xyz");
+  await expect.poll(() => page.evaluate(() => typeof window.womenMetaIds)).toBe("function"); // analytics.js loads after the page
+  await page.fill("[name=name]", "اختبار آلي");
+  await page.fill("[name=phone]", "01012345678");
+  await page.locator("[name=region]").selectOption("cairo");
+  await page.fill("[name=address]", "عنوان اختبار فقط، شارع ١");
+  await expect(page.locator("#lpTotal")).toHaveText("١٬٢٧٠ ج");
+  await page.locator("#lpOrder").click();
+  await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-[2-9A-Z]{8}$/);
+  await expect.poll(async () => (await mockLog(request)).attributions.length).toBe(before + 1);
+  const a = (await mockLog(request)).attributions.at(-1);
+  // Inside params, where the bridge gives them precedence (contract: docs/women-meta-capi.md, backend PR #71).
+  expect(a.params.fbp).toBe("fb.1.1763600000000.1234567890");
+  const [, ms, id] = a.params.fbc.match(/^fb\.1\.(\d{13})\.(.+)$/);
+  expect(id).toBe("IwAR0abcDEF_123-xyz");
+  expect(Number(ms)).toBeGreaterThanOrEqual(t0);
+  expect(a.params).toMatchObject({ source: "facebook", campaign: "winter-jackets" });
+  // The order request names its page for the server's Meta events: origin + path, never the query (fbclid, utm).
+  expect(sourceUrls).toEqual([new URL(LP, baseURL).href]);
+  expect(JSON.stringify(a)).not.toMatch(/01012345678|اختبار آلي|عنوان/);
+});
+
+test("the owner's test browser (?notrack=1) sends no Meta browser ids", async ({ page, request, baseURL }) => {
+  await page.context().addCookies([{ name: "_fbp", value: "fb.1.1763600000000.1234567890", url: baseURL }]);
+  const before = (await mockLog(request)).attributions.length;
+  await page.goto(LP + "?notrack=1&utm_source=facebook&utm_campaign=winter-jackets&fbclid=IwAR0abcDEF_123-xyz");
+  await page.fill("[name=name]", "اختبار آلي");
+  await page.fill("[name=phone]", "01012345678");
+  await page.locator("[name=region]").selectOption("cairo");
+  await page.fill("[name=address]", "عنوان اختبار فقط، شارع ١");
+  await expect(page.locator("#lpTotal")).toHaveText("١٬٢٧٠ ج");
+  await page.locator("#lpOrder").click();
+  await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-[2-9A-Z]{8}$/);
+  await expect.poll(async () => (await mockLog(request)).attributions.length).toBe(before + 1);
+  const a = (await mockLog(request)).attributions.at(-1);
+  expect(a.params.fbp).toBeUndefined();
+  expect(a.params.fbc).toBeUndefined();
+  await page.goto(LP + "?notrack=0");
+});

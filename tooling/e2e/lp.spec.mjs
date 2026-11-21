@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { createHash } from "node:crypto";
 
 const LP = "/lp/ss-1008/";
 const mockLog = async (request) => (await request.get("/__mock/log")).json();
@@ -362,7 +363,7 @@ const captured = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("
 const gaEvents = (cap, name) => cap.filter(c => c[0] === "gtag" && c[1] === "event" && c[2] === name);
 const metaEvents = (cap, name) => cap.filter(c => c[0] === "meta" && c[1] === name);
 
-test("events follow real actions: view once, InitiateCheckout on first form use, Purchase only after a confirmed order", async ({ page }) => {
+test("events follow real actions: view once, InitiateCheckout on first form use, Lead only after a created order", async ({ page, request }) => {
   await fakeAnalytics(page);
   await page.goto(LP + "?lpv=b");
   await expect.poll(async () => gaEvents(await captured(page), "view_item").length, { timeout: 8000 }).toBe(1); // idle load
@@ -383,13 +384,19 @@ test("events follow real actions: view once, InitiateCheckout on first form use,
   cap = await captured(page);
   expect(gaEvents(cap, "purchase")[0][3]).toMatchObject({ currency: "EGP", value: 1200, shipping: 70, lp_id: "ss-1008", lp_variant: "ss-1008:b",
     items: [{ item_id: "SS-1008", item_variant: "one_size", quantity: 1 }] });
-  expect(metaEvents(cap, "Purchase")).toHaveLength(1);
-  expect(metaEvents(cap, "Purchase")[0][3]).toMatch(/^[0-9a-f]{32}$/); // event id for Pixel/CAPI dedupe
+  // Meta: Lead at order creation, event id = "lead-" + SHA-256(order idempotency key) in lowercase hex, exactly as the
+  // server sends its Lead (they deduplicate; the key itself never reaches Meta). Purchase: the server's alone.
+  await expect.poll(async () => metaEvents(await captured(page), "Lead").length).toBe(1);
+  cap = await captured(page);
+  expect(metaEvents(cap, "Purchase")).toHaveLength(0);
+  const key = (await mockLog(request)).orders.at(-1).key;
+  expect(metaEvents(cap, "Lead")[0][3]).toBe("lead-" + createHash("sha256").update(key).digest("hex"));
+  expect(JSON.stringify(cap)).not.toContain(key);
   expect(metaEvents(cap, "AddToCart")).toHaveLength(0); // there is no cart on this page
   expect(JSON.stringify(cap)).not.toMatch(/01012345678|عنوان اختبار|ORD-/); // no PII or order code reaches analytics
 });
 
-test("a refused order sends no Purchase; a replayed order code is never reported twice", async ({ page }) => {
+test("a refused order sends no Lead; a replayed order code is never reported twice", async ({ page }) => {
   await fakeAnalytics(page);
   let mode = "refuse";
   await page.route("**/women-checkout/orders", route => mode === "refuse"
@@ -401,7 +408,7 @@ test("a refused order sends no Purchase; a replayed order code is never reported
   await page.locator("#lpOrder").click();
   await expect(page.locator("#lpStatus")).toContainText("مش متاح");
   await page.waitForTimeout(300);
-  expect(metaEvents(await captured(page), "Purchase")).toHaveLength(0);
+  expect(metaEvents(await captured(page), "Lead")).toHaveLength(0);
   mode = "existing";
   for (let i = 0; i < 2; i++) {
     await page.goto(LP);
@@ -410,8 +417,25 @@ test("a refused order sends no Purchase; a replayed order code is never reported
     await page.locator("#lpOrder").click();
     await expect(page.locator("#lpDoneCode")).toHaveText("ORD-REPKAYAA");
   }
+  await expect.poll(async () => metaEvents(await captured(page), "Lead").length).toBe(1);
   await page.waitForTimeout(300);
   const cap = await captured(page);
-  expect(metaEvents(cap, "Purchase")).toHaveLength(1);
+  expect(metaEvents(cap, "Lead")).toHaveLength(1);
+  expect(metaEvents(cap, "Purchase")).toHaveLength(0);
   expect(gaEvents(cap, "purchase")).toHaveLength(1);
+});
+
+test("a browser without crypto.subtle sends no Lead (the server sends it), still the GA4 purchase", async ({ page }) => {
+  await fakeAnalytics(page);
+  await page.addInitScript(() => Object.defineProperty(window.crypto, "subtle", { value: undefined }));
+  await page.goto(LP);
+  await fillBuyer(page);
+  await expect(page.locator("#lpTotal")).toHaveText("١٬٢٧٠ ج");
+  await page.locator("#lpOrder").click();
+  await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-/);
+  await expect.poll(async () => gaEvents(await captured(page), "purchase").length).toBe(1);
+  await page.waitForTimeout(300);
+  const cap = await captured(page);
+  expect(metaEvents(cap, "Lead")).toHaveLength(0);
+  expect(metaEvents(cap, "Purchase")).toHaveLength(0);
 });

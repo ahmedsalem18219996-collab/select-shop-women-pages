@@ -1,17 +1,29 @@
-/* SELECT SHOP WOMEN: GA4 page analytics, production-only.
- * Measurement ID sourced from SELECT SHOP's archived GA4 setup.
- * No user phone, shipping details, order identifiers or form values are sent.
- */
-/* Owner/QA opt-out, this browser only: open any page with ?notrack=1 before a test order so it never reaches GA4 or
- * the Meta Pixel (a fake Purchase would skew ad learning); ?notrack=0 turns tracking back on. */
+// GA4 + Meta Pixel, production only; never buyer data. ?notrack=1 / 0: owner test opt-out for this browser.
 window.__womenNoTrack = (() => {
   try {
     const q = new URLSearchParams(location.search).get("notrack");
     if (q === "1") localStorage.setItem("women.notrack", "1");
     if (q === "0") localStorage.removeItem("women.notrack");
     return localStorage.getItem("women.notrack") === "1";
-  } catch { return false; } // storage blocked (some in-app browsers): normal tracking
+  } catch { return false; }
 })();
+// Meta ids (_fbp, _fbc or one from the last fbclid) for the server's Conversions API via /orders/attribution.
+if (!window.__womenNoTrack) {
+  const FB = /^fb\.1\.\d{10,13}\.[\w.-]{1,500}$/;
+  try {
+    const id = new URLSearchParams(location.search).get("fbclid") || "";
+    if (/^[\w-]{10,500}$/.test(id) && JSON.parse(localStorage.getItem("women.fbclid.v1") || "{}").id !== id)
+      localStorage.setItem("women.fbclid.v1", JSON.stringify({ id, ms: Date.now() }));
+  } catch { /* optional */ }
+  window.womenMetaIds = () => {
+    try {
+      const cookie = (n) => decodeURIComponent((document.cookie.match("(?:^|; )" + n + "=([^;]*)") || [])[1] || "");
+      const click = JSON.parse(localStorage.getItem("women.fbclid.v1") || "null");
+      const fbp = cookie("_fbp"), fbc = cookie("_fbc") || (click?.id ? "fb.1." + click.ms + "." + click.id : "");
+      return { ...(FB.test(fbp) ? { fbp } : {}), ...(FB.test(fbc) ? { fbc } : {}) };
+    } catch { return {}; }
+  };
+}
 (() => {
   "use strict";
   if (window.__womenNoTrack) return;
@@ -21,8 +33,7 @@ window.__womenNoTrack = (() => {
   if (new URLSearchParams(location.search).get("design-preview") === "1") return;
 
   const cleanUrl = new URL(location.href);
-  // Marketing parameters only (never form values or order references). "p" is the product code of /lp/?p=SS-....
-  const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "code", "p", "gclid", "fbclid", "igshid", "lpv",
+  const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "code", "p", "gclid", "fbclid", "igshid", "igsh", "mibextid", "lpv",
     "campaign_id", "adset_id", "ad_id", "placement", "site_source_name", "slug", "collection"]);
   for (const key of [...cleanUrl.searchParams.keys()]) {
     if (!allowed.has(key)) cleanUrl.searchParams.delete(key);
@@ -39,19 +50,15 @@ window.__womenNoTrack = (() => {
   document.head.appendChild(script);
 })();
 
-/* Meta Pixel: WOMEN production only. No advanced matching or automatic events.
- * Never load on order-success (its URL contains a private order reference).
- * Explicit product events contain public catalog selectors only.
- */
+// Meta Pixel: no advanced matching or automatic events; never on order-success (private order reference in its URL).
 (() => {
   "use strict";
   if (window.__womenNoTrack) return;
   if (!["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase())) return;
   if (new URLSearchParams(location.search).get("design-preview") === "1") return;
   if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname) && !location.pathname.startsWith("/lp/") && location.pathname !== "/collections/") return;
-  // Do not expose arbitrary URL parameters to Meta's automatic page context.
-  // Same marketing allowlist: before, /lp/?p=SS-... (p) and Meta's URL builder (utm_id) silently disabled the Pixel.
-  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","utm_id","code","p","fbclid","igshid","lpv",
+  // Any parameter outside the marketing allowlist keeps the Pixel off.
+  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","utm_id","code","p","fbclid","igshid","igsh","mibextid","lpv",
     "campaign_id","adset_id","ad_id","placement","site_source_name","slug","collection"]);
   if ([...new URLSearchParams(location.search).keys()].some(k => !permitted.has(k))) return;
   const pixelId = "992616030526349";
@@ -65,7 +72,7 @@ window.__womenNoTrack = (() => {
   fbq("trackSingle", pixelId, "PageView");
   window.womenMetaEvent = function (name, fields, eventId) {
     try {
-      if (!["ViewContent","AddToCart","InitiateCheckout","Purchase"].includes(name)) return;
+      if (!["ViewContent","AddToCart","InitiateCheckout","Lead"].includes(name)) return; // Purchase: server only
       const items = Array.isArray(fields.items) ? fields.items.filter(i => /^SS-\d{4,19}$/.test(i.item_id || "")) : [];
       if (!items.length) return;
       const params = {currency:"EGP",content_type:"product",
@@ -73,7 +80,7 @@ window.__womenNoTrack = (() => {
         contents:items.map(i=>({id:i.item_id,quantity:Number.isInteger(i.quantity)&&i.quantity>0?i.quantity:1}))};
       if (Number.isFinite(fields.value) && fields.value >= 0) params.value=fields.value;
       fbq("trackSingle", pixelId, name, params, eventId ? {eventID:eventId} : {});
-    } catch { /* Analytics must not interrupt checkout. */ }
+    } catch { /* never interrupt checkout */ }
   };
   const script=document.createElement("script");
   script.async=true; script.src="https://connect.facebook.net/en_US/fbevents.js";
