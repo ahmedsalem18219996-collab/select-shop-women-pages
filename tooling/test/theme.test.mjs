@@ -5,7 +5,8 @@ import { THEME_BOOT, THEME_TOGGLE, SHARED_THEME } from "../build-lp.mjs";
 
 // Dark / Light theme (2026-11-06): one boot script and one switch, identical on every public page, and a Light palette that meets AA.
 const source = (p) => readFile(new URL("../../" + p, import.meta.url), "utf8");
-const STATIC = ["index.html", "p/index.html", "cart/index.html", "checkout/index.html", "order-success/index.html"];
+// The home is light only since the Neutral redesign (2026-11-21): no boot script, no switch (test/neutral-home.test.mjs).
+const STATIC = ["p/index.html", "cart/index.html", "checkout/index.html", "order-success/index.html"];
 const BOOT = `<script id="theme-boot">${THEME_BOOT}</script>`;
 const count = (s, x) => s.split(x).length - 1;
 

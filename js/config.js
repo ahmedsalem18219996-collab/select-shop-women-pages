@@ -6,6 +6,10 @@ window.SELECT_CONFIG = {
      Set to false ONLY after js/store-adapter.js returns the real WOMEN public catalog. */
   demo: false,
 
+  /* The campaign on the home hero: the slug of a published campaign page (/collections/?slug=...), e.g. 'tracksuit-23'.
+     Empty, unpublished or ended = the brand hero. Changing it changes only the home's look, never products or prices. */
+  campaignSlug: '',
+
   currencyShort: 'ج',        /* used next to prices on cards and looks */
   currencyLong: 'جنيه',      /* used in the size sheet and stories */
 

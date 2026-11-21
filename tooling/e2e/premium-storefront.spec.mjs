@@ -11,12 +11,12 @@ test("premium storefront renders verified catalog and retains product navigation
   await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty();
   await expect(page.locator("#womenOwnerAnnouncement")).toHaveCount(1);
   await expect(page.locator("#womenOwnerAnnouncement")).not.toBeEmpty();
-  const accent = await page.locator("#womenOwnerAnnouncement").evaluate(el => getComputedStyle(el).borderBottomColor);
-  expect(accent).toBe("rgb(37, 52, 82)"); // Dark Luxury border #253452
+  const band = await page.locator("#womenOwnerAnnouncement").evaluate(el => getComputedStyle(el).backgroundColor);
+  expect(band).toBe("rgb(17, 17, 17)"); // Neutral: black announcement band
   await expect(page.locator("#feed .card").first()).toBeVisible({ timeout: 12000 });
   await expect(page.locator("#heroImg")).toHaveCount(0);
   await expect(page.locator("#heroPick")).toHaveCount(0);
-  await expect(page.locator(".hero-cta a")).toHaveAttribute("href", "#shop");
+  await expect(page.locator("#heroCta")).toHaveAttribute("href", "#shop");
   // SS-1011 is no longer special-cased: if published in the real public catalog,
   // it must appear as one ordinary product card with its direct COD landing page.
   const sweater = page.locator("#feed .card").filter({ has: page.locator('[data-name="SS-1011"]') });
@@ -27,7 +27,7 @@ test("premium storefront renders verified catalog and retains product navigation
   await expect(page.locator(".hero p")).not.toContainText("بنجهز");
   await expect(page.locator("#countOut")).not.toHaveText("جارٍ التحميل…");
   const color = await page.locator(".hdr").evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(color).toBe("rgba(5, 11, 28, 0.97)"); // Dark Luxury midnight navy #050B1C header
+  expect(color).toMatch(/^rgba\(250, 250, 249, 0\.8[26]\)$/); // Neutral #FAFAF9 glass header
   const productLink = page.locator("#feed .card .shot-link").first();
   // SS-1008 + SS-1009 are one verified model; the card must open the
   // canonical pre-rendered page rather than the legacy per-colour URL.
