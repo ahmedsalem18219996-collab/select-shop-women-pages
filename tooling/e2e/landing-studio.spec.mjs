@@ -199,6 +199,8 @@ test("ad order attribution carries Meta's browser ids: _fbp, and _fbc built from
   await page.context().addCookies([{ name: "_fbp", value: "fb.1.1763600000000.1234567890", url: baseURL }]);
   const before = (await mockLog(request)).attributions.length;
   const t0 = Date.now();
+  const sourceUrls = [];
+  page.on("request", r => { if (r.method() === "POST" && /\/orders$/.test(new URL(r.url()).pathname)) sourceUrls.push(r.headers()["x-women-event-source-url"]); });
   await page.goto(LP + "?utm_source=facebook&utm_campaign=winter-jackets&fbclid=IwAR0abcDEF_123-xyz");
   await expect.poll(() => page.evaluate(() => typeof window.womenMetaIds)).toBe("function"); // analytics.js loads after the page
   await page.fill("[name=name]", "اختبار آلي");
@@ -216,6 +218,8 @@ test("ad order attribution carries Meta's browser ids: _fbp, and _fbc built from
   expect(id).toBe("IwAR0abcDEF_123-xyz");
   expect(Number(ms)).toBeGreaterThanOrEqual(t0);
   expect(a.params).toMatchObject({ source: "facebook", campaign: "winter-jackets" });
+  // The order request names its page for the server's Meta events: origin + path, never the query (fbclid, utm).
+  expect(sourceUrls).toEqual([new URL(LP, baseURL).href]);
   expect(JSON.stringify(a)).not.toMatch(/01012345678|اختبار آلي|عنوان/);
 });
 

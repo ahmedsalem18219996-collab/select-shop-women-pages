@@ -112,6 +112,8 @@ function saveCart(lines) {
 async function api(path, method="GET", body=null, timeoutMs=15000) {
   const opts = {method, cache:"no-store", headers:{Accept:"application/json"}, signal:(typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(timeoutMs) : undefined)};
   if (body !== null) { opts.headers["Content-Type"]="application/json"; opts.body=JSON.stringify(body); }
+  // The page the order came from, for the server's Meta events (origin + path only: no query, no order data).
+  if (path==="/orders") opts.headers["x-women-event-source-url"]=location.origin+location.pathname;
   const r=await fetch(API + path,opts);
   let data={};try { data=await r.json(); } catch {}
   if (!r.ok) {

@@ -237,7 +237,8 @@ async function parse(/** @type {Promise<Response>} */ pending) {
 function api(/** @type {string} */ path, method = "GET", /** @type {unknown} */ body = null, ms = 12000) {
   /** @type {RequestInit} */
   const opts = { method, cache: "no-store", headers: { Accept: "application/json" }, signal: timeout(ms) };
-  if (body !== null) { opts.headers = { Accept: "application/json", "Content-Type": "application/json" }; opts.body = JSON.stringify(body); }
+  if (body !== null) { opts.headers = { Accept: "application/json", "Content-Type": "application/json",
+    ...(path === "/orders" ? { "x-women-event-source-url": location.origin + location.pathname } : {}) }; opts.body = JSON.stringify(body); }
   return parse(fetch(API + path, opts));
 }
 /** A request the inline head script already started (so it overlaps the module download), or a fresh one. */

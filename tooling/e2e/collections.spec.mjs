@@ -74,6 +74,8 @@ test('multi-product COD order: three products from one page become ONE order wit
     await route.fulfill({ contentType: 'text/javascript', body: real + ';window.womenMetaEvent=function(){const s=JSON.parse(localStorage.getItem("__cap")||"[]");s.push([...arguments]);localStorage.setItem("__cap",JSON.stringify(s))};' });
   });
   await setPage(request, 'order-3', ['SS-9101', 'SS-1012', 'SS-1013']);
+  const sourceUrls = [];
+  page.on('request', r => { if (r.method() === 'POST' && /\/orders$/.test(new URL(r.url()).pathname)) sourceUrls.push(r.headers()['x-women-event-source-url']); });
   const before = await mockLog(request);
   await page.goto('/collections/?slug=order-3&' + AD);
   const a = page.locator('.cp-product[data-code="SS-9101"]');
@@ -113,6 +115,7 @@ test('multi-product COD order: three products from one page become ONE order wit
   // Attribution keeps the ORIGINAL ad (product SS-1013, ad set), separate from what was bought; no buyer data.
   const attr = log.attributions.at(-1).params;
   expect(attr.fbc).toBe('fb.1.1763600000000.IwAR0cookie'); // the Pixel's own _fbc wins
+  expect(sourceUrls).toEqual([new URL('/checkout/', baseURL).href]);
   // Cart checkout (js/commerce.js): one Lead, id "lead-" + SHA-256(order key), no browser Purchase.
   const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('__cap') || '[]'));
   expect(meta.filter(e => e[0] === 'Purchase')).toEqual([]);
