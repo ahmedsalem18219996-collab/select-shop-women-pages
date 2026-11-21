@@ -118,8 +118,18 @@ export function cleanPageTheme(/** @type {any} */ raw) {
   const t = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   /** @type {Record<string, any>} */ const out = { enabled: t.enabled === true };
   for (const [k, allowed] of Object.entries(PAGE_THEME)) out[k] = pick(t[k], allowed);
+  // Campaign main colour (server contract, PR #65): "#rrggbb" or "" = use the ctaColor palette entry.
+  out.accent = typeof t.accent === "string" && HEX.test(t.accent.toLowerCase()) ? t.accent.toLowerCase() : "";
+  // Swipe hint and buy-button labels (server contract, PR #68): one line, up to 60 characters; "" = the default label.
+  const label = (/** @type {unknown} */ v) => (typeof v === "string" && !/[\u0000-\u001f\u007f]/.test(v) && v.trim().length <= 60 ? v.trim() : "");
+  out.hintText = label(t.hintText);
+  out.ctaText = label(t.ctaText);
   return out;
 }
+/** Palette entries of the ctaColor choice (same values as the storefront buttons). */
+export const CTA_HEX = { purple: "#d100d1", cyan: "#2ed9d1", white: "#ffffff", gold: "#d9b45a" };
+/** The one colour of a campaign page: its accent, else its ctaColor palette entry. */
+export const campaignAccent = (/** @type {any} */ theme) => theme.accent || CTA_HEX[/** @type {keyof typeof CTA_HEX} */ (theme.ctaColor)] || CTA_HEX.purple;
 
 /** Structured Design Import: JSON only, never HTML or scripts. Every value goes through the same whitelist as the
  *  editor and the server, so anything unknown (markup, prices, URLs) is dropped, not executed.

@@ -1,7 +1,7 @@
 import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { moveProductCode, slugFromTitle, validateCampaignSelection } from '../campaigns-model.js';
-import { PAGE_THEME, cleanPageTheme, parseDesignImport } from '../../../lp/studio-design.js?v=20261120-motion';
+import { PAGE_THEME, cleanPageTheme, parseDesignImport, suggestAccent, campaignAccent } from '../../../lp/studio-design.js?v=20261120-campaign';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
@@ -10,16 +10,15 @@ const make = (tag, cls = '', text = '') => {
   return el;
 };
 const imgUrl = (path) => path ? mediaUrl(/^media\//.test(path) ? 'product-media/' + path : path) : null;
-const campaignPageUrl = (item) => {
+// The ad link: campaigns.stats counts an order for a campaign when its utm_campaign is exactly the campaign slug.
+export const campaignAdUrl = (item, origin = location.origin) => {
   const codes = Array.isArray(item.product_codes) ? item.product_codes : [];
   const single = codes.length === 1;
-  const url = new URL(single ? '/lp/' : '/collections/', location.origin);
+  const url = new URL(single ? '/lp/' : '/collections/', origin);
   if (single) url.searchParams.set('p', codes[0]);
   else url.searchParams.set('slug', item.slug);
-  url.searchParams.set('utm_source', 'meta');
-  url.searchParams.set('utm_medium', 'paid_social');
+  url.searchParams.set('utm_source', 'facebook');
   url.searchParams.set('utm_campaign', item.slug);
-  url.searchParams.set('utm_content', single ? codes[0] : 'collection');
   return url.href;
 };
 const THEME_LABELS = {
@@ -263,8 +262,62 @@ export default {
         themeSelects[key] = sel;
       });
       themeCard.append(themeGrid);
-      const readTheme = () => { theme = cleanPageTheme({ enabled: themeOn.checked, ...Object.fromEntries(Object.entries(themeSelects).map(([k, sel]) => [k, sel.value])) }); };
-      const paintTheme = () => { themeOn.checked = theme.enabled; Object.entries(themeSelects).forEach(([k, sel]) => { sel.value = theme[k]; sel.disabled = !theme.enabled || !themeReady; }); };
+      // One main colour for the whole campaign (theme.accent, PR #65): buy buttons, band, bag count, buy bar.
+      // Empty = the button colour above.
+      const accentWrap = make('div', 'field');
+      const accentRow = make('div', 'row wrap');
+      const accentOn = make('input'); accentOn.type = 'checkbox'; accentOn.dataset.themeAccentOn = '';
+      accentOn.setAttribute('aria-label', 'لون خاص للحملة');
+      const accentIn = make('input', 'input'); accentIn.type = 'color'; accentIn.value = '#d100d1'; accentIn.dataset.themeAccent = '';
+      accentIn.setAttribute('aria-label', 'اللون الأساسي للحملة');
+      const suggestBtn = actionButton('اقتراح من صور أول موديل', 'btn-soft btn-sm', async () => {
+        const first = products.find(p => p.public_code === [...selected][0]);
+        // Reads the dominant garment colour of the first model's photo (public storage, CORS).
+        const hex = !first?.image ? '' : await new Promise((resolve) => {
+          const img = new Image(); img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            try {
+              const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+              const g = c.getContext('2d', { willReadFrequently: true });
+              if (!g) { resolve(''); return; }
+              g.drawImage(img, 0, 0, 64, 64);
+              resolve(suggestAccent(g.getImageData(0, 0, 64, 64).data));
+            } catch { resolve(''); }
+          };
+          img.onerror = () => resolve('');
+          img.src = imgUrl(first.image) || '';
+        });
+        if (!hex) { island('error', 'مقدرناش نطلع لون واضح من الصور. اختار اللون بنفسك.'); return; }
+        accentIn.value = hex; accentOn.checked = true; readTheme(); themeTouched = true; paintTheme(); refreshPreview();
+        done('اتقترح لون من صور أول موديل. تقدر تغيّره.');
+      });
+      suggestBtn.dataset.themeAccentSuggest = '';
+      const accentNow = make('span', 'muted');
+      accentRow.append(accentOn, accentIn, suggestBtn, accentNow);
+      accentWrap.append(make('span', '', 'اللون الأساسي للحملة (زراير الشراء، الشريط، عدد الشنطة)'), accentRow);
+      themeCard.append(accentWrap);
+      // Swipe hint and buy-button text (theme.hintText / theme.ctaText, up to 60 characters; empty = the default text).
+      const textField = (label, placeholder, key) => {
+        const wrap = make('label', 'field');
+        const input = make('input', 'input'); input.maxLength = 60; input.placeholder = placeholder; input.dataset.themeText = key;
+        wrap.append(make('span', '', label), input);
+        return [wrap, input];
+      };
+      const [hintWrap, hintIn] = textField('نص توجيه السحب', 'اسحبي لتحت تشوفي الموديل', 'hintText');
+      const [ctaWrap, ctaIn] = textField('نص زرار الشراء', 'إضافة للشنطة', 'ctaText');
+      const textsGrid = make('div', 'grid2');
+      textsGrid.append(hintWrap, ctaWrap);
+      themeCard.append(textsGrid);
+      const readTheme = () => { theme = cleanPageTheme({ enabled: themeOn.checked, ...Object.fromEntries(Object.entries(themeSelects).map(([k, sel]) => [k, sel.value])),
+        accent: accentOn.checked ? accentIn.value : '', hintText: hintIn.value, ctaText: ctaIn.value }); };
+      const paintTheme = () => {
+        themeOn.checked = theme.enabled; Object.entries(themeSelects).forEach(([k, sel]) => { sel.value = theme[k]; sel.disabled = !theme.enabled || !themeReady; });
+        accentOn.checked = !!theme.accent; if (theme.accent) accentIn.value = theme.accent;
+        [accentOn, accentIn, suggestBtn, hintIn, ctaIn].forEach(x => { x.disabled = !theme.enabled || !themeReady; });
+        if (document.activeElement !== hintIn) hintIn.value = theme.hintText || '';
+        if (document.activeElement !== ctaIn) ctaIn.value = theme.ctaText || '';
+        accentNow.textContent = theme.enabled ? 'المستخدم: ' + campaignAccent(theme) : '';
+      };
       if (!themeReady) { themeOn.disabled = true; themeCard.append(make('p', 'err', 'الشكل الموحد محتاج تحديث الخادم (Migration) قبل الحفظ.')); }
       panel.append(themeCard);
 
@@ -462,10 +515,14 @@ export default {
           const actions = make('div', 'row wrap');
           if (item.status !== 'archived') actions.append(actionButton('تعديل', 'btn-soft btn-sm', () => openEditor(item)));
           if (item.status === 'draft') actions.append(actionButton('نشر الصفحة', 'btn-primary btn-sm', (e) => publishCollection(item, e.currentTarget)));
-          if (item.status === 'published') actions.append(actionButton('نسخ رابط الصفحة', 'btn-primary btn-sm', async () => {
-            try { await navigator.clipboard.writeText(campaignPageUrl(item)); done('اتنسخ رابط الصفحة.'); }
-            catch { island('error', 'تعذّر النسخ تلقائيًا.'); }
-          }));
+          if (item.status === 'published') {
+            const adLink = actionButton('انسخ لينك الإعلان', 'btn-primary btn-sm', async () => {
+              try { await navigator.clipboard.writeText(campaignAdUrl(item)); done('اتنسخ لينك الإعلان. الطلبات اللي جاية منه هتتحسب للحملة.'); }
+              catch { island('error', 'تعذّر النسخ تلقائيًا: ' + campaignAdUrl(item)); }
+            });
+            adLink.dataset.adLink = item.slug;
+            actions.append(adLink);
+          }
           if (item.status !== 'archived') actions.append(actionButton('أرشفة', 'btn-ghost btn-sm', (e) => archiveCollection(item, e.currentTarget)));
           card.append(actions);
           grid.append(card);

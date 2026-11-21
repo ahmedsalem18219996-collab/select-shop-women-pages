@@ -31,6 +31,7 @@ Live storefront + admin for SELECT SHOP WOMEN (women's clothing, Egypt, Cash on 
 ## Design system (Dark Luxury, storefront + LP since 2026-11-06)
 Midnight Navy #050B1C ground · Deep Navy #0B1730 cards · Elevated #111F3A inputs · White #FFFFFF text · Muted #AAB5C8 · Border #253452.
 Neon Purple #D100D1 (hover #AE00B8) for buy buttons only · Electric Cyan #2ED9D1 for selection, links and focus · product photos on #F4F6FA.
+Exception (owner, 2026-11-20): on a campaign page (`/collections/`) with the unified theme on, the campaign's one main colour (`theme.accent` #RRGGBB, else its `ctaColor`) replaces Neon Purple on its buy buttons, slanted band, bag count and buy bar.
 Tokens live in `css/atelier-site.css` and the "Dark Luxury" block of `tooling/build-lp.mjs`. Admin keeps its own Soft Luxury sheet. `js/colour-palette.js` = real garment colours, never theme.
 Egyptian Arabic, RTL, mobile-first, tap targets ≥ 44px, readable contrast, no heavy glow. Product photos matter more than decoration.
 

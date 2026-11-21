@@ -398,8 +398,11 @@ async function showCart(){
   };
   await refresh();
 }
-async function showCheckout(){
-  const lines=cart(),form=$("#orderForm"),select=$("#region"),btn=$("#placeOrder");
+// live=true: the order box inside a campaign page (/collections/), where the bag changes on the same page
+// ("women:cart" event) and an empty bag is a normal start, not a dead end.
+export async function showCheckout(live=false){
+  let lines=cart(),ticket=0;
+  const form=$("#orderForm"),select=$("#region"),btn=$("#placeOrder");
   let quote=null;
   let orderReady=false;
   // Only the reviewed WOMEN internal protection path may activate checkout.
@@ -408,9 +411,10 @@ async function showCheckout(){
     const cfg=await api("/checkout-config");
     orderReady=cfg.enabled===true && cfg.mode==="internal";
   } catch { /* Fail closed. */ }
-  if(!lines.length){status("الشنطة فارغة؛ يمكن الرجوع واختيار المنتجات.",true);return;}
-  if(orderReady) gaEvent("begin_checkout", {currency:"EGP",
-    items:lines.map(l=>({item_id:l.publicCode, quantity:l.quantity}))});
+  if(!lines.length&&!live){status("الشنطة فارغة؛ يمكن الرجوع واختيار المنتجات.",true);return;}
+  const begin=()=>{if(orderReady&&lines.length) gaEvent("begin_checkout", {currency:"EGP",
+    items:lines.map(l=>({item_id:l.publicCode, quantity:l.quantity}))});};
+  if(live) form.addEventListener("focusin",begin,{once:true}); else begin();
   try{
     const regions=await api("/regions");
     // Cairo and Giza first, like the product page.
@@ -418,13 +422,16 @@ async function showCheckout(){
     regions.regions.sort((a,b)=>first(a)-first(b)).forEach(r=>{const op=make("option",r.label);op.value=r.key;select.append(op);});
   }catch(e){status(msg(e),true);return;}
   const refresh=async()=>{
+    const mine=++ticket;lines=cart();
     quote=null;btn.disabled=true;
     $("#subtotal").textContent="—";$("#shipping").textContent="—";$("#grandTotal").textContent="—";
     $("#checkoutItems").replaceChildren();
+    if(!lines.length){status("إضافة موديل واحد على الأقل للشنطة.");return;}
     if(!select.value){status("اختيار المحافظة لعرض سعر الشحن.");return;}
     status("بنحسب السعر والشحن من السيرفر…");
     try{
       const q=await api("/checkout/quote","POST",{lines,deliveryRegionKey:select.value});
+      if(mine!==ticket)return; // a newer bag or governorate change is already being priced
       q.lines.forEach(l=>$("#checkoutItems").append(make("p",(l.title||l.address?.publicCode||"قطعة")+" × "+l.quantity)));
       $("#subtotal").textContent=money(q.merchandiseSubtotal);
       $("#shipping").textContent=money(q.shippingTotal);
@@ -433,9 +440,10 @@ async function showCheckout(){
       quote=q;
       btn.disabled=!orderReady;
       status(orderReady ? "الإجمالي مؤكد. مراجعة بياناتك وتأكيد الطلب." : "ده إجمالي الطلب؛ استقبال الطلبات لسه تحت التجهيز حاليًا.",!orderReady);
-    }catch(e){status(msg(e),true);}
+    }catch(e){if(mine===ticket)status(msg(e),true);}
   };
   select.addEventListener("change",refresh);
+  if(live) addEventListener("women:cart",()=>void refresh());
   await refresh();
   form.addEventListener("submit",async(e)=>{
     e.preventDefault();if(!quote||!orderReady||!form.reportValidity())return;
