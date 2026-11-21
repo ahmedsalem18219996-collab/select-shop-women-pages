@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { mergeAdParams, readAdParams } from "../../lp/runtime.js";
-import { cleanPageTheme, parseDesignImport, normalizeDesign, campaignAccent } from "../../lp/studio-design.js";
+import { cleanPageTheme, parseDesignImport, normalizeDesign, campaignAccent, campaignTextLength, CAMPAIGN_FONTS } from "../../lp/studio-design.js";
 
 test("ad attribution is first touch per ad click: same ad keeps the original landing and ad product", () => {
   const first = readAdParams("?utm_source=meta&utm_medium=paid_social&utm_campaign=c1&utm_content=SS-1013&adset=a1", "c-group");
@@ -17,7 +17,7 @@ test("ad attribution is first touch per ad click: same ad keeps the original lan
 test("page theme keeps whitelisted values only, defaults otherwise, never extra keys", () => {
   const t = cleanPageTheme({ enabled: true, background: "light", spacing: "airy", font: "<script>", price: 1 });
   assert.deepEqual(Object.keys(t).sort(), ["accent", "background", "ctaAnimation", "ctaColor", "ctaShape", "ctaText", "divider", "enabled", "font", "hintText", "spacing", "titleSize"]);
-  assert.equal(t.background, "light"); assert.equal(t.spacing, "airy"); assert.equal(t.font, "readex");
+  assert.equal(t.background, "light"); assert.equal(t.spacing, "airy"); assert.equal(t.font, "", "unknown font = the default font");
   assert.equal(cleanPageTheme("x").enabled, false);
   assert.equal(cleanPageTheme({ enabled: "true" }).enabled, false, "only a real boolean switches it on");
 });
@@ -30,11 +30,23 @@ test("campaign colour (PR #65 contract): #RRGGBB lowercased, anything else empty
   assert.equal(campaignAccent(cleanPageTheme({ enabled: true })), "#d100d1");
 });
 
-test("hint and buy-button texts (PR #68): one line, up to 60 characters after trimming; anything else is the default", () => {
+test("campaign font (PR #73): exactly one of six IDs or the default; older readex / rakkas / system still render", () => {
+  assert.deepEqual(CAMPAIGN_FONTS, ["cairo", "changa", "el-messiri", "aref-ruqaa", "marhey", "lalezar"]);
+  for (const f of CAMPAIGN_FONTS) assert.equal(cleanPageTheme({ font: f }).font, f);
+  for (const f of ["readex", "rakkas", "system"]) assert.equal(cleanPageTheme({ font: f }).font, f);
+  for (const bad of ["Cairo", " cairo", "cairo ", null, 5, undefined, "<x>"]) assert.equal(cleanPageTheme({ font: bad }).font, "");
+});
+
+test("hint and buy-button texts (PR #68/#73): one line, no < >, up to 60 code points after trimming spaces, like the server", () => {
+  assert.equal(campaignTextLength("  👋 "), 1);
+  assert.equal(campaignTextLength("سُ"), 2, "a combining mark counts on its own (char_length)");
+  assert.equal(cleanPageTheme({ ctaText: "👋".repeat(60) }).ctaText, "👋".repeat(60), "60 emoji fit (120 UTF-16 units)");
+  assert.equal(cleanPageTheme({ ctaText: "👋".repeat(61) }).ctaText, "");
+  assert.equal(cleanPageTheme({ ctaText: "  " + "ا".repeat(60) + "  " }).ctaText, "ا".repeat(60));
   assert.equal(cleanPageTheme({ hintText: "  اسحبي للمزيد  " }).hintText, "اسحبي للمزيد");
   assert.equal(cleanPageTheme({ ctaText: "ا".repeat(60) }).ctaText, "ا".repeat(60));
   for (const bad of ["ا".repeat(61), "سطر\nتاني", 5, null, undefined, "<b>x</b>".repeat(10)]) assert.equal(cleanPageTheme({ ctaText: bad }).ctaText, "");
-  assert.equal(cleanPageTheme({ hintText: "<b>اسحبي</b>" }).hintText, "<b>اسحبي</b>", "kept as plain text; the page renders it with textContent");
+  assert.equal(cleanPageTheme({ hintText: "<b>اسحبي</b>" }).hintText, "", "the server rejects angle brackets");
 });
 
 test("ad link: campaign page + utm_source=facebook + utm_campaign=<slug>, so campaigns.stats counts its orders", async () => {

@@ -34,6 +34,12 @@ button{font:inherit}
 .cp-product[data-bg="light"]{background:#F4F6FA;color:#0B1730;--muted:#4A5874;--line:#CBD3E1;--elev:#FFFFFF;--cyan:#00727A}
 .cp-product[data-font="rakkas"] .cp-title{font-family:Rakkas,Readex,serif}
 .cp-product[data-font="system"]{font-family:system-ui,sans-serif}
+.cp-product[data-font="cairo"] .cp-title,html[data-page-font="cairo"] .collection-hero h1{font-family:Cairo,Readex,sans-serif}
+.cp-product[data-font="changa"] .cp-title,html[data-page-font="changa"] .collection-hero h1{font-family:Changa,Readex,sans-serif}
+.cp-product[data-font="el-messiri"] .cp-title,html[data-page-font="el-messiri"] .collection-hero h1{font-family:'El Messiri',Readex,sans-serif}
+.cp-product[data-font="aref-ruqaa"] .cp-title,html[data-page-font="aref-ruqaa"] .collection-hero h1{font-family:'Aref Ruqaa',Readex,sans-serif}
+.cp-product[data-font="marhey"] .cp-title,html[data-page-font="marhey"] .collection-hero h1{font-family:Marhey,Readex,sans-serif}
+.cp-product[data-font="lalezar"] .cp-title,html[data-page-font="lalezar"] .collection-hero h1{font-family:Lalezar,Readex,sans-serif;font-weight:400}
 .cp-product[data-divider="dots"]{border-style:dotted;border-width:2px}
 .cp-product[data-divider="none"]{border-color:transparent}
 .cp-product[data-divider="wave"]{border-bottom:3px double var(--cyan)}

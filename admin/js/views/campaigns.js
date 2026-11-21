@@ -1,7 +1,7 @@
 import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { moveProductCode, slugFromTitle, validateCampaignSelection } from '../campaigns-model.js';
-import { PAGE_THEME, cleanPageTheme, parseDesignImport, suggestAccent, campaignAccent } from '../../../lp/studio-design.js?v=20261120-campaign';
+import { PAGE_THEME, cleanPageTheme, parseDesignImport, suggestAccent, campaignAccent, campaignTextLength } from '../../../lp/studio-design.js?v=20261121-font';
 
 const make = (tag, cls = '', text = '') => {
   const el = document.createElement(tag);
@@ -23,7 +23,7 @@ export const campaignAdUrl = (item, origin = location.origin) => {
 };
 const THEME_LABELS = {
   background: ['الخلفية', { midnight: 'كحلي غامق', navy: 'كحلي', elevated: 'كحلي فاتح', light: 'فاتح' }],
-  font: ['الخط', { readex: 'Readex', rakkas: 'Rakkas للعناوين', system: 'خط الجهاز' }],
+  font: ['خط العناوين', { '': 'الخط الافتراضي', cairo: 'Cairo', changa: 'Changa', 'el-messiri': 'El Messiri', 'aref-ruqaa': 'Aref Ruqaa', marhey: 'Marhey', lalezar: 'Lalezar' }],
   divider: ['الفواصل', { line: 'خط', none: 'بدون', dots: 'نقط', wave: 'مزدوج' }],
   ctaColor: ['لون زر الإضافة', { purple: 'بنفسجي', cyan: 'سماوي', white: 'أبيض', gold: 'ذهبي' }],
   ctaShape: ['شكل الزر', { pill: 'دائري', rounded: 'حواف ناعمة', square: 'مربع' }],
@@ -296,10 +296,12 @@ export default {
       accentRow.append(accentOn, accentIn, suggestBtn, accentNow);
       accentWrap.append(make('span', '', 'اللون الأساسي للحملة (زراير الشراء، الشريط، عدد الشنطة)'), accentRow);
       themeCard.append(accentWrap);
-      // Swipe hint and buy-button text (theme.hintText / theme.ctaText, up to 60 characters; empty = the default text).
+      // Swipe hint and buy-button text (theme.hintText / theme.ctaText; empty = the default text). The limit is 60 code points
+      // like the server, not maxlength (UTF-16 units: an emoji would count twice).
       const textField = (label, placeholder, key) => {
         const wrap = make('label', 'field');
-        const input = make('input', 'input'); input.maxLength = 60; input.placeholder = placeholder; input.dataset.themeText = key;
+        const input = make('input', 'input'); input.placeholder = placeholder; input.dataset.themeText = key;
+        input.addEventListener('input', () => { if (campaignTextLength(input.value) > 60) input.value = Array.from(input.value).slice(0, 60).join(''); }, true);
         wrap.append(make('span', '', label), input);
         return [wrap, input];
       };
@@ -311,7 +313,7 @@ export default {
       const readTheme = () => { theme = cleanPageTheme({ enabled: themeOn.checked, ...Object.fromEntries(Object.entries(themeSelects).map(([k, sel]) => [k, sel.value])),
         accent: accentOn.checked ? accentIn.value : '', hintText: hintIn.value, ctaText: ctaIn.value }); };
       const paintTheme = () => {
-        themeOn.checked = theme.enabled; Object.entries(themeSelects).forEach(([k, sel]) => { sel.value = theme[k]; sel.disabled = !theme.enabled || !themeReady; });
+        themeOn.checked = theme.enabled; Object.entries(themeSelects).forEach(([k, sel]) => { sel.value = theme[k]; if (sel.selectedIndex < 0) sel.selectedIndex = 0; sel.disabled = !theme.enabled || !themeReady; });
         accentOn.checked = !!theme.accent; if (theme.accent) accentIn.value = theme.accent;
         [accentOn, accentIn, suggestBtn, hintIn, ctaIn].forEach(x => { x.disabled = !theme.enabled || !themeReady; });
         if (document.activeElement !== hintIn) hintIn.value = theme.hintText || '';
@@ -425,7 +427,8 @@ export default {
           });
           if (res.outcome === 'saved') {
             if (themeReady && themeTouched && res.id) {
-              const t = await call('campaigns.theme.save', { id: res.id, version: themeVersion, theme });
+              // An older theme's readex / rakkas / system is no longer accepted: the next save sends the default font.
+              const t = await call('campaigns.theme.save', { id: res.id, version: themeVersion, theme: { ...theme, font: PAGE_THEME.font.includes(theme.font) ? theme.font : '' } });
               if (t.outcome !== 'saved') island('error', t.outcome === 'conflict' ? 'الشكل الموحد اتعدل في مكان تاني؛ اتحفظت المنتجات بس.' : 'اتحفظت المنتجات، لكن الشكل الموحد ماتحفظش.');
             }
             editing = null; editorOpen = false;

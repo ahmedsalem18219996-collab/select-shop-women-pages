@@ -3,7 +3,7 @@
 // Prices, availability and totals stay server-side: /cart/add validates every line, the Quote API prices the order.
 import { findVariant, openValues, lineOk, priceLabel, colourIndex, colourMedia, funnel, loadAnalytics, recordView,
   rememberAdParams, rememberPageCredit } from '../lp/runtime.js?v=20261120-campaign';
-import { normalizeDesign, cleanPageTheme, inkFor, DEFAULT_HINT, campaignAccent } from '../lp/studio-design.js?v=20261120-campaign';
+import { normalizeDesign, cleanPageTheme, inkFor, DEFAULT_HINT, campaignAccent, CAMPAIGN_FONTS } from '../lp/studio-design.js?v=20261121-font';
 import { hexOf } from '../js/colour-palette.js?v=20261120-campaign';
 const loadMotion = () => import('../lp/motion.js?v=20261120-campaign');
 
@@ -566,6 +566,10 @@ async function render(collection, items, rawTheme) {
   document.documentElement.dataset.titleSize = theme.enabled ? theme.titleSize : 'md';
   document.documentElement.dataset.spacing = theme.enabled ? theme.spacing : 'normal';
   document.documentElement.dataset.pageBg = theme.enabled ? theme.background : '';
+  // The campaign's title font (one of six, self-hosted): its stylesheet loads only on a page that picks one.
+  const font = theme.enabled && CAMPAIGN_FONTS.includes(theme.font) ? theme.font : '';
+  document.documentElement.dataset.pageFont = font;
+  if (font && !document.getElementById('cp-fonts')) document.head.append(Object.assign(document.createElement('link'), { id: 'cp-fonts', rel: 'stylesheet', href: '/css/fonts-studio.css?v=20261121' }));
   const hero = make('section', 'collection-hero');
   const h1 = make('h1', '', collection.title); h1.dataset.edit = 'page-title';
   hero.append(make('span', 'collection-kicker', 'SELECT SHOP · ' + new Intl.NumberFormat('ar-EG').format(items.length) + ' موديلات'), h1);

@@ -108,9 +108,11 @@ export function suggestAccent(/** @type {ArrayLike<number>} */ rgba) {
   return "#" + [best.r, best.g, best.b].map(c => Math.round(c / best.w).toString(16).padStart(2, "0")).join("");
 }
 
+// Campaign theme fonts (server contract, PR #73): "" = the page's default font; all six are in css/fonts-studio.css.
+export const CAMPAIGN_FONTS = ["cairo", "changa", "el-messiri", "aref-ruqaa", "marhey", "lalezar"];
 /** Optional unified look of a multi-product page (same whitelist as the server's women_campaign_theme_clean). */
 export const PAGE_THEME = {
-  background: CHOICES.background, font: CHOICES.font, divider: CHOICES.divider,
+  background: CHOICES.background, font: ["", ...CAMPAIGN_FONTS], divider: CHOICES.divider,
   ctaColor: CHOICES.color, ctaShape: CHOICES.shape, ctaAnimation: CHOICES.animation,
   titleSize: ["md", "sm", "lg"], spacing: ["normal", "compact", "airy"],
 };
@@ -118,14 +120,22 @@ export function cleanPageTheme(/** @type {any} */ raw) {
   const t = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   /** @type {Record<string, any>} */ const out = { enabled: t.enabled === true };
   for (const [k, allowed] of Object.entries(PAGE_THEME)) out[k] = pick(t[k], allowed);
+  if (CHOICES.font.includes(t.font)) out.font = t.font; // older saved themes (readex / rakkas / system) render as stored
   // Campaign main colour (server contract, PR #65): "#rrggbb" or "" = use the ctaColor palette entry.
   out.accent = typeof t.accent === "string" && HEX.test(t.accent.toLowerCase()) ? t.accent.toLowerCase() : "";
-  // Swipe hint and buy-button labels (server contract, PR #68): one line, up to 60 characters; "" = the default label.
-  const label = (/** @type {unknown} */ v) => (typeof v === "string" && !/[\u0000-\u001f\u007f]/.test(v) && v.trim().length <= 60 ? v.trim() : "");
+  // Swipe hint and buy-button labels (server contract, PR #68/#73): one line, no < >, at most 60 code points after
+  // trimming plain spaces, as the server counts them; "" = the default label.
+  const label = (/** @type {unknown} */ v) => {
+    if (typeof v !== "string" || /[\u0000-\u001f\u007f<>]/.test(v)) return "";
+    const s = v.replace(/^ +| +$/g, "");
+    return campaignTextLength(s) <= 60 ? s : "";
+  };
   out.hintText = label(t.hintText);
   out.ctaText = label(t.ctaText);
   return out;
 }
+/** A campaign text's length as the server counts it (PostgreSQL char_length): code points after trimming U+0020. */
+export const campaignTextLength = (/** @type {string} */ text) => Array.from(text.replace(/^ +| +$/g, "")).length;
 /** Palette entries of the ctaColor choice (same values as the storefront buttons). */
 export const CTA_HEX = { purple: "#d100d1", cyan: "#2ed9d1", white: "#ffffff", gold: "#d9b45a" };
 /** The one colour of a campaign page: its accent, else its ctaColor palette entry. */
