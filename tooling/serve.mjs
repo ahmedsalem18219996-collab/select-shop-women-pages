@@ -3,7 +3,7 @@
 // only public product photos are still read from the public storage CDN so old and new pages compare fairly.
 //   PORT=4173 MOCK_DELAY_MS=0 node serve.mjs      GET /__mock/log  -> what the browser sent
 import http from "node:http";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -144,6 +144,18 @@ async function mockApi(req, url, body) {
   return [404, { error: "not_found" }];
 }
 
+// The committed js/catalog-thumbs.js lists the LIVE catalog's photos; the fixtures here are older products. Serve the same list for
+// the fixtures' photos instead (only files that are committed), so local pages use thumbnails exactly as production does.
+let mockThumbs = null;
+async function thumbList() {
+  if (mockThumbs) return mockThumbs;
+  const names = new Set();
+  for (const f of await readdir(FIX)) for (const m of (await readFile(path.join(FIX, f), "utf8")).matchAll(/media\/([0-9a-f]{32}\.(?:jpg|png|webp))/g)) names.add(m[1]);
+  const dir = path.join(ROOT, "assets", "catalog-thumbs"), have = [];
+  for (const n of [...names].sort()) if (await stat(path.join(dir, n + ".webp")).catch(() => null) && await stat(path.join(dir, n + ".w400.webp")).catch(() => null)) have.push(n);
+  return (mockThumbs = `/* Generated from WOMEN public catalog, no private data. */\nwindow.SELECT_THUMBNAILS = Object.freeze(${JSON.stringify(have)});\n`);
+}
+
 async function serveFile(req, res, url) {
   let rel = decodeURIComponent(url.pathname);
   let file = path.join(ROOT, rel);
@@ -155,7 +167,7 @@ async function serveFile(req, res, url) {
   }
   if (!s?.isFile()) { res.writeHead(404, { "Content-Type": "text/plain" }).end("not found"); return; }
   const ext = path.extname(file);
-  let data = await readFile(file);
+  let data = rel === "/js/catalog-thumbs.js" ? Buffer.from(await thumbList()) : await readFile(file);
   if (/\.(html|js|mjs|css|json)$/.test(ext)) data = Buffer.from(data.toString("utf8").replaceAll(PROD + "/functions/v1", ORIGIN + "/__mock/functions/v1"));
   const headers = { "Content-Type": TYPES[ext] || "application/octet-stream", "Cache-Control": "no-cache" };
   // GitHub Pages gzips text responses; do the same so Lighthouse measures realistic transfer sizes.

@@ -1,24 +1,39 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFile, access } from "node:fs/promises";
+import { readFile, access, readdir, stat } from "node:fs/promises";
 import { readableAccent, whiteContrast, campaignView, DEFAULT_ACCENT } from "../../js/home-campaign.js";
 
 const source = (p) => readFile(new URL("../../" + p, import.meta.url), "utf8");
 const PHOTO = "https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/product-media/media/0a6d19bfb3de428688b7b4d801e18c9f.jpg";
 
-test("css/fonts-neutral.css: Alexandria, IBM Plex Sans Arabic and Manrope, self-hosted, every file present, licences shipped", async () => {
-  const css = await source("css/fonts-neutral.css");
-  const urls = [...css.matchAll(/url\(['"]?([^'")]+)['"]?\)/g)].map(m => m[1]);
-  assert.ok(urls.length >= 11);
-  for (const u of urls) {
-    assert.match(u, /^\.\.\/assets\/fonts\/neutral\/[\w.-]+\.woff2$/, u);
-    await access(new URL("../../css/" + u, import.meta.url));
-  }
-  const families = new Set([...css.matchAll(/font-family:\s*['"]?([^;'"]+)/g)].map(m => m[1].trim()));
-  assert.deepEqual([...families].sort(), ["Alexandria", "IBM Plex Sans Arabic", "Manrope"]);
-  assert.equal((css.match(/unicode-range/g) || []).length, urls.length, "each face is limited to its script");
-  assert.doesNotMatch(css, /googleapis|gstatic|https?:/);
+test("home fonts: three self-hosted faces inline (Plex Arabic 400 subset, Alexandria 800, Manrope 800), only one preloaded, no unused files", async () => {
+  const home = await source("index.html");
+  const block = home.split('<style id="women-neutral-fonts">')[1].split("</style>")[0];
+  const urls = [...block.matchAll(/url\(([^)]+)\)/g)].map(m => m[1]);
+  assert.deepEqual(urls, ["assets/fonts/neutral/ibm-plex-sans-arabic-arabic-400-lp.woff2", "assets/fonts/neutral/alexandria-arabic-800-normal.woff2", "assets/fonts/neutral/manrope-latin-800-normal.woff2"]);
+  for (const u of urls) await access(new URL("../../" + u, import.meta.url));
+  assert.equal((block.match(/font-display:swap/g) || []).length, 3);
+  assert.equal((block.match(/unicode-range/g) || []).length, 3, "each face is limited to its script");
+  assert.doesNotMatch(block, /googleapis|gstatic|https?:/);
+  const preloads = [...home.matchAll(/<link rel="preload" href="([^"]+)" as="font"/g)].map(m => m[1]);
+  assert.deepEqual(preloads, [urls[0]], "one preloaded font");
+  const files = (await readdir(new URL("../../assets/fonts/neutral/", import.meta.url))).filter(f => f.endsWith(".woff2")).sort();
+  assert.deepEqual(files, urls.map(u => u.split("/").pop()).sort(), "no unused font files");
   for (const f of ["alexandria", "ibm-plex-sans-arabic", "manrope"]) await access(new URL(`../../assets/fonts/neutral/LICENSE-${f}.txt`, import.meta.url));
+});
+
+test("home hero photo: AVIF/WebP at 480/720/900 with srcset, preloaded at high priority, every file under 120KB", async () => {
+  const home = await source("index.html");
+  const pic = home.split('<div class="hero-visual" aria-hidden="true"><picture>')[1].split("</picture>")[0];
+  assert.ok(pic.includes('<img src="assets/hero/hero-woman-casual-720.webp" alt="" width="900" height="1204" fetchpriority="high"'));
+  const set = (t) => `assets/hero/hero-woman-casual-480.${t} 480w, assets/hero/hero-woman-casual-720.${t} 720w, assets/hero/hero-woman-casual-900.${t} 900w`;
+  for (const t of ["avif", "webp"]) assert.ok(pic.includes(`<source type="image/${t}" srcset="${set(t)}"`), t);
+  assert.ok(home.includes(`<link rel="preload" as="image" type="image/avif" imagesrcset="${set("avif")}"`) && /imagesrcset="[^"]+" imagesizes="[^"]+" fetchpriority="high">/.test(home));
+  assert.doesNotMatch(home, /\.png\b/, "no PNG on the home");
+  for (const w of [480, 720, 900]) for (const t of ["avif", "webp"]) {
+    const { size } = await stat(new URL(`../../assets/hero/hero-woman-casual-${w}.${t}`, import.meta.url));
+    assert.ok(size < 120 * 1024, `${w}.${t} is ${size} bytes`);
+  }
 });
 
 test("campaign colour: white text on the marker band is always 4.5:1 or better", () => {
@@ -61,14 +76,14 @@ test("home: Neutral sheet and fonts, light only (no theme boot or switch), campa
   assert.ok(home.includes('<meta name="theme-color" content="#FAFAF9">'));
   assert.doesNotMatch(home, /theme-boot|data-theme-toggle/);
   const sheets = [...home.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1]);
-  assert.deepEqual(sheets, ["css/atelier-site.css?v=20261114-luxe", "css/fonts-neutral.css?v=20261121", "css/neutral.css?v=20261121"]);
+  assert.deepEqual(sheets, ["css/atelier-site.css?v=20261114-luxe", "css/neutral.css?v=20261121-hero"]);
   assert.match(home, /<script type="module" src="js\/home-campaign\.js\?v=[\w-]+"><\/script>/);
-  assert.match(home, /assets\/fonts\/neutral\/ibm-plex-sans-arabic-arabic-400-normal\.woff2/);
   assert.match(await source("js/config.js"), /campaignSlug: '[a-z0-9-]*'/);
   const css = await source("css/neutral.css");
   assert.match(css, /--bg:#FAFAF9/);
   assert.match(css, /--ink:#111111/);
   assert.match(css, /--nx-accent:#C8102E/);
   assert.match(css, /prefers-reduced-motion:reduce/);
+  assert.ok(css.includes(".wrap:has(>#stories:empty){display:none}"), "empty stories bar takes no space (no layout shift)");
   assert.doesNotMatch(css, /https?:/);
 });
