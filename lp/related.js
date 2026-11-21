@@ -22,21 +22,32 @@ export async function renderRelatedProducts(currentCode, { BRIDGE, timeout, vali
 }
 
 /** A landing page whose product is gone (404): the models that are on sale now, from the public catalog. */
-/** @param {string} currentCode @param {{ BRIDGE: string, timeout: (ms: number) => AbortSignal|undefined, validCode: (x: unknown) => boolean, okMinor: (x: unknown) => boolean, egp: (x: number) => string }} h */
-export async function renderAvailableModels(currentCode, { BRIDGE, timeout, validCode, okMinor, egp }) {
+/** @param {string[]} codes the page's colour codes @param {{ BRIDGE: string, timeout: (ms: number) => AbortSignal|undefined, validCode: (x: unknown) => boolean, okMinor: (x: unknown) => boolean, egp: (x: number) => string }} h */
+export async function renderAvailableModels(codes, { BRIDGE, timeout, validCode, okMinor, egp }) {
   if (document.getElementById("lpAvailableModels")) return;
+  const currentCode = codes[0];
   // The whole page is gone (hidden or removed model): keep it out of search.
-  const robots = document.querySelector('meta[name="robots"]') || document.head.appendChild(Object.assign(document.createElement("meta"), { name: "robots" }));
-  robots.setAttribute("content", "noindex, follow");
+  const noindex = () => (document.querySelector('meta[name="robots"]') || document.head.appendChild(Object.assign(document.createElement("meta"), { name: "robots" })))
+    .setAttribute("content", "noindex, follow");
+  if (codes.length < 2) noindex();
   try {
     const response = await fetch(BRIDGE + "/catalog", {
       headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000),
     });
     if (!response.ok) return;
     const payload = await response.json();
-    const items = Array.isArray(payload?.items)
-      ? payload.items.filter(item => validCode(item?.publicCode) && item.publicCode !== currentCode && okMinor(item.priceMinor)).slice(0, 6)
-      : [];
+    const all = Array.isArray(payload?.items) ? payload.items : [];
+    // A shared-model page (several colours) is gone only when none of its colours is still on sale.
+    if (codes.length > 1) {
+      if (all.some(item => codes.includes(item?.publicCode))) {
+        // Only this colour is gone: point her to the others (unless she already picked another colour meanwhile).
+        const status = document.getElementById("lpStatus");
+        if (status?.textContent === "الموديل ده مش متاح دلوقتي.") status.textContent = "اللون ده مش متاح دلوقتي؛ اختاري لون تاني.";
+        return;
+      }
+      noindex();
+    }
+    const items = all.filter(item => validCode(item?.publicCode) && !codes.includes(item.publicCode) && okMinor(item.priceMinor)).slice(0, 6);
     if (!items.length) return;
     // First thing on the page: the visitor came for this model, so she sees at once that it is gone and what is on sale.
     paintRow(items, { id: "lpAvailableModels", title: "الموديل ده مش متاح دلوقتي", intro: "دي موديلات متاحة دلوقتي، والدفع عند الاستلام.",

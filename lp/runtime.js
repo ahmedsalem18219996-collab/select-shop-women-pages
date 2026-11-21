@@ -327,7 +327,7 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 
 /** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
 const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
-const RELATED_MODULE = "./related.js?v=20261120-unavailable";
+const RELATED_MODULE = "./related.js?v=20261120-gone";
 const MOTION_MODULE = "./motion.js?v=20261120-motion";
 const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
 let motionOn = false;
@@ -920,7 +920,7 @@ async function init() {
       if (mine !== ticket) return false;
       const gone = /** @type {any} */ (e)?.status === 404;
       unavailable(gone ? "الموديل ده مش متاح دلوقتي." : "مش قادرين نتأكد من السعر والتوفر دلوقتي. إعادة المحاولة بعد شوية.");
-      if (gone && colors.length < 2) void import(RELATED_MODULE).then(m => m.renderAvailableModels(c.code, { BRIDGE, timeout, validCode, okMinor, egp })).catch(() => {});
+      if (gone) void import(RELATED_MODULE).then(m => m.renderAvailableModels(colors.map(x => x.code), { BRIDGE, timeout, validCode, okMinor, egp })).catch(() => {});
       return false;
     }
     if (mine !== ticket) return false;
