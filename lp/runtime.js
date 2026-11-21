@@ -14,15 +14,14 @@ const BAG_KEY = "women.cart.v1"; // same first-party cart as js/commerce.js
 const VARIANT_KEY = "women.lp.variant.v1"; // bucket is chosen before paint by the inline #lp-ab script
 const ORDER_KEY = "women.lp.order.key.v1"; // one attempt = one key, kept until the server confirms an order
 const PURCHASE_SEEN_KEY = "women.meta.purchase.sent.v1"; // same dedupe list as js/commerce.js
-const ANALYTICS_SRC = "/js/analytics.js?v=lp-20261030";
+const ANALYTICS_SRC = "/js/analytics.js?v=lp-20261120";
 const THUMBS = "/assets/catalog-thumbs/";
 const MAX_QTY = 10;
 const BRIDGE = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge";
 const AD_KEY = "women.ad.params.v1"; // campaign parameters of this visit (never customer data), read by js/commerce.js too
 const AD_PARAMS = /** @type {Record<string,string>} */ ({ utm_source: "source", utm_medium: "medium", utm_campaign: "campaign",
   utm_content: "content", utm_term: "term", adset: "adset", utm_adset: "adset", ad: "ad", utm_ad: "ad" });
-// Legacy single-colour LP URLs must resolve to the verified shared-model chooser.
-// Keep the original SKU as ?color= to honour old ad links without altering orders or stock.
+// Legacy single-colour LP URLs open the shared-model chooser with the old SKU as ?color= (old ad links keep working).
 const SHARED_MODEL_URLS = new Map([
   ["SS-1008", "/lp/ss-1008/"], ["SS-1009", "/lp/ss-1008/"],
   ["SS-1037", "/lp/ballon-suit/"], ["SS-1035", "/lp/ballon-suit/"],
@@ -194,8 +193,7 @@ export function loadAnalytics() {
   return analyticsLoaded;
 }
 function loadAnalyticsWhenIdle() {
-  // GA4 + Meta Pixel (~380 KB) start right after the load event (the photo is in by then), not at idle time:
-  // an idle wait of up to 3.5 s dropped the PageView (Meta "Landing Page View") of visitors who left early.
+  // Right after load, not at idle: a 3.5 s idle wait lost the PageView of visitors who left early.
   const start = () => setTimeout(loadAnalytics, 0);
   if (document.readyState === "complete") start(); else addEventListener("load", start, { once: true });
 }
@@ -204,7 +202,7 @@ export function funnel(/** @type {string} */ name, /** @type {Record<string, any
   emit(() => {
     const w = /** @type {any} */ (window);
     if (typeof w.gtag === "function") w.gtag("event", name, fields);
-    const metaName = /** @type {Record<string,string>} */ ({ view_item: "ViewContent", add_to_cart: "AddToCart", begin_checkout: "InitiateCheckout", purchase: "Purchase" })[name];
+    const metaName = /** @type {Record<string,string>} */ ({ view_item: "ViewContent", add_to_cart: "AddToCart", begin_checkout: "InitiateCheckout" })[name];
     if (metaName && typeof w.womenMetaEvent === "function") w.womenMetaEvent(metaName, fields, eventId || undefined);
   });
 }
@@ -224,7 +222,8 @@ export async function recordView(/** @type {string} */ code) {
   } catch { /* never blocks shopping */ }
 }
 
-const hex = (/** @type {number} */ bytes) => Array.from(crypto.getRandomValues(new Uint8Array(bytes)), b => b.toString(16).padStart(2, "0")).join("");
+const toHex = (/** @type {ArrayBuffer | Uint8Array} */ b) => Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join("");
+const hex = (/** @type {number} */ bytes) => toHex(crypto.getRandomValues(new Uint8Array(bytes)));
 // Older in-app browsers (Facebook / Instagram on old Android WebViews) have no AbortSignal.timeout.
 const timeout = (/** @type {number} */ ms) => (typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(ms) : undefined);
 
@@ -237,7 +236,8 @@ async function parse(/** @type {Promise<Response>} */ pending) {
 function api(/** @type {string} */ path, method = "GET", /** @type {unknown} */ body = null, ms = 12000) {
   /** @type {RequestInit} */
   const opts = { method, cache: "no-store", headers: { Accept: "application/json" }, signal: timeout(ms) };
-  if (body !== null) { opts.headers = { Accept: "application/json", "Content-Type": "application/json" }; opts.body = JSON.stringify(body); }
+  if (body !== null) { opts.headers = { Accept: "application/json", "Content-Type": "application/json",
+    ...(path === "/orders" ? { "x-women-event-source-url": location.origin + location.pathname } : {}) }; opts.body = JSON.stringify(body); }
   return parse(fetch(API + path, opts));
 }
 /** A request the inline head script already started (so it overlaps the module download), or a fresh one. */
@@ -260,7 +260,7 @@ async function read(/** @type {"product"|"regions"} */ which, /** @type {string}
 }
 
 function orderKey() {
-  // Kept in sessionStorage so a reload or an unknown outcome retries with the same key; memory if storage is blocked.
+  // sessionStorage: a reload or unknown outcome retries with the same key.
   let k = orderKey.mem;
   try { k = sessionStorage.getItem(ORDER_KEY) || k; } catch { /* private mode */ }
   if (!/^[0-9a-f]{32}$/.test(k || "")) k = hex(16);
@@ -316,8 +316,9 @@ export function rememberPageCredit(/** @type {string} */ id, /** @type {string} 
 /** Fire-and-forget after a CONFIRMED order: never delays or blocks checkout, never carries buyer data. */
 function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) {
   try {
-    const params = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
-    if (!params || typeof params !== "object" || !key) return;
+    const ad = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
+    const params = { ...(ad && typeof ad === "object" ? ad : {}), .../** @type {any} */ (window).womenMetaIds?.() }; // + Meta's fbp/fbc
+    if (!Object.keys(params).length || !key) return;
     void fetch(BRIDGE + "/orders/attribution", { method: "POST", mode: "cors", credentials: "omit", keepalive: true,
       headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: key, publicOrderCode: code, params }) }).catch(() => null);
   } catch { /* attribution is optional */ }
@@ -522,12 +523,11 @@ async function init() {
   if (!validCode(page.code) || !/^[a-z0-9-]{3,40}$/.test(page.id || "")) return;
   const query = new URLSearchParams(location.search);
   const relatedCurrentCode = validCode(query.get("color")) ? query.get("color") : page.code;
-  // Related models only matter on a visit from a multi-product page: load that code only then (script budget).
+  // Only from a multi-product page (script budget).
   if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(query.get("collection") || "") && query.get("studio_preview") !== "1")
     void import(RELATED_MODULE)
       .then((/** @type {typeof import("./related.js")} */ m) => m.renderRelatedProducts(relatedCurrentCode, { BRIDGE, timeout, validCode, okMinor, egp })).catch(() => {});
-  // An old /lp/ss-1009/ (or /lp/?p=SS-1009) is a single-colour page.
-  // Redirect it to the shared model without losing the chosen SKU or ad attribution.
+  // Old single-colour /lp/ss-1009/ → the shared model, keeping the SKU and ad attribution.
   if (!Array.isArray(page.colors) || page.colors.length < 2) {
     const modelUrl = SHARED_MODEL_URLS.get(page.code);
     if (modelUrl && location.pathname !== modelUrl) {
@@ -654,8 +654,7 @@ async function init() {
   const variantLabel = () => (!product?.options.length ? "one_size" : variant ? sizeText().replace(/ · /g, "/").slice(0, 100) : undefined);
   const lineNow = () => (product && variant?.purchasable === true
     ? { publicCode: product.publicCode, structureVersion: product.structureVersion, selection: variant.selection, quantity: qty } : null);
-  // Buyers ordering several colours must send one verified line per REAL SKU, not
-  // "quantity 2" against one ambiguous colour. Single-colour checkout is unchanged.
+  // Several colours = one verified line per real SKU.
   let mixMode = false;
   let mixBusy = false;
   /** @type {Map<string,{product:any,variant:any,quantity:number}>} */
@@ -790,8 +789,7 @@ async function init() {
     }
   });
 
-  // Legacy model colours use separate codes; new Admin model colours share a code
-  // and must be identified by their exact canonical option selection.
+  // Legacy colours have their own codes; Admin colours share one, found by exact option selection.
   const labelForLine = (/** @type {Line} */ line, fallbackSize = false) => {
     const key = line.publicCode + "@" + line.selection.map(s => s.optionPosition + "." + s.valuePosition).join(",");
     return variantMixChoices.find(c => c.key === key)?.name
@@ -939,8 +937,7 @@ async function init() {
     return true;
   };
 
-  // Same real colour picker appears beside the photo AND at the start of the
-  // direct order form. Either set of pills updates both selections and media.
+  // The picker by the photo and the one in the order form stay in sync.
   const applyColour = (/** @type {typeof colors[number]} */ c) => {
     document.querySelectorAll("#lpColors .chip, #lpFormColors .chip")
       .forEach(btn => btn.setAttribute("aria-pressed", String(btn.getAttribute("data-code") === c.code)));
@@ -960,8 +957,7 @@ async function init() {
     void show(c);
   }));
 
-  // The normal +/- remains a single-colour quantity. Explicit mixed-colour
-  // mode gives every colour its own count (zero means not ordered).
+  // Mixed-colour mode: every colour has its own count (0 = not ordered).
   mixToggle.addEventListener("click", () => {
     if (busy || mixBusy || !product) return;
     if (!mixMode) {
@@ -1004,8 +1000,7 @@ async function init() {
       mixBusy = true;
       repaintMix();
       try {
-        // Each extra colour has an independent real SKU; accept only a
-        // verified purchasable one-size variant before including it in quote.
+        // Each extra colour: only a verified buyable one-size variant goes into the quote.
         const p = await load(code);
         const v = p?.options?.length === 0 ? findVariant(p, []) : null;
         if (!p || p.publicCode !== code || p.purchasable !== true ||
@@ -1071,14 +1066,18 @@ async function init() {
         item_variant: mixMode ? "one_size" : variantLabel(), quantity: l.quantity })) });
   });
 
-  const done = (/** @type {string} */ code, /** @type {any} */ q, /** @type {Line[]} */ lines) => {
+  const done = (/** @type {string} */ code, /** @type {any} */ q, /** @type {Line[]} */ lines, /** @type {string} */ key) => {
     forgetOrderKey();
     if (firstReport(code)) {
       const value = (minorOf(q.merchandiseSubtotal) ?? 0) / 100;
-      funnel("purchase", { currency: "EGP", value, shipping: (minorOf(q.shippingTotal) ?? 0) / 100, transaction_id: hex(16),
+      const fields = { currency: "EGP", value, shipping: (minorOf(q.shippingTotal) ?? 0) / 100, transaction_id: hex(16),
         lp_id: page.id, lp_variant: variantId,
         items: lines.map(l => ({ item_id: l.publicCode,
-          item_variant: lines.length > 1 ? "one_size" : variantLabel(), quantity: l.quantity })) }, hex(16));
+          item_variant: lines.length > 1 ? "one_size" : variantLabel(), quantity: l.quantity })) };
+      funnel("purchase", fields);
+      // Meta Lead id = the server's ("lead-" + SHA-256 of the order key); Purchase is server only.
+      if (crypto.subtle) crypto.subtle.digest("SHA-256", new TextEncoder().encode(key))
+        .then(h => emit(() => /** @type {any} */ (window).womenMetaEvent?.("Lead", fields, "lead-" + toHex(h)))).catch(() => {});
       void loadAnalytics(); // the conversion goes out even if the customer leaves right away
     }
     $("#lpDoneCode").textContent = code;
@@ -1132,12 +1131,12 @@ async function init() {
     try {
       const reply = await api("/orders", "POST", payload, 20000);
       if (!ORDER_CODE.test(reply.publicOrderCode)) throw Object.assign(new Error("write_unconfirmed"), { status: 503 });
-      done(reply.publicOrderCode, q, lines);
+      done(reply.publicOrderCode, q, lines, payload.idempotencyKey);
       sendAttribution(reply.publicOrderCode, payload.idempotencyKey);
       return;
     } catch (err) {
       const error = /** @type {any} */ (err), data = error?.data || {};
-      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines); sendAttribution(data.publicOrderCode, payload.idempotencyKey); return; }
+      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines, payload.idempotencyKey); sendAttribution(data.publicOrderCode, payload.idempotencyKey); return; }
       if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب السابق اتلغى من المتجر. يمكن تسجيل طلب جديد.", true); }
       else if (error?.message === "checkout_changed") {
         say("السعر أو الشحن اتغير. يرجى مراجعة الإجمالي الجديد ثم إعادة التأكيد.", true);
@@ -1153,9 +1152,8 @@ async function init() {
         for (const [k, problem] of Object.entries(data.fields)) if (map[k]) markField(map[k], problem === "too_long" ? "النص طويل، يرجى تقصيره." : "مراجعة هذه الخانة.");
         say("مراجعة البيانات المظللة.", true);
       } else if (error?.message === "rate_limited") say("محاولات كتير ورا بعض. يرجى الانتظار دقيقة ثم المحاولة مرة أخرى.", true);
-      // Order taking switched off by the store, or the server could not verify the request: nothing was saved.
       else if (error?.message === "orders_not_enabled" || error?.message === "source_unavailable") say("استقبال الطلبات متوقف مؤقتًا، ومفيش طلب اتسجل. إعادة المحاولة بعد شوية.", true);
-      // Unknown outcome (timeout, network, 5xx): the SAME key is reused on retry, so the server returns the same order.
+      // Unknown outcome: the same key on retry returns the same order.
       else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. يرجى الضغط على «تأكيد الطلب» مرة أخرى؛ الطلب مش هيتكرر.", true);
     } finally { busy = false; }
     cta.disabled = !product || (mixMode && !currentLines().length);
@@ -1188,7 +1186,7 @@ const RELATED_PRODUCTS_CSS = `
 `;
 
 
-// Side effects only on a landing page: other pages (e.g. /collections/) import the helpers above without them.
+// Side effects only on a landing page (/collections/ imports the helpers).
 if (typeof document !== "undefined" && document.getElementById("lp-data")) {
   if (!document.getElementById("lp-related-style")) {
     const style = document.createElement("style");
