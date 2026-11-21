@@ -36,32 +36,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("home editorial hero keeps one woman, readable theme colours and a working catalog CTA", async ({ page }) => {
-  await page.goto("/");
-  const hero = page.locator(".hero--brand");
-  const image = hero.locator(".hero-visual img");
-  await expect(image).toHaveCount(1);
-  await expect(image).toHaveAttribute("src", "assets/hero-woman-casual-900.png?v=20261115-casual");
-  await expect(image).toHaveAttribute("alt", ""); // editorial visual is not a stocked-product claim
-  await expect.poll(() => image.evaluate(e => e.complete && e.naturalWidth >= 900 && e.naturalHeight >= 1200)).toBe(true);
-  const backgrounds = [];
-  for (const theme of ["dark", "light"]) {
-    await page.evaluate(([key, value]) => localStorage.setItem(key, value), [KEY, theme]);
-    await page.reload();
-    await expect(hero.locator("h1")).toBeVisible();
-    await expect(hero.locator(".hero-cta a")).toBeVisible();
-    const view = await hero.evaluate(e => ({ bg: getComputedStyle(e).backgroundImage,
-      wallpaper: getComputedStyle(document.documentElement).backgroundImage,
-      bodyWidth: document.documentElement.scrollWidth, viewport: innerWidth }));
-    expect(view.wallpaper).toContain("luxury-silk-bg.svg");
-    expect(view.bg).toContain("luxury-silk-bg.svg");
-    expect(view.bodyWidth).toBeLessThanOrEqual(view.viewport);
-    backgrounds.push(view.bg);
-  }
-  expect(backgrounds[0]).not.toBe(backgrounds[1]);
-  await hero.locator(".hero-cta a").click();
-  await expect(page).toHaveURL(/#shop$/);
-});
+// The home is light only since the Neutral redesign: its hero is covered by e2e/home-neutral.spec.mjs.
 
 test("Dark by default; the Sun/Moon switch works from the keyboard, instantly, and is remembered", async ({ page }) => {
   await page.goto("/lp/ss-1008/");
@@ -85,7 +60,7 @@ test("Dark by default; the Sun/Moon switch works from the keyboard, instantly, a
 
 test("a saved Light choice is on from the first frame of every page, after reload and across navigation", async ({ page }) => {
   await saveLight(page);
-  const routes = [["/", "#feed .card"], ["/lp/ss-1008/", "#lpOrder:enabled"], ["/lp/?p=SS-1099", "#lpOrder:enabled"], ["/lp/ss-1011/", "#lpOrder:enabled"],
+  const routes = [["/lp/ss-1008/", "#lpOrder:enabled"], ["/lp/?p=SS-1099", "#lpOrder:enabled"], ["/lp/ss-1011/", "#lpOrder:enabled"],
     ["/p/?code=SS-1008&legacy=1", "#productPhoto:not([hidden])"], ["/cart/", "main"], ["/checkout/", "#region"], ["/order-success/?order=ORD-THEME", "main"]];
   for (const [url, ready] of routes) {
     await page.goto(url);
@@ -97,9 +72,9 @@ test("a saved Light choice is on from the first frame of every page, after reloa
   await page.reload();
   expect((await themeOf(page)).theme).toBe("light");
   // following a link (not page.goto) keeps it too
-  await page.goto("/cart/");
-  await page.locator(".logo").click();
-  await page.locator("#feed .card").first().waitFor();
+  await page.goto("/lp/ss-1008/");
+  await page.locator("#lpCartLink").click();
+  await page.locator("main").waitFor();
   expect(await page.evaluate(() => window.__firstFrameTheme)).toBe("light");
 });
 
@@ -164,7 +139,7 @@ test("no horizontal overflow in either theme at the review widths", async ({ pag
         const o = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, theme: document.documentElement.dataset.theme,
           head: [...document.querySelectorAll(".top>*,.hdr-in>*,.hdr-tools>*")].filter(e => e.getClientRects().length && getComputedStyle(e).display !== "contents")
             .map(e => e.getBoundingClientRect()).map(r => [Math.round(r.left), Math.round(r.right)]) }));
-        expect(o.theme).toBe(theme);
+        expect(o.theme).toBe(url === "/" ? undefined : theme); // the home is light only
         expect(o.sw, `${theme} ${w}px ${url}`).toBeLessThanOrEqual(w);
         for (const [l, r] of o.head) { expect(l, `${w}px ${url} header`).toBeGreaterThanOrEqual(0); expect(r, `${w}px ${url} header`).toBeLessThanOrEqual(w); }
       }
@@ -176,12 +151,13 @@ test("under 375px the header drops only what the tab bar or buy bar already offe
   const before = (await mockLog(request)).orders.length;
   await page.setViewportSize({ width: 320, height: 760 });
   const inView = (loc) => loc.evaluate(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth && r.top < innerHeight && r.bottom > 0; });
-  // home: "browse" (#shop) is the الأقسام tab; the header keeps switch · wordmark · bag
+  // home: "browse" (#shop) is the الأقسام tab; the header keeps wordmark · bag (light only, no switch)
   await page.goto("/");
   await page.locator("#feed .card").first().waitFor();
   await expect(page.locator('.hdr-tools a[href="#shop"]')).toBeHidden();
   await expect(page.locator(".hdr-tools [data-open-bag]")).toBeVisible();
-  await expect(page.locator(".hdr-tools [data-theme-toggle]")).toBeVisible();
+  await expect(page.locator("[data-theme-toggle]")).toHaveCount(0);
+  expect(await inView(page.locator(".logo"))).toBe(true);
   await page.locator('.tabbar a[href="#shop"]').click();
   await expect.poll(() => inView(page.locator("#shop"))).toBe(true);
   // cart and product: the bag is the الشنطة tab (same link and count); the one-tap catalog link stays in the header
@@ -220,12 +196,12 @@ test("under 375px the header drops only what the tab bar or buy bar already offe
 
 test("saved Light theme survives browser Back and Forward navigation", async ({ page }) => {
   await saveLight(page);
-  await page.goto("/");
-  await page.locator("#feed .card").first().waitFor();
+  await page.goto("/lp/ss-1008/");
+  await page.locator("#lpOrder:enabled").waitFor();
   await page.goto("/cart/");
   await page.locator("main").waitFor();
   await page.goBack();
-  await page.locator("#feed .card").first().waitFor();
+  await page.locator("#lpOrder:enabled").waitFor();
   expect((await themeOf(page)).theme).toBe("light");
   await page.goForward();
   await page.locator("main").waitFor();

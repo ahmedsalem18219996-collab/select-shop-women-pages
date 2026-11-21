@@ -59,8 +59,9 @@
       // The owner-selected brand colour is not the Atelier announcement trim:
       // keep the storefront's olive/brass design consistent (no inline override).
     }
-    const hero = $('.hero h1');
-    const lead = $('.hero p');
+    // A campaign hero (js/home-campaign.js) owns the headline; the owner's brand copy fills only the brand hero.
+    const hero = $('.hero:not([data-campaign]) h1');
+    const lead = $('.hero:not([data-campaign]) p');
     if (hero) {
       const first = hero.firstChild;
       if (first && first.nodeType === Node.TEXT_NODE)

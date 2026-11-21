@@ -22,7 +22,9 @@ test("Atelier shared style loads on every public storefront step", async () => {
     const html = await source(path);
     assert.ok(html.includes(href), path + " lacks Atelier stylesheet");
     assert.ok(html.includes(klass), path + " lacks its route scope");
-    assert.ok(html.includes('<meta name="theme-color" content="#050B1C">'), path + " theme-color is not Midnight Navy");
+    // the home moved to the Neutral look (css/neutral.css, light only); the other steps follow in their own PRs
+    const color = path === "index.html" ? "#FAFAF9" : "#050B1C";
+    assert.ok(html.includes(`<meta name="theme-color" content="${color}">`), path + " theme-color is not " + color);
     assert.doesNotMatch(html, /المعاينة متاحة عند الاستلام/, path + " has an unverified promise");
   }
 });

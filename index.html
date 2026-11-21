@@ -8,12 +8,11 @@
 <!-- WOMEN public release: official verified domain. -->
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://selectshopeg.com/">
-<meta name="theme-color" content="#050B1C">
-<script id="theme-boot">(()=>{const d=document.documentElement,K="ssw.theme.v1";let t="dark";const read=()=>{try{return localStorage.getItem(K)==="light"?"light":"dark"}catch(e){return"dark"}},set=x=>{t=x;d.dataset.theme=x;const m=document.querySelector('meta[name="theme-color"]'),l=x==="light"?"التحويل للوضع الداكن":"التحويل للوضع الفاتح";if(m)m.content=x==="light"?"#F7F3EC":"#050B1C";for(const b of document.querySelectorAll("[data-theme-toggle]")){b.setAttribute("aria-label",l);b.title=l}};set(read());document.addEventListener("click",e=>{const b=e.target instanceof Element&&e.target.closest("[data-theme-toggle]");if(!b)return;set(t==="light"?"dark":"light");try{localStorage.setItem(K,t)}catch(e){}});document.addEventListener("DOMContentLoaded",()=>set(t));addEventListener("pageshow",e=>{if(e.persisted)set(read())})})()</script>
+<meta name="theme-color" content="#FAFAF9">
 <title>SELECT SHOP | ملابس رجالي وحريمي</title>
 <meta name="description" content="متجر SELECT SHOP للملابس الرجالي والحريمي، تسوق الموديلات المتاحة بصورها وأسعارها. الدفع عند الاستلام.">
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-<link rel="preload" href="assets/fonts/readex-pro-arabic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/neutral/ibm-plex-sans-arabic-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style id="women-inline-fonts-css">
 /* Self-hosted Google Fonts (SIL Open Font License 1.1). Subsets: arabic, latin, latin-ext. */
 /* DM Mono · latin-ext */
@@ -565,6 +564,8 @@ body{background:var(--mirror)}
 </style>
 <link rel="preload" href="assets/hero-woman-casual-900.png?v=20261115-casual" as="image" type="image/png" fetchpriority="high">
 <link rel="stylesheet" href="css/atelier-site.css?v=20261114-luxe">
+<link rel="stylesheet" href="css/fonts-neutral.css?v=20261121">
+<link rel="stylesheet" href="css/neutral.css?v=20261121">
 <script>
 /* Begin the public catalog request during HTML parsing instead of waiting for the UI bundle. */
 // Include only our isolated QA server so GitHub Lighthouse measures the same
@@ -585,7 +586,8 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
 <script src="js/data.js" defer></script>
 <script src="js/catalog-thumbs.js" defer></script>
 <script src="js/store-adapter.js?v=20261106-card-colours" defer></script>
-<script src="js/app.js?v=20261108-neutral-brand" defer></script>
+<script src="js/app.js?v=20261121-neutral" defer></script>
+<script type="module" src="js/home-campaign.js?v=20261121"></script>
 </head>
 <body class="atelier-home">
 
@@ -595,10 +597,9 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
 
   <header class="hdr">
     <div class="wrap hdr-in">
-      <a href="#top" class="logo" aria-label="SELECT SHOP — الرئيسية"><b>select</b><small>shop</small></a>
+      <a href="#top" class="logo" aria-label="SELECT SHOP — الرئيسية"><i class="nx-mark" aria-hidden="true">S.</i><span class="nx-word"><b>select</b> <small>shop</small></span></a>
       <nav class="hdr-links" aria-label="الأقسام"></nav>
       <div class="hdr-tools">
-        <button type="button" class="theme-toggle" data-theme-toggle aria-label="التحويل للوضع الفاتح" title="التحويل للوضع الفاتح"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
         <a class="ibtn" href="#shop" aria-label="تصفح المنتجات" title="كل المنتجات"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></a>
         <button type="button" class="ibtn hdr-desktop-action" data-open-saved aria-label="المحفوظة" title="المحفوظة"><svg class="i" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span class="dot savedot" hidden>0</span></button>
         <button type="button" class="ibtn hdr-desktop-action" data-open-account aria-label="حسابي" title="حسابي"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></button>
@@ -612,26 +613,36 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
       <div class="stories" id="stories" aria-label="ستوري"></div>
     </div>
 
-    <!-- Editorial hero: the model is decorative, all purchasable items remain in the actual catalog. -->
-    <section class="hero hero--brand" aria-labelledby="heroTitle">
+    <!-- Campaign hero: js/home-campaign.js fills it from the campaign named in js/config.js; without one this brand hero stays. -->
+    <section class="hero nx-hero" id="hero" aria-labelledby="heroTitle">
+      <span class="nx-live" hidden><i aria-hidden="true"></i>حملة الأسبوع</span>
       <div class="hero-copy">
-        <span class="hero-kicker">SELECT SHOP · THE EDIT</span>
         <h1 id="heroTitle">ستايل يناسبك <span class="hl">بطريقتك.</span></h1>
         <p class="hero-lead">موديلات متنوعة بصورها وأسعارها؛ والقطعة المناسبة هتلاقيها بسهولة. التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب، والدفع عند الاستلام.</p>
         <div class="hero-cta">
-          <a class="btn-solid" href="#shop">تصفح المنتجات</a>
+          <a class="nx-btn nx-btn--solid nx-beam" id="heroCta" href="#shop">تصفح المنتجات</a>
+          <a class="nx-btn nx-btn--line" id="heroCampaign" href="#shop" hidden>شوفي الحملة</a>
         </div>
       </div>
       <div class="hero-visual" aria-hidden="true"><img src="assets/hero-woman-casual-900.png?v=20261115-casual" alt="" width="900" height="1200" fetchpriority="high" decoding="async"></div>
-      <ul class="hero-trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الطلب في دقيقة</li></ul>
     </section>
 
-    <section class="wrap looks" id="looks" aria-label="لوكات الأسبوع"></section>
+    <div class="nx-ribbon" role="marquee" aria-label="متاح دلوقتي · شحن لكل المحافظات · الدفع عند الاستلام"><div class="nx-mq" aria-hidden="true"><span>متاح دلوقتي<i>✦</i>شحن لكل المحافظات<i>✦</i>الدفع عند الاستلام<i>✦</i>متاح دلوقتي<i>✦</i>شحن لكل المحافظات<i>✦</i>الدفع عند الاستلام<i>✦</i></span><span>متاح دلوقتي<i>✦</i>شحن لكل المحافظات<i>✦</i>الدفع عند الاستلام<i>✦</i>متاح دلوقتي<i>✦</i>شحن لكل المحافظات<i>✦</i>الدفع عند الاستلام<i>✦</i></span></div></div>
+
+    <section class="wrap nx-rail" id="campaign" aria-labelledby="campaignTitle" hidden>
+      <div class="nx-rail-head">
+        <div><p class="nx-kicker">موديلات الحملة</p><h2 class="nx-h2" id="campaignTitle">اختيارات الأسبوع</h2></div>
+        <a class="nx-rail-all" href="#shop">الكل</a>
+      </div>
+      <div class="nx-rail-track"></div>
+    </section>
+
+<section class="wrap looks" id="looks" aria-label="لوكات الأسبوع"></section>
 
     <section class="shop" id="shop">
       <div class="wrap shop-head">
         <div>
-          <h2>كل القطع</h2>
+          <h2>كل الموديلات</h2>
           <p class="hint">اختيار القسم المناسب</p>
         </div>
         <span class="num" id="countOut" aria-live="polite">جارٍ التحميل…</span>
@@ -647,6 +658,12 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
       </div>
       <div class="wrap"><div class="feed" id="feed" aria-live="polite"></div></div>
     </section>
+
+    <div class="nx-wrap-trust"><ul class="nx-trust" aria-label="مميزات الطلب">
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 6.5h19v11h-19zM12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5"/></svg>الدفع عند الاستلام</li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h12v10H2zM14 10h4.5L22 13.5V16h-8zM6 18.5a1.8 1.8 0 1 0 0 .01M17 18.5a1.8 1.8 0 1 0 0 .01"/></svg>شحن لكل المحافظات</li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7v5l3 2"/></svg>الطلب في دقيقة</li>
+    </ul></div>
 
     <section class="wrap promises">
       <div class="promise"><span class="ic"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 11h18"/></svg></span><div><b>ادفعي لما توصلك</b><span>الدفع عند الاستلام، والتوافر بيتأكد بعد تسجيل الطلب.</span></div></div>
