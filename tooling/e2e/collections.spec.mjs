@@ -34,6 +34,7 @@ for (const width of [360, 390, 1366]) {
     await page.goto('/collections/?slug=width-12');
     await expect(page.locator('.cp-product[data-code]')).toHaveCount(12);
     await page.locator('.cp-product[data-code="SS-1012"] .cp-add').click();
+    await page.locator('.cp-product[data-code="SS-1014"]').scrollIntoViewIfNeeded();   // the buy bar shows after the first screen
     await expect(page.locator('.cp-bag')).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
@@ -93,7 +94,7 @@ test('multi-product COD order: three products from one page become ONE order wit
   expect(credit).toMatchObject({ id: 'c-order-3', variant: 'c-order-3:a', adProduct: 'SS-1013' });
   expect(credit.codes).toEqual(['SS-9101', 'SS-1012', 'SS-1013']);
 
-  await page.locator('.cp-bag-link').click();
+  await page.locator('#cpBagLink').click();                                        // the bag in the header still opens /cart/
   await expect(page).toHaveURL(/\/cart\/$/);
   await expect(page.locator('#cartItems .commerce-row')).toHaveCount(3);
   await page.locator('#toCheckout').click();

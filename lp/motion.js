@@ -18,7 +18,7 @@ export const MODES = {
   bold: { travel: 120, turn: 70, tilt: 12, zoom: 0.4, span: 0.55, dim: 0.7, blur: 3, shrink: 0.14, open: 0.9, flash: true },
 };
 
-const CSS_URL = new URL("./motion.css?v=20261120-motion", import.meta.url).href;
+const CSS_URL = new URL("./motion.css?v=20261120-campaign", import.meta.url).href;
 
 const reduce = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const clamp = (/** @type {number} */ v, /** @type {number} */ a, /** @type {number} */ b) => Math.max(a, Math.min(b, v));
@@ -65,7 +65,7 @@ export function paintAccent(/** @type {HTMLElement} */ el, /** @type {string} */
  * Builds a photo stack before `anchor`. `marquee` = the running band text under the photos ("" = no band).
  * @param {Element} anchor
  * @param {Shot[]} shots
- * @param {{ mode: string, dirs: string[], accent?: string, ink?: string, marquee?: string }} o
+ * @param {{ mode: string, dirs: string[], accent?: string, ink?: string, marquee?: string, caption?: { title: string, price: string, badge?: string } | null }} o
  * @returns {Stack}
  */
 export function mountStack(anchor, shots, o) {
@@ -112,6 +112,15 @@ export function mountStack(anchor, shots, o) {
         img.addEventListener("load", () => { ctl.measure(); ctl.update(); });
         wrap.append(img);
         if (i === 0) { const f = document.createElement("div"); f.className = "mo-flash"; wrap.append(f); }
+        if (i === 0 && o.caption) {
+          // Name and price over the first photo (campaign pages without a campaign photo of their own).
+          const cap = document.createElement("div"); cap.className = "mo-cap";
+          const b = document.createElement("b"), mark = document.createElement("span");
+          mark.className = "mo-mark"; mark.textContent = o.caption.title; b.append(mark); cap.append(b);
+          if (o.caption.price) { const p = document.createElement("span"); p.className = "mo-price"; p.textContent = o.caption.price; cap.append(p); }
+          if (o.caption.badge) { const n = document.createElement("span"); n.className = "mo-badge"; n.textContent = o.caption.badge; wrap.append(n); }
+          wrap.append(cap);
+        }
         const g = document.createElement("div"); g.className = "mo-glint"; wrap.append(g);
         sec.append(wrap);
         return sec;
