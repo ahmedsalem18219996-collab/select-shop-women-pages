@@ -1,4 +1,4 @@
-// GA4 + Meta Pixel, production only; never buyer data. ?notrack=1 / 0: owner test opt-out for this browser.
+// GA4 + Meta Pixel, production only, never buyer data; ?notrack=1/0: owner opt-out.
 window.__womenNoTrack = (() => {
   try {
     const q = new URLSearchParams(location.search).get("notrack");
@@ -7,7 +7,7 @@ window.__womenNoTrack = (() => {
     return localStorage.getItem("women.notrack") === "1";
   } catch { return false; }
 })();
-// Meta ids (_fbp, _fbc or one from the last fbclid) for the server's Conversions API via /orders/attribution.
+// Meta ids for the server's Conversions API.
 if (!window.__womenNoTrack) {
   const FB = /^fb\.1\.\d{10,13}\.[\w.-]{1,500}$/;
   try {
@@ -24,17 +24,26 @@ if (!window.__womenNoTrack) {
     } catch { return {}; }
   };
 }
+// Trackers wait for load (or max ms), GA4 also for idle (2 s max), so they never delay the first screen.
+window.__womenScript = (src, max, idle) => {
+  const add = () => { const s = document.createElement("script"); s.async = true; s.src = src; document.head.appendChild(s); };
+  const go = idle ? () => (window.requestIdleCallback || setTimeout)(add, { timeout: 2000 }) : add;
+  if (document.readyState === "complete") return go();
+  let n = 0; const once = () => n++ || go();
+  window.addEventListener("load", once, { once: true });
+  if (max) setTimeout(once, max - (window.performance?.now?.() | 0));
+};
 (() => {
   "use strict";
   if (window.__womenNoTrack) return;
-  const measurementId = "G-NB8PZCX35Z";
-  const host = location.hostname.toLowerCase();
-  if (host !== "selectshopeg.com" && host !== "www.selectshopeg.com") return;
+  if (!["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase())) return;
   if (new URLSearchParams(location.search).get("design-preview") === "1") return;
+  const marketing = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "code", "p", "fbclid", "igshid", "igsh", "mibextid", "lpv",
+    "campaign_id", "adset_id", "ad_id", "placement", "site_source_name", "slug", "collection"];
 
+  const measurementId = "G-NB8PZCX35Z";
   const cleanUrl = new URL(location.href);
-  const allowed = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "code", "p", "gclid", "fbclid", "igshid", "igsh", "mibextid", "lpv",
-    "campaign_id", "adset_id", "ad_id", "placement", "site_source_name", "slug", "collection"]);
+  const allowed = new Set([...marketing, "gclid"]);
   for (const key of [...cleanUrl.searchParams.keys()]) {
     if (!allowed.has(key)) cleanUrl.searchParams.delete(key);
   }
@@ -43,23 +52,12 @@ if (!window.__womenNoTrack) {
   window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
   window.gtag("js", new Date());
   window.gtag("config", measurementId, { page_location: cleanUrl.toString(), send_page_view: true });
+  window.__womenScript("https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(measurementId), 0, true);
 
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(measurementId);
-  document.head.appendChild(script);
-})();
-
-// Meta Pixel: no advanced matching or automatic events; never on order-success (private order reference in its URL).
-(() => {
-  "use strict";
-  if (window.__womenNoTrack) return;
-  if (!["selectshopeg.com", "www.selectshopeg.com"].includes(location.hostname.toLowerCase())) return;
-  if (new URLSearchParams(location.search).get("design-preview") === "1") return;
+  // Pixel: no advanced matching or auto events; never on order-success.
   if (!["/", "/index.html", "/p/", "/p/index.html", "/cart/", "/cart/index.html", "/checkout/", "/checkout/index.html"].includes(location.pathname) && !location.pathname.startsWith("/lp/") && location.pathname !== "/collections/") return;
-  // Any parameter outside the marketing allowlist keeps the Pixel off.
-  const permitted = new Set(["utm_source","utm_medium","utm_campaign","utm_content","utm_term","utm_id","code","p","fbclid","igshid","igsh","mibextid","lpv",
-    "campaign_id","adset_id","ad_id","placement","site_source_name","slug","collection"]);
+  // Unknown parameters keep the Pixel off.
+  const permitted = new Set(marketing);
   if ([...new URLSearchParams(location.search).keys()].some(k => !permitted.has(k))) return;
   const pixelId = "992616030526349";
   const fbq = window.fbq = window.fbq || function () {
@@ -82,7 +80,5 @@ if (!window.__womenNoTrack) {
       fbq("trackSingle", pixelId, name, params, eventId ? {eventID:eventId} : {});
     } catch { /* never interrupt checkout */ }
   };
-  const script=document.createElement("script");
-  script.async=true; script.src="https://connect.facebook.net/en_US/fbevents.js";
-  document.head.appendChild(script);
+  window.__womenScript("https://connect.facebook.net/en_US/fbevents.js", 1000); // by 1 s: short visits keep their PageView
 })();
