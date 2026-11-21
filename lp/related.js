@@ -93,7 +93,10 @@ function paintRow(items, { id, title: titleText, intro: introText, slug, current
       } catch { /* an absent or untrusted image gets a placeholder */ }
       if (imageUrl) {
         const img = document.createElement("img");
-        img.src = imageUrl;
+        // The committed 400px thumbnail (~20KB) instead of the multi-hundred-KB original; the original only if none exists.
+        const file = /\/product-media\/media\/([0-9a-f]{32}\.(?:jpg|png|webp))$/.exec(imageUrl)?.[1];
+        if (file) img.addEventListener("error", () => { if (img.src !== imageUrl) img.src = imageUrl; }, { once: true });
+        img.src = file ? "/assets/catalog-thumbs/" + file + ".w400.webp" : imageUrl;
         img.alt = String(item.title || "موديل آخر");
         img.loading = "lazy";
         img.decoding = "async";

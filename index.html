@@ -12,7 +12,7 @@
 <title>SELECT SHOP | ملابس رجالي وحريمي</title>
 <meta name="description" content="متجر SELECT SHOP للملابس الرجالي والحريمي، تسوق الموديلات المتاحة بصورها وأسعارها. الدفع عند الاستلام.">
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-<link rel="preload" href="assets/fonts/neutral/ibm-plex-sans-arabic-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/neutral/ibm-plex-sans-arabic-arabic-400-lp.woff2" as="font" type="font/woff2" crossorigin>
 <style id="women-inline-fonts-css">
 /* Self-hosted Google Fonts (SIL Open Font License 1.1). Subsets: arabic, latin, latin-ext. */
 /* DM Mono · latin-ext */
@@ -562,10 +562,16 @@ body{background:var(--mirror)}
   .seg{height:41px}
 }
 </style>
-<link rel="preload" href="assets/hero-woman-casual-900.png?v=20261115-casual" as="image" type="image/png" fetchpriority="high">
+<link rel="preload" as="image" type="image/avif" imagesrcset="assets/hero/hero-woman-casual-480.avif 480w, assets/hero/hero-woman-casual-720.avif 720w, assets/hero/hero-woman-casual-900.avif 900w" imagesizes="(min-width: 980px) 440px, 100vw" fetchpriority="high">
 <link rel="stylesheet" href="css/atelier-site.css?v=20261114-luxe">
-<link rel="stylesheet" href="css/fonts-neutral.css?v=20261121">
-<link rel="stylesheet" href="css/neutral.css?v=20261121">
+<style id="women-neutral-fonts">
+/* Neutral look fonts, self-hosted (OFL, assets/fonts/neutral/LICENSE-*.txt): three files only. Plex Arabic 400 is subset to Arabic + digits/punctuation
+   (Latin letters use the system font) and is the one preloaded face; bolder Plex weights are synthesised; Alexandria 800 draws titles, Manrope 800 prices. */
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-display:swap;font-weight:400;src:url(assets/fonts/neutral/ibm-plex-sans-arabic-arabic-400-lp.woff2) format("woff2");unicode-range:U+0020-0040,U+00A0,U+00AB,U+00BB,U+0600-06FF,U+200C-200F,U+2010-2011}
+@font-face{font-family:'Alexandria';font-style:normal;font-display:swap;font-weight:800;src:url(assets/fonts/neutral/alexandria-arabic-800-normal.woff2) format("woff2");unicode-range:U+0600-06FF,U+200C-200E,U+2010-2011,U+FB50-FDFF,U+FE70-FEFC}
+@font-face{font-family:'Manrope';font-style:normal;font-display:swap;font-weight:800;src:url(assets/fonts/neutral/manrope-latin-800-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2000-206F}
+</style>
+<link rel="stylesheet" href="css/neutral.css?v=20261121-hero">
 <script>
 /* Begin the public catalog request during HTML parsing instead of waiting for the UI bundle. */
 // Include only our isolated QA server so GitHub Lighthouse measures the same
@@ -624,7 +630,7 @@ if ((["selectshopeg.com", "www.selectshopeg.com"].includes(prefetchHost) ||
           <a class="nx-btn nx-btn--line" id="heroCampaign" href="#shop" hidden>شوفي الحملة</a>
         </div>
       </div>
-      <div class="hero-visual" aria-hidden="true"><img src="assets/hero-woman-casual-900.png?v=20261115-casual" alt="" width="900" height="1200" fetchpriority="high" decoding="async"></div>
+      <div class="hero-visual" aria-hidden="true"><picture><source type="image/avif" srcset="assets/hero/hero-woman-casual-480.avif 480w, assets/hero/hero-woman-casual-720.avif 720w, assets/hero/hero-woman-casual-900.avif 900w" sizes="(min-width: 980px) 440px, 100vw"><source type="image/webp" srcset="assets/hero/hero-woman-casual-480.webp 480w, assets/hero/hero-woman-casual-720.webp 720w, assets/hero/hero-woman-casual-900.webp 900w" sizes="(min-width: 980px) 440px, 100vw"><img src="assets/hero/hero-woman-casual-720.webp" alt="" width="900" height="1204" fetchpriority="high" decoding="async"></picture></div>
     </section>
 
     <div class="nx-ribbon" role="marquee" aria-label="متاح دلوقتي · شحن لكل المحافظات · الدفع عند الاستلام"><div class="nx-mq" aria-hidden="true"><span>متاح دلوقتي<i>✦</i>شحن لكل المحافظات<i>✦</i>الدفع عند الاستلام<i>✦</i>متاح دلوقتي<i>✦</i>شحن لكل المحافظات<i>✦</i>الدفع عند الاستلام<i>✦</i></span><span>متاح دلوقتي<i>✦</i>شحن لكل المحافظات<i>✦</i>الدفع عند الاستلام<i>✦</i>متاح دلوقتي<i>✦</i>شحن لكل المحافظات<i>✦</i>الدفع عند الاستلام<i>✦</i></span></div></div>
