@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 // Owner campaign pages editor against an in-memory Admin API. The live preview iframe is the real /collections/
 // page served by the QA mock (product data from the mock women-checkout); nothing reaches live Supabase.
@@ -144,4 +145,24 @@ test('Staff never sees the campaign pages editor', async ({ page }) => {
   await expect(page.locator('.campaign-editor, .campaign-card, [data-page-preview]')).toHaveCount(0);
   await expect(page.locator('a[href="#/campaigns"]')).toHaveCount(0);
   expect(store.ops.some(o => o.op.startsWith('campaigns.'))).toBe(false);
+});
+
+// Same CSP check as the Studio: the campaign page preview is a same-origin iframe too.
+test.describe('shipped admin CSP', () => {
+  test.use({ bypassCSP: false });
+  test('campaign page preview iframe loads under the real admin CSP, no CSP violation', async ({ page, baseURL }) => {
+    const violations = [];
+    page.on('console', m => { if (/violates the following Content Security Policy|Refused to/i.test(m.text())) violations.push(m.text()); });
+    await signIn(page, OWNER, newStore());
+    // The mock server points the admin API at its own origin, which this CSP rightly refuses: put the live origin back
+    // (answered by the routes above, never reached) so the CSP under test is byte-for-byte the shipped one.
+    await page.route('**/admin/js/config.js*', async r => { const res = await r.fetch();
+      await r.fulfill({ response: res, body: (await res.text()).replaceAll(baseURL + '/__mock/functions/v1', 'https://byluoipdunralsurwebt.supabase.co/functions/v1') }); });
+    await openCampaigns(page);
+    const shipped = (await readFile(new URL('../../admin/index.html', import.meta.url), 'utf8')).match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
+    expect(await page.locator('meta[http-equiv=Content-Security-Policy]').getAttribute('content')).toBe(shipped);
+    await page.locator('.campaign-card').getByRole('button', { name: 'تعديل' }).click();
+    await expect(page.frameLocator('[data-page-preview]').locator('.cp-product[data-code]')).toHaveCount(2, { timeout: 15000 });
+    expect(violations).toEqual([]);
+  });
 });

@@ -201,3 +201,24 @@ test('Owner: motion mode, per-photo entry direction, hint text and a main colour
   expect(second.accent).toBe('');
   expect(second.motion.mode).toBe('none');
 });
+
+// The live admin CSP (default-src 'none') blocked the same-origin preview iframe ("This content is blocked"): run with
+// the CSP actually shipped in admin/index.html (no bypass) and require the preview page to render without a violation.
+test.describe('shipped admin CSP', () => {
+  test.use({ bypassCSP: false });
+  test('Studio preview iframe loads under the real admin CSP, no CSP violation', async ({ page, baseURL }) => {
+    const violations = [];
+    page.on('console', m => { if (/violates the following Content Security Policy|Refused to/i.test(m.text())) violations.push(m.text()); });
+    await signIn(page, OWNER, newStore());
+    // The mock server points the admin API at its own origin, which this CSP rightly refuses: put the live origin back
+    // (answered by the routes above, never reached) so the CSP under test is byte-for-byte the shipped one.
+    await page.route('**/admin/js/config.js*', async r => { const res = await r.fetch();
+      await r.fulfill({ response: res, body: (await res.text()).replaceAll(baseURL + '/__mock/functions/v1', 'https://byluoipdunralsurwebt.supabase.co/functions/v1') }); });
+    await openStudio(page);
+    const shipped = (await readFile(new URL('../../admin/index.html', import.meta.url), 'utf8')).match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
+    expect(await page.locator('meta[http-equiv=Content-Security-Policy]').getAttribute('content')).toBe(shipped);
+    expect(shipped).toMatch(/(^|; )frame-src 'self'(;|$)/);
+    await expect(page.frameLocator('[data-preview-frame=mobile]').locator('#lpForm')).toBeAttached({ timeout: 15000 });
+    expect(violations).toEqual([]);
+  });
+});
