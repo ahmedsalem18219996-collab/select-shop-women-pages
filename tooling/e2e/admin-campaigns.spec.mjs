@@ -76,8 +76,17 @@ test('Owner: the list loads, live preview shows every product as its own section
   await page.locator('[data-theme-accent-on]').check();
   await page.locator('[data-theme-accent]').fill('#c62828');
   await expect.poll(() => frame.locator('.cp-product[data-code="SS-1013"] .cp-add').evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(198, 40, 40)');
-  // Swipe hint and buy-button texts (PR #68): plain text, up to 60 characters.
-  await expect(page.locator('[data-theme-text="ctaText"]')).toHaveAttribute('maxlength', '60');
+  // Title font (PR #73): one of six self-hosted fonts; its stylesheet loads only on a page that picks one.
+  await expect(page.locator('select[data-theme="font"] option')).toHaveText(['الخط الافتراضي', 'Cairo', 'Changa', 'El Messiri', 'Aref Ruqaa', 'Marhey', 'Lalezar']);
+  await expect(frame.locator('#cp-fonts')).toHaveCount(0);
+  await page.locator('select[data-theme="font"]').selectOption('el-messiri');
+  await expect.poll(() => frame.locator('.cp-product[data-code="SS-1013"] .cp-title').evaluate(e => getComputedStyle(e).fontFamily)).toContain('El Messiri');
+  await expect(frame.locator('#cp-fonts')).toHaveAttribute('href', /fonts-studio.css/);
+  await expect.poll(() => frame.locator('.collection-hero h1').evaluate(e => getComputedStyle(e).fontFamily)).toContain('El Messiri');
+  // Swipe hint and buy-button texts (PR #68/#73): plain text, up to 60 code points like the server (an emoji is one).
+  await expect(page.locator('[data-theme-text="ctaText"]')).not.toHaveAttribute('maxlength', /.*/);
+  await page.locator('[data-theme-text="hintText"]').fill('👋'.repeat(61));
+  await expect.poll(() => page.locator('[data-theme-text="hintText"]').inputValue()).toBe('👋'.repeat(60));
   await page.locator('[data-theme-text="hintText"]').fill('اسحبي للمزيد');
   await page.locator('[data-theme-text="ctaText"]').fill('اشتري دلوقتي');
   await page.locator('[data-theme-text="ctaText"]').blur();
@@ -102,7 +111,7 @@ test('Owner: the list loads, live preview shows every product as its own section
   const saved = store.ops.find(o => o.op === 'campaigns.save');
   expect(saved.args.product_codes).toEqual(['SS-9101', 'SS-1012', 'SS-1013']);
   const theme = store.ops.find(o => o.op === 'campaigns.theme.save');
-  expect(theme.args).toMatchObject({ id: store.collection.id, version: 0, theme: { enabled: true, background: 'light', ctaShape: 'square', accent: '#c62828', hintText: 'اسحبي للمزيد', ctaText: 'اشتري دلوقتي' } });
+  expect(theme.args).toMatchObject({ id: store.collection.id, version: 0, theme: { enabled: true, background: 'light', ctaShape: 'square', accent: '#c62828', font: 'el-messiri', hintText: 'اسحبي للمزيد', ctaText: 'اشتري دلوقتي' } });
 
   await page.locator('.campaign-card').getByRole('button', { name: 'نشر الصفحة' }).click();
   await expect.poll(() => store.ops.map(o => o.op)).toContain('campaigns.theme.publish');
@@ -113,6 +122,20 @@ test('Owner: the list loads, live preview shows every product as its own section
   const link = new URL(await page.evaluate(() => window.__copied));
   expect(link.pathname).toBe('/collections/');
   expect([...link.searchParams]).toEqual([['slug', store.collection.slug], ['utm_source', 'facebook'], ['utm_campaign', store.collection.slug]]);
+});
+
+test('Owner: an older saved theme font (rakkas) still renders; the next save sends the default font', async ({ page }) => {
+  const store = newStore();
+  store.theme = { version: 3, draft: { enabled: true, font: 'rakkas', background: 'navy' }, published: null };
+  await signIn(page, OWNER, store);
+  await openCampaigns(page);
+  await page.locator('.campaign-card').getByRole('button', { name: 'تعديل' }).click();
+  const frame = page.frameLocator('[data-page-preview]');
+  await expect(frame.locator('.cp-product[data-code="SS-1012"]')).toHaveAttribute('data-font', 'rakkas');
+  await expect(page.locator('select[data-theme="font"]')).toHaveValue('');
+  await page.locator('select[data-theme="spacing"]').selectOption('airy');
+  await page.getByRole('button', { name: 'حفظ كمسودة' }).click();
+  await expect.poll(() => store.ops.find(o => o.op === 'campaigns.theme.save')?.args.theme.font).toBe('');
 });
 
 test('Owner: structured page import fills title, products and theme; unknown or unpublished products are dropped', async ({ page }) => {
