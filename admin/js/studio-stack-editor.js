@@ -1,7 +1,7 @@
 import { html, render, island, fail, icon } from './ui.js';
 import { uploadLandingImage, mediaUrl } from './api.js';
 import { optimizeUploadImage } from './image-optimize.js';
-import { accentFromImage, applyAccent, makeStrip, mountPhoto, playEnter, renderOverlays } from '../studio/motion.js';
+import { accentFromImage, applyAccent, makeStrip, mountPhoto, playEnter, renderOverlays } from '../studio/motion.js?v=20261122-shadow';
 import { EFFECTS, ELEMENTS, ENTRIES, FITS, FONTS, LOOPS, SHADES, TEMPLATES, TEXT_ENTRIES, TEXT_LOOPS } from './studio-visual-options.js';
 
 const PATH = /^women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(webp|jpg|jpeg|png)$/;
@@ -12,9 +12,10 @@ const PALETTE = ['#FFFFFF','#111111','#2563EB','#D0021B','#FF2D8A','#D8B36A','#1
 const PHOTO_FIELDS = new Set(['enter','loop','fit','shade']);
 const MOTION_FIELDS = new Set(['enter','loop','in','anim','delay']);
 const TEXT_TYPES = new Set(['text','badge','callout']);
+const TEXT_SHADOWS = [['soft','تلقائي'], ['','من غير']];
 const PATH_ASSET = name => new URL('../studio/' + name, import.meta.url).href;
 const blankPhoto = path => ({ path, enter:'', loop:'none', fit:'auto', shade:'', overlays:[] });
-const blankOverlay = type => ({ type, text: TEXT_TYPES.has(type) ? 'اكتب هنا' : '', x:50, y:45, x2:68, y2:52, size:1, rot:0, in:'pop', anim:'none' });
+const blankOverlay = type => ({ type, text: TEXT_TYPES.has(type) ? 'اكتب هنا' : '', x:50, y:45, x2:68, y2:52, size:1, rot:0, in:'pop', anim:'none', sh:TEXT_TYPES.has(type) ? 'soft' : '' });
 const short = (text, max) => [...String(text ?? '')].slice(0,max).join('');
 const clamp = (n, min, max) => Math.max(min, Math.min(max, Number(n) || 0));
 const round = n => Math.round(n * 10) / 10;
@@ -22,7 +23,7 @@ const clone = data => data?.v === 1 && Array.isArray(data.photos)
   ? structuredClone({ ...data, photos: data.photos.filter(photo => PATH.test(photo?.path)) }) : undefined;
 
 function loadStyles() {
-  for (const file of ['motion.css', 'fonts/fonts-studio.css']) {
+  for (const file of ['motion.css?v=20261122-shadow', 'fonts/fonts-studio.css']) {
     const url = PATH_ASSET(file);
     if (document.querySelector('link[href="' + url + '"]')) continue;
     const link = document.createElement('link');
@@ -251,6 +252,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
         ${item.type === 'text' ? html`${deck('fx','تأثير الكلام',EFFECTS,item.fx || '','effect')}
           ${swatches('fxc','لون التأثير',item.fxc,stack?.accent || '#2563eb')}` : ''}
         ${TEXT_TYPES.has(item.type) ? deck('font','الخط',FONTS,item.font || '','font') : ''}
+        ${TEXT_TYPES.has(item.type) ? deck('sh','ظل للنص',TEXT_SHADOWS,item.sh === '' ? '' : 'soft') : ''}
         ${swatches('color','اللون',item.color,'#ffffff')}
         ${layerIndex !== 'strip' ? html`${deck('in','بيدخل إزاي',TEXT_ENTRIES,item.in || 'pop','text-entry')}
           ${deck('anim','وبعدها يفضل',TEXT_LOOPS,item.anim || 'none','loop')}
@@ -299,6 +301,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     snapshot();
     photo.overlays = template.items.slice(0,MAX_LAYERS).map(item => ({
       ...item, text: short(String(item.text || '').replaceAll('{name}', title || '').replaceAll('{price}', price || 'السعر'),80),
+      sh: item.sh ?? (TEXT_TYPES.has(item.type) ? 'soft' : ''),
     }));
     if (template.full) photo.fit = 'fill';
     if (template.shade) photo.shade = template.shade;
@@ -354,7 +357,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     if (key === 'close') { dialog.close(); return; }
     if (key === 'full') {
       if (!dialog.open) dialog.showModal();
-      if (!frame.getAttribute('src')) frame.src = PATH_ASSET('preview.html');
+      if (!frame.getAttribute('src')) frame.src = PATH_ASSET('preview.html?v=20261122-shadow');
       sizeFrame(); send(); return;
     }
     if (!canEdit()) return;

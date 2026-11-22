@@ -90,6 +90,12 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   await copy.fill('ستايل يعبّر عنك');
   await editor.locator('[data-choice="fx"][data-value="aurora"]').click();
   await expect(stage.locator('.ssm-fx-aurora')).toHaveText('ستايل يعبّر عنك');
+  const inspector = editor.locator('.studio-visual-inspector');
+  const automaticShadow = inspector.getByRole('button', { name:'تلقائي', exact:true });
+  await expect(automaticShadow).toHaveAttribute('aria-pressed','true');
+  await expect(stage.locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-soft/);
+  await inspector.getByRole('button', { name:'من غير', exact:true }).click();
+  await expect(stage.locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-none/);
   await editor.locator('[data-action="play"]').click();
   await expect(stage).not.toHaveClass(/ssm-edit/);
   await editor.locator('[data-action="play"]').click();
@@ -97,6 +103,7 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   await editor.locator('[data-action="full"]').click();
   await expect(editor.locator('dialog')).toBeVisible();
   await expect(editor.frameLocator('iframe').locator('.ssm-card')).toHaveCount(2);
+  await expect(editor.frameLocator('iframe').locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-none/);
   await editor.locator('[data-device="desktop"]').click();
   await expect(editor.locator('[data-device="desktop"]')).toHaveAttribute('aria-pressed','true');
   await editor.locator('[data-action="close"]').click();
@@ -105,12 +112,14 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   const saved = store.landing.draft.studioStack;
   expect(saved.v).toBe(1);
   expect(saved.photos).toHaveLength(2);
-  expect(saved.photos[0].overlays[1]).toMatchObject({ type:'text', text:'ستايل يعبّر عنك', fx:'aurora' });
+  expect(saved.photos[0].overlays[1]).toMatchObject({ type:'text', text:'ستايل يعبّر عنك', fx:'aurora', sh:'' });
   expect(store.landing.published).toBeNull();
   await page.locator('[data-studio-publish]').click();
   await page.locator('[data-yes]').click();
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status','published');
   expect(store.landing.published.studioStack).toEqual(saved);
+  await page.reload();
+  await expect(stage.locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-none/);
 });
 
 test('Owner: uploads the 3 marketing images by hand, edits every control, saves a draft, reopens it, publishes', async ({ page }) => {
