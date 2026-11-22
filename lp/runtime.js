@@ -321,7 +321,7 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 
 /** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
 const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
-const RELATED_MODULE = "./related.js?v=20261121-thumbs";
+const RELATED_MODULE = "./related.js?v=20261122-studio";
 const MOTION_MODULE = "./motion.js?v=20261122-studio";
 const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
 let motionOn = false;
@@ -1191,31 +1191,9 @@ async function init() {
   await regionsReady;
 }
 
-const RELATED_PRODUCTS_CSS = `
-.lp-related{box-sizing:border-box;max-width:1120px;margin:38px auto 0;padding:0 18px 132px;direction:rtl;color:var(--ink,#242126);font-family:var(--f,inherit)}
-.lp-related h2{margin:0 0 7px;font-size:clamp(20px,3vw,27px);font-weight:700;line-height:1.45}
-.lp-related>p{margin:0 0 17px;color:var(--muted,#777);font-size:13px;line-height:1.8}
-.lp-related-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
-.lp-related-card{display:flex;min-width:0;flex-direction:column;overflow:hidden;border:1px solid var(--line,#ded9d6);border-radius:15px;background:var(--paper,#fff);color:inherit;text-decoration:none}
-.lp-related-image{display:grid;aspect-ratio:4/5;place-items:center;overflow:hidden;background:var(--bg,#f5f2ef);color:var(--muted,#777);font-size:12px}
-.lp-related-image img{width:100%;height:100%;object-fit:cover}
-.lp-related-body{display:flex;min-width:0;flex-direction:column;gap:7px;padding:11px}
-.lp-related-body strong{font-size:13px;line-height:1.6}
-.lp-related-price{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
-.lp-related-action{display:flex;min-height:38px;align-items:center;justify-content:center;border-radius:9px;background:var(--accent,#303c2d);color:#fff;font-size:12px;font-weight:600;text-align:center}
-.lp-related-bag{display:flex;width:min(100%,320px);min-height:46px;margin:20px auto 0;align-items:center;justify-content:center;border-radius:12px;background:var(--accent,#303c2d);color:#fff;text-decoration:none;font-size:14px;font-weight:700}
-@media(max-width:620px){.lp-related{margin-top:28px;padding-inline:12px}.lp-related-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.lp-related-body{padding:9px}.lp-related-body strong{font-size:12px}.lp-related-action{font-size:11px}}
-`;
-
 
 // Side effects only on a landing page (/collections/ imports the helpers).
 if (typeof document !== "undefined" && document.getElementById("lp-data")) {
-  if (!document.getElementById("lp-related-style")) {
-    const style = document.createElement("style");
-    style.id = "lp-related-style";
-    style.textContent = RELATED_PRODUCTS_CSS;
-    document.head.append(style);
-  }
   try { localStorage.setItem(VARIANT_KEY, document.documentElement.dataset.v === "b" ? "b" : "a"); } catch { /* private mode */ }
   void init();
 }
