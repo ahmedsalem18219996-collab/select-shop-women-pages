@@ -220,7 +220,7 @@ export function sanitizeOverlays(/** @type {any} */ list) {
     lock: o.lock === true, // Studio only: stops accidental dragging
     fx: TEXT_FX.includes(o.fx) || (o.type === "icon" && o.fx === "plain") ? o.fx : "",
     fxc: /^#[0-9a-f]{6}$/i.test(o.fxc || "") ? o.fxc : "",
-    sh: TEXT_SHADOWS.includes(o.sh) ? o.sh : "",
+    sh: TEXT_SHADOWS.includes(o.sh) ? o.sh : ["text", "badge", "callout"].includes(o.type) ? "soft" : "",
     icon: Object.prototype.hasOwnProperty.call(ICONS, o.icon) ? o.icon : "star",
   }));
 }
@@ -284,7 +284,7 @@ export function renderOverlays(/** @type {HTMLElement} */ wrap, /** @type {any[]
     if (o.type !== "text" || o.color) el.style.setProperty("--c", color); // text is white unless a colour is chosen
     el.style.setProperty("--s", String(o.size));
     if (o.type === "badge" && o.color && isLight(o.color)) el.style.color = "#111"; // white text vanishes on light badges
-    if (o.sh && ["text", "badge", "callout", "icon"].includes(o.type)) el.classList.add("ssm-sh-" + o.sh);
+    if (["text", "badge", "callout", "icon"].includes(o.type)) el.classList.add("ssm-sh-" + (o.sh || "none"));
     if (o.type === "text" && o.fx) {
       el.classList.add("ssm-fx-" + o.fx);
       el.dataset.t = o.text; // effects that draw a second copy of the text (lines, glitch) read it from here

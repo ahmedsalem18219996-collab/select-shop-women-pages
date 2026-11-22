@@ -59,8 +59,16 @@ test("new Admin model: two colours and distinct sizes in one COD order (isolated
   await page.locator("#lpMixToggle").click();
   await expect(page.locator("#lpMixRows .lp-mix-row")).toHaveCount(4); // blue S/M/L + brown One Size, no sold-out pink
   await expect(page.locator("#lpOrder")).toBeDisabled();
+  const barPrice = page.locator("#lpBarPrice");
+  await expect(barPrice).toHaveText("—");
   await page.locator('#lpMixRows [data-mix-code="SS-9101@0.0,1.0"][data-delta="1"]').click();
+  await expect(barPrice).toHaveText("٥٥٠ ج");
   await page.locator('#lpMixRows [data-mix-code="SS-9101@0.1,1.3"][data-delta="1"]').click();
+  await expect(barPrice).toHaveText("١٬١٥٠ ج");
+  await page.locator('#lpMixRows [data-mix-code="SS-9101@0.1,1.3"][data-delta="1"]').click();
+  await expect(barPrice).toHaveText("١٬٧٥٠ ج");
+  await page.locator('#lpMixRows [data-mix-code="SS-9101@0.1,1.3"][data-delta="-1"]').click();
+  await expect(barPrice).toHaveText("١٬١٥٠ ج");
   await expect(page.locator("#lpOrder")).toBeEnabled();
   await expect(page.locator("#lpBarChoice")).toContainText("بيبي بلو");
   await expect(page.locator("#lpBarChoice")).toContainText("بني");
@@ -70,6 +78,7 @@ test("new Admin model: two colours and distinct sizes in one COD order (isolated
   await page.fill("[name=address]", "عنوان اختبار فقط");
   await expect(page.locator("#lpSub")).toHaveText("١٬١٥٠ ج");
   await expect(page.locator("#lpTotal")).toHaveText("١٬٢٢٠ ج");
+  await expect(barPrice).toHaveText("١٬١٥٠ ج");
   await page.locator("#lpOrder").click();
   await expect(page.locator("#lpDone")).toBeVisible();
   await expect(page.locator("#lpDoneText")).toContainText("بيبي بلو");

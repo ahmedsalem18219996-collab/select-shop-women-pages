@@ -850,7 +850,8 @@ async function init() {
     $("#lpSub").textContent = sub === null ? "—" : egp(sub) + " ج";
     $("#lpShip").textContent = ship !== null ? (ship === 0 ? "مجاني" : egp(ship) + " ج") : !region.value ? "اختيار المحافظة" : quoting ? "بنحسب…" : "—";
     $("#lpTotal").textContent = total === null ? "—" : egp(total) + " ج";
-    $("#lpBarPrice").textContent = total !== null ? egp(total) + " ج" : unit === "—" ? "—" : unit + " ج";
+    const barAmount = mixMode ? sub : total;
+    $("#lpBarPrice").textContent = barAmount !== null ? egp(barAmount) + " ج" : mixMode || unit === "—" ? "—" : unit + " ج";
     if (choiceEl && product) choiceEl.textContent = mixMode
       ? (currentLines().length ? currentLines().map(l =>
           labelForLine(l) + " × " + l.quantity).join("، ") : "تحديد عدد كل لون")

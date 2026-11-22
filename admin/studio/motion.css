@@ -180,6 +180,8 @@
 .ssm-o{filter:var(--fxf,) var(--shf,)}
 /* text shadows */
 .ssm-sh-soft{--shf:drop-shadow(0 calc(3*var(--u)) calc(8*var(--u)) rgba(0,0,0,.55))}
+.ssm-o-text:is(.ssm-sh-soft,.ssm-sh-none):not([class*="ssm-fx-"]){text-shadow:none}
+.ssm-o-text.ssm-sh-soft{--shf:drop-shadow(0 calc(1*var(--u)) calc(2*var(--u)) rgba(0,0,0,.74)) drop-shadow(0 calc(3*var(--u)) calc(6*var(--u)) rgba(0,0,0,.44))}
 .ssm-sh-strong{--shf:drop-shadow(0 calc(4*var(--u)) calc(4*var(--u)) rgba(0,0,0,.85)) drop-shadow(0 0 calc(14*var(--u)) rgba(0,0,0,.6))}
 .ssm-sh-long{--shf:drop-shadow(calc(5*var(--u)) calc(6*var(--u)) 0 rgba(0,0,0,.55))}
 .ssm-sh-edge{--shf:drop-shadow(0 0 calc(1.2*var(--u)) #000) drop-shadow(0 0 calc(1.2*var(--u)) #000) drop-shadow(0 0 calc(1.2*var(--u)) #000)}

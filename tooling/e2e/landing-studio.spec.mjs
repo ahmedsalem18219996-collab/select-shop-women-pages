@@ -57,7 +57,10 @@ test("published design: 3 marketing images, texts, CTA options, order card look;
 test("the published Studio stack stays off the first paint and renders ordered, light motion after the form", async ({ page, request }) => {
   await publish(request, { ...DESIGN, studioStack: { v: 1, accent: "#9c2044", photos: [
     { path: "women-storefront/storefront/studio-features.webp", enter: "blur", loop: "bounce", fit: "fill",
-      overlays: [{ type: "text", text: "ستايل يعبّر عنك", fx: "aurora", font: "Cairo", x: 50, y: 45, scale: 1 }] },
+      overlays: [
+        { type: "text", text: "ستايل يعبّر عنك", fx: "aurora", font: "Cairo", x: 50, y: 45, size: 1 },
+        { type: "text", text: "نص من غير ظل", fx: "lines", sh: "", x: 50, y: 65, size: 1 },
+      ] },
     { path: "women-storefront/storefront/studio-closing.webp", enter: "flip", loop: "float", overlays: [] },
   ] } });
   const assets = [];
@@ -82,6 +85,9 @@ test("the published Studio stack stays off the first paint and renders ordered, 
   await expect(cards.first()).toHaveCSS("background-color", "rgb(238, 236, 233)");
   await expect(cards.first().locator(".ssm-main")).toHaveCSS("animation-name", "ssm-photo-bounce");
   await expect(stack.locator(".ssm-fx-aurora")).toHaveText("ستايل يعبّر عنك");
+  await expect(stack.locator(".ssm-fx-aurora")).toHaveClass(/ssm-sh-soft/);
+  await expect(stack.locator(".ssm-fx-lines")).toHaveClass(/ssm-sh-none/);
+  await expect(stack.locator(".ssm-fx-lines")).toHaveCSS("filter", "none");
   await expect(stack).toHaveCSS("--ssm-accent", "#9c2044");
   await expect(page.locator("#lpHero img")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
