@@ -175,6 +175,20 @@ test('LP catalogue link is readable on the light-only page and product details s
     await expect(home).toHaveAttribute('aria-label', label);
     await expect(home).toHaveCSS('color', 'rgb(17, 17, 17)');
     await expect(home).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    const mobile = page.viewportSize().width < 900;
+    const textLabel = home.locator(mobile ? '.browse-home__compact' : '.browse-home__wide');
+    await expect(textLabel).toBeVisible();
+    const space = await textLabel.evaluate(el => {
+      const text = document.createRange();
+      text.selectNodeContents(el);
+      const { left, right } = text.getBoundingClientRect();
+      const button = el.parentElement.getBoundingClientRect();
+      const cart = document.getElementById('lpCartLink').getBoundingClientRect();
+      return { left: left - button.left, right: button.right - right, belowCart: button.top > cart.bottom };
+    });
+    expect(space.left).toBeGreaterThanOrEqual(12);
+    expect(space.right).toBeGreaterThanOrEqual(12);
+    expect(space.belowCart).toBe(mobile);
     await expect(page.locator('#lpMore')).toContainText('ONE SIZE');
     const detailsBeforeForm = await page.evaluate(() => {
       const details = document.querySelector('#lpMore');
