@@ -1,0 +1,79 @@
+/* SELECT SHOP · Neutral look for the bag (/cart/) and checkout (/checkout/), 2026-11-22. Same identity as the home (css/neutral.css) and
+   the product pages (tooling/build-lp.mjs "Neutral look"): warm off-white canvas, white rounded cards, near-black ink, black buy buttons,
+   Alexandria titles, Manrope prices. Light only (no theme switch). Look only: loaded last; the bag, the server quote, the COD order,
+   field names/ids and analytics are untouched. Fields and the stepper use a darker hairline (#8F8A86, 3.5:1 on white) so their edges stay visible. */
+:root{
+ --bg:#FAFAF9;--mirror:#FAFAF9;--paper:#FFFFFF;--chalk:#FFFFFF;--wash:#FFFFFF;--tape:#111111;--elev:#F2F1EF;--surface:#F2F1EF;
+ --ink:#111111;--pin:#111111;--muted:#6B6966;--dust:#6B6966;--hair:#E7E5E4;--line:#E7E5E4;--rose:#E7E5E4;--field:#8F8A86;
+ --accent:#111111;--accent-hover:#000000;--mauve:#111111;--cyan:#111111;--gold:#111111;--danger:#B42318;--nx-accent:#C8102E;
+ --glass:rgba(250,250,249,.86);--ring:rgba(17,17,17,.22);--off:rgba(107,105,102,.45);
+ --f:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;--f-body:var(--f);
+ --f-display:"Alexandria","IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;--f-num:"Manrope","IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;
+ color-scheme:light;
+}
+html{background:#FAFAF9 none}
+.nx-mark,.atelier-checkout .mark::before{direction:ltr;unicode-bidi:isolate} /* "S." not ".S" in RTL */
+::selection{background:#111;color:#fff}
+
+/* ---------- bag (/cart/): header, tab bar and canvas come from css/neutral.css ---------- */
+.commerce-head h1{font:800 28px/1.4 var(--f-display);letter-spacing:0}
+.commerce-yellow-mark::before{background:var(--nx-accent);height:3px;bottom:.06em;border-radius:2px}
+.commerce-kicker{font:600 11px/1.7 var(--f-num);letter-spacing:.08em;color:var(--muted)}
+.commerce-head .commerce-note,.commerce-note{color:var(--muted)}
+.commerce-head-link{color:var(--ink);border-bottom-color:var(--ink);min-height:44px;align-items:center;padding:0}
+.commerce-card{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 22px 44px -32px rgba(0,0,0,.3)}
+.commerce-row{border-bottom-color:var(--line)}
+.commerce-row:last-child{border-bottom:0;padding-bottom:0}
+.commerce-row img{border-radius:14px;background:var(--surface)}
+.commerce-row-main .commerce-row-title,.commerce-row-main b{font:800 15px/1.6 var(--f-display);color:var(--ink)}
+.commerce-row .commerce-note{margin:2px 0 4px;font-size:13px}
+.commerce-row .commerce-price{font:800 17px/1.4 var(--f-num);letter-spacing:-.01em}
+.commerce-controls{display:inline-flex;gap:0;margin-top:8px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1px var(--field)}
+.commerce-controls button{min-width:44px;min-height:44px;border:0;border-radius:14px;background:transparent;color:var(--ink);font:600 18px/1 var(--f-num);cursor:pointer}
+.commerce-controls button:active{background:var(--elev)}
+.commerce-controls span{min-width:28px;text-align:center;font:800 15px/1 var(--f-num)}
+.commerce-summary-card h2{font:800 22px/1.4 var(--f-display)}
+.commerce-summary{border-color:var(--line)}
+.commerce-summary b{font:800 17px/1.4 var(--f-num)}
+.commerce-summary-card .commerce-actions{display:block}
+.commerce-status{color:var(--muted)}
+.commerce-status[role="alert"],.atelier-checkout #status[role="alert"]{color:var(--danger)}
+.commerce-quick-links a{border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);min-height:44px}
+.commerce-quick-links a[aria-current="page"]{background:#111;border-color:#111;color:#fff}
+
+/* ---------- the one black action, as the product page's "تأكيد الطلب" ---------- */
+.commerce .commerce-btn,.atelier-checkout #placeOrder{background:#111 linear-gradient(135deg,#1c1c1c,#000)!important;border:0!important;border-radius:16px!important;color:#fff!important;
+ font:800 16px/1.2 var(--f-display)!important;letter-spacing:0;box-shadow:0 14px 30px -12px rgba(0,0,0,.4);transition:background .15s}
+.commerce-summary-card .commerce-btn{width:100%;min-height:54px}
+.commerce .commerce-btn:not(:disabled):is(:hover,:active),.atelier-checkout #placeOrder:enabled:is(:hover,:active){background:#000!important}
+.commerce .commerce-btn:is(:disabled,[aria-disabled="true"]),.atelier-checkout #placeOrder:disabled{background:var(--elev)!important;color:var(--muted)!important;box-shadow:none}
+
+/* ---------- checkout (/checkout/) ---------- */
+.atelier-checkout{font-family:var(--f)}
+.atelier-checkout .top{max-width:640px;min-height:64px;padding:10px 20px;border-bottom:1px solid var(--line)}
+/* wordmark "SELECT shop" with the home's "S." tile at the start (right); the pseudo-elements are ordered before the text */
+.atelier-checkout .mark{display:flex;flex-direction:row;align-items:center;gap:6px;min-height:44px;font:800 18px/1 var(--f-num);letter-spacing:-.02em;color:var(--ink)}
+.atelier-checkout .mark::before{content:"S.";order:-1;display:grid;place-items:center;width:36px;height:36px;border-radius:9px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);font-size:18px}
+.atelier-checkout .mark::after{content:"SHOP";order:-1;width:auto;height:auto;background:none;font:800 18px/1 var(--f-num)}
+.atelier-checkout .top>a:last-child{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);font:600 14px/1 var(--f);text-decoration:none}
+.atelier-checkout .wrap{max-width:640px;padding:20px 20px 40px}
+.atelier-checkout h1{margin:0 0 4px;font:800 28px/1.4 var(--f-display);letter-spacing:0}
+.atelier-checkout form{gap:16px}
+.atelier-checkout label{font:600 14px/1.5 var(--f);color:var(--ink)}
+.atelier-checkout :is(input,select,textarea){min-height:52px;background:#fff;color:var(--ink);border:1px solid var(--field);border-radius:14px;font:400 16px var(--f)}
+.atelier-checkout :is(input,select,textarea):is(:focus,:focus-visible){outline:none;border-radius:14px;border-color:#111;box-shadow:0 0 0 3px rgba(17,17,17,.12)}
+.atelier-checkout ::placeholder{color:#8F8A86}
+.atelier-checkout details summary{display:list-item;min-height:44px;padding-block:10px;color:var(--ink);font-size:14px}
+.atelier-checkout .card{display:grid;gap:6px;padding:16px 18px;background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 22px 44px -32px rgba(0,0,0,.3)}
+.atelier-checkout #checkoutItems p{font:800 15px/1.7 var(--f-display)}
+.atelier-checkout .row b{font:800 15px/1.4 var(--f-num)}
+.atelier-checkout .totals{border-top:0;padding:0}
+.atelier-checkout .note{color:var(--muted);line-height:1.8}
+.atelier-checkout #status{color:var(--muted)}
+.atelier-checkout .confirm{background:rgba(250,250,249,.9);border-top:1px solid var(--line)}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.atelier-checkout .confirm{-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px)}}
+.atelier-checkout .confirm .row{align-items:baseline;font:800 17px/1.4 var(--f-display)}
+.atelier-checkout .confirm .row b{font:800 20px/1.2 var(--f-num)}
+.atelier-checkout #placeOrder{height:56px}
+@media(max-width:699px){.atelier-checkout .wrap{padding-inline:16px}}
+@media(prefers-reduced-motion:reduce){.commerce-btn,#placeOrder{transition:none!important}}
