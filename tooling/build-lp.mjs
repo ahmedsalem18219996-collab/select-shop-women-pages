@@ -6,7 +6,7 @@
 import { readFile, writeFile, mkdir, access, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { priceLabel, photoFiles } from "../lp/runtime.js";
+import { priceLabel, photoFiles, firstColourThumb } from "../lp/runtime.js";
 import { waLink, productText, GENERAL, FALLBACK } from "../js/store-contact.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -120,8 +120,6 @@ h1{margin:0;font-size:23px;font-weight:600;line-height:1.35;overflow-wrap:anywhe
 .lp-opt input{position:absolute;width:1px;height:1px;margin:-1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
 .lp-opt span{display:inline-grid;place-items:center;min-width:54px;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:22px;background:#fff}
 .lp-opt input:focus-visible+span{outline:2px solid var(--mauve);outline-offset:2px}
-.lp-opt .sw{display:inline-block;width:14px;height:14px;border-radius:50%;margin-inline-end:6px;border:1px solid rgba(48,38,48,.18)}
-.lp-opt span:has(.sw){display:inline-flex;align-items:center}
 .lp-opt input:disabled+span{border-style:dashed;color:#9A8E97;text-decoration:line-through;cursor:not-allowed}
 .one{display:inline-grid;place-items:center;min-height:44px;padding:0 18px;border:1px solid var(--ink);border-radius:22px;background:#fff;box-shadow:inset 0 -2px 0 var(--gold);font-size:14px}
 #lpStatus{margin:-8px 0 0;font-size:14px;min-height:22px}
@@ -236,7 +234,6 @@ h1:empty{background:var(--elev)}
 .f [aria-invalid="true"]{border-color:var(--danger)}
 .step button:disabled{color:rgba(170,181,200,.45)}
 .chip i{box-shadow:0 0 0 1px rgba(255,255,255,.4)}
-.lp-opt .sw{border-color:rgba(255,255,255,.4)}
 #lpMix #lpMixToggle{background:transparent;color:var(--ink);border:1px solid var(--cyan)}
 #lpMix #lpMixRows button{background:var(--elev)}
 body{font-weight:400}
@@ -328,7 +325,6 @@ body:not([data-campaign]) .atelier-heading,body:not([data-campaign]) .head{margi
 /* Theme (2026-11-06): the last hard-coded dark values become tokens. */
 .step button:disabled{color:var(--off)}
 .chip i{box-shadow:0 0 0 1px var(--ring)}
-.lp-opt .sw{border-color:var(--ring)}
 /* small phones: tighter header gaps, and under 375px the "jump to form" link goes (the fixed bar's buy button does the same) */
 @media(max-width:420px){.top{gap:4px;padding-inline:8px}.mark{font-size:18px;letter-spacing:.18em}.top .jump{font-size:11px}#lpCartLink{font-size:11px;padding-inline:6px}.browse-home--top{font-size:10px;padding-inline:5px;gap:4px}.browse-home__wide{display:none}.browse-home__compact{display:inline}}
 @media(max-width:374px){.top .jump{display:none}}
@@ -422,6 +418,36 @@ body[data-campaign] .campaign-jump{border-radius:16px}
 .wa-fab{position:fixed;z-index:6;inset-inline-start:max(16px,env(safe-area-inset-right,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:52px;height:52px;display:grid;place-items:center;border-radius:50%;background:#128C7E;color:#fff;box-shadow:0 10px 24px -10px rgba(0,0,0,.45)}
 .wa-fab svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 @media(max-width:899px){.wa-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}}
+#lpColourDiscovery{box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;min-height:44px;margin-top:8px;padding:11px 14px;background:var(--elev);border:1px solid var(--cyan);color:var(--ink);font:600 14px/1.6 var(--f);text-decoration:none;max-width:100%}
+#lpColourDiscovery::after{content:"↓";color:var(--cyan);font-size:19px;line-height:1}
+#lpColourDiscovery[hidden]{display:none}
+#lpColourDiscovery:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+@media(max-width:899px){#lpColourDiscovery{order:0;margin:0 0 4px;font-size:13px}}
+@media(min-width:900px){#lpColourDiscovery{grid-column:1/-1;grid-row:2}}
+#lpColors,#lpOptions{scroll-margin-top:140px}
+#lpColourDiscovery .lp-discovery-copy{flex:1 1 205px;min-width:0}
+#lpColourDiscovery .lp-discovery-swatches{display:inline-flex;gap:6px;align-items:center}
+#lpColourDiscovery .lp-discovery-swatch{display:inline-block;flex:0 0 16px;width:16px;height:16px;border-radius:50%;border:1px solid var(--line);box-shadow:0 0 0 1px var(--ring)}
+@media(max-width:899px){#lpGallery{width:100%;max-width:100%;box-sizing:border-box;gap:10px;min-width:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;padding:7px 4px 12px;scrollbar-width:thin}#lpGallery[data-layout="centered"]{justify-content:center}#lpGallery[data-layout="strip"]{justify-content:flex-start}#lpGallery button{flex:0 0 64px;width:64px;scroll-snap-align:start}}
+@media(min-width:560px) and (max-width:899px){#lpGallery{width:min(100%,520px)}}
+@media(min-width:900px){#lpGallery{max-height:min(70vh,640px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}}
+.chip.lp-colour-card,.lp-opt .lp-colour-card{display:inline-flex;flex-direction:column;align-items:center;gap:6px;min-width:68px;padding:6px 8px;border-radius:12px!important;text-align:center;line-height:1.35}
+.chip.lp-colour-card[aria-pressed="true"],.lp-opt input:checked+.lp-colour-card{border:1px solid #111;box-shadow:inset 0 0 0 1px #111}
+.lp-colour-thumb,.chip .lp-colour-thumb{display:block;width:52px;height:52px;border-radius:8px;flex:none;overflow:hidden;background:var(--elev);box-shadow:0 0 0 1px var(--ring)}
+.lp-colour-thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 35%}
+.lp-colour-thumb img:not([src]){visibility:hidden}
+#lpMix{border:1px solid var(--line);padding:14px;background:var(--bg);margin:6px 0}
+#lpMix [hidden]{display:none!important}
+#lpMixToggle{background:var(--accent);color:#fff;border:0;min-height:44px;padding:10px 12px;width:100%;font:600 14px var(--f);cursor:pointer}
+#lpMixHint{font-size:13px;margin:10px 0;color:var(--muted)}
+#lpMixRows{display:grid;gap:10px;margin-top:12px}
+.lp-mix-row{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:5px 0 10px}
+.lp-mix-color{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;min-width:0}
+.lp-mix-color .lp-colour-thumb{width:36px;height:36px}
+.lp-mix-step{display:flex;align-items:center;gap:6px;flex:none}
+#lpMixRows button{min-width:44px;min-height:44px;border:1px solid var(--line);background:var(--paper);font:600 20px var(--f);color:var(--ink)}
+#lpMixRows button:disabled{opacity:.35}
+#lpMixRows output{min-width:27px;text-align:center;font-weight:600}
 `;
 
 const chevron = (d) => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
@@ -481,7 +507,7 @@ function layout(o) {
     ? ORDER_FORM.replace('</small></h2>', '</small></h2>\n' + checkoutPicker)
     : ORDER_FORM;
   // Product Landing Studio is part of the shared runtime, so every LP must fetch this release.
-  const choiceVersion = "20261122-studio";
+  const choiceVersion = "20261122-colours";
   const wa = esc(o.wa);
   return `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -556,7 +582,7 @@ export function render(page, products, fontFaces = "") {
   const oneSize = Array.isArray(product.options) && product.options.length === 0;
   const url = `https://selectshopeg.com/lp/${esc(page.id)}/`;
   const picker = colors.length > 1 ? `<fieldset class="pick" id="lpColors"><legend>اللون: <span id="lpColorName">${esc(first.name)}</span></legend><div class="row">${colors.map((c, i) =>
-    `<button type="button" class="chip" data-code="${esc(c.code)}" aria-pressed="${i === 0}"><i style="background:${esc(c.hex)}"></i>${esc(c.name)}</button>`).join("")}</div></fieldset>` : "";
+    `<button type="button" class="chip lp-colour-card" data-code="${esc(c.code)}" aria-pressed="${i === 0}"><i class="lp-colour-thumb" aria-hidden="true" style="background:${esc(c.hex)}"><img data-colour-src="${esc(firstColourThumb(c.dir))}" alt="" width="52" height="52" loading="lazy" decoding="async" fetchpriority="low"></i>${esc(c.name)}</button>`).join("")}</div></fieldset>` : "";
   return layout({
     campaign: page.campaign,
     source: ` from tooling/pages/${esc(page.id)}.json`,

@@ -18,7 +18,7 @@ test("choosing a colour switches to its photos, shows only its real sizes and it
   const colour = page.locator('input[name="opt0"]'), size = page.locator('input[name="opt1"]');
   await expect(colour).toHaveCount(3);
   await expect(colour.nth(2)).toBeDisabled();                                   // pink: not available from the supplier
-  await expect(page.locator(".lp-opt i.sw").first()).toHaveCSS("background-color", "rgb(169, 200, 232)");
+  await expect(page.locator(".lp-opt .lp-colour-thumb").first()).toHaveCSS("background-color", "rgb(169, 200, 232)");
 
   await page.locator('label:has(input[name="opt0"][value="1"])').click();       // بني
   await expect(hero(page)).toHaveAttribute("src", /c1c1/);

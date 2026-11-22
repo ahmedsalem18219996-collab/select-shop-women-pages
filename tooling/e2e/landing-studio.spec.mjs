@@ -102,6 +102,18 @@ test("a selected SKU's published Studio stays visible without animation with red
     await expect(card).toHaveCSS("position", "relative");
     await expect(card.locator(".ssm-main")).toHaveCSS("animation-name", "none");
     await expect(card.locator(".ssm-main")).toHaveAttribute("src", STORAGE + "women-storefront/storefront/studio-beige.webp");
+
+    const other = page.locator('#lpFormColors [data-code="SS-1014"]');
+    await expect(other.locator("img")).toHaveAttribute("loading", "lazy");
+    await other.scrollIntoViewIfNeeded();
+    await expect.poll(() => other.locator("img").evaluate(img => img.currentSrc)).toMatch(/\/img\/SS-1014\/0-480\.(avif|webp)$/);
+    await other.click();
+    await expect(other).toHaveAttribute("aria-pressed", "true");
+    await expect(other).toHaveCSS("border-top-color", "rgb(17, 17, 17)");
+    await expect(page.locator('#lpColors [data-code="SS-1014"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#lpHero img")).toHaveAttribute("src", /SS-1014/);
+    await expect(card.locator(".ssm-main")).toHaveAttribute("src", STORAGE + "women-storefront/storefront/studio-beige.webp");
+    await expect(card).toHaveCount(1);
   } finally {
     await publish(request, null, code);
   }

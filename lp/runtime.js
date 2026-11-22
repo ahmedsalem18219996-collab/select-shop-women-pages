@@ -408,6 +408,12 @@ function lazyVideo() {
 /** Store photos of the live product, cover first. */
 const liveMedia = (/** @type {any} */ p) => (p.media || []).filter((/** @type {any} */ m) => MEDIA.test(m?.url || ""))
   .sort((/** @type {any} */ a, /** @type {any} */ b) => Number(b.isPrimary === true) - Number(a.isPrimary === true) || a.position - b.position);
+const localPhotos = () => {
+  const names = /** @type {any} */ (window).SELECT_THUMBNAILS;
+  return new Set(Array.isArray(names) ? names : []);
+};
+const sharedMedia = (/** @type {any[]} */ list) => list.filter(m => !m.target || m.target.kind === "product");
+export const firstColourThumb = (/** @type {string} */ dir) => dir ? dir + "0-480.avif" : "";
 
 /** Committed, uncropped files of photo `i` of one colour on a generated page (tooling/build-lp.mjs writes them).
  *  Only the first photo (the LCP image) has AVIF and two widths; the others load when she flips to them. */
@@ -491,12 +497,13 @@ function wireGallery() {
 
 /** Main photo + thumbnails from live photos (responsive catalog thumbnails when the build has them). */
 function paintPhotos(/** @type {any[]} */ list, /** @type {string} */ alt) {
-  const local = new Set(Array.isArray(/** @type {any} */ (window).SELECT_THUMBNAILS) ? /** @type {any} */ (window).SELECT_THUMBNAILS : []);
+  const local = localPhotos();
   const shots = list.map((/** @type {any} */ m) => photoSet(m.url, local)).filter(s => s !== null)
     .map(s => ({ src: s.src, srcset: s.srcset, thumb: s.small, alt }));
   const img = /** @type {HTMLImageElement|null} */ (document.querySelector("#lpHero img"));
   if (!img || !shots.length) return;
   img.fetchPriority = "high";
+  /** @type {any} */ (window).__lpZoomPhotos = list.map(m => m.url);
   setShots(shots); // a curated <picture> source never overrides the live colour photo: showShot replaces the sources
 }
 
@@ -506,11 +513,8 @@ function fillFromProduct(/** @type {any} */ p) {
   document.title = title + " · SELECT SHOP";
   /** @type {HTMLElement} */ (document.getElementById("lpTitle")).textContent = title;
   // Before a colour is picked: the photos every colour shares (else all).
-  const all = liveMedia(p), shared = all.filter((/** @type {any} */ m) => !m.target || m.target.kind === "product");
-  const visible = shared.length ? shared : all;
-  const w = /** @type {any} */ (window);
-  w.__lpZoomPhotos = visible.map((/** @type {any} */ m) => m.url);
-  paintPhotos(visible, title);
+  const all = liveMedia(p), shared = sharedMedia(all);
+  paintPhotos(shared.length ? shared : all, title);
   const lines = String(p.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
   /** @type {HTMLElement} */ (document.getElementById("lpDesc")).textContent = lines[0] || "";
   /** @type {HTMLElement} */ (document.getElementById("lpMore")).replaceChildren(...lines.slice(1).map(l => Object.assign(document.createElement("p"), { textContent: l })));
@@ -588,15 +592,42 @@ async function init() {
   wireGallery();
   setShots(shotsOf(colors[0]), false); // the HTML already shows the first colour's photos
   const holder = $("#lpOptions");
+  const heroImage = /** @type {HTMLImageElement|null} */ (document.querySelector("#lpHero img"));
+  // Native lazy loading can start a screen or more ahead. Wait for both the hero and the visible colour tile.
+  const thumbObserver = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const img = /** @type {HTMLImageElement} */ (entry.target);
+      thumbObserver.unobserve(img);
+      const reveal = () => { if (img.isConnected) img.src = img.dataset.colourSrc; };
+      img.addEventListener("error", () => {
+        if (img.src.endsWith(".avif")) img.src = img.src.replace(/\.avif$/, ".webp");
+        else img.remove();
+      });
+      if (!heroImage || heroImage.complete) reveal();
+      else void heroImage.decode().catch(() => {}).then(reveal);
+    }
+  });
+  document.querySelectorAll("img[data-colour-src]").forEach(img => thumbObserver.observe(img));
+  const colourSwatch = (/** @type {string} */ src, /** @type {string} */ hex) => {
+    const swatch = document.createElement("i");
+    swatch.className = "lp-colour-thumb";
+    swatch.setAttribute("aria-hidden", "true");
+    if (hex) swatch.style.backgroundColor = hex;
+    if (src) {
+      const img = Object.assign(document.createElement("img"), { alt: "", width: 52, height: 52, loading: "lazy", decoding: "async", fetchPriority: "low" });
+      img.dataset.colourSrc = src;
+      swatch.append(img);
+      thumbObserver.observe(img);
+    }
+    return swatch;
+  };
   // One cue under the gallery: colours are separate from the photo count.
   const colourDiscovery = document.createElement("a");
   colourDiscovery.id = "lpColourDiscovery";
   colourDiscovery.hidden = true;
   colourDiscovery.setAttribute("aria-label", "عرض الألوان المتاحة لهذا المنتج");
   document.getElementById("lpGallery")?.after(colourDiscovery);
-  const discoveryStyle = document.createElement("style");
-  discoveryStyle.textContent = "#lpColourDiscovery{box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;min-height:44px;margin-top:8px;padding:11px 14px;background:var(--elev);border:1px solid var(--cyan);color:var(--ink);font:600 14px/1.6 var(--f);text-decoration:none;max-width:100%}\n#lpColourDiscovery::after{content:\"↓\";color:var(--cyan);font-size:19px;line-height:1}\n#lpColourDiscovery[hidden]{display:none}\n#lpColourDiscovery:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}\n@media(max-width:899px){#lpColourDiscovery{order:0;margin:0 0 4px;font-size:13px}}\n@media(min-width:900px){#lpColourDiscovery{grid-column:1/-1;grid-row:2}}\n#lpColors,#lpOptions{scroll-margin-top:140px}\n#lpColourDiscovery .lp-discovery-copy{flex:1 1 205px;min-width:0}\n#lpColourDiscovery .lp-discovery-swatches{display:inline-flex;gap:6px;align-items:center}\n#lpColourDiscovery .lp-discovery-swatch{display:inline-block;flex:0 0 16px;width:16px;height:16px;border-radius:50%;border:1px solid var(--line);box-shadow:0 0 0 1px var(--ring)}\n@media(max-width:899px){#lpGallery{width:100%;max-width:100%;box-sizing:border-box;gap:10px;min-width:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;padding:7px 4px 12px;scrollbar-width:thin}#lpGallery[data-layout=\"centered\"]{justify-content:center}#lpGallery[data-layout=\"strip\"]{justify-content:flex-start}#lpGallery button{flex:0 0 64px;width:64px;scroll-snap-align:start}}\n@media(min-width:560px) and (max-width:899px){#lpGallery{width:min(100%,520px)}}\n@media(min-width:900px){#lpGallery{max-height:min(70vh,640px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}}";
-  document.head.append(discoveryStyle);
   const updateColourDiscovery = (/** @type {any} */ p) => {
     const label = colourDiscoveryText(p, colors.length);
     colourDiscovery.hidden = !label;
@@ -683,6 +714,8 @@ async function init() {
   const mixEntries = new Map();
   /** @type {(ReturnType<typeof variantColourChoices>[number] & {hex?:string})[]} */
   let variantMixChoices = [];
+  /** @type {Map<number,string>} */
+  const variantThumbs = new Map();
   const mixBox = document.createElement("section");
   mixBox.id = "lpMix";
   mixBox.className = "lp-mix";
@@ -699,26 +732,6 @@ async function init() {
   mixHint.textContent = "كل لون هيتسجل في نفس الطلب بالعدد المحدد.";
   mixHint.hidden = true;
   mixBox.append(mixToggle, mixHint, mixRows);
-  // Lightweight CSS is attached only on model pages with multiple colours.
-  {
-    const style = document.createElement("style");
-    style.id = "lpMixStyle";
-    style.textContent = `
-      #lpMix{border:1px solid var(--line);padding:14px;background:var(--bg);margin:6px 0}
-      #lpMix [hidden]{display:none!important}
-      #lpMixToggle{background:var(--accent,#303c2d);color:#fff;border:0;min-height:44px;padding:10px 12px;width:100%;font:600 14px var(--f);cursor:pointer}
-      #lpMixHint{font-size:13px;margin:10px 0;color:var(--muted)}
-      #lpMixRows{display:grid;gap:10px;margin-top:12px}
-      #lpMixRows .lp-mix-row{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:5px 0 10px}
-      #lpMixRows .lp-mix-color{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;min-width:0}
-      #lpMixRows .lp-mix-color i{display:block;width:18px;height:18px;flex:none;border:1px solid #777}
-      #lpMixRows .lp-mix-step{display:flex;align-items:center;gap:6px;flex:none}
-      #lpMixRows button{min-width:44px;min-height:44px;border:1px solid var(--line);background:var(--paper,#eeece5);font:600 20px var(--f);color:var(--ink)}
-      #lpMixRows button:disabled{opacity:.35}
-      #lpMixRows output{min-width:27px;text-align:center;font-weight:600}
-    `;
-    document.head.append(style);
-  }
   form.querySelector(".qty")?.before(mixBox);
   const singleQtyBox = /** @type {HTMLElement|null} */ (form.querySelector(".qty"));
   const itemLine = (/** @type {{product:any,variant:any,quantity:number}} */ e) => ({
@@ -731,16 +744,17 @@ async function init() {
   const mixCount = () => [...mixEntries.values()].reduce((sum, e) => sum + e.quantity, 0);
   const repaintMix = () => {
     if (!mixMode) return;
+    mixRows.querySelectorAll("img").forEach(img => thumbObserver.unobserve(img));
     mixRows.replaceChildren();
     const choices = variantMixChoices.length
-      ? variantMixChoices.map(c => ({ code: c.key, name: c.name, hex: c.hex })) : colors;
+      ? variantMixChoices.map(c => ({ code: c.key, name: c.name, hex: c.hex, thumb: variantThumbs.get(c.variant.selection[colourIndex(c.product)]?.valuePosition) }))
+      : colors.map(c => ({ ...c, thumb: firstColourThumb(c.dir) }));
     for (const color of choices) {
       const entry = mixEntries.get(color.code);
       const count = entry?.quantity || 0;
       const row = document.createElement("div"); row.className = "lp-mix-row";
       const name = document.createElement("span"); name.className = "lp-mix-color";
-      const swatch = document.createElement("i"); swatch.style.backgroundColor = color.hex || "#aaa";
-      name.append(swatch, document.createTextNode(color.name || color.code));
+      name.append(colourSwatch(color.thumb, color.hex), document.createTextNode(color.name || color.code));
       const controls = document.createElement("span"); controls.className = "lp-mix-step";
       for (const delta of [-1, 1]) {
         const btn = document.createElement("button");
@@ -876,6 +890,7 @@ async function init() {
   // After a choice in option `from`: the other options keep only values still buyable with it (a colour's own sizes),
   // a lone remaining value is picked for her, and a chosen colour brings its own photos.
   const narrow = (/** @type {number} */ from) => {
+    const ci = colourIndex(product), previousColour = chosen[ci];
     product.options.forEach((/** @type {any} */ _, /** @type {number} */ i) => {
       if (i === from) return;
       const open = openValues(product, chosen, i);
@@ -886,16 +901,26 @@ async function init() {
       });
       if (chosen[i] < 0 && open.size === 1) { chosen[i] = [...open][0]; const r = /** @type {HTMLInputElement|null} */ (holder.querySelector(`input[name="opt${i}"][value="${chosen[i]}"]`)); if (r) r.checked = true; }
     });
-    const ci = colourIndex(product);
-    if (from === ci && chosen[ci] >= 0) {
-      const own = colourMedia(liveMedia(product), product.options[ci].position, chosen[ci]);
-      if (own.length) paintPhotos(own, String(product.title || "") + " - " + (product.options[ci].values.find((/** @type {any} */ v) => v.position === chosen[ci])?.value || ""));
+    if (ci >= 0 && (from === ci || chosen[ci] !== previousColour)) {
+      const all = liveMedia(product), option = product.options[ci];
+      const own = colourMedia(all, option.position, chosen[ci]);
+      const name = option.values.find((/** @type {any} */ v) => v.position === chosen[ci])?.value;
+      paintPhotos(own.length ? own : sharedMedia(all), [product.title, name].filter(Boolean).join(" - "));
     }
   };
   const renderOptions = () => {
+    holder.querySelectorAll("img").forEach(img => thumbObserver.unobserve(img));
     holder.replaceChildren();
     chosen = product.options.map(() => -1);
     const ci = colourIndex(product);
+    variantThumbs.clear();
+    if (ci >= 0) {
+      const option = product.options[ci], media = liveMedia(product), local = localPhotos();
+      for (const val of option.values) {
+        const photo = photoSet(colourMedia(media, option.position, val.position)[0]?.url, local);
+        if (photo?.srcset) variantThumbs.set(val.position, photo.small);
+      }
+    }
     if (!product.options.length) {
       const box = document.createElement("div"); box.className = "lp-opt";
       const one = document.createElement("span"); one.className = "one"; one.textContent = "مقاس واحد";
@@ -913,15 +938,20 @@ async function init() {
         Object.assign(input, { type: "radio", name: "opt" + i, value: String(val.position), disabled: !ok.has(val.position) });
         input.addEventListener("change", () => { chosen[i] = val.position; say(""); narrow(i); choose(); });
         const span = document.createElement("span"); span.textContent = val.value;
-        if (i === ci) { const dot = document.createElement("i"); dot.className = "sw"; dot.dataset.name = val.value; dot.setAttribute("aria-hidden", "true"); span.prepend(dot); }
+        if (i === ci) {
+          span.className = "lp-colour-card";
+          const swatch = colourSwatch(variantThumbs.get(val.position), "");
+          swatch.dataset.name = val.value;
+          span.prepend(swatch);
+        }
         label.append(input, span); box.append(label);
       }
       holder.append(box);
     });
-    if (ci >= 0) void import("../js/colour-palette.js").then(m => holder.querySelectorAll("i.sw").forEach(dot => {
-      const hx = m.hexOf(/** @type {HTMLElement} */ (dot).dataset.name || "");
-      if (hx) /** @type {HTMLElement} */ (dot).style.background = hx; else dot.remove();
-    })).catch(() => holder.querySelectorAll("i.sw").forEach(dot => dot.remove()));
+    if (ci >= 0) void import("../js/colour-palette.js").then(m => holder.querySelectorAll("i[data-name]").forEach(dot => {
+      const swatch = /** @type {HTMLElement} */ (dot);
+      swatch.style.backgroundColor = m.hexOf(swatch.dataset.name) || "";
+    })).catch(() => {});
     // A single sellable value per option is pre-selected so one-size pieces need no tap.
     product.options.forEach((/** @type {any} */ _, /** @type {number} */ i) => {
       const ok = [...sellableValues(product, i)];
