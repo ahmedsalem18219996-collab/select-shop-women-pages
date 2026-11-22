@@ -7,7 +7,7 @@ import { withBusy, island, done, fail, ago, confirmDialog } from '../ui.js';
 import { call, mediaUrl, uploadLandingImage } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
 import { buildGeminiPrompt, STUDIO_STYLES } from '../studio-prompts.js';
-import { createStudioStackEditor } from '../studio-stack-editor.js?v=20261122';
+import { createStudioStackEditor } from '../studio-stack-editor.js?v=20261122-visual';
 import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE, parseDesignImport, suggestAccent, DEFAULT_HINT, MAX_MOTION_IMAGES } from '../../../lp/studio-design.js?v=20261120-campaign';
 
 const make = (tag, cls = '', text = '') => {
@@ -132,6 +132,7 @@ export default {
 
     const stackEditor = createStudioStackEditor({
       code, title: p.title, initial: state.draft?.studioStack,
+      price: Number.isFinite(p.base_price?.amount_minor) ? new Intl.NumberFormat('ar-EG').format(p.base_price.amount_minor / 100) + ' جنيه' : '',
       editable: editor && landingLive,
       legacyPaths: () => design.order.map(slot => design.images[slot]).filter(Boolean),
       onChange: () => { edited(); paintStatus(); }, onBusy: () => paintStatus(),
@@ -146,8 +147,8 @@ export default {
       layout.hidden = !layout.hidden;
       legacy.setAttribute('aria-expanded', String(!layout.hidden));
       if (!layout.hidden) fit();
-    });
-    layout.hidden = Boolean(state.draft?.studioStack?.photos?.length);
+    }, { 'data-legacy-studio': '' });
+    layout.hidden = !state.draft || Boolean(state.draft.studioStack?.photos?.length);
     legacy.setAttribute('aria-expanded', String(!layout.hidden));
     page.append(legacy, layout);
 

@@ -70,7 +70,48 @@ const newStore = () => ({ ops: [], landing: { version: 0, draft: null, published
 const openStudio = async (page) => {
   await page.goto('/admin/#/studio/SS-1008', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('[data-studio-status]')).toBeVisible({ timeout: 15000 });
+  const legacy = page.locator('[data-legacy-studio]');
+  if ((await legacy.getAttribute('aria-expanded')) === 'false') await legacy.click();
 };
+
+test('the visual Studio applies cards, selects text on the phone, replays motion, and saves the same payload', async ({ page }) => {
+  const store = newStore();
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual');
+  const stage = editor.locator('[data-visual-stage]');
+  await expect(page.locator('[data-legacy-studio]')).toHaveAttribute('aria-expanded','false');
+  await editor.locator('[data-stack-files]').setInputFiles([fileURLToPath(IMG), fileURLToPath(IMG)]);
+  await expect(editor.locator('.studio-visual-thumb')).toHaveCount(2);
+  await editor.locator('[data-template="0"][data-own="false"]').click();
+  await stage.locator('button[data-overlay="1"]').click();
+  const copy = editor.locator('[data-field="text"]');
+  await expect(copy).toHaveValue(/النهارده/);
+  await copy.fill('ستايل يعبّر عنك');
+  await editor.locator('[data-choice="fx"][data-value="aurora"]').click();
+  await expect(stage.locator('.ssm-fx-aurora')).toHaveText('ستايل يعبّر عنك');
+  await editor.locator('[data-action="play"]').click();
+  await expect(stage).not.toHaveClass(/ssm-edit/);
+  await editor.locator('[data-action="play"]').click();
+  await expect(stage).toHaveClass(/ssm-edit/);
+  await editor.locator('[data-action="full"]').click();
+  await expect(editor.locator('dialog')).toBeVisible();
+  await expect(editor.frameLocator('iframe').locator('.ssm-card')).toHaveCount(2);
+  await editor.locator('[data-device="desktop"]').click();
+  await expect(editor.locator('[data-device="desktop"]')).toHaveAttribute('aria-pressed','true');
+  await editor.locator('[data-action="close"]').click();
+  await page.locator('[data-studio-save]').click();
+  await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status','draft');
+  const saved = store.landing.draft.studioStack;
+  expect(saved.v).toBe(1);
+  expect(saved.photos).toHaveLength(2);
+  expect(saved.photos[0].overlays[1]).toMatchObject({ type:'text', text:'ستايل يعبّر عنك', fx:'aurora' });
+  expect(store.landing.published).toBeNull();
+  await page.locator('[data-studio-publish]').click();
+  await page.locator('[data-yes]').click();
+  await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status','published');
+  expect(store.landing.published.studioStack).toEqual(saved);
+});
 
 test('Owner: uploads the 3 marketing images by hand, edits every control, saves a draft, reopens it, publishes', async ({ page }) => {
   const store = newStore();
