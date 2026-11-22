@@ -13,6 +13,8 @@ const asSummary = (r) => r?.outcome === 'ok' ? summarizeStageRows(r.data) : { co
 const amount = (s) => s?.complete ? money(s.orderValueMinor) : 'غير مكتمل';
 const number = (s) => s?.complete ? fmtNum(s.count) : '—';
 const inputValue = (o, key) => Number.isInteger(o[key]) && o[key] >= 0 ? String(o[key] / 100) : '';
+const knownAmount = (amount, missing) => Number.isSafeInteger(amount) && Number.isSafeInteger(missing)
+  ? [money(amount), missing ? ' · ' + fmtNum(missing) + ' لسه ما اتسجلوش' : ''].join('') : '—';
 
 export default {
   title: () => 'الأرباح والمرتجعات',
@@ -36,6 +38,10 @@ export default {
     const open = stages.open, back = stages.returned;
     const cancels = asSummary(cancelled), newOrders = asSummary(pending);
     const validProfit = profit?.outcome === 'ok' && Array.isArray(profit.data?.lines);
+    const returnFinance = validProfit && Number.isSafeInteger(profit.data.returnFinance?.returnedOrders)
+      ? profit.data.returnFinance : null;
+    const returnEstimate = Number.isSafeInteger(returnFinance?.estimatedNetAfterReturnsMinor)
+      ? returnFinance.estimatedNetAfterReturnsMinor : null;
     // The old profit endpoint still counts return_requested as sales. Exclude those orders explicitly.
     // If the confirmed order listing is missing/capped, do not show potentially inflated profit.
     // Exclude both pending and completed returns by their order codes, even if a
@@ -65,10 +71,13 @@ export default {
           <dt>قيمة فواتير الطلبات المرتجعة (تشمل الشحن)</dt><dd>${amount(back)}</dd>
           <dt>الطلبات الملغاة</dt><dd>${number(cancels)}</dd>
           <dt>الطلبات المنتظرة تأكيد</dt><dd>${number(newOrders)}</dd>
-          <dt>مبالغ مستردة للعملاء فعلًا</dt><dd>غير مسجلة بالنظام</dd>
+          <dt>مبالغ مستردة للعملاء فعلًا (30 يوم)</dt><dd>${returnFinance ? knownAmount(returnFinance.knownRefundedMinor, returnFinance.missingRefundOrders) : 'غير مسجلة بالنظام'}</dd>
+          ${returnFinance ? html`<dt>مصاريف شحن المرتجع (30 يوم)</dt><dd>${knownAmount(returnFinance.knownReturnShippingMinor, returnFinance.missingReturnShippingOrders)}</dd>
+            <dt>تأثير المرتجعات التقديري (30 يوم)</dt><dd>${returnEstimate === null ? 'غير مكتمل' : money(returnEstimate)}</dd>` : ''}
         </dl>
         ${[open,back,cancels,newOrders].some(x => !x.complete) ? html`<p class="note" role="alert">قائمة واحدة على الأقل لم تُحمّل بالكامل أو وصلت لحد 100 طلب. لتجنّب إخفاء مرتجعات قديمة مش هنحسب ربحًا من بيانات ناقصة.</p>` : ''}
-        <p class="muted" style="margin:0">الملغي مش مرتجع. قيمة فاتورة المرتجع مش دليل على رد المبلغ، ولا يجوز خصمها مرتين من الربح. تكاليف شحن المرتجعات والتعويضات لسه محتاجة تسجيل مستقل.</p>
+        ${returnFinance ? html`<p class="muted" style="margin:0">تأثير المرتجعات بيحسب التحصيل المقدّر بعد خصم الرد وشحن المرتجع، وقبل تكاليف البضاعة وشحن الذهاب للطلبات المرتجعة.</p>` : ''}
+        ${returnFinance?.unknownCollectionOrders ? html`<p class="note" role="status">التحصيل غير معروف لـ${fmtNum(returnFinance.unknownCollectionOrders)} طلب مرتجع.</p>` : ''}
         <div class="row" style="flex-wrap:wrap"><a class="btn btn-soft btn-sm" href="#/orders?stage=return_requested">طلبات استرجاع</a><a class="btn btn-soft btn-sm" href="#/orders?stage=returned">مرتجع مكتمل</a><a class="btn btn-soft btn-sm" href="#/orders?status=cancelled">الملغية</a></div>
       </section>
       <section class="card stack" aria-label="الصافي التقديري" style="margin-top:14px">
@@ -90,7 +99,15 @@ export default {
       }
       const out = el.querySelector('[data-finance-net]');
       const net = estimateNet(s, values);
-      out.textContent = net === null ? 'الصافي غير مكتمل — سجّل تكلفة المورد وكل المصاريف، حتى لو صفر.' : 'صافي تقديري: ' + money(net);
+      if (net === null) {
+        out.textContent = 'الصافي غير مكتمل — سجّل تكلفة المورد وكل المصاريف، حتى لو صفر.';
+      } else if (!returnFinance) {
+        out.textContent = 'صافي تقديري: ' + money(net);
+      } else if (returnEstimate === null || !Number.isSafeInteger(net + returnEstimate)) {
+        out.textContent = 'الصافي بعد المرتجعات غير مكتمل · قبل التسويات: ' + money(net);
+      } else {
+        out.textContent = 'صافي تقديري بعد المرتجعات: ' + money(net + returnEstimate);
+      }
       try { localStorage.setItem('wa.profitExpenses', JSON.stringify(values)); } catch { /* private browser */ }
     };
     el.addEventListener('input', e => { if (e.target.matches('[data-finance-exp]')) updateNet(); });
