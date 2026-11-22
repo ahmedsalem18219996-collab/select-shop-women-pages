@@ -327,13 +327,21 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 /** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
 const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
 const RELATED_MODULE = "./related.js?v=20261121-thumbs";
-const MOTION_MODULE = "./motion.js?v=20261120-motion";
+const MOTION_MODULE = "./motion.js?v=20261122-soft";
 const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
 let motionOn = false;
 /** motion.js loads only for a design with a motion mode. */
 function motionFor(/** @type {any} */ d, /** @type {any} */ s) {
   motionOn ||= d.motion.mode !== "none";
   if (motionOn) void loadMotion().then(m => m.pageMotion(d, s, gallery.shots));
+}
+/** The calm stack (before the order form, in the identity red) once the page has loaded and gone idle: the gallery and
+ *  its first photo stay untouched. */
+function softMotion() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const run = () => motionFor({ motion: { mode: "soft", dirs: [], hint: "" }, accent: "#C8102E" }, { inkFor: () => "#fff", DEFAULT_HINT: "" });
+  const go = () => typeof requestIdleCallback === "function" ? requestIdleCallback(run, { timeout: 2000 }) : setTimeout(run, 200);
+  if (document.readyState === "complete") go(); else addEventListener("load", go, { once: true });
 }
 const loadStudio = async () => /** @type {typeof import("./studio-design.js")} */ (await import(STUDIO_MODULE));
 async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ preview) {
@@ -364,7 +372,7 @@ async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ p
       return;
     }
     const r = await fetch(BRIDGE + "/landing/" + encodeURIComponent(code), { headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000) });
-    if (!r.ok) return; // no published design: the standard page
+    if (!r.ok) return softMotion(); // no published design: the standard page with the calm photo stack
     const data = await r.json();
     const m = await loadStudio();
     const d = m.normalizeDesign(data?.design, { urls: true });
