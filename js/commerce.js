@@ -144,19 +144,19 @@ const addressKey = x => x.publicCode + "@" + x.structureVersion + ":" +
   x.selection.map(y=>y.optionPosition+"."+y.valuePosition).join(",");
 const msg = e => ({
   unavailable:"الموديل مش متاح دلوقتي.",
-  selection_changed:"المقاس اتغير، يرجى فتح المنتج من جديد.",
+  selection_changed:"المقاس اتغير، افتحي المنتج من جديد.",
   checkout_changed:"السعر أو الشحن اتغير؛ مراجعة الإجمالي أولًا.",
   checkout_not_purchasable:"فيه قطعة مش متاحة حاليًا.",
-  orders_not_enabled:"بنجهز استقبال الطلبات بشكل آمن. يرجى المحاولة مرة أخرى قريبًا.",
+  orders_not_enabled:"بنجهز استقبال الطلبات. جربي تاني كمان شوية.",
   write_unconfirmed:"تعذر تأكيد حالة الطلب. ما تكررّش الطلب؛ حاول تاني من نفس الصفحة.",
   idempotency_conflict:"فيه طلب سابق مرتبط بنفس عملية الشراء. مراجعة رقم الطلب قبل المحاولة.",
-  rate_limited:"تم تجاوز الحد المسموح لمحاولات الطلب. يرجى المحاولة لاحقًا أو التواصل مع خدمة العملاء.",
+  rate_limited:"محاولات كتير ورا بعض. استني شوية وجربي تاني، أو كلمينا على واتساب.",
   captcha_required:"استكمال التحقق من الأمان قبل إرسال الطلب.",
   captcha_invalid:"تعذر التحقق من الأمان. حاول تاني.",
   invalid_request:"مراجعة البيانات والمقاسات المدخلة.",
   service_unavailable:"الخدمة مؤقتًا تحت التجهيز.",
-  internal:"حصلت مشكلة اتصال، يرجى المحاولة مرة أخرى.",
-})[e?.message] || "الخدمة مؤقتًا مش متاحة. يرجى المحاولة تاني.";
+  internal:"حصلت مشكلة في الاتصال، جربي تاني.",
+})[e?.message] || "الخدمة مش متاحة دلوقتي. جربي تاني.";
 function selectedVariant(product, fields) {
   const values=[...fields].map((f)=>Number(f.value));
   return product.variants.find(v=>v.selection.every((x,i)=>x.valuePosition===values[i]));
@@ -327,7 +327,7 @@ async function showProduct() {
       ? "المنتج غير متاح حاليًا. ممكن تتصفح باقي الموديلات."
       : offline
         ? "الإنترنت فصل. أول ما يرجع هنحاول نحمّل المنتج تلقائيًا."
-        : "الاتصال بتفاصيل المنتج اتعطل مؤقتًا. يرجى إعادة المحاولة.", true);
+        : "مش قادرين نحمّل تفاصيل المنتج دلوقتي. جربي تاني.", true);
     if (!missing) {
       const retry = make("button","إعادة المحاولة","commerce-btn commerce-btn--ghost");
       retry.type = "button";
@@ -379,11 +379,13 @@ function cartRow(l,quantityChange) {
   if(l.status!=="ok")row.append(make("p","محتاج تحديث المقاس أو المنتج.","commerce-note"));
   return row;
 }
+/** "تسوقي دلوقتي": an empty bag goes back to the home's product list. */
+const shopNow=klass=>{const a=make("a","تسوقي دلوقتي",klass);a.href="/#products";return a;};
 async function showCart(){
   const holder=$("#cartItems"),go=$("#toCheckout"),sum=$("#subtotal");
   const refresh=async()=>{
     const lines=cart();holder.replaceChildren();
-    if(!lines.length){holder.append(make("p","الشنطة فاضية. ممكن إضافة منتجات من المتجر."));sum.textContent="—";go.setAttribute("aria-disabled","true");go.style.pointerEvents="none";return;}
+    if(!lines.length){holder.append(make("p","شنطتك فاضية لسه.","commerce-empty"),shopNow("commerce-btn"));sum.textContent="—";go.setAttribute("aria-disabled","true");go.style.pointerEvents="none";return;}
     try{
       const data=await api("/cart/resolve","POST",{lines});
       data.lines.forEach(l=>holder.append(cartRow(l,(_item,change)=>{
@@ -395,7 +397,7 @@ async function showCart(){
       })));
       sum.textContent=money(data.subtotal);
       go.setAttribute("aria-disabled",String(!data.checkoutReady));go.style.pointerEvents=data.checkoutReady?"auto":"none";
-      status(data.checkoutReady?"مراجعة بيانات التوصيل في الخطوة التالية.":"هناك قطعة غير متاحة؛ يرجى مراجعة المقاسات.",!data.checkoutReady);
+      status(data.checkoutReady?"مراجعة بيانات التوصيل في الخطوة التالية.":"فيه قطعة مش متاحة؛ راجعي المقاسات.",!data.checkoutReady);
     }catch(e){holder.append(make("p","تعذر تحديث الشنطة."));go.setAttribute("aria-disabled","true");go.style.pointerEvents="none";status(msg(e),true);}
   };
   await refresh();
@@ -413,7 +415,7 @@ export async function showCheckout(live=false){
     const cfg=await api("/checkout-config");
     orderReady=cfg.enabled===true && cfg.mode==="internal";
   } catch { /* Fail closed. */ }
-  if(!lines.length&&!live){status("الشنطة فارغة؛ يمكن الرجوع واختيار المنتجات.",true);return;}
+  if(!lines.length&&!live){status("شنطتك فاضية لسه.");$("#status").after(shopNow("btn"));return;}
   const begin=()=>{if(orderReady&&lines.length) gaEvent("begin_checkout", {currency:"EGP",
     items:lines.map(l=>({item_id:l.publicCode, quantity:l.quantity}))});};
   if(live) form.addEventListener("focusin",begin,{once:true}); else begin();
@@ -430,7 +432,7 @@ export async function showCheckout(live=false){
     $("#checkoutItems").replaceChildren();
     if(!lines.length){status("إضافة موديل واحد على الأقل للشنطة.");return;}
     if(!select.value){status("اختيار المحافظة لعرض سعر الشحن.");return;}
-    status("بنحسب السعر والشحن من السيرفر…");
+    status("بنحسب السعر والشحن…");
     try{
       const q=await api("/checkout/quote","POST",{lines,deliveryRegionKey:select.value});
       if(mine!==ticket)return; // a newer bag or governorate change is already being priced
@@ -449,7 +451,7 @@ export async function showCheckout(live=false){
   await refresh();
   form.addEventListener("submit",async(e)=>{
     e.preventDefault();if(!quote||!orderReady||!form.reportValidity())return;
-    if(!crypto?.randomUUID){status("المتصفح لا يدعم الطلب الآمن. يمكن فتح الموقع من متصفح أحدث.",true);return;}
+    if(!crypto?.randomUUID){status("المتصفح ده مش بيدعم الطلب الآمن. افتحي الموقع من متصفح أحدث.",true);return;}
     let key=sessionStorage.getItem(ORDER_KEY);
     if(!key){key=crypto.randomUUID().replace(/-/g,"");sessionStorage.setItem(ORDER_KEY,key);}
     const data=new FormData(form);
@@ -534,6 +536,14 @@ function success(){
 updateBagCount();
 const pathname=location.pathname;
 if(pathname.endsWith("/p/")||pathname.endsWith("/p/index.html"))showProduct();
-else if(pathname.endsWith("/cart/")||pathname.endsWith("/cart/index.html"))showCart();
+else if(pathname.endsWith("/cart/")||pathname.endsWith("/cart/index.html")){
+  showCart();
+  // WhatsApp (bag only; never on checkout or order success): the store's number once the page has loaded.
+  const contact=()=>void import("./store-contact.js?v=20261122").then(m=>m.wire()).catch(()=>{});
+  if(document.readyState==="complete")contact();else addEventListener("load",contact,{once:true});
+  // The button steps aside while «إتمام الطلب» is on screen, so it never covers it.
+  const fab=$(".wa-fab"),go=$("#toCheckout");
+  if(fab&&go&&"IntersectionObserver"in window)new IntersectionObserver(([e])=>{fab.hidden=e.isIntersecting;}).observe(go);
+}
 else if(pathname.endsWith("/checkout/")||pathname.endsWith("/checkout/index.html"))showCheckout();
 else if(pathname.endsWith("/order-success/")||pathname.endsWith("/order-success/index.html"))success();

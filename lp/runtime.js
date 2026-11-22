@@ -328,6 +328,7 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
 const RELATED_MODULE = "./related.js?v=20261121-thumbs";
 const MOTION_MODULE = "./motion.js?v=20261122-soft";
+const CONTACT_MODULE = "../js/store-contact.js?v=20261122";
 const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
 let motionOn = false;
 /** motion.js loads only for a design with a motion mode. */
@@ -653,6 +654,17 @@ async function init() {
   let quoteError = false; // the status line shows a quote problem that the next good quote may clear
   let started = false;
 
+  // WhatsApp (js/store-contact.js): the links already open the fallback number with this model's question; the store's own
+  // number is read on her first touch, scroll or key, so nothing joins the first paint or the page load.
+  let contactAsked = false;
+  const contact = () => {
+    if (contactAsked) return;
+    contactAsked = true;
+    void import(CONTACT_MODULE).then((/** @type {typeof import("../js/store-contact.js")} */ m) =>
+      m.wire(() => m.productText(String($("#lpTitle").textContent || product?.title || "").trim(), current.code))).catch(() => {});
+  };
+  for (const type of ["pointerdown", "keydown", "scroll"]) addEventListener(type, contact, { once: true, passive: true });
+
   const sizeText = () => {
     if (!product.options.length) return "مقاس واحد";
     if (!variant) return "اختيار المقاس";
@@ -788,9 +800,9 @@ async function init() {
       funnel('add_to_cart', { currency: 'EGP',
         ...(okMinor(variant.unitPrice?.amountMinor) ? { value: variant.unitPrice.amountMinor * line.quantity / 100 } : {}),
         items: [{ item_id: line.publicCode, item_variant: variantLabel(), quantity: line.quantity }] });
-      say('اتضافت للشنطة ✓ يمكن استكمال التسوق أو فتح الشنطة من أعلى.');
+      say('اتضافت للشنطة ✓ كمّلي تسوق أو افتحي الشنطة من فوق.');
     } catch (e) {
-      say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة وصلت للحد الأقصى. يمكن فتح الشنطة لتعديلها.' :
+      say(/** @type {any} */ (e)?.message === 'cart_full' ? 'الشنطة اتملت. افتحيها وعدّلي فيها.' :
         'مش قادرين نضيف للشنطة دلوقتي. ممكن الطلب مباشرة من نفس الصفحة.', true);
     } finally {
       cartBusy = false; cartBtn.textContent = 'إضافة للشنطة'; cartBtn.disabled = !lineNow() || busy;
@@ -847,7 +859,7 @@ async function init() {
     } catch (e) {
       if (mine !== quoteTicket) return;
       quoteError = true;
-      say(/** @type {any} */ (e)?.message === "checkout_not_purchasable" ? "الكمية دي مش متاحة حاليًا؛ تقليل العدد أو اختيار مقاس آخر." : "تعذر حساب الشحن حاليًا. يرجى المحاولة مرة أخرى.", true);
+      say(/** @type {any} */ (e)?.message === "checkout_not_purchasable" ? "الكمية دي مش متاحة حاليًا؛ تقليل العدد أو اختيار مقاس آخر." : "مش قادرين نحسب الشحن دلوقتي. جربي تاني.", true);
     } finally { if (mine === quoteTicket) { quoting = false; paint(); } }
   };
 
@@ -1044,7 +1056,7 @@ async function init() {
     for (const r of regions) {
       region.append(Object.assign(document.createElement("option"), { value: r.key, textContent: r.label }));
     }
-  }).catch(() => say("مش قادرين نحمّل المحافظات دلوقتي. يرجى تحديث الصفحة.", true));
+  }).catch(() => say("مش قادرين نحمّل المحافظات دلوقتي. حدّثي الصفحة.", true));
   region.addEventListener("change", () => void requote());
   form.querySelectorAll("[data-q]").forEach(b => b.addEventListener("click", () => {
     const next = Math.min(MAX_QTY, Math.max(1, qty + Number(b.getAttribute("data-q"))));
@@ -1145,24 +1157,24 @@ async function init() {
     } catch (err) {
       const error = /** @type {any} */ (err), data = error?.data || {};
       if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines, payload.idempotencyKey); sendAttribution(data.publicOrderCode, payload.idempotencyKey); return; }
-      if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب السابق اتلغى من المتجر. يمكن تسجيل طلب جديد.", true); }
+      if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب اللي فات اتلغى من المتجر. تقدري تسجلي طلب جديد.", true); }
       else if (error?.message === "checkout_changed") {
-        say("السعر أو الشحن اتغير. يرجى مراجعة الإجمالي الجديد ثم إعادة التأكيد.", true);
+        say("السعر أو الشحن اتغير. راجعي الإجمالي الجديد وأكدي تاني.", true);
         // Same total after a fresh quote = the server refused for stock (fewer units left than asked), not price.
         const before = minorOf(q.grandTotal);
-        void requote().then(() => { if (quote && minorOf(quote.grandTotal) === before) say("الكمية المطلوبة أكبر من المتاح دلوقتي. يرجى تقليل العدد ثم إعادة التأكيد.", true); });
+        void requote().then(() => { if (quote && minorOf(quote.grandTotal) === before) say("الكمية أكبر من المتاح دلوقتي. قللي العدد وأكدي تاني.", true); });
       }
       else if (error?.message === "checkout_not_purchasable" || error?.message === "unavailable" || error?.message === "selection_changed") {
         cache.delete(current.code);
-        void show(current).then(() => say("الكمية أو المقاس ده مش متاح دلوقتي. يرجى تغيير الاختيار وإعادة التأكيد.", true));
+        void show(current).then(() => say("الكمية أو المقاس ده مش متاح دلوقتي. غيري اختيارك وأكدي تاني.", true));
       } else if (error?.message === "invalid_request" && data.fields && typeof data.fields === "object") {
         const map = /** @type {Record<string,string>} */ ({ name: "name", phone: "phone", area: "region", address: "address" });
-        for (const [k, problem] of Object.entries(data.fields)) if (map[k]) markField(map[k], problem === "too_long" ? "النص طويل، يرجى تقصيره." : "مراجعة هذه الخانة.");
+        for (const [k, problem] of Object.entries(data.fields)) if (map[k]) markField(map[k], problem === "too_long" ? "الكلام طويل، اختصريه شوية." : "مراجعة هذه الخانة.");
         say("مراجعة البيانات المظللة.", true);
-      } else if (error?.message === "rate_limited") say("محاولات كتير ورا بعض. يرجى الانتظار دقيقة ثم المحاولة مرة أخرى.", true);
+      } else if (error?.message === "rate_limited") say("محاولات كتير ورا بعض. استني دقيقة وجربي تاني.", true);
       else if (error?.message === "orders_not_enabled" || error?.message === "source_unavailable") say("استقبال الطلبات متوقف مؤقتًا، ومفيش طلب اتسجل. إعادة المحاولة بعد شوية.", true);
       // Unknown outcome: the same key on retry returns the same order.
-      else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. يرجى الضغط على «تأكيد الطلب» مرة أخرى؛ الطلب مش هيتكرر.", true);
+      else say("مش متأكدين إن الطلب اتسجل بسبب الاتصال. دوسي «تأكيد الطلب» تاني؛ الطلب مش هيتكرر.", true);
     } finally { busy = false; }
     cta.disabled = !product || (mixMode && !currentLines().length);
     cartBtn.disabled = mixMode || !lineNow() || cartBusy;

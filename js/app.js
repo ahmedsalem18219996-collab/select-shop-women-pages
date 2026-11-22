@@ -60,8 +60,8 @@
       // keep the storefront's olive/brass design consistent (no inline override).
     }
     // A campaign hero (js/home-campaign.js) owns the headline; the owner's brand copy fills only the brand hero.
+    // The line under the brand title is fixed store copy (index.html); the owner's title and highlight still apply.
     const hero = $('.hero:not([data-campaign]) h1');
-    const lead = $('.hero:not([data-campaign]) p');
     if (hero) {
       const first = hero.firstChild;
       if (first && first.nodeType === Node.TEXT_NODE)
@@ -69,18 +69,8 @@
       const colored = hero.querySelector('.hl');
       if (colored) colored.textContent = String(content.hero_highlight || 'بطريقتك.').slice(0, 70);
     }
-    if (lead) {
-      const description = String(content.hero_description || '').slice(0, 700);
-      // Old owner copy said "we are preparing products", even when the verified
-      // API returned purchasable items. Display a truthful storefront fallback
-      // without mutating owner settings or altering normal custom descriptions.
-      const staleComingSoon = /بنجهز|قيد التجهيز|بعد نشرها|عند نشرها|هتظهر هنا|ستظهر هنا|تظهر هنا بعد/.test(description);
-      lead.textContent = P.length > 0 && staleComingSoon
-        ? 'استعراض الموديلات المتاحة بصورها وأسعارها الحقيقية واختيار القطعة المناسبة.'
-        : description;
-    }
+    // The <title> stays the page's own (search and share text); the store name signs the footer.
     if (brand.storeName) {
-      document.title = publicLabel(brand.storeName).slice(0, 100);
       const copyright = $('.foot > span');
       if (copyright) copyright.textContent = '© 2026 ' + publicLabel(brand.storeName).slice(0, 100);
     }
@@ -90,8 +80,8 @@
       freshNote.hidden = P.length > 0 && !CFG.loadError;
       $('#shop .shop-head')?.after(freshNote);
       freshNote.textContent = CFG.loadError
-        ? 'تعذّر تحميل المنتجات حاليًا. البيانات التجريبية مش معروضة، يرجى تحديث الصفحة.'
-        : P.length ? 'من صفحة المنتج يمكن اختيار اللون والمقاس وإكمال الطلب.'
+        ? 'مش قادرين نحمّل المنتجات دلوقتي. حدّثي الصفحة.'
+        : P.length ? 'من صفحة المنتج اختاري اللون والمقاس وكمّلي طلبك.'
           : 'المتجر قيد التجهيز · مفيش منتجات منشورة دلوقتي';
     }
     const storySection = $('#stories')?.parentElement;
@@ -117,20 +107,14 @@
   /* ---------- config-driven bits ---------- */
   // The sample-data label exists only on the ?design-preview=1 comparison page, never in the live HTML.
   if (CFG.demo) { const n = $('#demoNote'); n.textContent = 'معاينة · منتجات وأسعار تجريبية'; n.hidden = false; }
-  // No dead '#' links on a public store: hide unresolved destinations.
-  // Owner-provided contact info from WOMEN Supabase can re-enable these links.
-  $$('[data-wa]').forEach(a => {
-    if (/^[1-9]\d{6,14}$/.test(CFG.whatsapp || '')) {
-      a.href = `https://wa.me/${CFG.whatsapp}`;
-      a.hidden = false;
-    } else {
-      a.hidden = true;
-      a.style.display = 'none';
-    }
-  });
+  // WhatsApp links ([data-wa]) already open the fallback number; js/store-contact.js switches them to the store's
+  // number from the storefront settings (the catalog's brand number only when that list has none).
+  if (!CFG.demo) import('./store-contact.js?v=20261122').then(m => m.wire()).catch(() => {});
+  // No dead '#' links on a public store: hide unresolved destinations (and a same-page section the owner left empty).
   $$('[data-link]').forEach(a => {
     const u = CFG.links?.[a.dataset.link];
-    if (typeof u === 'string' && u.trim() && u !== '#' &&
+    const section = typeof u === 'string' && u.length > 1 && u.startsWith('#') ? document.getElementById(u.slice(1)) : null;
+    if (typeof u === 'string' && u.trim() && u !== '#' && (!u.startsWith('#') || (section && !section.closest('[hidden]'))) &&
         (/^https:\/\//.test(u) || (u.startsWith('/') && !u.startsWith('//')) || u.startsWith('#'))) {
       a.href = u;
     } else {
@@ -193,7 +177,7 @@
     const ids = window.SelectStore.savedIds();
     utilityTitle.textContent = 'المحفوظة';
     if (!ids.length) {
-      utilityBody.innerHTML = `<div class="utility-empty"><span class="utility-empty-icon">♡</span><h3>لسه مفيش قطع محفوظة</h3><p>يمكن حفظ أي موديل بالضغط على علامة القلب، وسيظل ظاهرًا هنا حتى بعد إغلاق الصفحة وفتحها مرة أخرى على الجهاز نفسه.</p><button type="button" class="utility-main-btn" data-utility-shop>استعراض الموديلات</button></div>`;
+      utilityBody.innerHTML = `<div class="utility-empty"><span class="utility-empty-icon">♡</span><h3>لسه مفيش قطع محفوظة</h3><p>دوسي على القلب جنب أي موديل يعجبك، وهيفضل هنا على الجهاز ده حتى لو قفلتي الصفحة.</p><button type="button" class="utility-main-btn" data-utility-shop>استعراض الموديلات</button></div>`;
       return;
     }
     utilityBody.innerHTML = `<p class="utility-intro">${pieces(ids.length)} محفوظة على الجهاز ده. فتح القطعة أو إزالتها من القائمة.</p>
@@ -216,7 +200,7 @@
     utilityBody.innerHTML = `<div class="utility-account">
       <div class="utility-avatar" aria-hidden="true">♡</div>
       <h3>أهلًا بك في SELECT SHOP</h3>
-      <p>يمكن الرجوع إلى الموديلات المحفوظة وفتح الشنطة على الجهاز نفسه.</p>
+      <p>من هنا ترجعي للموديلات المحفوظة وتفتحي الشنطة على الجهاز ده.</p>
       <p class="utility-account-note">حساب العملاء وتسجيل الدخول ومتابعة الطلبات الشخصية لسه مش متاحين؛ المفضلة هنا محلية ومش مرتبطة بحساب أو رقم موبايل.</p>
       <button type="button" class="utility-account-action" data-account-saved>♡ <span>المفضلة</span><strong>${savedCount}</strong></button>
       <button type="button" class="utility-account-action" data-account-bag>◫ <span>الشنطة</span><b>عرض الشنطة</b></button>
@@ -447,6 +431,8 @@
     }
   });
   apply('الكل');
+  // /#products (the bag's "تسوقي دلوقتي"): the catalog arrives after the browser's own jump, so land on it again.
+  if (location.hash === '#products') $('#products')?.scrollIntoView();
   padTape(); segs[0].classList.add('on');
   requestAnimationFrame(() => { tape.scrollLeft = 0; center(segs[0], true); });
 
@@ -489,7 +475,7 @@
     addBtn.disabled = true;
     const r = await window.SelectStore.addToBag(items.map(p => ({ productId: p.id, size: p.one ? 'ONE' : pick })));
     addBtn.disabled = false;
-    if (!r.ok) { say(r.message || 'تعذرت الإضافة للشنطة. يرجى المحاولة مرة أخرى.'); return; }
+    if (!r.ok) { say(r.message || 'مقدرناش نضيفها للشنطة. جربي تاني.'); return; }
     bagCount = r.count; setDots('.bagdot', bagCount);
     say(ctx.look ? `اتضاف ${ctx.look.name} (${pieces(items.length)}) للشنطة` : `اتضافت للشنطة: ${ctx.item.name}${pick !== 'ONE' ? ' · ' + pick : ''}`);
     buzz([10, 40, 10]); closeSheet();
@@ -508,7 +494,7 @@
     const b = +$('#fBust').value, w = +$('#fWaist').value, out = $('#fOut');
     if (!b || !w) { out.textContent = 'هنعلّملك المقاس المناسب على الأزرار فوق.'; return; }
     const bi = chart.findIndex(r => b <= r[1]), wi = chart.findIndex(r => w <= r[2]);
-    if (b < chartMin.bust || w < chartMin.waist) { out.textContent = 'قياساتك أصغر من جدولنا. يمكن التواصل عبر واتساب لترشيح المقاس المناسب.'; return; }
+    if (b < chartMin.bust || w < chartMin.waist) { out.textContent = 'قياساتك أصغر من جدولنا. اسألينا على واتساب ونرشحلك المقاس.'; return; }
     if (bi < 0 || wi < 0) { out.textContent = 'قياساتك أكبر من جدولنا العادي. اسألي على واتساب عن المقاسات الخاصة.'; return; }
     const z = chart[Math.max(bi, wi)][0], btn = $(`#shSizes .size[data-z="${z}"]`);
     if (btn) btn.classList.add('rec');
@@ -521,7 +507,7 @@
   $$('[data-open-bag]').forEach(b => b.addEventListener('click', () => {
     // Cart must open at the same origin as checkout so its persisted selections survive.
     if (!CFG.demo && window.SelectStore.cartUrl) location.assign(window.SelectStore.cartUrl);
-    else say(bagCount ? `في الشنطة ${pieces(bagCount)}` : 'الشنطة فارغة. يمكن استخدام زر + بجانب أي قطعة');
+    else say(bagCount ? `في الشنطة ${pieces(bagCount)}` : 'شنطتك فاضية لسه.');
   }));
 
 })();

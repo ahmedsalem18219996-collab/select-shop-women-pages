@@ -45,6 +45,10 @@ html{background:#FAFAF9 none}
 .commerce .commerce-btn,.atelier-checkout #placeOrder{background:#111 linear-gradient(135deg,#1c1c1c,#000)!important;border:0!important;border-radius:16px!important;color:#fff!important;
  font:800 16px/1.2 var(--f-display)!important;letter-spacing:0;box-shadow:0 14px 30px -12px rgba(0,0,0,.4);transition:background .15s}
 .commerce-summary-card .commerce-btn{width:100%;min-height:54px}
+/* empty bag: one calm line and the way back to the products */
+#cartItems .commerce-empty{margin:4px 0 14px;font:800 18px/1.6 var(--f-display);color:var(--ink)}
+#cartItems>.commerce-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.atelier-checkout #status+.btn{margin-top:12px;text-decoration:none}
 .commerce .commerce-btn:not(:disabled):is(:hover,:active),.atelier-checkout #placeOrder:enabled:is(:hover,:active){background:#000!important}
 .commerce .commerce-btn:is(:disabled,[aria-disabled="true"]),.atelier-checkout #placeOrder:disabled{background:var(--elev)!important;color:var(--muted)!important;box-shadow:none}
 

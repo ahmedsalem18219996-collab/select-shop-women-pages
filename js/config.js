@@ -18,7 +18,7 @@ window.SELECT_CONFIG = {
 
   /* PLACEHOLDER links. Relative paths work on GitHub Pages sub-paths such as /preview/women/. */
   links: {
-    shipping: '#',
+    shipping: '#shipping',   /* the shipping info section on the home */
     exchange: '#',
     sizeGuide: '#',
     instagram: '#',
