@@ -7,7 +7,7 @@ const makeRow=(code,title,price=65000)=>({
   image:null,price_min_minor:price,price_max_minor:price,stock_total:20,
   stock_low:false,views_30d:0,updated_at:'2026-11-01T00:00:00Z'
 });
-async function harness(page, role = 'owner') {
+async function harness(page, role = 'owner', route = '') {
   const calls=[];
   const uploads=[];
   const permissions = role === 'owner' ? [] : ['products.view', 'media.manage'];
@@ -84,10 +84,12 @@ async function harness(page, role = 'owner') {
     if(url.hostname.endsWith('.supabase.co'))return route.abort('blockedbyclient');
     return route.continue();
   });
-  await page.goto(HOME,{waitUntil:'domcontentloaded'});
-  await expect(page.locator('a[href="#/products"]:visible').first()).toBeVisible();
-  await page.locator('a[href="#/products"]:visible').first().click();
-  await expect(page.locator('[data-manage-model]:visible').first()).toBeVisible();
+  await page.goto(HOME + route, { waitUntil: 'domcontentloaded' });
+  if (!route) {
+    await expect(page.locator('a[href="#/products"]:visible').first()).toBeVisible();
+    await page.locator('a[href="#/products"]:visible').first().click();
+    await expect(page.locator('[data-manage-model]:visible').first()).toBeVisible();
+  }
   return {calls,state,uploads};
 }
 test('owner edits EXISTING grouped colour and virtual quantity from one sheet, no mixed SKUs',async ({page})=>{
@@ -202,8 +204,7 @@ test('owner can hide a published standalone product safely, but incomplete produ
 });
 
 test('visitor analytics offers only the GA4 link', async ({ page }) => {
-  const {calls}=await harness(page);
-  await page.goto(HOME + '#/traffic');
+  const { calls } = await harness(page, 'owner', '#/traffic');
   const view = page.locator('#view');
   await expect(view.getByRole('heading', { name: 'المحافظات والزيارات', level: 2 })).toBeVisible();
   const links = view.getByRole('link');
