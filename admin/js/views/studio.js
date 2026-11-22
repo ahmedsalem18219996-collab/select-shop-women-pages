@@ -7,6 +7,7 @@ import { withBusy, island, done, fail, ago, confirmDialog } from '../ui.js';
 import { call, mediaUrl, uploadLandingImage } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
 import { buildGeminiPrompt, STUDIO_STYLES } from '../studio-prompts.js';
+import { createStudioStackEditor } from '../studio-stack-editor.js?v=20261122';
 import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE, parseDesignImport, suggestAccent, DEFAULT_HINT, MAX_MOTION_IMAGES } from '../../../lp/studio-design.js?v=20261120-campaign';
 
 const make = (tag, cls = '', text = '') => {
@@ -41,6 +42,8 @@ const LABELS = {
   direction: { side: 'من الجنب', top: 'من فوق' },
 };
 
+let disposeStudio = () => {};
+
 function field(label, control, hint = '') {
   const l = make('label', 'field');
   l.append(make('span', '', label), control);
@@ -62,7 +65,7 @@ async function renderPicker(ctx) {
   const page = make('div', 'page');
   const head = make('div', 'page-head');
   const copy = make('div');
-  copy.append(make('h2', '', 'Studio صفحات الهبوط'), make('p', '', 'اختار موديل علشان تصمم صفحة البيع بتاعته: 3 صور تسويقية بترفعها بنفسك، والنصوص، وزر الطلب، ومعاينة موبايل وكمبيوتر قبل النشر.'));
+  copy.append(make('h2', '', 'Studio صفحات الهبوط'), make('p', '', 'اختار موديل علشان ترتّب صوره وتضيف النصوص والحركة وتراجع المعاينة قبل النشر.'));
   head.append(copy);
   page.append(head);
   const grid = make('div', 'studio-product-grid');
@@ -85,18 +88,21 @@ async function renderPicker(ctx) {
 
 export default {
   title: (params) => params?.[0] ? 'Studio صفحة الهبوط' : 'Studio صفحات الهبوط',
+  destroy() { disposeStudio(); disposeStudio = () => {}; },
   async render(ctx) {
     const code = ctx.params?.[0];
     if (!code) return renderPicker(ctx);
     const owner = ctx.can('owner');
     const editor = ctx.can('products.edit');
     const [pr, lr] = await Promise.all([call('products.get', { code }), call('landing.get', { code })]);
+    if (!ctx.el.isConnected) return;
     if (pr.outcome !== 'ok') { fail(pr); return; }
     const p = pr.data.product;
     const landingLive = lr?.outcome === 'ok';
     let state = landingLive ? (lr.data || { version: 0 }) : { version: 0 };
     let design = normalizeDesign(state.draft || defaultDesign());
     let dirty = false;
+    let editRevision = 0;
     ctx.setTitle('Studio · ' + p.title);
 
     const page = make('div', 'page studio-page');
@@ -124,11 +130,26 @@ export default {
     if (!landingLive) page.append(make('p', 'card warn', 'حفظ التصميم يتطلب تفعيل الخادم (Migration الـ Studio لسه متطبقتش). المعاينة شغالة.'));
     if (!editor) page.append(make('p', 'card', 'صلاحيتك للعرض فقط: تقدر تشوف التصميم والمعاينة بدون حفظ.'));
 
+    const stackEditor = createStudioStackEditor({
+      code, title: p.title, initial: state.draft?.studioStack,
+      editable: editor && landingLive,
+      legacyPaths: () => design.order.map(slot => design.images[slot]).filter(Boolean),
+      onChange: () => { edited(); paintStatus(); }, onBusy: () => paintStatus(),
+    });
+    page.append(stackEditor.el);
+
     const layout = make('div', 'studio-layout');
     const controls = make('div', 'studio-controls stack');
     const previewCol = make('div', 'studio-preview-col');
     layout.append(controls, previewCol);
-    page.append(layout);
+    const legacy = button('إعدادات التصميم السابق', 'btn-soft', () => {
+      layout.hidden = !layout.hidden;
+      legacy.setAttribute('aria-expanded', String(!layout.hidden));
+      if (!layout.hidden) fit();
+    });
+    layout.hidden = Boolean(state.draft?.studioStack?.photos?.length);
+    legacy.setAttribute('aria-expanded', String(!layout.hidden));
+    page.append(legacy, layout);
 
     // ---------- 1. the three marketing images (manual upload only)
     const imagesCard = make('section', 'card stack');
@@ -414,24 +435,26 @@ export default {
     });
     const paintStatus = () => {
       const published = !!state.published;
-      const pending = published && JSON.stringify(normalizeDesign(state.published)) !== JSON.stringify(design);
+      const pending = published && (JSON.stringify(normalizeDesign(state.published)) !== JSON.stringify(design)
+        || stackEditor.differsFrom(state.published.studioStack));
       statusBadge.className = 'badge ' + (published ? (pending || dirty ? 'warn' : 'success') : 'info');
       statusBadge.textContent = !state.version ? 'لم يُحفظ بعد'
         : published ? (pending || dirty ? 'منشور — فيه تعديلات غير منشورة' : 'منشور ' + (state.published_at ? ago(state.published_at) : ''))
           : 'مسودة غير منشورة';
       statusBadge.dataset.studioStatus = !state.version ? 'new' : published ? (pending || dirty ? 'changed' : 'published') : 'draft';
-      saveBtn.disabled = !editor || !landingLive;
-      publishBtn.disabled = !landingLive || !state.version || dirty;
+      saveBtn.disabled = !editor || !landingLive || stackEditor.pending();
+      publishBtn.disabled = !landingLive || !state.version || dirty || stackEditor.pending();
       publishBtn.title = dirty ? 'احفظ المسودة الأول' : '';
       unpublishBtn.hidden = !published;
     };
+    function edited() { dirty = true; editRevision++; }
     const changed = () => {
-      dirty = true;
+      edited();
       paintOrder(); paintSlots(); paintStatus();
       Object.values(frames).forEach(f => send(f.frame));
     };
-    controls.addEventListener('input', (e) => { if (e.target.closest('details')) return; readControls(); dirty = true; paintStatus(); Object.values(frames).forEach(f => send(f.frame)); });
-    controls.addEventListener('change', (e) => { if (e.target.closest('details') || e.target.type === 'file' || e.target.dataset.sectionVisible) return; readControls(); dirty = true; paintStatus(); Object.values(frames).forEach(f => send(f.frame)); });
+    controls.addEventListener('input', (e) => { if (e.target.closest('details')) return; readControls(); edited(); paintStatus(); Object.values(frames).forEach(f => send(f.frame)); });
+    controls.addEventListener('change', (e) => { if (e.target.closest('details') || e.target.type === 'file' || e.target.dataset.sectionVisible) return; readControls(); edited(); paintStatus(); Object.values(frames).forEach(f => send(f.frame)); });
     const onMessage = (e) => {
       if (e.origin !== location.origin) return;
       const frame = Object.values(frames).find(x => x.frame.contentWindow === e.source);
@@ -459,31 +482,47 @@ export default {
       if (target instanceof HTMLInputElement && target.type !== 'file') target.select();
     };
     addEventListener('message', onMessage);
+    disposeStudio = () => {
+      stackEditor.destroy();
+      removeEventListener('message', onMessage);
+      removeEventListener('resize', fit);
+    };
     if (!editor) controls.querySelectorAll('input,select,textarea,button').forEach(x => { if (!x.closest('details')) x.disabled = true; });
     paintOrder(); paintSlots(); paintStatus();
     // A new design starts with a main colour suggested from the product photos; the Owner can change or clear it.
     if (!state.draft && !design.accent && editor) void suggest(false);
 
     async function save() {
+      if (stackEditor.pending()) return;
       readControls();
+      const revision = editRevision;
+      const stack = stackEditor.payload();
+      const payload = { ...state.draft, ...design, ...(stack && { studioStack: stack }) };
       await withBusy(saveBtn, async () => {
-        const r = await call('landing.save', { code, version: state.version || 0, design });
+        const r = await call('landing.save', { code, version: state.version || 0, design: payload });
+        if (!ctx.el.isConnected) return;
         if (r.outcome === 'saved') {
           state = { ...state, version: r.version, draft: r.draft };
-          design = normalizeDesign(r.draft);
-          dirty = false;
+          if (revision === editRevision) {
+            design = normalizeDesign(r.draft);
+            stackEditor.setSaved(r.draft?.studioStack);
+            dirty = false;
+          }
           paintStatus();
           done(owner ? 'اتحفظت المسودة. راجع المعاينة واضغط «اعتماد ونشر» لما تكون جاهزة.' : 'اتحفظت المسودة. النشر بيكون من إدارة المتجر.');
         } else if (r.outcome === 'conflict') island('error', 'حد تاني عدّل التصميم. افتح الصفحة من جديد علشان تشوف آخر نسخة.');
+        else if (r.outcome === 'invalid' && r.field?.startsWith('studioStack')) island('error', 'اتأكد من الصور والنصوص. لو التصميم كبير، قلّل العناصر وحاول تحفظ تاني.');
         else fail(r);
       });
     }
     async function publish() {
       if (dirty) { island('error', 'احفظ المسودة الأول، وبعدين انشر.'); return; }
-      if (!(await confirmDialog({ title: 'نشر التصميم؟', text: 'التصميم المحفوظ هيظهر لكل العميلات على صفحة المنتج. الأسعار والشحن والطلب مش بيتغيروا.', okText: 'نشر' }))) return;
+      const newStack = Boolean(state.draft?.studioStack?.photos?.length);
+      const publishText = newStack ? 'هتتحدد النسخة المنشورة. عرض الصور والحركة الجديدة يبدأ بعد تفعيلها في صفحة المنتج.' : 'التصميم المحفوظ هيظهر لكل العميلات على صفحة المنتج.';
+      if (!(await confirmDialog({ title: 'نشر التصميم؟', text: publishText, okText: 'نشر' }))) return;
       await withBusy(publishBtn, async () => {
         const r = await call('landing.publish', { code, version: state.version });
-        if (r.outcome === 'published') { state = { ...state, published: state.draft, published_at: r.published_at }; paintStatus(); done('اتنشر التصميم على صفحة المنتج.'); }
+        if (r.outcome === 'published') { state = { ...state, published: state.draft, published_at: r.published_at }; paintStatus(); done(newStack ? 'اتحفظت النسخة المنشورة.' : 'اتنشر التصميم على صفحة المنتج.'); }
         else if (r.outcome === 'conflict') island('error', 'التصميم اتعدل بعد آخر تحميل. افتح الصفحة من جديد.');
         else fail(r);
       });

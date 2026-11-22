@@ -76,7 +76,9 @@ test("campaign hero from js/config.js: photo, marker title, server price, campai
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim())).not.toBe("#E8A0B0");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await cards.first().click();
-    await page.waitForURL(u => u.pathname === "/lp/" && u.searchParams.get("p") === "SS-1023");
+    // The legacy route redirects through the code page to the grouped product and its selected color.
+    await page.waitForURL(u => u.pathname === "/lp/chinese-jacket/" && u.searchParams.get("color") === "SS-1023");
+    await expect(page.locator('#lpColors [data-code="SS-1023"]')).toHaveAttribute("aria-pressed", "true");
     expect((await mockLog(request)).orders.length).toBe(before);
   } finally {
     await request.post("/__mock/collection", { data: { slug: "home-camp", codes: null } });
