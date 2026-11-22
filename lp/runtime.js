@@ -16,7 +16,7 @@ const BRIDGE = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-stor
 const AD_KEY = "women.ad.params.v1"; // campaign parameters of this visit (never customer data), read by js/commerce.js too
 const AD_PARAMS = /** @type {Record<string,string>} */ ({ utm_source: "source", utm_medium: "medium", utm_campaign: "campaign",
   utm_content: "content", utm_term: "term", adset: "adset", utm_adset: "adset", ad: "ad", utm_ad: "ad" });
-// Legacy single-colour LP URLs open the shared-model chooser with the old SKU as ?color= (old ad links keep working).
+// Legacy single-colour LP URLs open the shared-model chooser with the old SKU as ?color=.
 const SHARED_MODEL_URLS = new Map([
   ["SS-1008", "/lp/ss-1008/"], ["SS-1009", "/lp/ss-1008/"],
   ["SS-1037", "/lp/ballon-suit/"], ["SS-1035", "/lp/ballon-suit/"],
@@ -188,7 +188,7 @@ export function loadAnalytics() {
   return analyticsLoaded;
 }
 function loadAnalyticsWhenIdle() {
-  // Right after load, not at idle: a 3.5 s idle wait lost the PageView of visitors who left early.
+  // Right after load: a 3.5 s idle wait lost early leavers' PageView.
   const start = () => setTimeout(loadAnalytics, 0);
   if (document.readyState === "complete") start(); else addEventListener("load", start, { once: true });
 }
@@ -203,7 +203,7 @@ export function funnel(/** @type {string} */ name, /** @type {Record<string, any
 }
 
 export async function recordView(/** @type {string} */ code) {
-  // Mirrors js/commerce.js: anonymous, deduplicated per browser key on the server; never blocks the page.
+  // As js/commerce.js: anonymous, deduplicated on the server; never blocks the page.
   try {
     if (/** @type {any} */ (navigator).globalPrivacyControl === true || navigator.doNotTrack === "1") return;
     if (localStorage.getItem("women.notrack") === "1") return; // owner test browser (?notrack=1, js/analytics.js)
@@ -323,7 +323,6 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
 const RELATED_MODULE = "./related.js?v=20261121-thumbs";
 const MOTION_MODULE = "./motion.js?v=20261122-soft";
-const CONTACT_MODULE = "../js/store-contact.js?v=20261122";
 const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
 let motionOn = false;
 /** motion.js loads only for a design with a motion mode. */
@@ -496,7 +495,7 @@ function fillFromProduct(/** @type {any} */ p) {
   const title = String(p.title || "").trim().slice(0, 200);
   document.title = title + " · SELECT SHOP";
   /** @type {HTMLElement} */ (document.getElementById("lpTitle")).textContent = title;
-  // Before a colour is picked, show the photos shared by every colour (all photos when none are shared).
+  // Before a colour is picked: the photos every colour shares (else all).
   const all = liveMedia(p), shared = all.filter((/** @type {any} */ m) => !m.target || m.target.kind === "product");
   const visible = shared.length ? shared : all;
   const w = /** @type {any} */ (window);
@@ -543,7 +542,7 @@ async function init() {
   const form = /** @type {HTMLFormElement} */ ($("#lpForm"));
   const cta = /** @type {HTMLButtonElement} */ ($("#lpOrder"));
   const cartBtn = /** @type {HTMLButtonElement} */ ($("#lpAddCart"));
-  // A direct-only ad page still offers the shared bag when the visitor came from a multi-product page (?collection=).
+  // A direct-only ad page still offers the shared bag when opened from a multi-product page.
   const directOnly = page.directOnly === true
     && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(new URLSearchParams(location.search).get("collection") || "");
   if (!directOnly) cartBtn.hidden = false;
@@ -552,7 +551,7 @@ async function init() {
   const say = (/** @type {string} */ t, error = false) => { status.textContent = t; status.dataset.error = String(error); };
   const ctaText = "تأكيد الطلب";
 
-  // Admin Studio preview (an iframe of this same origin): show the draft, never order, never count a view.
+  // Admin Studio preview (same-origin iframe): show the draft, never order or count a view.
   const preview = new URLSearchParams(location.search).get("studio_preview") === "1" && window.parent !== window;
   void studioDesign(page.code, preview);
   if (preview) {
@@ -569,7 +568,7 @@ async function init() {
   }
   lazyVideo();
 
-  // One page = one model. Each colour is its own real product (public code); the default colour is pre-rendered.
+  // One page = one model; each colour is its own product; the default colour is pre-rendered.
   /** @type {{code:string,name:string,hex?:string,alt?:string,dir?:string,zoom?:string[]}[]} */
   const colors = Array.isArray(page.colors) && page.colors.length ? page.colors.filter((/** @type {any} */ c) => validCode(c?.code)) : [{ code: page.code, name: "" }];
   /** Generated pages: the colour's committed photos (never another colour's). */
@@ -578,7 +577,7 @@ async function init() {
   wireGallery();
   setShots(shotsOf(colors[0]), false); // the HTML already shows the first colour's photos
   const holder = $("#lpOptions");
-  // One compact cue under the gallery: available colours are separate from the number of photos.
+  // One cue under the gallery: colours are separate from the photo count.
   const colourDiscovery = document.createElement("a");
   colourDiscovery.id = "lpColourDiscovery";
   colourDiscovery.hidden = true;
@@ -596,7 +595,7 @@ async function init() {
     copy.textContent = label;
     colourDiscovery.replaceChildren(copy);
     colourDiscovery.href = colors.length > 1 ? "#lpColors" : "#lpOptions";
-    // Only draw actual buyable colour swatches. Some model pages have unverified grouped colours.
+    // Only buyable colour swatches (some model pages group unverified colours).
     const ci = colors.length > 1 ? -1 : colourIndex(p);
     if (ci < 0) return;
     const ok = sellableValues(p, ci);
@@ -644,16 +643,10 @@ async function init() {
   let quoteError = false; // the status line shows a quote problem that the next good quote may clear
   let started = false;
 
-  // WhatsApp (js/store-contact.js): the links already open the fallback number with this model's question; the store's own
-  // number is read on her first touch, scroll or key, so nothing joins the first paint or the page load.
-  let contactAsked = false;
-  const contact = () => {
-    if (contactAsked) return;
-    contactAsked = true;
-    void import(CONTACT_MODULE).then((/** @type {typeof import("../js/store-contact.js")} */ m) =>
-      m.wire(() => m.productText(String($("#lpTitle").textContent || product?.title || "").trim(), current.code))).catch(() => {});
-  };
-  for (const type of ["pointerdown", "keydown", "scroll"]) addEventListener(type, contact, { once: true, passive: true });
+  // WhatsApp number: lazy, on her first touch or scroll.
+  const contact = () => { removeEventListener("scroll", contact); removeEventListener("pointerdown", contact);
+    void import(/** @type {string} */ ("../js/store-contact.js?v=20261122")).then(m => m.wire(() => m.productText($("#lpTitle").textContent.trim(), current.code))).catch(() => {}); };
+  addEventListener("scroll", contact); addEventListener("pointerdown", contact);
 
   const sizeText = () => {
     if (!product.options.length) return "مقاس واحد";
@@ -799,7 +792,7 @@ async function init() {
     }
   });
 
-  // Legacy colours have their own codes; Admin colours share one, found by exact option selection.
+  // Legacy colours have own codes; Admin colours share one, found by exact selection.
   const labelForLine = (/** @type {Line} */ line, fallbackSize = false) => {
     const key = line.publicCode + "@" + line.selection.map(s => s.optionPosition + "." + s.valuePosition).join(",");
     return variantMixChoices.find(c => c.key === key)?.name
@@ -1040,7 +1033,7 @@ async function init() {
   const regionsReady = read("regions", "/regions").then(d => {
     const regions = (Array.isArray(d.regions) ? d.regions : [])
       .filter(r => typeof r?.key === "string" && typeof r?.label === "string");
-    // Most orders ship to Cairo or Giza: put them first so the customer doesn't scroll 27 governorates.
+    // Most orders ship to Cairo or Giza: put them first.
     const priority = r => r.label.trim() === "القاهرة" ? 0 : r.label.trim() === "الجيزة" ? 1 : 2;
     regions.sort((a, b) => priority(a) - priority(b));
     for (const r of regions) {
@@ -1132,7 +1125,7 @@ async function init() {
     const label = region.selectedOptions[0]?.textContent || "";
     const payload = {
       idempotencyKey: orderKey(), lines, deliveryRegionKey: region.value, paymentMethod: "cod",
-      // The governorate is the "area" line of the delivery address; the free text is the street address.
+      // The governorate is the address "area"; the free text is the street.
       buyer: { name: values.name.trim(), phone: /** @type {string} */ (egMobile(values.phone)), area: label, address: values.address.trim(), notes: "" },
       confirmedMerchandiseSubtotalPiastres: minorOf(q.merchandiseSubtotal),
       confirmedShippingTotalPiastres: minorOf(q.shippingTotal),
