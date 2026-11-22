@@ -36,8 +36,8 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-// The home and the landing pages are light only since the Neutral redesign (e2e/home-neutral.spec.mjs and the LP test below);
-// the switch lives on /p/, /cart/, /checkout/ and /order-success/.
+// The home, the landing pages, the bag and checkout are light only since the Neutral redesign (e2e/home-neutral.spec.mjs and the tests below);
+// the switch lives on /p/ and /order-success/.
 
 test("Dark by default; the Sun/Moon switch works from the keyboard, instantly, and is remembered", async ({ page }) => {
   await page.goto("/p/?code=SS-1008&legacy=1");
@@ -61,7 +61,7 @@ test("Dark by default; the Sun/Moon switch works from the keyboard, instantly, a
 
 test("a saved Light choice is on from the first frame of every page, after reload and across navigation", async ({ page }) => {
   await saveLight(page);
-  const routes = [["/p/?code=SS-1008&legacy=1", "#productPhoto:not([hidden])"], ["/cart/", "main"], ["/checkout/", "#region"], ["/order-success/?order=ORD-THEME", "main"]];
+  const routes = [["/p/?code=SS-1008&legacy=1", "#productPhoto:not([hidden])"], ["/order-success/?order=ORD-THEME", "main"]];
   for (const [url, ready] of routes) {
     await page.goto(url);
     await page.locator(ready).first().waitFor();
@@ -71,11 +71,13 @@ test("a saved Light choice is on from the first frame of every page, after reloa
   }
   await page.reload();
   expect((await themeOf(page)).theme).toBe("light");
-  // following a link (not page.goto) keeps it too
+  // the bag (reached by a link) is light only: a saved choice neither applies nor shows a switch
   await page.goto("/lp/ss-1008/");
   await page.locator("#lpCartLink").click();
   await page.locator("main").waitFor();
-  expect(await page.evaluate(() => window.__firstFrameTheme)).toBe("light");
+  expect(await page.evaluate(() => window.__firstFrameTheme)).toBe(null);
+  expect(await themeOf(page)).toEqual({ theme: undefined, bg: "rgb(250, 250, 249)", meta: "#FAFAF9" });
+  await expect(page.locator("[data-theme-toggle]")).toHaveCount(0);
 });
 
 test("landing pages are light only: a saved Dark or Light choice never changes them; gallery, colours and zoom work", async ({ page, request }) => {
@@ -111,7 +113,7 @@ test("landing pages are light only: a saved Dark or Light choice never changes t
   expect((await mockLog(request)).orders.length).toBe(before);
 });
 
-test("Light cart and checkout show the server quote; nothing is ordered", async ({ page, request }) => {
+test("Neutral cart and checkout (light only, even with a saved Light choice) show the server quote; nothing is ordered", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
   await saveLight(page);
   await page.goto("/lp/ss-1008/");
@@ -123,8 +125,8 @@ test("Light cart and checkout show the server quote; nothing is ordered", async 
   await expect(page.locator("#region")).toBeVisible();
   await page.locator("#region").selectOption({ index: 1 });
   await expect(page.locator("#grandTotal")).toHaveText(/[0-9٠-٩]/);
-  await expect(page.locator("#placeOrder")).toHaveCSS("background-color", "rgb(209, 0, 209)");
-  expect((await themeOf(page)).theme).toBe("light");
+  await expect(page.locator("#placeOrder")).toHaveCSS("background-color", "rgb(17, 17, 17)"); // black, as the product page's confirm button
+  expect(await themeOf(page)).toEqual({ theme: undefined, bg: "rgb(250, 250, 249)", meta: "#FAFAF9" });
   expect((await mockLog(request)).orders.length).toBe(before);
 });
 
@@ -144,7 +146,7 @@ test("no horizontal overflow in either theme at the review widths", async ({ pag
         const o = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, theme: document.documentElement.dataset.theme,
           head: [...document.querySelectorAll(".top>*,.hdr-in>*,.hdr-tools>*")].filter(e => e.getClientRects().length && getComputedStyle(e).display !== "contents")
             .map(e => e.getBoundingClientRect()).map(r => [Math.round(r.left), Math.round(r.right)]) }));
-        expect(o.theme).toBe(url === "/" || url.startsWith("/lp/") ? undefined : theme); // the home and landing pages are light only
+        expect(o.theme).toBe(url === "/" || /^\/(lp|cart|checkout)\//.test(url) ? undefined : theme); // the home, landing pages, bag and checkout are light only
         expect(o.sw, `${theme} ${w}px ${url}`).toBeLessThanOrEqual(w);
         for (const [l, r] of o.head) { expect(l, `${w}px ${url} header`).toBeGreaterThanOrEqual(0); expect(r, `${w}px ${url} header`).toBeLessThanOrEqual(w); }
       }
@@ -175,7 +177,8 @@ test("under 375px the header drops only what the tab bar or buy bar already offe
     await expect(page.locator('.hdr-tools a[href="/cart/"]'), url).toBeHidden();
     await expect(page.locator('.tabbar a[href="/cart/"] [data-cart-count]'), url).toHaveText("1");
     expect(await inView(page.locator('.hdr-tools a[href="/#shop"]')), url + " catalog link").toBe(true);
-    expect(await inView(page.locator(".hdr-tools [data-theme-toggle]")), url + " switch").toBe(true);
+    if (url === "/cart/") await expect(page.locator("[data-theme-toggle]")).toHaveCount(0); // the bag is light only
+    else expect(await inView(page.locator(".hdr-tools [data-theme-toggle]")), url + " switch").toBe(true);
   }
   await page.locator('.hdr-tools a[href="/#shop"]').click();
   await page.locator("#feed .card").first().waitFor();
@@ -203,7 +206,7 @@ test("saved Light theme survives browser Back and Forward navigation", async ({ 
   await saveLight(page);
   await page.goto("/p/?code=SS-1008&legacy=1");
   await page.locator("#productPhoto:not([hidden])").waitFor();
-  await page.goto("/cart/");
+  await page.goto("/order-success/?order=ORD-THEME");
   await page.locator("main").waitFor();
   await page.goBack();
   await page.locator("#productPhoto:not([hidden])").waitFor();
