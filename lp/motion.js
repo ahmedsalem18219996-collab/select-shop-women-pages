@@ -202,6 +202,8 @@ export function flyToBag(/** @type {Element} */ from, /** @type {string|undefine
 }
 
 /** @type {Stack|null} */ let pageStack = null;
+// On desktop the checkout buttons are in normal flow, so insert lazy stacks below them.
+const checkoutTail = (/** @type {HTMLElement} */ form) => document.getElementById("lpOrder")?.closest(".bar") || form;
 /**
  * Product page: a design with a motion mode replaces the photo carousel with the stack (same photos); "none" undoes it.
  * @param {{ motion: { mode: string, dirs: string[], hint: string }, accent: string }} d
@@ -213,8 +215,7 @@ export function pageMotion(d, s, shots) {
   pageStack?.destroy(); pageStack = null; delete root.dataset.motion;
   const soft = d.motion.mode === "soft";
   const form = document.getElementById("lpForm");
-  // soft: right after the form, so nothing above the form ever moves while she fills it in (lazy photos change height).
-  const anchor = soft ? form?.nextElementSibling : document.querySelector("main.page .media")?.firstElementChild;
+  const anchor = soft ? (form && checkoutTail(form).nextElementSibling) : document.querySelector("main.page .media")?.firstElementChild;
   if (d.motion.mode === "none" || !anchor) { removeHint(); return; }
   const title = String(document.getElementById("lpTitle")?.textContent || "").trim();
   const price = String(document.getElementById("lpPrice")?.textContent || "").trim();
@@ -266,6 +267,6 @@ export async function publishedStudio(/** @type {any} */ design) {
   section.setAttribute("aria-label", "صور وتفاصيل القطعة");
   section.style.order = getComputedStyle(form).order;
   studio.applyAccent(section, /^#[\da-f]{6}$/i.test(design.accent) ? design.accent : "#111111");
-  form.after(section);
+  checkoutTail(form).after(section);
   studio.mountStack(section, photos, { firstEager: false });
 }

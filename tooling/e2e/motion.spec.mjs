@@ -47,17 +47,23 @@ test("cinematic product page: photo stack, main colour, scroll hint that hides o
   await expect(page.locator("#lpCartCount")).toHaveText("1");
 });
 
-test("a page without a Studio design: the soft stack right after the order form from the first scroll; the gallery stays", async ({ page }) => {
+test("a page without a Studio design: the soft stack follows checkout on first scroll and keeps the buy controls in place", async ({ page }) => {
   const motionRequests = [];
   page.on("request", r => { if (/\/lp\/motion\.(js|css)/.test(r.url())) motionRequests.push(r.url()); });
   await page.goto("/lp/ss-1008/");
   await page.waitForLoadState("load");
   await page.waitForTimeout(800);
   expect(motionRequests).toEqual([]);                                              // nothing before she scrolls (nor in Lighthouse)
+  const bar = page.locator(".bar");
+  const before = await bar.evaluate(el => {
+    const fixed = getComputedStyle(el).position === "fixed";
+    return { fixed, top: el.getBoundingClientRect().top + (fixed ? 0 : scrollY) };
+  });
   await page.mouse.wheel(0, 200);
   const stack = page.locator(".mo-stack[data-mode=soft]");
   await expect(stack).toHaveCount(1);
-  expect(await stack.evaluate(e => e.previousElementSibling?.id)).toBe("lpForm"); // nothing above the form ever moves
+  await expect(page.locator("#lpForm ~ .bar + .mo-stack[data-mode=soft]")).toHaveCount(1);
+  expect(await bar.evaluate((el, fixed) => el.getBoundingClientRect().top + (fixed ? 0 : scrollY), before.fixed)).toBeCloseTo(before.top, 0);
   const y = (s) => page.locator(s).evaluate(e => e.getBoundingClientRect().top);
   expect(await y(".mo-stack")).toBeGreaterThan(await y("#lpForm"));
   await expect(page.locator("#lpStage")).toBeVisible();                            // gallery, thumbnails and zoom untouched

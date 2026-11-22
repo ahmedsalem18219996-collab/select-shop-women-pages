@@ -71,7 +71,7 @@ test("the published Studio stack stays off the first paint and renders ordered, 
   expect(assets).toEqual([]);
 
   await page.locator("#lpForm").scrollIntoViewIfNeeded();
-  const stack = page.locator("#lpForm + .lp-studio-stack");
+  const stack = page.locator("#lpForm ~ .bar + .lp-studio-stack");
   const cards = stack.locator(".ssm-card");
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toHaveAttribute("data-dir", "blur");
