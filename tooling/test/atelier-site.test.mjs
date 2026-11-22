@@ -22,8 +22,8 @@ test("Atelier shared style loads on every public storefront step", async () => {
     const html = await source(path);
     assert.ok(html.includes(href), path + " lacks Atelier stylesheet");
     assert.ok(html.includes(klass), path + " lacks its route scope");
-    // the home moved to the Neutral look (css/neutral.css, light only); the other steps follow in their own PRs
-    const color = path === "index.html" ? "#FAFAF9" : "#050B1C";
+    // the home, bag and checkout moved to the Neutral look (light only); the other steps follow in their own PRs
+    const color = ["index.html", "cart/index.html", "checkout/index.html"].includes(path) ? "#FAFAF9" : "#050B1C";
     assert.ok(html.includes(`<meta name="theme-color" content="${color}">`), path + " theme-color is not " + color);
     assert.doesNotMatch(html, /المعاينة متاحة عند الاستلام/, path + " has an unverified promise");
   }
@@ -104,4 +104,33 @@ test("WOMEN Admin and storefront share the Dark Luxury palette without touching 
   assert.match(app, /\|\| 'light'/);
   assert.match(html, /<link rel="stylesheet" href="css\/admin-theme\.css\?v=[a-z0-9-]+">\s*<script type="module"/); // glass layer is the last stylesheet
   assert.match(app, /localStorage\.getItem\('wa\.theme'\)/); // retain staff preference
+});
+
+test("bag, checkout and campaign page use the Neutral look: light only, the home's three fonts, one preload, nothing else changed", async () => {
+  const home = await source("index.html");
+  const faces = (html) => [...html.matchAll(/@font-face\{[^}]*\}/g)].map(m => m[0]);
+  const homeFaces = faces(home.match(/<style id="women-neutral-fonts">[^]*?<\/style>/)[0]);
+  assert.equal(homeFaces.length, 3);
+  for (const path of ["cart/index.html", "checkout/index.html"]) {
+    const html = await source(path);
+    assert.doesNotMatch(html, /theme-boot|data-theme-toggle|css\/fonts\.css/, path);
+    const block = html.match(/<style id="women-neutral-fonts">[^]*?<\/style>/)?.[0];
+    assert.ok(block, path + " inline Neutral fonts");
+    assert.deepEqual(faces(block), homeFaces.map(f => f.replace(/url\(assets\//, "url(../assets/")), path + " same faces as the home");
+    assert.equal(html.split('rel="preload"').length - 1, 1, path + " one font preload");
+    assert.ok(html.indexOf('href="../css/neutral-shop.css?v=') > html.indexOf("atelier-site.css"), path + " Neutral sheet loads last");
+  }
+  assert.match(await source("cart/index.html"), /<i class="nx-mark" aria-hidden="true">S\.<\/i>/);
+  const campaign = await source("collections/index.html");
+  assert.match(campaign, /<meta name="theme-color" content="#FAFAF9">/);
+  assert.match(campaign, /style-src 'self'; font-src 'self';/); // CSP unchanged: fonts live in the sheet, not inline
+  assert.doesNotMatch(campaign, /<style/);
+  assert.ok(campaign.indexOf("../css/neutral-campaign.css?v=") > campaign.indexOf("collections.css?v="));
+  const sheet = await source("css/neutral-campaign.css");
+  for (const f of homeFaces) assert.ok(sheet.includes(f.replace(/url\(assets\//, "url(/assets/")), "campaign sheet font: " + f.slice(0, 60));
+  for (const css of [sheet, await source("css/neutral-shop.css")]) {
+    assert.match(css, /#111 linear-gradient\(135deg,#1c1c1c,#000\)/); // the product page's black "تأكيد الطلب" button
+    assert.doesNotMatch(css, /#D100D1|#2ED9D1|#050B1C/i, "no Dark Luxury colours");
+  }
+  assert.match(sheet, /html:not\(\[data-accent\]\) \.cp-add:disabled/); // a campaign colour still paints the buy buttons
 });

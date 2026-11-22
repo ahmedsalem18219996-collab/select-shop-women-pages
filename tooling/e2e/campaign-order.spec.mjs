@@ -213,8 +213,9 @@ test("campaign texts (PR #68): ctaText on the buy buttons and the fixed bar, hin
   await expect(page.locator('.cp-product[data-code="SS-1012"] .cp-add')).toHaveText("إضافة للشنطة");
 });
 
-test("theme off: buy buttons keep the store's Neon Purple", async ({ page, request }) => {
+test("theme off: buy buttons are the Neutral black", async ({ page, request }) => {
   used.push("box-noaccent"); await setPage(request, "box-noaccent", ["SS-1012", "SS-1013"], { theme: { enabled: false, accent: "#C62828" } });
   await page.goto("/collections/?slug=box-noaccent");
-  await expect.poll(() => page.locator("#placeOrder").evaluate(e => getComputedStyle(e).backgroundColor)).toBe("rgb(209, 0, 209)");
+  await expect.poll(() => page.locator('.cp-product[data-code="SS-1012"] .cp-add').evaluate(e => getComputedStyle(e).backgroundColor)).toBe("rgb(17, 17, 17)");
+  await expect(page.locator("#placeOrder")).toHaveCSS("background-color", "rgb(242, 241, 239)"); // disabled until the bag has a piece
 });
