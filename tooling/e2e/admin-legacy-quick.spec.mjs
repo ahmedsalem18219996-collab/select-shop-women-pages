@@ -201,25 +201,18 @@ test('owner can hide a published standalone product safely, but incomplete produ
   expect(calls.filter(x=>x.op==='products.publish')).toHaveLength(0);
 });
 
-test('visitor region and source analytics only use locally imported GA4 CSV, no saved location',async ({page})=>{
+test('visitor analytics offers only the GA4 link', async ({ page }) => {
   const {calls}=await harness(page);
-  await page.goto(HOME+'#/traffic');
-  await expect(page.getByRole('heading',{name:'المحافظات ومصادر الزيارات',level:2})).toBeVisible();
-  const csv='Country,Region,Sessions\nEgypt,Cairo,100\nEgypt,Giza,30\nFrance,Paris,99\n';
-  await page.locator('#traffic-region-file').setInputFiles({name:'region.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});
-  await expect(page.locator('#traffic-region-results')).toContainText('Cairo');
-  await expect(page.locator('#traffic-region-results')).toContainText('Giza');
-  await expect(page.locator('#traffic-region-results')).not.toContainText('Paris');
-  const sources='Session source / medium,Sessions\n"facebook / paid",80\n"instagram / social",20\n';
-  await page.locator('#traffic-source-file').setInputFiles({name:'source.csv',mimeType:'text/csv',buffer:Buffer.from(sources)});
-  await expect(page.locator('#traffic-source-results')).toContainText('facebook / paid');
-  await expect(page.locator('#traffic-source-results')).toContainText('Facebook');
-  await expect(page.locator('#traffic-source-results')).toContainText('Instagram');
-  const events='Event name,Event count\npage_view,900\nview_item,1000\nadd_to_cart,120\nbegin_checkout,60\npurchase,20\n';
-  await page.locator('#traffic-events-file').setInputFiles({name:'events.csv',mimeType:'text/csv',buffer:Buffer.from(events)});
-  await expect(page.locator('#traffic-events-results')).toContainText('حدث بدء الطلب');
-  await expect(page.locator('#traffic-events-results')).toContainText('نسبة أحداث الشراء إلى مشاهدة المنتج: ٢%');
-  expect(calls.filter(x=>x.op.includes('geo')||x.op.includes('traffic')||x.op==='products.publish')).toHaveLength(0);
+  await page.goto(HOME + '#/traffic');
+  const view = page.locator('#view');
+  await expect(view.getByRole('heading', { name: 'المحافظات والزيارات', level: 2 })).toBeVisible();
+  const links = view.getByRole('link');
+  await expect(links).toHaveCount(1);
+  await expect(links).toHaveAccessibleName('افتح Google Analytics 4');
+  await expect(links).toHaveAttribute('href', 'https://analytics.google.com/analytics/web/');
+  await expect(links).toHaveAttribute('target', '_blank');
+  await expect(view.locator('input[type="file"], button')).toHaveCount(0);
+  expect(calls.map(call => call.op)).toEqual(['session.get']);
 });
 
 
