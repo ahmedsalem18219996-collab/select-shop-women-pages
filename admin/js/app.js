@@ -32,9 +32,9 @@ const can = (perm) => {
   return !perm || s.permissions.includes(perm);
 };
 const allowedItems = () => NAV.flatMap((g) => g.items).filter((i) => can(i.perm));
-// Same release version as the ?v= on app.js in index.html, so a new release never mixes cached screens.
-const V = new URL(import.meta.url).searchParams.get('v') || '0';
-const view = (name) => import(`./views/${name}.js?v=${V}`);
+// Keep the release version and any admin-only revision on every view URL.
+const viewRevision = new URL(import.meta.url).search;
+const view = (name) => import(`./views/${name}.js${viewRevision}`);
 const VIEWS = {
   dashboard: () => view('dashboard'), products: () => view('products'), studio: () => view('studio'), campaigns: () => view('campaigns'), traffic: () => view('traffic'), categories: () => view('categories'),
   orders: () => view('orders'), finance: () => view('finance'), customers: () => view('customers'), shipping: () => view('shipping'),

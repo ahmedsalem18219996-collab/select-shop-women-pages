@@ -1,5 +1,5 @@
 import { t } from '../i18n.js';
-import { html, render, $, $$, icon, money, fmtNum, ago, date, statusBadge, skRows, confirmDialog, withBusy, done, fail, debounce } from '../ui.js';
+import { html, render, $, $$, icon, money, fmtNum, ago, date, statusBadge, skRows, confirmDialog, withBusy, done, fail, debounce, toMinor } from '../ui.js';
 import { call } from '../api.js';
 import { activityLine } from './dashboard.js';
 
@@ -124,6 +124,53 @@ async function renderList({ el, query, session }) {
   await load();
 }
 
+function mountReturnFinance(section, code) {
+  const fields = [['refundedMinor', 'المبلغ اللي اترد للعميلة'], ['returnShippingMinor', 'مصاريف شحن المرتجع']];
+  const validAmount = (value) => value === null || (Number.isSafeInteger(value) && value >= 0);
+  const valid = (data) => data?.code === code && data.stage === 'returned' &&
+    Number.isSafeInteger(data.version) && data.version >= 0 && fields.every(([key]) => validAmount(data[key]));
+  const paint = (data) => {
+    render(section, html`<h3>تسوية المرتجع</h3>
+      <p class="muted" id="return-finance-hint">بالجنيه المصري. سيب الخانة فاضية لو الرقم لسه ما اتسجّلش، واكتب 0 لو القيمة صفر.</p>
+      <form class="stack" aria-describedby="return-finance-hint">
+        <div class="grid2">${fields.map(([key, label]) => html`<label class="field"><span>${label}</span>
+          <div class="input-money"><input name="${key}" inputmode="decimal" value="${data[key] === null ? '' : data[key] / 100}"><span>EGP</span></div>
+        </label>`)}</div>
+        <div class="row"><span class="space"></span><button class="btn btn-primary">${t('app.save')}</button></div>
+      </form>`);
+    const form = $('form', section);
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const args = { code, version: data.version };
+      for (const [key, label] of fields) {
+        const raw = $('[name="' + key + '"]', form).value.trim();
+        const value = raw === '' ? null : toMinor(raw.replace('٫', '.'));
+        if (raw !== '' && value === null) { fail({ outcome: 'invalid', field: label }); return; }
+        args[key] = value;
+      }
+      const result = await withBusy($('button', form), () => call('orders.return_finance_save', args));
+      if (!section.isConnected) return;
+      if (result.outcome === 'saved' && valid(result.data)) {
+        paint(result.data);
+        done();
+      } else {
+        fail(result);
+        if (result.outcome === 'conflict' && valid(result.data)) paint(result.data);
+      }
+    };
+  };
+  const load = async () => {
+    render(section, html`<h3>تسوية المرتجع</h3><p class="muted" role="status">جاري تحميل مبالغ المرتجع…</p>`);
+    const result = await call('orders.return_finance_get', { code });
+    if (!section.isConnected) return;
+    if (result.outcome === 'ok' && valid(result.data)) { paint(result.data); return; }
+    render(section, html`<h3>تسوية المرتجع</h3><p class="note" role="alert">تعذّر تحميل مبالغ المرتجع.</p>
+      <button class="btn btn-soft" type="button">${t('app.retry')}</button>`);
+    $('button', section).onclick = load;
+  };
+  return load();
+}
+
 async function renderDetail(ctx, code) {
   const { el, can } = ctx;
   render(el, html`<div class="page">${skRows(1, 80)}${skRows(2, 200)}</div>`);
@@ -157,6 +204,7 @@ async function renderDetail(ctx, code) {
           <label class="field"><span>${t('orders.tracking')}</span><input class="input ltr" id="ft" value="${f?.tracking_code || ''}" maxlength="80"></label>
           <label class="field"><span>${t('orders.note')}</span><input class="input" id="fn" maxlength="500"></label></div>
           <div class="row"><span class="space"></span><button class="btn btn-primary">${t('app.save')}</button></div></form>` : ''}</section>` : ''}
+      ${stage === 'returned' && can('owner') ? html`<section class="card stack" id="return-finance" aria-label="تسوية المرتجع"></section>` : ''}
       <section class="card"><div class="card-head"><h3>${t('orders.items')}</h3><span class="muted">${fmtNum(lines.length)}</span></div>
         <div class="order-items">${lines.map((it) => html`<div class="order-item"><div><a class="rowlink" href="#/products/${it.product_public_code}">${it.product_title}</a>
           <div class="row-meta"><span class="code">${it.product_public_code}</span>${(it.option_selections || []).map((s) => html`<span>${s.name}: ${s.value}</span>`)}<span>${t('orders.qty')} ${fmtNum(it.quantity)}</span></div></div>
@@ -173,6 +221,8 @@ async function renderDetail(ctx, code) {
       <section class="card"><div class="card-head"><h3>${t('orders.history')}</h3></div><ul class="timeline">${history.map((h) => html`<li>${h.text}<small>${date(h.at)}</small></li>`)}</ul></section>
       ${activity?.length ? html`<section class="card"><div class="card-head"><h3>${t('nav.activity')}</h3></div><ul class="timeline">${activity.map((a) => html`<li>${activityLine(a)}<small>${date(a.at)}</small></li>`)}</ul></section>` : ''}
     </aside></div></div>`);
+  const settlement = $('#return-finance', el);
+  if (settlement) mountReturnFinance(settlement, o.public_order_code);
   // Campaign parameters recorded with the order (utm_*, ad set). Optional: older orders or a server without it show nothing.
   call('orders.attribution', { code }).then((a) => {
     const box = $('#order-attribution', el);

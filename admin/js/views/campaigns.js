@@ -1,4 +1,4 @@
-import { money, ago, withBusy, island, done, fail, confirmDialog } from '../ui.js';
+import { money, fmtNum, ago, withBusy, island, done, fail, confirmDialog, html, render, sheet } from '../ui.js';
 import { call, mediaUrl } from '../api.js';
 import { moveProductCode, slugFromTitle, validateCampaignSelection } from '../campaigns-model.js';
 import { PAGE_THEME, cleanPageTheme, parseDesignImport, suggestAccent, campaignAccent, campaignTextLength } from '../../../lp/studio-design.js?v=20261121-font';
@@ -43,6 +43,48 @@ const actionButton = (label, cls, handler) => {
   return b;
 };
 
+const reportPeriods = [['last7Days', 'آخر 7 أيام'], ['last30Days', 'آخر 30 يوم'], ['lifetime', 'من أول الحملة']];
+const reportCount = (value) => Number.isSafeInteger(value) ? fmtNum(value) : '—';
+const reportMoney = (value) => Number.isSafeInteger(value) ? money(value) : '—';
+
+function openCampaignReport(campaign) {
+  sheet({
+    title: 'تقرير الحملة — ' + campaign.title,
+    body: html`<div class="stack">
+      <div class="row wrap" role="group" aria-label="فترة التقرير">
+        ${reportPeriods.map(([key, label]) => html`<button class="btn btn-soft" type="button" data-report-period="${key}">${label}</button>`)}
+      </div>
+      <div data-campaign-period-results aria-live="polite"></div>
+    </div>`,
+    onMount(box) {
+      const buttons = [...box.querySelectorAll('[data-report-period]')];
+      const results = box.querySelector('[data-campaign-period-results]');
+      const paintPeriod = (key) => {
+        const data = campaign.periods?.[key];
+        for (const button of buttons) {
+          const active = button.dataset.reportPeriod === key;
+          button.setAttribute('aria-pressed', String(active));
+          button.classList.toggle('btn-primary', active);
+          button.classList.toggle('btn-soft', !active);
+        }
+        render(results, data ? html`<dl class="kv">
+          <dt>الطلبات</dt><dd>${reportCount(data.orders)}</dd>
+          <dt>الملغية</dt><dd>${reportCount(data.cancelledOrders)}</dd>
+          <dt>المرتجع</dt><dd>${reportCount(data.returnedOrders)}</dd>
+          <dt>المبيعات المؤكدة قبل المرتجع</dt><dd>${reportMoney(data.confirmedSalesMinor)}</dd>
+          <dt>قيمة المنتجات المرتجعة</dt><dd>${reportMoney(data.returnedSalesMinor)}</dd>
+          <dt>صافي المبيعات</dt><dd><b>${reportMoney(data.netSalesMinor)}</b></dd>
+          <dt>عدد القطع</dt><dd>${reportCount(data.units)}</dd>
+          <dt>أكتر موديل اتطلب</dt><dd>${data.topModel?.title || '—'}</dd>
+          <dt>أكتر لون اتطلب</dt><dd>${data.topColor?.name || '—'}</dd>
+        </dl>` : html`<p class="muted">مفيش بيانات متاحة للفترة دي.</p>`);
+      };
+      for (const button of buttons) button.onclick = () => paintPeriod(button.dataset.reportPeriod);
+      paintPeriod('last30Days');
+    },
+  });
+}
+
 export default {
   title: () => 'مجموعات الإعلانات',
   async render(ctx) {
@@ -62,21 +104,54 @@ export default {
     let themeVersion = 0;
     let themeReady = true; // false when the server has no page-theme operations yet (migration not applied)
     let onPageMessage = null;
+    let homeCampaignSlug = null;
+    let savingHome = false;
 
     const load = async () => {
       el.replaceChildren(make('div', 'page-loading', 'جاري تحميل مجموعات الإعلانات والمنتجات...'));
-      const [c, p] = await Promise.all([
+      const [c, p, home] = await Promise.all([
         call('campaigns.list'),
         call('products.list', { limit: 100 }),
+        call('settings.home_campaign_get'),
       ]);
+      if (!el.isConnected) return false;
       if (c.outcome !== 'ok' || p.outcome !== 'ok') {
         fail(c.outcome !== 'ok' ? c : p);
         return false;
       }
       collections = Array.isArray(c.data) ? c.data : [];
       products = (p.data || []).filter(x => x.status !== 'archived');
+      homeCampaignSlug = home.outcome === 'ok' && typeof home.homeCampaignSlug === 'string' ? home.homeCampaignSlug : null;
       paint();
       return true;
+    };
+
+    const saveHome = async (item, button) => {
+      if (savingHome || item.status !== 'published') return;
+      savingHome = true;
+      const slug = homeCampaignSlug === item.slug ? '' : item.slug;
+      try {
+        const reply = await withBusy(button, () => call('settings.home_campaign_save', { homeCampaignSlug: slug }));
+        if (!el.isConnected) return;
+        if (reply.outcome === 'saved' && reply.homeCampaignSlug === slug) {
+          homeCampaignSlug = reply.homeCampaignSlug;
+          paint();
+          done(slug ? 'المجموعة هتظهر في الرئيسية.' : 'الرئيسية رجعت للشكل العادي.');
+        } else if (reply.reason === 'campaign_unavailable') {
+          island('error', 'المجموعة غير متاحة دلوقتي. راجع المنتجات المنشورة فيها.');
+        } else fail(reply);
+      } finally {
+        savingHome = false;
+      }
+    };
+
+    const showReport = async (item, button) => {
+      const response = await withBusy(button, () => call('campaigns.stats', {}));
+      if (!button.isConnected) return;
+      if (response.outcome !== 'ok') { fail(response); return; }
+      const report = Array.isArray(response.campaigns)
+        ? response.campaigns.find((campaign) => campaign.id === item.id) : null;
+      openCampaignReport(report ?? { title: item.title });
     };
 
     const previewProducts = (container, onMove = () => {}, onRemove = () => {}) => {
@@ -507,6 +582,7 @@ export default {
           title.append(make('h3', '', item.title), make('small', 'muted', item.slug));
           const badge = make('span', 'badge ' + (item.status === 'published' ? 'success' : item.status === 'archived' ? 'muted' : 'info'), statusLabel(item.status));
           cardHead.append(title, make('span', 'space'), badge);
+          if (item.slug === homeCampaignSlug) cardHead.append(make('span', 'badge info', 'على الرئيسية'));
           card.append(cardHead);
           card.append(make('p', 'muted', item.description || 'بدون وصف'));
           const chips = make('div', 'campaign-product-chips');
@@ -525,7 +601,13 @@ export default {
             });
             adLink.dataset.adLink = item.slug;
             actions.append(adLink);
+            const isHome = item.slug === homeCampaignSlug;
+            const home = actionButton(isHome ? 'إزالة من الرئيسية' : 'اعرضها في الرئيسية', 'btn-soft',
+              (e) => saveHome(item, e.currentTarget));
+            home.setAttribute('aria-pressed', String(isHome));
+            actions.append(home);
           }
+          actions.append(actionButton('تقرير الحملة', 'btn-soft', (e) => showReport(item, e.currentTarget)));
           if (item.status !== 'archived') actions.append(actionButton('أرشفة', 'btn-ghost btn-sm', (e) => archiveCollection(item, e.currentTarget)));
           card.append(actions);
           grid.append(card);
