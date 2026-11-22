@@ -1,7 +1,52 @@
 import { t } from '../i18n.js';
-import { html, render, $, icon, skRows, withBusy, done, fail } from '../ui.js';
+import { html, render, $, $$, icon, skRows, withBusy, done, fail } from '../ui.js';
 import { call, uploadStoreAsset, mediaUrl } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
+
+const egyptianMobile = /^201[0125][0-9]{8}$/;
+const validNumbers = (numbers) => Array.isArray(numbers) && numbers.length >= 1 &&
+  numbers.length <= 5 && numbers.every((number) => typeof number === 'string' && egyptianMobile.test(number));
+
+function mountWhatsApp(form, initial) {
+  const list = $('[data-wa-list]', form);
+  const add = $('[data-wa-add]', form);
+  const save = $('[data-wa-save]', form);
+  const read = () => $$('[data-wa-number]', list).map((input) => input.value.trim());
+  const paint = (numbers, focus) => {
+    render(list, html`${numbers.map((number, index) => html`<div class="row" style="align-items:end">
+      <label class="field space"><span>رقم واتساب ${index + 1}</span>
+        <input class="input ltr" type="tel" inputmode="numeric" maxlength="12" required
+          pattern="201[0125][0-9]{8}" data-wa-number value="${number}" placeholder="201xxxxxxxxx"></label>
+      <button type="button" class="btn btn-ghost" data-wa-remove="${index}" aria-label="حذف رقم واتساب ${index + 1}"
+        ${numbers.length === 1 ? 'disabled' : ''}>${icon('x')}</button>
+    </div>`)}`);
+    add.disabled = numbers.length >= 5;
+    if (focus !== undefined) $$('[data-wa-number]', list)[focus]?.focus();
+  };
+  paint(initial);
+  add.onclick = () => {
+    const numbers = read();
+    if (numbers.length < 5) paint([...numbers, ''], numbers.length);
+  };
+  list.onclick = (event) => {
+    const remove = event.target.closest('[data-wa-remove]');
+    const numbers = read();
+    if (!remove || numbers.length < 2) return;
+    const index = Number(remove.dataset.waRemove);
+    numbers.splice(index, 1);
+    paint(numbers, Math.min(index, numbers.length - 1));
+  };
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    const numbers = read();
+    if (!validNumbers(numbers)) { fail({ outcome: 'invalid', field: 'whatsappNumbers' }); return; }
+    const response = await withBusy(save, () => call('settings.whatsapp_save', { whatsappNumbers: numbers }));
+    if (response.outcome === 'saved' && validNumbers(response.whatsappNumbers)) {
+      if (read().every((value, index) => value === numbers[index]) && read().length === numbers.length) paint(response.whatsappNumbers);
+      done();
+    } else fail(response);
+  };
+}
 
 export default {
   title: () => t('nav.settings'),
@@ -9,9 +54,14 @@ export default {
     render(el, html`<div class="page">${skRows(2, 220)}</div>`);
     const owner = session.role === 'owner';
     const load = async () => {
-      const r = await call('settings.get');
+      const [r, wa] = await Promise.all([
+        call('settings.get'),
+        owner ? call('settings.whatsapp_get') : null,
+      ]);
+      if (!el.isConnected) return;
       if (r.outcome !== 'ok') { fail(r); return; }
       const s = r.data, editContact = can('settings.manage');
+      const whatsappNumbers = wa?.outcome === 'ok' && validNumbers(wa.whatsappNumbers) ? wa.whatsappNumbers : null;
       const logo = s.logo_path ? mediaUrl(/^brand\//.test(s.logo_path) ? 'store-assets/' + s.logo_path : s.logo_path) : null;
       const inp = (id, k, type = 'text', ltr = true, max = 300) => html`<input class="input ${ltr ? 'ltr' : ''}" id="${id}" type="${type}" value="${s[k] || ''}" maxlength="${max}" ${editContact ? '' : 'disabled'}>`;
       render(el, html`<div class="page">
@@ -21,11 +71,16 @@ export default {
             ${owner ? html`<label class="btn btn-soft">${icon('upload')}${t('settings.uploadLogo')}<input type="file" class="sr" id="logo" accept="image/png,image/jpeg,image/webp"></label>` : ''}</div>
           <div class="grid2"><label class="field"><span>${t('settings.storeName')}</span><input class="input" id="sn" value="${s.store_name || ''}" maxlength="100" ${owner ? '' : 'disabled'}></label>
             <label class="field"><span>${t('settings.tagline')}</span><input class="input" id="tg" value="${s.tagline || ''}" maxlength="200" ${owner ? '' : 'disabled'}></label></div>
-          <label class="field"><span>${t('settings.color')}</span><div class="row"><input type="color" class="swatch" id="pc" value="${s.primary_color || '#16192B'}" ${owner ? '' : 'disabled'}><span class="code">${s.primary_color || '—'}</span></div></label>
           ${owner ? html`<div class="row"><span class="space"></span><button class="btn btn-primary">${t('app.save')}</button></div>` : ''}</form>
+        ${owner ? html`<form class="card stack" id="whatsapp"><div class="card-head"><h3>أرقام واتساب</h3></div>
+          ${whatsappNumbers ? html`<p class="muted">من رقم واحد لـ5 أرقام مصرية، بصيغة دولية زي 201289437444.</p>
+            <div class="stack" data-wa-list></div>
+            <div class="row wrap"><button type="button" class="btn btn-soft" data-wa-add>${icon('plus')} إضافة رقم</button>
+              <span class="space"></span><button class="btn btn-primary" data-wa-save>${t('app.save')}</button></div>`
+            : html`<p class="note" role="alert">تعذّر تحميل أرقام واتساب.</p><button type="button" class="btn btn-soft" data-wa-retry>${t('app.retry')}</button>`}
+        </form>` : ''}
         <form class="card stack" id="contact"><div class="card-head"><h3>${t('settings.contact')}</h3></div>
-          <div class="grid2"><label class="field"><span>${t('settings.whatsapp')}</span>${inp('wa', 'whatsapp_e164', 'tel', true, 20)}</label>
-            <label class="field"><span>${t('settings.phone')}</span>${inp('ph', 'phone', 'tel', true, 20)}</label>
+          <div class="grid2"><label class="field"><span>${t('settings.phone')}</span>${inp('ph', 'phone', 'tel', true, 20)}</label>
             <label class="field"><span>${t('settings.email')}</span>${inp('em', 'contact_email', 'email', true, 254)}</label>
             <label class="field"><span>${t('settings.locale')}</span><select class="select" id="lc" ${editContact ? '' : 'disabled'}><option value="ar" ${s.default_locale === 'ar' ? 'selected' : ''}>العربية</option><option value="en" ${s.default_locale === 'en' ? 'selected' : ''}>English</option></select></label>
             <label class="field"><span>${t('settings.instagram')}</span>${inp('ig', 'instagram_url', 'url')}</label>
@@ -35,13 +90,15 @@ export default {
       const after = (r2) => { if (r2.outcome === 'changed') { done(); load(); } else if (r2.outcome === 'unchanged') done(t('settings.unchanged')); else { fail(r2); if (r2.outcome === 'conflict') load(); } };
       $('#brand', el).onsubmit = async (e) => {
         e.preventDefault(); if (!owner) return;
-        after(await withBusy($('button', e.currentTarget), () => call('settings.update_brand', { version: s.version, store_name: $('#sn', el).value.trim(), tagline: $('#tg', el).value.trim() || null, primary_color: $('#pc', el).value.toUpperCase() })));
+        after(await withBusy($('button', e.currentTarget), () => call('settings.update_brand', { version: s.version, store_name: $('#sn', el).value.trim(), tagline: $('#tg', el).value.trim() || null, primary_color: s.primary_color ?? null })));
       };
       $('#contact', el).onsubmit = async (e) => {
         e.preventDefault(); if (!editContact) return;
         const v = (id) => $(id, el).value.trim() || null;
-        after(await withBusy($('button', e.currentTarget), () => call('settings.update_contact', { version: s.version, whatsapp_e164: v('#wa'), phone: v('#ph'), contact_email: v('#em'), default_locale: $('#lc', el).value, instagram_url: v('#ig'), facebook_url: v('#fb'), tiktok_url: v('#tt') })));
+        after(await withBusy($('button', e.currentTarget), () => call('settings.update_contact', { version: s.version, whatsapp_e164: s.whatsapp_e164 ?? null, phone: v('#ph'), contact_email: v('#em'), default_locale: $('#lc', el).value, instagram_url: v('#ig'), facebook_url: v('#fb'), tiktok_url: v('#tt') })));
       };
+      if (whatsappNumbers) mountWhatsApp($('#whatsapp', el), whatsappNumbers);
+      $('[data-wa-retry]', el)?.addEventListener('click', load);
       $('#logo', el)?.addEventListener('change', async (e) => {
         const f = e.target.files[0]; if (!f) return;
         let prepared;
