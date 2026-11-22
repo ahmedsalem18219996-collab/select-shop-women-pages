@@ -53,7 +53,7 @@ test("Atelier preserves storefront controls, legacy checkout and the isolated ad
   assert.match(admin, /css\/atelier-admin\.css\?v=[a-z0-9-]+/);
   assert.match(admin, /script-src 'self'/);
   assert.match(await source("admin/css/atelier-admin.css"), /:root\[data-theme="dark"\]/);
-  assert.match(checkout, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);
+  assert.match(checkout, /هنكلمك نأكد التوافر وميعاد الشحن/);
   assert.match(done, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);
   assert.match(home, /التوافر بيتأكد بعد تسجيل الطلب/);
 });
@@ -73,7 +73,7 @@ test("Landing-page Atelier remains independently generated", async () => {
   const page = await source("lp/ss-1041/index.html");
   assert.match(page, /id="lpForm"/);
   assert.match(page, /id="lpOrder"/);
-  assert.match(page, /الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل/);
+  assert.match(page, /هنكلمك نأكد التوافر وميعاد الشحن قبل ما نبعت الطلب/);
   assert.doesNotMatch(page, /css\/atelier-site\.css/);
 });
 

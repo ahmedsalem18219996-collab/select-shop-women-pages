@@ -35,7 +35,7 @@
       const r = await fetch(API, { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(12000) });
       if (!r.ok) throw new Error("http");
       data = await r.json();
-    } catch (_) { return note("مش قادرين نحمّل القطعة دلوقتي. يرجى المحاولة مرة أخرى بعد قليل."); }
+    } catch (_) { return note("مش قادرين نحمّل القطعة دلوقتي. جربي تاني كمان شوية."); }
 
     const brand = data.brand || {};
     if (/^\+?[1-9]\d{6,14}$/.test(brand.whatsapp || "")) {
@@ -47,7 +47,7 @@
       return note("القطعة دي مش متاحة دلوقتي.");
     }
     const title = String(item.title || "").trim().slice(0, 200);
-    document.title = title + " · SELECT SHOP WOMEN";
+    document.title = title + " · SELECT SHOP";
     const photo = el("div", { class: "photo" }, el("img", { src: item.image, alt: title, width: "800", height: "1000", fetchpriority: "high" }), el("i", { class: "tape" }));
     if (item.isNew) photo.append(el("span", { class: "tag", text: "جديد" }));
     const price = el("div", { class: "price" }, document.createTextNode(egp(item.priceMinor)), el("small", { text: "جنيه" }));

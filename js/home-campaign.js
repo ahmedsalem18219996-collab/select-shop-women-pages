@@ -1,6 +1,8 @@
 /* Home campaign hero: one line in js/config.js (campaignSlug) names the campaign shown on the home.
    Reads the public /collections/<slug> (titles, server prices, photos, saved accent); no slug, a bad slug or any error keeps the brand hero.
-   Look only: links go to the same product landing pages and campaign page as everywhere else; no order, price or tracking logic here. */
+   Look only: links go to the same product landing pages and campaign page as everywhere else; no order, price or tracking logic here.
+   The Admin's home campaign (storefront homeCampaignSlug, the same one read WhatsApp uses) replaces the config line when set. */
+import { storefront } from './store-contact.js?v=20261122';
 const BRIDGE = 'https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge';
 export const DEFAULT_ACCENT = '#C8102E';
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -97,8 +99,14 @@ function paint(/** @type {NonNullable<ReturnType<typeof campaignView>>} */ view)
   rail.hidden = false;
 }
 
+/** The campaign the owner put on the home in the Admin (storefront homeCampaignSlug) wins; empty, missing or a failed read → js/config.js. */
+export function homeSlug(/** @type {any} */ storefrontData, /** @type {unknown} */ configSlug) {
+  const own = typeof storefrontData?.homeCampaignSlug === 'string' ? storefrontData.homeCampaignSlug.trim() : '';
+  return SLUG.test(own) ? own : String(configSlug || '').trim();
+}
+
 async function boot() {
-  const slug = String(window.SELECT_CONFIG?.campaignSlug || '').trim();
+  const slug = homeSlug(await storefront(), window.SELECT_CONFIG?.campaignSlug);
   if (!SLUG.test(slug)) return;
   try {
     const r = await fetch(BRIDGE + '/collections/' + encodeURIComponent(slug), { cache: 'no-store', credentials: 'omit', headers: { Accept: 'application/json' },

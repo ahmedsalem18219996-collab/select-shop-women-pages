@@ -32,7 +32,7 @@ body{background:radial-gradient(70% 22% at 90% 4%,rgba(214,206,196,.55),transpar
 .hdr{background:var(--glass);border-bottom:1px solid var(--hair)}
 .hdr-in{min-height:var(--hdr);height:var(--hdr);display:flex;justify-content:space-between;align-items:center}
 .logo{display:flex;align-items:center;gap:10px;color:var(--ink);justify-items:normal}
-.nx-mark{width:36px;height:36px;border-radius:9px;background:#fff;box-shadow:inset 0 0 0 1px var(--hair);display:grid;place-items:center;font:800 20px/1 var(--f-num);font-style:normal}
+.nx-mark{width:36px;height:36px;border-radius:9px;background:#fff;box-shadow:inset 0 0 0 1px var(--hair);display:grid;place-items:center;font:800 20px/1 var(--f-num);font-style:normal;direction:ltr;unicode-bidi:isolate} /* "S." not ".S" in RTL */
 .nx-word{direction:ltr;unicode-bidi:isolate;display:flex;gap:.28em;align-items:baseline}
 .logo b,.logo small{font:800 19px/1 var(--f-num);letter-spacing:-.04em;text-transform:uppercase;color:var(--ink);margin:0}
 .logo b::after{content:none}
@@ -147,6 +147,12 @@ body{background:radial-gradient(70% 22% at 90% 4%,rgba(214,206,196,.55),transpar
 .tabbar .on::before{content:none}
 .tabbar .on::after{content:"";width:5px;height:5px;border-radius:50%;background:#111}
 .tabbar .dot{top:2px;left:auto;inset-inline-end:calc(50% - 24px)}
+/* WhatsApp: icon only, above the tab bar (never over it or the order buttons), inside the safe area */
+.wa-fab{position:fixed;z-index:39;inset-inline-end:max(16px,env(safe-area-inset-left,0px));bottom:calc(94px + env(safe-area-inset-bottom,0px));width:52px;height:52px;display:grid;place-items:center;border-radius:50%;background:#128C7E;color:#fff;box-shadow:0 10px 24px -10px rgba(0,0,0,.45)}
+.wa-fab svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.wa-fab:focus-visible{outline:2px solid #111;outline-offset:3px}
+.wa-fab[hidden]{display:none}
+#products,#shipping{scroll-margin-top:calc(var(--hdr) + 12px)}
 
 /* ---------- sheets, stories, looks: same ink ---------- */
 .sheet,.utility-dialog{background:#fff;color:var(--ink);border-radius:22px 22px 0 0}
@@ -182,6 +188,7 @@ body{background:radial-gradient(70% 22% at 90% 4%,rgba(214,206,196,.55),transpar
  .nx-rail-shot{height:340px}
  .feed{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:22px 18px}
  .nx-trust{margin-top:44px}
+ .wa-fab{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 }
 
 @keyframes nx-beam{to{--nx-b:360deg}}

@@ -6,6 +6,7 @@ import { findVariant, openValues, lineOk, priceLabel, colourIndex, colourMedia, 
 import { normalizeDesign, cleanPageTheme, inkFor, DEFAULT_HINT, campaignAccent, CAMPAIGN_FONTS } from '../lp/studio-design.js?v=20261121-font';
 import { hexOf } from '../js/colour-palette.js?v=20261120-campaign';
 const loadMotion = () => import('../lp/motion.js?v=20261120-campaign');
+const loadContact = () => import('../js/store-contact.js?v=20261122');
 
 const BRIDGE = 'https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge';
 const CHECKOUT = 'https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout';
@@ -92,8 +93,19 @@ buyNow.addEventListener('click', () => {
   (card || document.getElementById('cpOrder'))?.scrollIntoView({ behavior: smooth(), block: 'start' });
 });
 let orderOnScreen = false;
+const waFab = document.getElementById('cpWa');
 const placeBar = () => {
   bagBar.hidden = scrollY < innerHeight * 0.9 || orderOnScreen;
+  // WhatsApp sits above the buy bar and steps aside while the order box or any add-to-bag button would be under it.
+  if (waFab) {
+    waFab.classList.toggle('wa-fab--up', !bagBar.hidden);
+    waFab.hidden = false;
+    const f = waFab.getBoundingClientRect();
+    waFab.hidden = orderOnScreen || [...document.querySelectorAll('.cp-add')].some(b => {
+      const r = b.getBoundingClientRect();
+      return r.top < f.bottom + 8 && r.bottom > f.top - 8 && r.left < f.right && r.right > f.left;
+    });
+  }
   const price = catalog.get(onScreen()?.dataset.code || '')?.price;
   buyNow.textContent = buyLabel + (price ? ' · ' + price : '');
 };
@@ -298,6 +310,18 @@ function paintCards() {
   const extra = readBag().filter(l => !catalog.has(l.publicCode));
   holder.replaceChildren(...extra.map(otherLine));
 }
+const LINE = (d) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('aria-hidden', 'true');
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); s.append(p); return s; };
+/** The three promises with line icons, as on the home and the product pages. */
+function trustStrip() {
+  const ul = make('ul', 'cp-trust'); ul.setAttribute('aria-label', 'مميزات الطلب');
+  for (const [d, text] of [
+    ['M2.5 6.5h19v11h-19zM12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5', 'الدفع عند الاستلام'],
+    ['M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6', 'عايني قبل ما تدفعي'],
+    ['M2 6h12v10H2zM14 10h4.5L22 13.5V16h-8zM6 18.5a1.8 1.8 0 1 0 0 .01M17 18.5a1.8 1.8 0 1 0 0 .01', 'شحن لكل المحافظات'],
+  ]) { const li = make('li', '', text); li.prepend(LINE(d)); ul.append(li); }
+  return ul;
+}
 /** The order box: the same fields and order as /checkout/, run by the same code (js/commerce.js showCheckout). */
 function orderBox() {
   const box = make('section', 'cp-order');
@@ -323,7 +347,7 @@ function orderBox() {
     input({ label: 'المنطقة', a: { name: 'area', autocomplete: 'address-level2' } }),
     input({ label: 'العنوان بالتفصيل', a: { name: 'address', maxlength: '350', autocomplete: 'street-address', enterkeyhint: 'done' } }),
     notes, items, sum('المنتجات', 'subtotal'), sum('الشحن', 'shipping'), sum('الإجمالي', 'grandTotal', 'cp-grand'), out, submit,
-    make('p', 'collection-note', 'الدفع كاش عند الاستلام. الشحن والإجمالي بيتحسبوا من السيرفر قبل التأكيد.'));
+    trustStrip());
   const title = make('h2', '', 'إتمام الطلب'); title.id = 'cpOrderTitle';
   const intro = make('p', 'cp-order-intro', 'اختيار اللون والمقاس والكمية لكل موديل، وكله في طلب واحد. الدفع عند الاستلام.');
   const modelCards = make('div', 'cp-cards');
@@ -563,6 +587,7 @@ async function render(collection, items, rawTheme) {
     document.documentElement.style.setProperty('--accent-ink', inkFor(accent));
   } else delete document.documentElement.dataset.accent;
   document.title = collection.title + ' · SELECT SHOP';
+  document.querySelector('meta[name="description"]')?.setAttribute('content', collection.title + ' من SELECT SHOP. عايني قبل ما تدفعي، والدفع عند الاستلام.');
   document.documentElement.dataset.titleSize = theme.enabled ? theme.titleSize : 'md';
   document.documentElement.dataset.spacing = theme.enabled ? theme.spacing : 'normal';
   document.documentElement.dataset.pageBg = theme.enabled ? theme.background : '';
@@ -607,7 +632,10 @@ async function render(collection, items, rawTheme) {
     const from = priceLabel(product, null);
     catalog.set(item.publicCode, { title, product, thumb: (shots.find(m => m.isPrimary) || shots[0])?.url || item.image || '',
       price: from === '—' ? '' : from + ' جنيه' });
-    list.append(productSection(item, product, design, sectionLook(design, theme), i, motion, items.length));
+    const section = productSection(item, product, design, sectionLook(design, theme), i, motion, items.length);
+    // Under the first model's photos: the same three promises as next to the order button.
+    if (!list.querySelector('.cp-trust')) section.querySelector('.cp-price')?.after(trustStrip());
+    list.append(section);
   });
   list.append(make('p', 'collection-note', 'كل الموديلات اللي تتضاف للشنطة بتتجمع في طلب واحد. الدفع عند الاستلام، والسعر النهائي والشحن بيتحسبوا قبل التأكيد.'));
   const others = catalog.size > 1 ? otherModels([...catalog].map(([code, c]) => ({ code, title: c.title, image: c.thumb, price: c.price }))) : null;
@@ -618,10 +646,16 @@ async function render(collection, items, rawTheme) {
   root.append(box);
   if (others) root.append(others);
   paintCards();
-  void import('../js/commerce.js?v=lead-20261120').then(m => m.showCheckout(true)).catch(() => {
+  void import('../js/commerce.js?v=20261122-trust').then(m => m.showCheckout(true)).catch(() => {
     const out = document.getElementById('status');
     if (out) out.textContent = 'مش قادرين نجهز الطلب دلوقتي. ممكن تحديث الصفحة.';
   });
+  // WhatsApp: the first model's question, with the store's number once the page has loaded (never before first paint).
+  const firstModel = [...catalog][0];
+  if (firstModel) {
+    const contact = () => void loadContact().then(m => m.wire(() => m.productText(firstModel[1].title, firstModel[0]))).catch(() => {});
+    if (document.readyState === 'complete') contact(); else addEventListener('load', contact, { once: true });
+  }
   addEventListener('scroll', placeBar, { passive: true });
   if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => { orderOnScreen = e.isIntersecting; placeBar(); }).observe(box);
   placeBar();

@@ -8,10 +8,11 @@ test('legacy WOMEN public identity renders as SELECT SHOP for all shoppers', asy
   await expect(page.locator('.hero h1')).toContainText('ستايل يناسبك');
   await expect(page.locator('.hero h1')).not.toContainText('اختاري');
   await expect(page.locator('.logo small')).toHaveText('shop');
-  await expect.poll(() => page.title()).toBe('SELECT SHOP');
+  await expect.poll(() => page.title()).toBe('SELECT SHOP · ملابس حريمي أونلاين، والدفع عند الاستلام');
   await expect(page.locator('.foot > span')).toContainText('SELECT SHOP');
   await expect(page.locator('#feed .card').first()).toBeVisible();
-  expect(await page.locator('meta[name="description"]').getAttribute('content')).toContain('الرجالي والحريمي');
+  expect(await page.locator('meta[name="description"]').getAttribute('content')).toContain('عايني قبل ما تدفعي');
+  expect(await page.locator('meta[name="description"]').getAttribute('content')).not.toContain('رجالي');
 });
 
 test('a custom Owner-controlled public name and announcement are preserved', async ({ page }) => {
@@ -24,9 +25,10 @@ test('a custom Owner-controlled public name and announcement are preserved', asy
     await route.fulfill({ response: upstream, json: response });
   });
   await page.goto('/');
-  await expect.poll(() => page.title()).toBe('SELECT CLUB');
   await expect(page.locator('#womenOwnerAnnouncement')).toHaveText('عروض الأسبوع');
   await expect(page.locator('.hero h1')).toContainText('قطع تناسب الكل');
+  // The tab title is the search title from the copy file (2026-11-22), not the store name.
+  expect(await page.title()).toBe('SELECT SHOP · ملابس حريمي أونلاين، والدفع عند الاستلام');
 });
 
 test('admin login and order success copy do not address women only', async ({ page }) => {
@@ -43,6 +45,6 @@ test('generated LP and legacy cart titles are gender-neutral', async ({ page }) 
   await expect.poll(() => page.title()).toContain('SELECT SHOP');
   await expect(page.locator('footer strong')).toHaveText('SELECT SHOP');
   await page.goto('/cart/');
-  await expect.poll(() => page.title()).toBe('شنطتك | SELECT SHOP');
+  await expect.poll(() => page.title()).toBe('شنطتك · SELECT SHOP');
   await expect(page.locator('.logo small')).toHaveText('shop');
 });

@@ -14,14 +14,14 @@ const cartCheckout = page('checkout/index.html');
 const success = page('order-success/index.html');
 
 test('public homepage does not claim physical stock and tells buyers about review', () => {
-  assert.match(homepage, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);
+  assert.match(homepage, /التوافر بيتأكد بعد تسجيل الطلب/);
   assert.match(homepage, /الدفع عند الاستلام/);
   assert.doesNotMatch(homepage, /تصفحي الموديلات المتاحة بصورها وأسعارها الحقيقية/);
 });
 
 test('customer order remains pending review, including single page and cart paths', () => {
   assert.match(directOrder, /طلبك قيد المراجعة، والتوافر وميعاد الشحن بيتأكدوا قبل التأكيد النهائي/);
-  assert.match(cartCheckout, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);
+  assert.match(cartCheckout, /هنكلمك نأكد التوافر وميعاد الشحن/);
   assert.match(success, /التوافر وميعاد الشحن بيتأكدوا بعد تسجيل الطلب/);
 });
 

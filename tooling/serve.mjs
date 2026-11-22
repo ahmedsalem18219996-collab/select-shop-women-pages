@@ -26,6 +26,9 @@ export const log = { orders: [], cartAdds: [], views: 0, attributions: [] };
 const landings = new Map();
 // Published campaign pages, set by tests via POST /__mock/collection { slug, title, codes, theme } (codes null = remove).
 const collections = new Map();
+// Public storefront settings (women-admin/public/storefront), overridden by tests via POST /__mock/storefront {...} (null = default).
+const STOREFRONT = { whatsappNumbers: ["201289437444"], homeCampaignSlug: "" };
+let storefront = STOREFRONT;
 const keys = new Map(); // idempotencyKey -> { code, body, total }
 // Units left per product code (all variants), set by tests via POST /__mock/stock { code, units } ; absent = unlimited.
 const stock = new Map();
@@ -51,6 +54,7 @@ async function quote(lines, regionKey = "cairo") {
 
 async function mockApi(req, url, body) {
   const p = url.pathname.replace(/^\/__mock\/functions\/v1/, "");
+  if (p === "/women-admin/public/storefront" && req.method === "GET") return [200, storefront];
   if (p === "/women-store-bridge/catalog") return [200, JSON.parse(await readFile(path.join(FIX, "catalog.json"), "utf8"))];
   if (p.startsWith("/women-store-bridge/collections/")) {
     const slug = p.split("/").pop();
@@ -165,7 +169,13 @@ async function serveFile(req, res, url) {
     if (!rel.endsWith("/")) { res.writeHead(301, { Location: rel + "/" + url.search }).end(); return; }
     file = path.join(file, "index.html"); s = await stat(file).catch(() => null);
   }
-  if (!s?.isFile()) { res.writeHead(404, { "Content-Type": "text/plain" }).end("not found"); return; }
+  if (!s?.isFile()) {
+    // Like GitHub Pages: a missing path gets the site's 404.html (with status 404).
+    const page = await readFile(path.join(ROOT, "404.html")).catch(() => null);
+    if (page) res.writeHead(404, { "Content-Type": TYPES[".html"] }).end(page);
+    else res.writeHead(404, { "Content-Type": "text/plain" }).end("not found");
+    return;
+  }
   const ext = path.extname(file);
   let data = rel === "/js/catalog-thumbs.js" ? Buffer.from(await thumbList()) : await readFile(file);
   if (/\.(html|js|mjs|css|json)$/.test(ext)) data = Buffer.from(data.toString("utf8").replaceAll(PROD + "/functions/v1", ORIGIN + "/__mock/functions/v1"));
@@ -192,6 +202,12 @@ export function start(port = PORT) {
         let raw = ""; for await (const chunk of req) raw += chunk;
         const { slug, codes, ...rest } = JSON.parse(raw || "{}");
         if (Array.isArray(codes)) collections.set(slug, { codes, ...rest }); else collections.delete(slug);
+        res.writeHead(204).end(); return;
+      }
+      if (url.pathname === "/__mock/storefront" && req.method === "POST") {
+        let raw = ""; for await (const chunk of req) raw += chunk;
+        const body = JSON.parse(raw || "null");
+        storefront = body && typeof body === "object" ? body : STOREFRONT;
         res.writeHead(204).end(); return;
       }
       if (url.pathname === "/__mock/landing" && req.method === "POST") {

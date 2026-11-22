@@ -7,6 +7,7 @@ import { readFile, writeFile, mkdir, access, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { priceLabel, photoFiles } from "../lp/runtime.js";
+import { waLink, productText, GENERAL, FALLBACK } from "../js/store-contact.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
@@ -241,7 +242,7 @@ h1:empty{background:var(--elev)}
 body{font-weight:400}
 .top{border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:6}
 .mark{font-weight:600;letter-spacing:.34em;line-height:1;gap:4px}
-.mark::after{content:"SHOP WOMAN";width:auto;height:auto;background:none;font:400 8px/1 var(--f);letter-spacing:.38em;color:var(--muted)}
+.mark::after{content:"SHOP";width:auto;height:auto;background:none;font:400 8px/1 var(--f);letter-spacing:.38em;color:var(--muted)}
 .top .jump{font-size:13px;text-decoration:none;border-bottom:1px solid var(--cyan);padding:4px 0}
 #lpCartLink{background:transparent;color:var(--ink);border:0;box-shadow:inset 0 0 0 1px var(--cyan)}
 body:not([data-campaign]) .atelier-heading{font:400 11px/1.6 var(--f);letter-spacing:.22em;color:var(--cyan);margin:0}
@@ -357,7 +358,7 @@ html{background:var(--bg)}
 :focus-visible,a:focus-visible,button:focus-visible,.lp-opt input:focus-visible+span{outline:2px solid #111;outline-offset:3px}
 .top{background:rgba(250,250,249,.86);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--line)}
 .mark{flex-direction:row;align-items:center;gap:8px;font:800 18px/1 var(--f-num);letter-spacing:-.02em;text-transform:lowercase;color:var(--ink)}
-.mark::before{content:"S.";display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#111;color:#fff;font-size:14px;letter-spacing:0;text-transform:none}
+.mark::before{content:"S.";direction:ltr;unicode-bidi:isolate;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#111;color:#fff;font-size:14px;letter-spacing:0;text-transform:none}
 .mark::after{content:"shop";font:500 12px/1 var(--f-num);letter-spacing:0;color:var(--muted)}
 .top .jump{border-bottom:1.5px solid var(--nx-accent)}
 #lpCartLink{border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);padding:0 14px}
@@ -412,6 +413,15 @@ body[data-campaign] .campaign-jump{border-radius:16px}
 #lpGallery{gap:10px;margin-top:2px}#lpGallery button{width:64px}
 }
 @media(min-width:900px){#lpHero{border-radius:24px!important}#lpTitle{font-size:38px}.head .price{font-size:30px}}
+/* Trust strip with line icons, the size question and the WhatsApp button (2026-11-22). The button sits on the photo side,
+   above the fixed buy bar on phones, so it never covers the order button. */
+.trust li{display:inline-flex;align-items:center;gap:6px}.trust li::before{display:none}
+.trust svg,.wa-size svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#lpOptions:has(.one)+.wa-size{display:none}
+.wa-size{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;min-height:44px;font-size:13px;color:var(--ink);text-underline-offset:3px}
+.wa-fab{position:fixed;z-index:6;inset-inline-start:max(16px,env(safe-area-inset-right,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:52px;height:52px;display:grid;place-items:center;border-radius:50%;background:#128C7E;color:#fff;box-shadow:0 10px 24px -10px rgba(0,0,0,.45)}
+.wa-fab svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:899px){.wa-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}}
 `;
 
 const chevron = (d) => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
@@ -429,14 +439,25 @@ const thumbs = (c, n) => n < 2 ? "" : c.zoom.map((_, i) => `<button type="button
 // html.hl (fonts, gallery photos) only after the hero photo has painted, so nothing else competes with the LCP paint.
 const HERO_READY = ` onload="requestAnimationFrame(()=>setTimeout(()=>document.documentElement.classList.add('hl')))" onerror="document.documentElement.classList.add('hl')"`;
 
-const DEFAULT_BENEFITS = ["الدفع عند الاستلام، من غير دفع مقدم", "اختيار المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد", "الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل"];
+const DEFAULT_BENEFITS = ["الدفع عند الاستلام، من غير دفع مقدم", "اختيار المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد", "هنكلمك نأكد التوافر وميعاد الشحن قبل ما نبعت الطلب."];
+
+const icon = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+/** The same three promises as the home's trust row, with line icons (cash, eye, truck). */
+export const TRUST = `<ul class="trust" aria-label="مميزات الطلب">${[
+  ["M2.5 6.5h19v11h-19zM12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5", "الدفع عند الاستلام"],
+  ["M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6", "عايني قبل ما تدفعي"],
+  ["M2 6h12v10H2zM14 10h4.5L22 13.5V16h-8zM6 18.5a1.8 1.8 0 1 0 0 .01M17 18.5a1.8 1.8 0 1 0 0 .01", "شحن لكل المحافظات"],
+].map(([d, t]) => `<li>${icon(d)}${t}</li>`).join("")}</ul>`;
+const WA_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5l1.3-4.4a8.5 8.5 0 1 1 3.2 3.1z"/><path d="M9.2 8.2c-.4 2.9 3.6 6.9 6.6 6.6l.9-1.6-2.1-1.1-1 .9a5 5 0 0 1-2.6-2.6l.9-1-1.1-2.1z"/></svg>';
+const SHARE_IMAGE = "https://selectshopeg.com/assets/og/og-share.jpg";
+const SHARE_TEXT = "عايني قبل ما تدفعي · الدفع عند الاستلام · شحن لكل المحافظات";
 
 // Starts the product and governorate reads while the runtime module downloads; lp/runtime.js picks them up once.
 export const PREFETCH = (codeExpr) => `(()=>{try{if(window.__lpGo)return;const A="${API}",c=${codeExpr};if(!/^SS-\\d{4,19}$/.test(c)){location.replace("/");return}const g=p=>fetch(A+p,{cache:"no-store",headers:{Accept:"application/json"}});window.__lp={code:c,product:g("/product/"+c),regions:g("/regions")}}catch(e){}})()`;
 
 const field = (name, label, control) => `<label class="f"><span>${label}</span>${control}<small id="lpErr-${name}" aria-live="polite"></small></label>`;
 const ORDER_FORM = `<form class="order" id="lpForm" novalidate>
-<h2>تسجيل الطلب<small>يرجى إدخال البيانات؛ ويتم تأكيد التوافر وميعاد الشحن بعد تسجيل الطلب.</small></h2>
+<h2>تسجيل الطلب<small>اكتبي بياناتك، وهنكلمك نأكد معاكي التوافر وميعاد الشحن.</small></h2>
 <div class="qty"><span id="lpQtyLabel">الكمية</span><div class="step" role="group" aria-labelledby="lpQtyLabel"><button type="button" id="lpQtyUp" data-q="1" aria-label="زوّدي واحدة">+</button><output id="lpQty" aria-live="polite">١</output><button type="button" id="lpQtyDown" data-q="-1" aria-label="قلّلي واحدة" disabled>−</button></div></div>
 ${field("name", "الاسم", `<input name="name" autocomplete="name" maxlength="200" enterkeyhint="next" required>`)}
 ${field("phone", "رقم الموبايل", `<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="01xxxxxxxxx" dir="ltr" enterkeyhint="next" required>`)}
@@ -460,7 +481,8 @@ function layout(o) {
     ? ORDER_FORM.replace('</small></h2>', '</small></h2>\n' + checkoutPicker)
     : ORDER_FORM;
   // Product Landing Studio is part of the shared runtime, so every LP must fetch this release.
-  const choiceVersion = "20261122-soft";
+  const choiceVersion = "20261122-trust";
+  const wa = esc(o.wa);
   return `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -472,6 +494,13 @@ function layout(o) {
 <!-- Generated by tooling/build-lp.mjs${o.source}. Do not edit by hand. -->
 <title>${o.title}</title>
 <meta name="description" content="${o.description}">
+<meta property="og:type" content="${o.ogType}">
+<meta property="og:site_name" content="SELECT SHOP">
+<meta property="og:locale" content="ar_EG">
+${o.ogUrl ? `<meta property="og:url" content="${o.ogUrl}">\n` : ""}<meta property="og:title" content="${o.ogTitle}">
+<meta property="og:description" content="${SHARE_TEXT}">
+<meta property="og:image" content="${o.ogImage}">
+<meta name="twitter:card" content="summary_large_image">
 ${o.canonical}<link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 ${o.preload}<link rel="preconnect" href="https://byluoipdunralsurwebt.supabase.co" crossorigin>
 ${o.route || ""}<script id="lp-ab">${AB_SNIPPET}</script>
@@ -494,9 +523,9 @@ ${stageControls(o.count)}
 <p class="atelier-heading">${campaign ? esc(campaign.headline) : "تفاصيل تكمّل إطلالتك"}</p>
 <div class="head"><div class="row"><h1 id="lpTitle">${o.h1}</h1><p class="price"><span id="lpPrice">${o.price}</span><small>جنيه</small></p></div>
 ${o.picker ? o.picker + "\n" : ""}<div id="lpOptions">${o.options}</div>
-<p class="desc" id="lpDesc">${o.desc}</p>\n<div class="desc product-details" id="lpMore">${o.more}</div></div>
-${campaign ? "" : `<ul class="trust" aria-label="مميزات الطلب"><li>الدفع عند الاستلام</li><li>شحن لكل المحافظات</li><li>الإجمالي واضح قبل التأكيد</li></ul>\n`}
-${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · الشحن واضح قبل التأكيد</p><a class="campaign-jump" href="#lpForm">اختيار الكمية وتسجيل الطلب</a>\n` : ""}${orderForm}
+<a class="wa-size" href="${wa}" data-wa rel="noopener">${WA_ICON}محتارة في المقاس؟ اسألينا على واتساب</a>\n<p class="desc" id="lpDesc">${o.desc}</p>\n<div class="desc product-details" id="lpMore">${o.more}</div></div>
+${TRUST}
+${campaign ? `<a class="campaign-jump" href="#lpForm">اختيار الكمية وتسجيل الطلب</a>\n` : ""}${orderForm}
 <p id="lpStatus" role="status" aria-live="polite"></p>
 <div class="bar"><div><span class="sum" aria-hidden="true"><b id="lpBarPrice">${o.price === "—" ? "—" : o.price + " ج"}</b><span id="lpBarChoice">${o.choice}</span></span><button type="button" id="lpAddCart"${campaign?.directOnly ? " hidden" : ""} disabled>إضافة للشنطة</button><button type="submit" form="lpForm" id="lpOrder" disabled>تأكيد الطلب</button></div></div>
 <h2 class="reassurance">طلبك واضح من البداية</h2>
@@ -505,6 +534,7 @@ ${campaign ? `<p class="campaign-trust">الدفع عند الاستلام · ا
 ${o.video}
 </div>
 </main>
+<a class="wa-fab" href="${wa}" data-wa rel="noopener" aria-label="كلمينا على واتساب">${WA_ICON}</a>
 <footer><strong dir="ltr">SELECT SHOP</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
@@ -524,14 +554,19 @@ export function render(page, products, fontFaces = "") {
   const hero = photoFiles(first.dir, 0), count = first.zoom.length;
   const lines = String(product.description || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 6);
   const oneSize = Array.isArray(product.options) && product.options.length === 0;
+  const url = `https://selectshopeg.com/lp/${esc(page.id)}/`;
   const picker = colors.length > 1 ? `<fieldset class="pick" id="lpColors"><legend>اللون: <span id="lpColorName">${esc(first.name)}</span></legend><div class="row">${colors.map((c, i) =>
     `<button type="button" class="chip" data-code="${esc(c.code)}" aria-pressed="${i === 0}"><i style="background:${esc(c.hex)}"></i>${esc(c.name)}</button>`).join("")}</div></fieldset>` : "";
   return layout({
     campaign: page.campaign,
     source: ` from tooling/pages/${esc(page.id)}.json`,
-    title: `${esc(title)} · SELECT SHOP`,
-    description: `${esc(title)}. يمكن تسجيل الطلب من نفس الصفحة، مع الدفع عند الاستلام والشحن لكل المحافظات.`,
-    canonical: `<link rel="canonical" href="https://selectshopeg.com/lp/${esc(page.id)}/">\n`,
+    title: `${esc(title)} · ${price} ج · SELECT SHOP`,
+    description: `${esc(title)} بـ ${price} جنيه. عايني قبل ما تدفعي، والدفع عند الاستلام، والشحن لكل المحافظات.`,
+    canonical: `<link rel="canonical" href="${url}">\n`,
+    ogType: "product", ogUrl: url, ogTitle: `${esc(title)} · ${price} ج`,
+    // The product's own first photo (the committed 800px WebP) is the share image.
+    ogImage: esc(new URL(hero.src, url).href),
+    wa: waLink(FALLBACK, productText(title, first.code)),
     preload: `<link rel="preload" as="image" type="image/avif" imagesrcset="${hero.avif}" imagesizes="${sizes}" fetchpriority="high">\n`,
     codeExpr: JSON.stringify(first.code), fontFaces,
     hero: `<source type="image/avif" srcset="${hero.avif}" sizes="${sizes}"><source type="image/webp" srcset="${hero.webp}" sizes="${sizes}"><img src="${hero.src}" alt="${esc(first.alt)}" width="800" height="1067" fetchpriority="high" decoding="async"${HERO_READY}>`,
@@ -577,7 +612,8 @@ export function renderShell(fontFaces = "", routes = {}) {
   const code = `String(new URLSearchParams(location.search).get("p")||new URLSearchParams(location.search).get("code")||"").trim().toUpperCase()`;
   return layout({
     source: " (automatic product page)", title: "SELECT SHOP",
-    description: "يمكن تسجيل الطلب من نفس الصفحة عبر SELECT SHOP، مع الدفع عند الاستلام والشحن لكل المحافظات.",
+    description: SHARE_TEXT, ogType: "website", ogUrl: "", ogTitle: "SELECT SHOP", ogImage: SHARE_IMAGE,
+    wa: waLink(FALLBACK, GENERAL),
     canonical: "", preload: "", codeExpr: code, fontFaces, route: ROUTE(routes),
     hero: `<img alt="" width="800" height="1067" decoding="async"${HERO_READY}>`, gallery: "", count: 0, h1: "", price: "—", desc: "", picker: "", options: "",
     choice: "اختيار المقاس", benefits: DEFAULT_BENEFITS, more: "", video: "",

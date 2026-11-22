@@ -7,7 +7,7 @@ import { render, renderShell, shellRoutes, photos, esc, AB_SNIPPET, PREFETCH, co
 
 test("landing copy states availability is pending and makes no inspection promise", () => {
   const html = renderShell("", {});
-  assert.match(html, /الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل/);
+  assert.match(html, /هنكلمك نأكد التوافر وميعاد الشحن قبل ما نبعت الطلب/);
   assert.doesNotMatch(html, /المعاينة متاحة عند الاستلام/);
   assert.doesNotMatch(html, /هنكلمك على رقمك لتأكيد الطلب قبل الشحن/);
 });
@@ -158,14 +158,14 @@ test("generated pages retain optional cart except explicitly focused direct-only
   assert.match(html, /id="lpCartLink"/);
   assert.match(html, /id="lpCartCount"/);
   assert.match(html, /id="lpOrder"/);
-  assert.match(html, /\/lp\/runtime\.js\?v=20261122-soft/);
+  assert.match(html, /\/lp\/runtime\.js\?v=20261122-trust/);
   assert.match(html, /\/lp\/image-zoom\.js\?v=20261114-auto-zoom/);
   const generated = await readdir(new URL("../../lp/", import.meta.url), { withFileTypes:true });
   const dirs = generated.filter(d => d.isDirectory() && (d.name.startsWith("ss-") || d.name === "ballon-suit"));
   assert.equal(dirs.length, 39);
   for (const d of dirs) {
     const page = await readFile(new URL("../../lp/" + d.name + "/index.html", import.meta.url), "utf8");
-    assert.match(page, /\/lp\/runtime\.js\?v=20261122-soft/, d.name);
+    assert.match(page, /\/lp\/runtime\.js\?v=20261122-trust/, d.name);
     assert.match(page, /id="lpAddCart"/, d.name);
     assert.match(page, /id="lpOrder"/, d.name);
     if (page.includes('"directOnly":true')) assert.doesNotMatch(page, /id="lpCartLink"/, d.name);
