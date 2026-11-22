@@ -26,7 +26,7 @@ test("several photos: thumbnails, arrows (RTL), keys, swipe and counter swap the
   await expect(thumbs(page)).toHaveCount(4);
   await expect(page.locator("#lpCount")).toHaveText("1/4");
   await expect(thumbs(page).nth(0)).toHaveAttribute("aria-current", "true");
-  await expect(thumbs(page).nth(0)).toHaveCSS("border-color", "rgb(46, 217, 209)"); // cyan frame on the current photo
+  await expect(thumbs(page).nth(0)).toHaveCSS("border-color", "rgb(17, 17, 17)"); // black frame on the current photo
   const url = page.url();
   await page.locator("#lpNext").click();
   expect(await heroSrc(page)).toBe("/lp/ss-1008/img/SS-1008/1-800.webp");

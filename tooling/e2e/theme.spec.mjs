@@ -36,13 +36,14 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-// The home is light only since the Neutral redesign: its hero is covered by e2e/home-neutral.spec.mjs.
+// The home and the landing pages are light only since the Neutral redesign (e2e/home-neutral.spec.mjs and the LP test below);
+// the switch lives on /p/, /cart/, /checkout/ and /order-success/.
 
 test("Dark by default; the Sun/Moon switch works from the keyboard, instantly, and is remembered", async ({ page }) => {
-  await page.goto("/lp/ss-1008/");
-  await page.locator("#lpOrder:enabled").waitFor();
+  await page.goto("/p/?code=SS-1008&legacy=1");
+  await page.locator("#productPhoto:not([hidden])").waitFor();
   expect(await themeOf(page)).toEqual({ theme: "dark", bg: DARK_BG, meta: "#050B1C" });
-  const toggle = page.locator(".top [data-theme-toggle]");
+  const toggle = page.locator("[data-theme-toggle]:visible");
   await expect(toggle).toHaveAttribute("aria-label", "التحويل للوضع الفاتح");
   const box = await toggle.boundingBox();
   expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44);
@@ -60,8 +61,7 @@ test("Dark by default; the Sun/Moon switch works from the keyboard, instantly, a
 
 test("a saved Light choice is on from the first frame of every page, after reload and across navigation", async ({ page }) => {
   await saveLight(page);
-  const routes = [["/lp/ss-1008/", "#lpOrder:enabled"], ["/lp/?p=SS-1099", "#lpOrder:enabled"], ["/lp/ss-1011/", "#lpOrder:enabled"],
-    ["/p/?code=SS-1008&legacy=1", "#productPhoto:not([hidden])"], ["/cart/", "main"], ["/checkout/", "#region"], ["/order-success/?order=ORD-THEME", "main"]];
+  const routes = [["/p/?code=SS-1008&legacy=1", "#productPhoto:not([hidden])"], ["/cart/", "main"], ["/checkout/", "#region"], ["/order-success/?order=ORD-THEME", "main"]];
   for (const [url, ready] of routes) {
     await page.goto(url);
     await page.locator(ready).first().waitFor();
@@ -78,31 +78,36 @@ test("a saved Light choice is on from the first frame of every page, after reloa
   expect(await page.evaluate(() => window.__firstFrameTheme)).toBe("light");
 });
 
-test("switching mid-product keeps the colour, size, photo and order state; the gallery keeps working", async ({ page, request }) => {
+test("landing pages are light only: a saved Dark or Light choice never changes them; gallery, colours and zoom work", async ({ page, request }) => {
   const before = (await mockLog(request)).orders.length;
+  for (const saved of ["dark", "light"]) {
+    await page.addInitScript(([k, t]) => { try { localStorage.setItem(k, t); } catch { /* blocked */ } }, [KEY, saved]);
+    for (const url of ["/lp/ss-1008/", "/lp/?p=SS-1099"]) {
+      await page.goto(url);
+      await page.locator("#lpOrder:enabled").waitFor();
+      expect(await themeOf(page), saved + " " + url).toEqual({ theme: undefined, bg: "rgb(250, 250, 249)", meta: "#FAFAF9" });
+      expect(await page.evaluate(() => window.__firstFrameTheme), url).toBe(null);
+      await expect(page.locator("[data-theme-toggle]"), url).toHaveCount(0);
+      await expect(page.locator("#lpOrder"), url).toHaveCSS("color", "rgb(255, 255, 255)");
+    }
+  }
   await page.goto("/lp/ss-1008/");
   await page.locator("#lpOrder:enabled").waitFor();
   await page.locator('#lpColors .chip[data-code="SS-1009"]').click();
   await page.waitForFunction(() => /SS-1009/.test(document.querySelector("#lpHero img").src));
   await page.locator("#lpNext").click();
   await expect(page.locator("#lpCount")).toHaveText("2/4");
-  const url = page.url();
-  await page.locator(".top [data-theme-toggle]").click();
-  expect((await themeOf(page)).theme).toBe("light");
-  expect(page.url()).toBe(url);
-  await expect(page.locator("#lpCount")).toHaveText("2/4");
   await expect(page.locator('#lpColors .chip[data-code="SS-1009"]')).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#lpGallery button").nth(1)).toHaveCSS("border-color", "rgb(0, 114, 122)"); // Light cyan frame
+  await expect(page.locator("#lpGallery button").nth(1)).toHaveCSS("border-color", "rgb(17, 17, 17)"); // black frame on the current photo
   await page.locator("#lpGallery button").nth(3).click();
   await expect(page.locator("#lpCount")).toHaveText("4/4");
   await expect(page.locator("#lpZoom[open]")).toHaveCount(0);
   await page.locator("#lpPrev").click();
   await expect(page.locator("#lpCount")).toHaveText("3/4");
-  await expect(page.locator("#lpOrder")).toBeEnabled();
   await page.waitForTimeout(400);
   await page.locator("#lpHero img").click();
   await expect(page.locator("#lpZoom[open]")).toBeVisible();
-  await expect(page.locator("#lpZoom")).toHaveCSS("background-color", "rgb(255, 253, 248)"); // zoom follows the theme
+  await expect(page.locator("#lpZoom")).not.toHaveCSS("background-color", DARK_BG); // zoom on the light canvas
   expect((await mockLog(request)).orders.length).toBe(before);
 });
 
@@ -139,7 +144,7 @@ test("no horizontal overflow in either theme at the review widths", async ({ pag
         const o = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, theme: document.documentElement.dataset.theme,
           head: [...document.querySelectorAll(".top>*,.hdr-in>*,.hdr-tools>*")].filter(e => e.getClientRects().length && getComputedStyle(e).display !== "contents")
             .map(e => e.getBoundingClientRect()).map(r => [Math.round(r.left), Math.round(r.right)]) }));
-        expect(o.theme).toBe(url === "/" ? undefined : theme); // the home is light only
+        expect(o.theme).toBe(url === "/" || url.startsWith("/lp/") ? undefined : theme); // the home and landing pages are light only
         expect(o.sw, `${theme} ${w}px ${url}`).toBeLessThanOrEqual(w);
         for (const [l, r] of o.head) { expect(l, `${w}px ${url} header`).toBeGreaterThanOrEqual(0); expect(r, `${w}px ${url} header`).toBeLessThanOrEqual(w); }
       }
@@ -196,12 +201,12 @@ test("under 375px the header drops only what the tab bar or buy bar already offe
 
 test("saved Light theme survives browser Back and Forward navigation", async ({ page }) => {
   await saveLight(page);
-  await page.goto("/lp/ss-1008/");
-  await page.locator("#lpOrder:enabled").waitFor();
+  await page.goto("/p/?code=SS-1008&legacy=1");
+  await page.locator("#productPhoto:not([hidden])").waitFor();
   await page.goto("/cart/");
   await page.locator("main").waitFor();
   await page.goBack();
-  await page.locator("#lpOrder:enabled").waitFor();
+  await page.locator("#productPhoto:not([hidden])").waitFor();
   expect((await themeOf(page)).theme).toBe("light");
   await page.goForward();
   await page.locator("main").waitFor();

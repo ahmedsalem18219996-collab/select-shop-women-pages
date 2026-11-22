@@ -26,7 +26,8 @@ export const AB_SNIPPET = `(()=>{let s=null;try{s=localStorage.getItem("women.lp
 
 // Dark (default) / Light. Inline in <head> right after the theme-color meta, before any stylesheet: <html data-theme> is set before
 // first paint, so a saved Light choice never flashes Dark. One delegated click handler serves every [data-theme-toggle] on the page.
-// The storefront pages (/, /p/, /cart/, /checkout/, /order-success/) carry the same two strings; tooling/test/theme.test.mjs keeps them identical.
+// Since the Neutral look (2026-11-21) the home and the landing pages are light only and carry neither; /p/, /cart/, /checkout/ and
+// /order-success/ still carry these two strings, and tooling/test/theme.test.mjs keeps them identical.
 export const THEME_BOOT = `(()=>{const d=document.documentElement,K="ssw.theme.v1";let t="dark";const read=()=>{try{return localStorage.getItem(K)==="light"?"light":"dark"}catch(e){return"dark"}},set=x=>{t=x;d.dataset.theme=x;const m=document.querySelector('meta[name="theme-color"]'),l=x==="light"?"التحويل للوضع الداكن":"التحويل للوضع الفاتح";if(m)m.content=x==="light"?"#F7F3EC":"#050B1C";for(const b of document.querySelectorAll("[data-theme-toggle]")){b.setAttribute("aria-label",l);b.title=l}};set(read());document.addEventListener("click",e=>{const b=e.target instanceof Element&&e.target.closest("[data-theme-toggle]");if(!b)return;set(t==="light"?"dark":"light");try{localStorage.setItem(K,t)}catch(e){}});document.addEventListener("DOMContentLoaded",()=>set(t));addEventListener("pageshow",e=>{if(e.persisted)set(read())})})()`;
 export const THEME_TOGGLE = '<button type="button" class="theme-toggle" data-theme-toggle aria-label="التحويل للوضع الفاتح" title="التحويل للوضع الفاتح"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>';
 /** Light tokens + switch styles, read from the storefront sheet so both surfaces share one palette. */
@@ -293,10 +294,6 @@ body:not([data-campaign]) .head{position:relative;z-index:1;margin:-16px 12px 0;
 h1{font-size:44px}.price{font-size:28px}
 .info{gap:22px}
 }
-/* The same faint, theme-aware page contours as the public storefront: CSS-only, no network cost. */
-/* Luxury silk wallpaper (2026-11-14): a tiny vector layer, fixed behind the full page. */
-html{background-color:var(--bg);background-image:linear-gradient(rgba(5,11,28,.76),rgba(5,11,28,.88)),url("/assets/luxury-silk-bg.svg");background-size:cover;background-position:center top;background-repeat:no-repeat;background-attachment:fixed}
-:root[data-theme="light"]{background-image:linear-gradient(rgba(247,243,236,.82),rgba(247,243,236,.91)),url("/assets/luxury-silk-bg.svg")}
 body{background:transparent}
 /* Product gallery (2026-11-06): the whole garment stays visible (3:4 photos shown with contain, never cropped or covered),
    one colour's photos at a time, thumbnails under the photo (beside it on desktop), arrows, swipe and a 1/4 counter.
@@ -327,12 +324,11 @@ body:not([data-campaign]) .atelier-heading,body:not([data-campaign]) .head{margi
 #lpGallery button{width:56px}
 #lpHero{max-height:calc(100dvh - 110px)}
 }
-/* Theme (2026-11-06): the last hard-coded dark values become tokens, then the shared Light block. */
+/* Theme (2026-11-06): the last hard-coded dark values become tokens. */
 .step button:disabled{color:var(--off)}
 .chip i{box-shadow:0 0 0 1px var(--ring)}
 .lp-opt .sw{border-color:var(--ring)}
-.top .theme-toggle{margin-inline-start:-6px}
-/* the switch takes 44px of the phone header: tighter gaps, and under 375px the "jump to form" link goes (the fixed bar's buy button does the same) */
+/* small phones: tighter header gaps, and under 375px the "jump to form" link goes (the fixed bar's buy button does the same) */
 @media(max-width:420px){.top{gap:4px;padding-inline:8px}.mark{font-size:18px;letter-spacing:.18em}.top .jump{font-size:11px}#lpCartLink{font-size:11px;padding-inline:6px}.browse-home--top{font-size:10px;padding-inline:5px;gap:4px}.browse-home__wide{display:none}.browse-home__compact{display:inline}}
 @media(max-width:374px){.top .jump{display:none}}
 /* LP mobile purchase flow: options before descriptions, an unclipped catalogue return link. */
@@ -340,18 +336,82 @@ html .head > .pick,html .head > #lpOptions{order:0}
 html .head > #lpDesc,html .head > #lpMore{order:1}
 .head > #lpOptions:empty{display:none}
 @media(max-width:899px){
-.top{display:grid;grid-template-columns:auto minmax(0,1fr) auto 44px;grid-template-areas:"brand jump cart theme" "browse browse browse browse";gap:8px;padding:10px 12px}
+.top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"brand jump cart" "browse browse browse";gap:8px;padding:10px 12px}
 .top .mark{grid-area:brand;min-width:0}
 .top .jump{grid-area:jump;justify-self:center;margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .top #lpCartLink{grid-area:cart}
-.top .theme-toggle{grid-area:theme;margin:0}
 .top .browse-home--top{grid-area:browse;justify-self:stretch;justify-content:center;width:100%;min-width:0;min-height:44px;margin:0;padding:9px 12px;border:1px solid var(--cyan);border-radius:10px;background:var(--elev);color:var(--ink);font-size:14px;font-weight:600;white-space:normal}
 .top .browse-home__wide{display:none}
 .top .browse-home__compact{display:inline}
 }
-@media(max-width:374px){.top{grid-template-columns:auto minmax(0,1fr) 44px;grid-template-areas:"brand cart theme" "browse browse browse"}}
-
-${SHARED_THEME}
+@media(max-width:374px){.top{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"brand cart" "browse browse"}.top #lpCartLink{justify-self:end}}
+/* Neutral look (2026-11-21), the same identity as the home (css/neutral.css): warm off-white canvas, near-black ink and buttons,
+   rounded cards and pills, glass header and buy bar, Alexandria titles, Manrope prices. Light only (no theme switch).
+   Fields and the stepper use a darker hairline (#8F8A86, 3.5:1 on white) so their edges stay visible. */
+:root{--bg:#FAFAF9;--paper:#FFFFFF;--chalk:#FFFFFF;--wash:#FFFFFF;--elev:#F2F1EF;--surface:#F2F1EF;--line:#E7E5E4;--rose:#E7E5E4;--field:#8F8A86;--ink:#111111;--muted:#6B6966;
+ --accent:#111111;--accent-hover:#000000;--mauve:#111111;--cyan:#111111;--gold:#111111;--danger:#B42318;--nx-accent:#C8102E;--ring:rgba(17,17,17,.22);--off:rgba(107,105,102,.45);
+ --f:"IBM Plex Sans Arabic","Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif;--f-display:"Alexandria","IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;--f-num:"Manrope","IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;color-scheme:light}
+html:not(.hl){--f-display:var(--f);--f-num:var(--f)}
+html{background:var(--bg)}
+::selection{background:#111;color:#fff}
+:focus-visible,a:focus-visible,button:focus-visible,.lp-opt input:focus-visible+span{outline:2px solid #111;outline-offset:3px}
+.top{background:rgba(250,250,249,.86);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--line)}
+.mark{flex-direction:row;align-items:center;gap:8px;font:800 18px/1 var(--f-num);letter-spacing:-.02em;text-transform:lowercase;color:var(--ink)}
+.mark::before{content:"S.";display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#111;color:#fff;font-size:14px;letter-spacing:0;text-transform:none}
+.mark::after{content:"shop";font:500 12px/1 var(--f-num);letter-spacing:0;color:var(--muted)}
+.top .jump{border-bottom:1.5px solid var(--nx-accent)}
+#lpCartLink{border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);padding:0 14px}
+.browse-home::before{color:var(--ink)}
+.top .browse-home--top{border:1px solid var(--line);border-radius:14px;background:#fff}
+#lpHero{background:var(--surface)}
+#lpStage .nav{border:0;border-radius:50%;background:rgba(255,255,255,.85);color:#111;box-shadow:0 6px 18px -6px rgba(0,0,0,.3)}
+#lpStage .nav:hover{background:#fff}
+#lpCount{border-radius:999px;background:rgba(17,17,17,.72);font-family:var(--f-num);letter-spacing:.04em}
+#lpGallery button{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+#lpGallery button[aria-current="true"]{border:2px solid #111;box-shadow:none}
+body:not([data-campaign]) .atelier-heading{font:500 12px/1.6 var(--f);letter-spacing:.06em;color:var(--muted)}
+body:not([data-campaign]) .atelier-heading::before{content:"";display:inline-block;width:7px;height:7px;margin-inline-end:8px;border-radius:50%;background:var(--nx-accent);vertical-align:middle}
+body[data-campaign] .atelier-heading{font-family:var(--f-display);font-weight:800}
+#lpTitle{font:800 26px/1.35 var(--f-display);letter-spacing:-.01em}
+.head .price{font:800 26px/1.2 var(--f-num);letter-spacing:-.02em}
+.head .price small{font:400 13px var(--f);color:var(--muted)}
+.trust{gap:8px;border:0}
+.trust li{padding:8px 12px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+.trust li::before{width:6px;height:6px;border-radius:50%;background:#047857;transform:none}
+.chip,.lp-opt span{border-radius:999px!important;background:#fff;border:1px solid var(--line);min-height:44px}
+.chip[aria-pressed="true"],.lp-opt input:checked+span{background:var(--elev);border:2px solid #111;box-shadow:none;font-weight:600}
+.chip i{width:22px;height:22px}
+.one{border-radius:16px!important;min-height:52px;padding:0 20px;border:0;background:var(--elev);box-shadow:none}
+.order{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 22px 44px -32px rgba(0,0,0,.3)}
+.order h2{font:800 22px/1.35 var(--f-display);letter-spacing:-.01em}
+.order h2 small{font:400 13px/1.7 var(--f);color:var(--muted)}
+.order #lpMix{border-radius:16px;background:var(--bg)}#lpMix #lpMixToggle{border-radius:12px}
+.order .step{border-radius:14px!important;background:#fff;box-shadow:inset 0 0 0 1px var(--field)}
+.order .step button{background:transparent}
+.f input,.f select,.f textarea{border:1px solid var(--field);border-radius:14px;background-color:#fff}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:#111;background-color:#fff;box-shadow:0 0 0 3px rgba(17,17,17,.12)}
+.totals .total dd,.bar .sum b{font-family:var(--f-num);font-weight:800}
+/* The beam repaints every frame on the main thread: it starts 3 s in, after the first screen (LCP) has painted. */
+@property --nx-b{syntax:"<angle>";inherits:false;initial-value:0deg}
+#lpOrder,#lpAddCart{border-radius:16px;font-family:var(--f-display);font-weight:800;letter-spacing:0}
+#lpOrder:enabled{border:2px solid transparent;background:linear-gradient(135deg,#1c1c1c,#000) padding-box,conic-gradient(from var(--nx-b),transparent 0 60%,#fff 78%,transparent 90%) border-box,linear-gradient(#000,#000) border-box;box-shadow:0 14px 30px -12px rgba(0,0,0,.4);animation:nx-beam 3.5s linear 3s infinite}
+#lpOrder:enabled:is(:hover,:active){background:#000}
+#lpOrder:disabled{background:var(--elev);color:var(--muted)}
+#lpAddCart{border:1.5px solid #111;background:#fff;color:#111}
+@keyframes nx-beam{to{--nx-b:360deg}}
+.reassurance{font:800 22px/1.4 var(--f-display)}
+.notes li::before{background:var(--nx-accent)}
+.done{background:#fff;border:1px solid var(--line);border-radius:22px}
+.done .tick{border-radius:50%;background:#111;color:#fff}
+.done a{color:#111}
+footer{background:#111;color:rgba(255,255,255,.72);border:0}
+footer strong{color:#fff;font:800 clamp(28px,5vw,64px)/1.1 var(--f-num);letter-spacing:-.02em}
+body[data-campaign] .campaign-jump{border-radius:16px}
+@media(max-width:899px){
+.bar{background:rgba(250,250,249,.9);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);border-top:1px solid var(--line)}
+#lpGallery{gap:10px;margin-top:2px}#lpGallery button{width:64px}
+}
+@media(min-width:900px){#lpHero{border-radius:24px!important}#lpTitle{font-size:38px}.head .price{font-size:30px}}
 `;
 
 const chevron = (d) => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
@@ -366,7 +426,8 @@ const thumbs = (c, n) => n < 2 ? "" : c.zoom.map((_, i) => `<button type="button
   + `<img src="${photoFiles(c.dir, i).thumb}" alt="" width="240" height="320" loading="lazy" decoding="async"></button>`).join("");
 // Gallery thumbnails stay unloaded (display:none + lazy) until the hero photo arrives, so on slow networks the
 // hero gets the whole connection instead of sharing it with photos below the fold.
-const HERO_READY = ` onload="document.documentElement.classList.add('hl')" onerror="document.documentElement.classList.add('hl')"`;
+// html.hl (fonts, gallery photos) only after the hero photo has painted, so nothing else competes with the LCP paint.
+const HERO_READY = ` onload="requestAnimationFrame(()=>setTimeout(()=>document.documentElement.classList.add('hl')))" onerror="document.documentElement.classList.add('hl')"`;
 
 const DEFAULT_BENEFITS = ["الدفع عند الاستلام، من غير دفع مقدم", "اختيار المحافظة لمعرفة مصاريف الشحن والإجمالي قبل التأكيد", "الطلب خاضع لتأكيد توافر القطعة وميعاد الشحن بعد التسجيل"];
 
@@ -406,8 +467,7 @@ function layout(o) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, follow">
-<meta name="theme-color" content="#050B1C">
-<script id="theme-boot">${THEME_BOOT}</script>
+<meta name="theme-color" content="#FAFAF9">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Generated by tooling/build-lp.mjs${o.source}. Do not edit by hand. -->
 <title>${o.title}</title>
@@ -421,7 +481,7 @@ ${o.fontFaces}
 ${CSS}${campaign ? "\n" + CAMPAIGN_CSS : ""}</style>
 </head>
 <body${campaign ? ' data-campaign="focused"' : ""}>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة <span id="lpCartCount"></span></a>'}<a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a>${THEME_TOGGLE}</header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a>${campaign?.directOnly ? "" : '<a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة <span id="lpCartCount"></span></a>'}<a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a></header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">
@@ -544,15 +604,19 @@ async function encodeImages(page, products) {
   }
 }
 
-// Only the Readex Pro faces are inlined: one variable font file per script, nothing else competes with the photo.
-export const readexFaces = (css) => (css.match(/@font-face\s*{[^}]*}/g) || [])
-  .filter(f => /font-family:\s*'Readex Pro'/.test(f))
-  .map(f => f.replace(/\s*\n\s*/g, "").replaceAll("../assets/fonts/", "/assets/fonts/")).join("");
+// Neutral fonts (2026-11-21), self-hosted in assets/fonts/neutral (OFL): three files, about the weight of the old Readex pair, so the
+// page budget holds. Plex Arabic 400 is subset to Arabic + digits/punctuation (Latin letters use the system font) and other weights
+// are synthesised from it; Alexandria 800 draws titles and Manrope 800 prices. All wait for the hero photo (html.hl, see CSS).
+export const NEUTRAL_FACES = [
+  ["IBM Plex Sans Arabic", "ibm-plex-sans-arabic-arabic-400-lp", 400, "U+0020-0040,U+00A0,U+00AB,U+00BB,U+0600-06FF,U+200C-200F,U+2010-2011"],
+  ["Alexandria", "alexandria-arabic-800-normal", 800, "U+0600-06FF,U+200C-200E,U+2010-2011,U+FB50-FDFF,U+FE70-FEFC"],
+  ["Manrope", "manrope-latin-800-normal", 800, "U+0000-00FF,U+2000-206F"],
+].map(([family, file, weight, range]) => `@font-face{font-family:'${family}';font-style:normal;font-display:swap;font-weight:${weight};src:url(/assets/fonts/neutral/${file}.woff2) format("woff2");unicode-range:${range}}`).join("");
 
 async function main() {
   const [id, ...flags] = process.argv.slice(2);
   if (!/^[a-z0-9-]{3,40}$/.test(id || "")) throw new Error("usage: node build-lp.mjs <page-id>|shell [--refresh] [--images] [--check]");
-  const fontFaces = readexFaces(await readFile(path.join(ROOT, "css", "fonts.css"), "utf8"));
+  const fontFaces = NEUTRAL_FACES;
   // "shell" = lp/index.html, the automatic page behind /lp/?p=<code>.
   if (id === "shell") return output("lp/index.html", renderShell(fontFaces, await shellRoutes()), "shell", flags);
   const page = JSON.parse(await readFile(path.join(ROOT, "tooling", "pages", id + ".json"), "utf8"));
