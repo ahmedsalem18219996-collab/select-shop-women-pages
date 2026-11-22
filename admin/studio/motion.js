@@ -220,7 +220,7 @@ export function sanitizeOverlays(/** @type {any} */ list) {
     lock: o.lock === true, // Studio only: stops accidental dragging
     fx: TEXT_FX.includes(o.fx) || (o.type === "icon" && o.fx === "plain") ? o.fx : "",
     fxc: /^#[0-9a-f]{6}$/i.test(o.fxc || "") ? o.fxc : "",
-    sh: TEXT_SHADOWS.includes(o.sh) ? o.sh : "",
+    sh: TEXT_SHADOWS.includes(o.sh) ? o.sh : ["text", "badge", "callout"].includes(o.type) ? "soft" : "",
     icon: Object.prototype.hasOwnProperty.call(ICONS, o.icon) ? o.icon : "star",
   }));
 }
@@ -284,7 +284,7 @@ export function renderOverlays(/** @type {HTMLElement} */ wrap, /** @type {any[]
     if (o.type !== "text" || o.color) el.style.setProperty("--c", color); // text is white unless a colour is chosen
     el.style.setProperty("--s", String(o.size));
     if (o.type === "badge" && o.color && isLight(o.color)) el.style.color = "#111"; // white text vanishes on light badges
-    if (o.sh && ["text", "badge", "callout", "icon"].includes(o.type)) el.classList.add("ssm-sh-" + o.sh);
+    if (["text", "badge", "callout", "icon"].includes(o.type)) el.classList.add("ssm-sh-" + (o.sh || "none"));
     if (o.type === "text" && o.fx) {
       el.classList.add("ssm-fx-" + o.fx);
       el.dataset.t = o.text; // effects that draw a second copy of the text (lines, glitch) read it from here
@@ -361,6 +361,7 @@ export function mountPhoto(wrap, photo, eager = false) {
     wrap.classList.toggle("ssm-fill", fill);
     if (fill && !wrap.querySelector(".ssm-bg")) {
       const bg = document.createElement("img"); bg.className = "ssm-bg"; bg.src = photo.url; bg.alt = ""; bg.setAttribute("aria-hidden", "true");
+      bg.loading = img.loading; bg.decoding = "async";
       wrap.prepend(bg);
     }
   };
@@ -426,8 +427,10 @@ export function mountStack(root, photos, opts = {}) {
   root.classList.add("ssm-stack");
   /** @type {HTMLElement[]} */ let cards = [];
   let shone = new WeakSet();
+  /** @type {IntersectionObserver|null} */ let firstView = null;
 
   const build = (/** @type {{url:string, alt:string, overlays?: any[], enter?: string, fit?: string}[]} */ list, intro = true) => {
+    firstView?.disconnect();
     root.textContent = "";
     shone = new WeakSet();
     cards = list.map((p, i) => {
@@ -442,11 +445,6 @@ export function mountStack(root, photos, opts = {}) {
       const img = mountPhoto(wrap, p, i === 0 && opts.firstEager !== false);
       img.addEventListener("load", () => { measure(); schedule(); }, { once: true });
       if (p.overlays && p.overlays.length) renderOverlays(wrap, p.overlays);
-      if (i === 0 && intro && !reduce && card.dataset.dir) {
-        card.classList.add("ssm-starting");
-        playEnter(wrap, card.dataset.dir);
-        setTimeout(() => card.classList.remove("ssm-starting"), 1000);
-      }
       card.append(wrap);
       return card;
     });
@@ -456,8 +454,25 @@ export function mountStack(root, photos, opts = {}) {
       if (strip && typeof strip.text === "string" && strip.text.trim()) root.append(makeStrip(strip.text, strip.rot, strip.color));
     });
     const first = cards[0];
-    if (first) setTimeout(() => first.classList.add("ssm-in"), 0);
     if (reduce) cards.forEach(c => c.classList.add("ssm-in"));
+    else if (first) {
+      const reveal = () => {
+        if (intro && first.dataset.dir) {
+          first.classList.add("ssm-starting");
+          playEnter(/** @type {HTMLElement} */ (first.firstElementChild), first.dataset.dir);
+          setTimeout(() => first.classList.remove("ssm-starting"), 1000);
+        }
+        first.classList.add("ssm-in");
+      };
+      if (intro && opts.firstEager === false && typeof IntersectionObserver === "function") {
+        firstView = new IntersectionObserver(entries => {
+          if (!entries.some(entry => entry.isIntersecting)) return;
+          firstView?.disconnect();
+          reveal();
+        }, { threshold: 0.05 });
+        firstView.observe(first);
+      } else setTimeout(reveal, 0);
+    }
     measure(); schedule();
   };
 
@@ -494,7 +509,7 @@ export function mountStack(root, photos, opts = {}) {
   return {
     /** Swap photos (e.g. colour change) without the intro. */
     setPhotos(/** @type {{url:string, alt:string, overlays?: any[]}[]} */ list) { build(list, false); cards.forEach(c => c.classList.add("ssm-in")); },
-    destroy() { tickers.delete(tick); root.textContent = ""; },
+    destroy() { firstView?.disconnect(); tickers.delete(tick); root.textContent = ""; },
   };
 }
 

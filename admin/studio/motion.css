@@ -14,6 +14,19 @@
 .ssm-frame img.ssm-main{position:relative;width:100%;height:100%;object-fit:cover}
 .ssm-fill img.ssm-main{object-fit:contain;z-index:1}
 .ssm-frame img.ssm-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1.25);filter:blur(24px) brightness(.62) saturate(1.25)}
+.ssm-stack--light .ssm-card,.ssm-stack--light .ssm-frame{background:#eeece9}
+.ssm-stack--light .ssm-card+.ssm-card{box-shadow:0 -12px 24px #1112}
+.ssm-stack--light img.ssm-bg{filter:blur(24px) brightness(1.08) saturate(.9)}
+.lp-studio-stack{margin-block:20px;min-width:0;overflow:clip}
+
+.ssm-frame[data-photo-loop="bounce"] .ssm-main{animation:ssm-photo-bounce 2s ease-in-out infinite}
+.ssm-frame[data-photo-loop="float"] .ssm-main{animation:ssm-photo-float 4s ease-in-out infinite}
+.ssm-frame[data-photo-loop="pulse"] .ssm-main{animation:ssm-photo-pulse 3s ease-in-out infinite}
+.ssm-frame[data-photo-loop="swing"] .ssm-main{animation:ssm-photo-swing 4s ease-in-out infinite}
+@keyframes ssm-photo-bounce{0%,100%{transform:scale(1.045)}50%{transform:translateY(-1%) scale(1.065)}}
+@keyframes ssm-photo-float{0%,100%{transform:translateY(-.8%) scale(1.04)}50%{transform:translateY(.8%) scale(1.04)}}
+@keyframes ssm-photo-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes ssm-photo-swing{0%,100%{transform:rotate(-1deg) scale(1.04)}50%{transform:rotate(1deg) scale(1.04)}}
 
 .ssm-open .ssm-wrap{animation:ssm-open 1.5s cubic-bezier(.7,0,.2,1) both}
 @keyframes ssm-open{0%{clip-path:circle(0% at 50% 42%);transform:scale(1.5) rotate(-6deg)}60%{clip-path:circle(75% at 50% 42%)}100%{clip-path:circle(150% at 50% 42%);transform:none}}
@@ -55,6 +68,7 @@
 @media (prefers-reduced-motion:reduce){
   .ssm-card{position:relative;top:auto}
   .ssm-wrap{animation:none!important;transform:none!important;opacity:1!important}
+  .ssm-frame[data-photo-loop] .ssm-main{animation:none}
   .ssm-flash,.ssm-glint,.ssm-nudge,.ssm-pill,.ssm-ico,.ssm-ico svg,.ssm-marq>div,.ssm-shake,.ssm-hint{animation:none!important}
   .ssm-flash{display:none}
 }
@@ -166,6 +180,8 @@
 .ssm-o{filter:var(--fxf,) var(--shf,)}
 /* text shadows */
 .ssm-sh-soft{--shf:drop-shadow(0 calc(3*var(--u)) calc(8*var(--u)) rgba(0,0,0,.55))}
+.ssm-o-text:is(.ssm-sh-soft,.ssm-sh-none):not([class*="ssm-fx-"]){text-shadow:none}
+.ssm-o-text.ssm-sh-soft{--shf:drop-shadow(0 calc(1*var(--u)) calc(2*var(--u)) rgba(0,0,0,.74)) drop-shadow(0 calc(3*var(--u)) calc(6*var(--u)) rgba(0,0,0,.44))}
 .ssm-sh-strong{--shf:drop-shadow(0 calc(4*var(--u)) calc(4*var(--u)) rgba(0,0,0,.85)) drop-shadow(0 0 calc(14*var(--u)) rgba(0,0,0,.6))}
 .ssm-sh-long{--shf:drop-shadow(calc(5*var(--u)) calc(6*var(--u)) 0 rgba(0,0,0,.55))}
 .ssm-sh-edge{--shf:drop-shadow(0 0 calc(1.2*var(--u)) #000) drop-shadow(0 0 calc(1.2*var(--u)) #000) drop-shadow(0 0 calc(1.2*var(--u)) #000)}

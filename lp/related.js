@@ -1,5 +1,21 @@
 // Other models of the same campaign page, shown on a landing page opened from a multi-product page (?collection=).
 // Loaded on demand by lp/runtime.js so ordinary ad visits do not download it.
+const RELATED_PRODUCTS_CSS = `
+.lp-related{box-sizing:border-box;max-width:1120px;margin:38px auto 0;padding:0 18px 132px;direction:rtl;color:var(--ink,#242126);font-family:var(--f,inherit)}
+.lp-related h2{margin:0 0 7px;font-size:clamp(20px,3vw,27px);font-weight:700;line-height:1.45}
+.lp-related>p{margin:0 0 17px;color:var(--muted,#777);font-size:13px;line-height:1.8}
+.lp-related-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.lp-related-card{display:flex;min-width:0;flex-direction:column;overflow:hidden;border:1px solid var(--line,#ded9d6);border-radius:15px;background:var(--paper,#fff);color:inherit;text-decoration:none}
+.lp-related-image{display:grid;aspect-ratio:4/5;place-items:center;overflow:hidden;background:var(--bg,#f5f2ef);color:var(--muted,#777);font-size:12px}
+.lp-related-image img{width:100%;height:100%;object-fit:cover}
+.lp-related-body{display:flex;min-width:0;flex-direction:column;gap:7px;padding:11px}
+.lp-related-body strong{font-size:13px;line-height:1.6}
+.lp-related-price{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.lp-related-action{display:flex;min-height:38px;align-items:center;justify-content:center;border-radius:9px;background:var(--accent,#303c2d);color:#fff;font-size:12px;font-weight:600;text-align:center}
+.lp-related-bag{display:flex;width:min(100%,320px);min-height:46px;margin:20px auto 0;align-items:center;justify-content:center;border-radius:12px;background:var(--accent,#303c2d);color:#fff;text-decoration:none;font-size:14px;font-weight:700}
+@media(max-width:620px){.lp-related{margin-top:28px;padding-inline:12px}.lp-related-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.lp-related-body{padding:9px}.lp-related-body strong{font-size:12px}.lp-related-action{font-size:11px}}
+`;
+
 /** @param {string} currentCode @param {{ BRIDGE: string, timeout: (ms: number) => AbortSignal|undefined, validCode: (x: unknown) => boolean, okMinor: (x: unknown) => boolean, egp: (x: number) => string }} h */
 export async function renderRelatedProducts(currentCode, { BRIDGE, timeout, validCode, okMinor, egp }) {
   const params = new URLSearchParams(location.search);
@@ -131,6 +147,12 @@ function paintRow(items, { id, title: titleText, intro: introText, slug, current
       section.append(bagLink);
     }
     const main = document.querySelector("main.page");
+    if (main && !document.getElementById("lp-related-style")) {
+      const style = document.createElement("style");
+      style.id = "lp-related-style";
+      style.textContent = RELATED_PRODUCTS_CSS;
+      document.head.append(style);
+    }
     if (main && top) { section.style.padding = "0 18px"; section.style.marginTop = "18px"; main.before(section); }
     else if (main) main.after(section);
 }

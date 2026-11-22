@@ -7,15 +7,3 @@ body { margin:0 }
 h1 { margin:4px 0 0; font-size:clamp(17px,4vw,23px) }
 #stack,#empty { max-width:680px; margin-inline:auto }
 #empty,footer { text-align:center; padding:2rem 1rem; color:#605d59 }
-.ssm-card,.ssm-frame { background:#eeece9 }
-.ssm-card+.ssm-card { box-shadow:0 -12px 24px #1112 }
-.ssm-frame .ssm-main { display:block }
-.ssm-frame[data-photo-loop="bounce"] .ssm-main { animation:studio-bounce 2s ease-in-out infinite }
-.ssm-frame[data-photo-loop="float"] .ssm-main { animation:studio-float 4s ease-in-out infinite }
-.ssm-frame[data-photo-loop="pulse"] .ssm-main { animation:studio-pulse 3s ease-in-out infinite }
-.ssm-frame[data-photo-loop="swing"] .ssm-main { animation:studio-swing 4s ease-in-out infinite }
-@keyframes studio-bounce { 0%,100% { transform:scale(1.045) } 50% { transform:translateY(-1%) scale(1.065) } }
-@keyframes studio-float { 0%,100% { transform:translateY(-.8%) scale(1.04) } 50% { transform:translateY(.8%) scale(1.04) } }
-@keyframes studio-pulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.04) } }
-@keyframes studio-swing { 0%,100% { transform:rotate(-1deg) scale(1.04) } 50% { transform:rotate(1deg) scale(1.04) } }
-@media (prefers-reduced-motion:reduce) { .ssm-frame[data-photo-loop] .ssm-main { animation:none } }

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 const LP = "/lp/ss-1008/";
 const mockLog = async (request) => (await request.get("/__mock/log")).json();
@@ -48,6 +49,10 @@ test("order jump keeps both real colour choices visible inside COD form and subm
   await expect(page.locator("#lpFormColors")).toBeVisible();
   await expect(page.locator("#lpFormColors .chip")).toHaveCount(2);
   await expect(page.locator("#lpColors .chip")).toHaveCount(2);
+  const black = page.locator('#lpFormColors [data-code="SS-1009"]');
+  await expect(black).toHaveText("أسود");
+  await expect(black.locator("img")).toHaveAttribute("loading", "lazy");
+  await expect.poll(() => black.locator("img").evaluate(img => img.currentSrc)).toMatch(/\/img\/SS-1009\/0-480\.(avif|webp)$/);
   await page.locator('#lpFormColors [data-code="SS-1009"]').click();
   await expect(page.locator("#lpColorName")).toHaveText("أسود");
   await expect(page.locator("#lpFormColorName")).toHaveText("أسود");
@@ -62,6 +67,54 @@ test("order jump keeps both real colour choices visible inside COD form and subm
   const orders = (await mockLog(request)).orders;
   expect(orders.length - before).toBe(1);
   expect(orders.at(-1).lines[0].publicCode).toBe("SS-1009");
+  expect(page.external).toEqual([]);
+});
+
+test("generated mixed-colour rows use the first 480px photo of each colour", async ({ page, isMobile }) => {
+  const thumbs = [];
+  page.on("request", req => { if (/\/SS-1009\/0-480\./.test(req.url())) thumbs.push(req.url()); });
+  await page.goto(LP);
+  await expect(page.locator("#lpOrder")).toBeEnabled();
+  if (isMobile) expect(thumbs).toEqual([]);
+  await page.locator("#lpMixToggle").click();
+  const black = page.locator("#lpMixRows .lp-mix-color").filter({ hasText: "أسود" });
+  await expect(black.locator("img")).toHaveAttribute("loading", "lazy");
+  await black.scrollIntoViewIfNeeded();
+  await expect.poll(() => black.locator("img").evaluate(img => img.currentSrc)).toMatch(/\/img\/SS-1009\/0-480\.(avif|webp)$/);
+  await expect(page.locator("#lpHero img")).toHaveAttribute("src", /SS-1008/);
+});
+
+test("automatic colour options and mixed rows share lightweight photos and keep a swatch fallback", async ({ page }) => {
+  const { product: item } = JSON.parse(await readFile(new URL("../fixtures/SS-1099.product.json", import.meta.url), "utf8"));
+  const values = ["أسود", "بني", "وردي"].map((value, position) => ({ position, value }));
+  item.options = [{ name: "اللون", position: 0, values }];
+  item.variants = values.map(({ position }) => ({ ...item.variants[0], selection: [{ optionPosition: 0, valuePosition: position }] }));
+  item.media[1].target = { kind: "value", optionPosition: 0, valuePosition: 0 };
+  const blackFile = item.media[1].url.split("/").pop();
+  item.media.push({ url: item.media[1].url.replace(blackFile, "a".repeat(32) + ".jpg"), position: 8, target: { kind: "value", optionPosition: 0, valuePosition: 1 } });
+  await page.route("**/women-checkout/product/SS-1099", route => route.fulfill({ json: { product: item } }));
+  await page.goto("/lp/?p=SS-1099");
+  const black = page.locator("#lpOptions label").filter({ hasText: "أسود" });
+  const brown = page.locator("#lpOptions label").filter({ hasText: "بني" });
+  const pink = page.locator("#lpOptions label").filter({ hasText: "وردي" });
+  await expect(black.locator("img")).toHaveAttribute("loading", "lazy");
+  await expect(brown.locator("img")).toHaveCount(0);
+  await expect(pink.locator("img")).toHaveCount(0);
+  await black.locator("span").click();
+  await expect.poll(() => black.locator("img").evaluate(img => img.currentSrc)).toMatch(/\.w400\.webp$/);
+  await expect(black.locator("img")).toHaveAttribute("src", "/assets/catalog-thumbs/" + blackFile + ".w400.webp");
+  await expect(black.locator("input")).toBeChecked();
+  await expect(black.locator("span")).toHaveCSS("border-top-color", "rgb(17, 17, 17)");
+  await expect(page.locator("#lpHero img")).toHaveAttribute("src", "/assets/catalog-thumbs/" + blackFile + ".webp");
+  await pink.locator("span").click();
+  await expect(page.locator("#lpHero img")).toHaveAttribute("src", /54d164fae59c4f5dbbd137670802fc7c\.jpg\.webp$/);
+
+  await page.locator("#lpMixToggle").click();
+  const mixedBlack = page.locator("#lpMixRows .lp-mix-color").filter({ hasText: "أسود" });
+  await mixedBlack.scrollIntoViewIfNeeded();
+  await expect.poll(() => mixedBlack.locator("img").evaluate(img => img.currentSrc)).toMatch(/\.w400\.webp$/);
+  await expect(mixedBlack.locator("img")).toHaveAttribute("src", "/assets/catalog-thumbs/" + blackFile + ".w400.webp");
+  await expect(page.locator("#lpMixRows .lp-mix-color").filter({ hasText: "بني" }).locator("img")).toHaveCount(0);
   expect(page.external).toEqual([]);
 });
 
