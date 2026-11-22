@@ -42,3 +42,7 @@ html[data-motion] #lpStage,html[data-motion] #lpGallery{display:none}
   .mo-flash,.mo-glint{display:none}
   .mo-track,.mo-stack,.mo-hint,.mo-hint *,.mo-shake,.mo-pop{animation:none!important}
 }
+/* soft (product pages without a Studio design, a section after the order form): photos stay sharp and still once in; name + price rise in once; slow band */
+.mo-stack[data-mode=soft]{margin:28px 0 8px;overflow-x:clip}.mo-stack[data-mode=soft] .mo-sec+.mo-sec{box-shadow:0 -6px 18px rgba(0,0,0,.12)}.mo-stack[data-mode=soft] .mo-first .mo-wrap{animation:none}.mo-stack[data-mode=soft] .mo-glint{display:none}
+.mo-stack[data-mode=soft] .mo-cap{animation:mo-capin .8s .2s cubic-bezier(.2,.7,.2,1) both}.mo-stack[data-mode=soft] .mo-track{animation-duration:40s}
+@keyframes mo-capin{from{opacity:0;transform:translateY(14px)}}
