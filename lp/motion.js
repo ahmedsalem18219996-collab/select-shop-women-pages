@@ -229,3 +229,43 @@ export const softPage = (/** @type {Shot[]} */ shots) =>
   pageMotion({ motion: { mode: "soft", dirs: [], hint: "" }, accent: "#C8102E" }, /** @type {any} */ ({ inkFor: () => "#fff" }), shots);
 /** The chosen colour's photos go into the product page stack. */
 export const pageShots = (/** @type {Shot[]} */ shots) => pageStack?.setImages(shots);
+
+const STUDIO_ASSETS = new URL("../admin/studio/", import.meta.url);
+const STUDIO_STORAGE = "https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/";
+const STUDIO_PHOTO = /^women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(webp|jpg|jpeg|png)$/;
+
+/** The shared Studio renderer and its assets are requested only after scrolling toward the order form. */
+export async function publishedStudio(/** @type {any} */ design) {
+  const form = document.getElementById("lpForm");
+  if (!form) return;
+  const photos = design.photos.slice(0, 8).filter((/** @type {any} */ p) => typeof p?.path === "string" && STUDIO_PHOTO.test(p.path))
+    .map((/** @type {any} */ p) => ({ ...p, url: STUDIO_STORAGE + p.path, alt: "صورة للمنتج" }));
+  if (!photos.length) return;
+  if (typeof IntersectionObserver === "function" && form.getBoundingClientRect().top > innerHeight + 400) {
+    await new Promise(resolve => {
+      const nearby = new IntersectionObserver(entries => {
+        if (!entries.some(entry => entry.isIntersecting)) return;
+        nearby.disconnect();
+        resolve(undefined);
+      }, { rootMargin: "400px 0px" });
+      nearby.observe(form);
+    });
+  }
+  const asset = (/** @type {string} */ path) => new URL(path, STUDIO_ASSETS).href;
+  const styles = ["motion.css?v=20261122-studio", "fonts/fonts-studio.css"].map(path => new Promise((resolve, reject) => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = asset(path);
+    link.onload = resolve;
+    link.onerror = reject;
+    document.head.append(link);
+  }));
+  const [studio] = await Promise.all([import(asset("motion.js?v=20261122-studio")), ...styles]);
+  const section = document.createElement("section");
+  section.className = "lp-studio-stack ssm-stack--light";
+  section.setAttribute("aria-label", "صور وتفاصيل القطعة");
+  section.style.order = getComputedStyle(form).order;
+  studio.applyAccent(section, /^#[\da-f]{6}$/i.test(design.accent) ? design.accent : "#111111");
+  form.after(section);
+  studio.mountStack(section, photos, { firstEager: false });
+}

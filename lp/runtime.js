@@ -322,7 +322,7 @@ function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) 
 /** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
 const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
 const RELATED_MODULE = "./related.js?v=20261121-thumbs";
-const MOTION_MODULE = "./motion.js?v=20261122-soft";
+const MOTION_MODULE = "./motion.js?v=20261122-studio";
 const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
 let motionOn = false;
 /** motion.js loads only for a design with a motion mode. */
@@ -334,7 +334,7 @@ function motionFor(/** @type {any} */ d, /** @type {any} */ s) {
 const softMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches
   || addEventListener("scroll", () => { motionOn = true; void loadMotion().then(m => m.softPage(gallery.shots)); }, { once: true, passive: true });
 const loadStudio = async () => /** @type {typeof import("./studio-design.js")} */ (await import(STUDIO_MODULE));
-async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ preview) {
+async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ preview, /** @type {string} */ colorCode) {
   try {
     if (preview) {
       const m = await loadStudio();
@@ -361,11 +361,21 @@ async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ p
       parent.postMessage({ type: "lp-studio-ready", code }, location.origin);
       return;
     }
-    const r = await fetch(BRIDGE + "/landing/" + encodeURIComponent(code), { headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000) });
-    if (!r.ok) return void softMotion();
-    const data = await r.json();
+    const readDesign = async (/** @type {string} */ sku) => {
+      const r = await fetch(BRIDGE + "/landing/" + encodeURIComponent(sku), { headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000) });
+      return r.ok ? (await r.json())?.design : null;
+    };
+    const hasStack = (/** @type {any} */ d) => d?.studioStack?.v === 1 && Array.isArray(d.studioStack.photos) && d.studioStack.photos.length > 0;
+    const selected = await readDesign(colorCode);
+    const design = colorCode === code || hasStack(selected) ? selected : await readDesign(code);
+    if (!design) return void softMotion();
+    if (hasStack(design)) {
+      const show = () => { void loadMotion().then(m => m.publishedStudio(design.studioStack)).catch(() => {}); };
+      if (scrollY > 0) show(); else addEventListener("scroll", show, { once: true, passive: true });
+      return;
+    }
     const m = await loadStudio();
-    const d = m.normalizeDesign(data?.design, { urls: true });
+    const d = m.normalizeDesign(design, { urls: true });
     m.applyDesign(document, d);
     motionFor(d, m);
   } catch { /* the design is optional: the page and its order form work without it */ }
@@ -553,7 +563,8 @@ async function init() {
 
   // Admin Studio preview (same-origin iframe): show the draft, never order or count a view.
   const preview = new URLSearchParams(location.search).get("studio_preview") === "1" && window.parent !== window;
-  void studioDesign(page.code, preview);
+  const studioCode = Array.isArray(page.colors) && page.colors.some((/** @type {any} */ c) => c?.code === relatedCurrentCode) ? relatedCurrentCode : page.code;
+  void studioDesign(page.code, preview, studioCode);
   if (preview) {
     const stop = (/** @type {Event} */ e) => { e.preventDefault(); e.stopImmediatePropagation(); say("معاينة فقط: الطلب غير متاح داخل الـ Studio.", true); };
     document.addEventListener("submit", stop, true);
@@ -644,9 +655,17 @@ async function init() {
   let started = false;
 
   // WhatsApp number: lazy, on her first touch or scroll.
+  const contactName = () => $("#lpTitle").textContent.trim();
   const contact = () => { removeEventListener("scroll", contact); removeEventListener("pointerdown", contact);
-    void import(/** @type {string} */ ("../js/store-contact.js?v=20261122")).then(m => m.wire(() => m.productText($("#lpTitle").textContent.trim(), current.code))).catch(() => {}); };
+    void import(/** @type {string} */ ("../js/store-contact.js?v=20261122")).then(m => m.wire(() => m.productText(contactName(), current.code))).catch(() => {}); };
   addEventListener("scroll", contact); addEventListener("pointerdown", contact);
+  // The first click can beat the lazy settings read. Keep the message correct even with the fallback number.
+  document.addEventListener("click", e => {
+    const link = /** @type {HTMLAnchorElement|null} */ (/** @type {Element} */ (e.target)?.closest?.("a[data-wa]"));
+    if (!link) return;
+    const name = contactName();
+    if (name) link.href = link.href.split("?")[0] + "?text=" + encodeURIComponent(`أهلًا، عندي سؤال عن ${name} (كود ${current.code}).`);
+  }, true);
 
   const sizeText = () => {
     if (!product.options.length) return "مقاس واحد";

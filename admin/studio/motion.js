@@ -361,6 +361,7 @@ export function mountPhoto(wrap, photo, eager = false) {
     wrap.classList.toggle("ssm-fill", fill);
     if (fill && !wrap.querySelector(".ssm-bg")) {
       const bg = document.createElement("img"); bg.className = "ssm-bg"; bg.src = photo.url; bg.alt = ""; bg.setAttribute("aria-hidden", "true");
+      bg.loading = img.loading; bg.decoding = "async";
       wrap.prepend(bg);
     }
   };
@@ -426,8 +427,10 @@ export function mountStack(root, photos, opts = {}) {
   root.classList.add("ssm-stack");
   /** @type {HTMLElement[]} */ let cards = [];
   let shone = new WeakSet();
+  /** @type {IntersectionObserver|null} */ let firstView = null;
 
   const build = (/** @type {{url:string, alt:string, overlays?: any[], enter?: string, fit?: string}[]} */ list, intro = true) => {
+    firstView?.disconnect();
     root.textContent = "";
     shone = new WeakSet();
     cards = list.map((p, i) => {
@@ -442,11 +445,6 @@ export function mountStack(root, photos, opts = {}) {
       const img = mountPhoto(wrap, p, i === 0 && opts.firstEager !== false);
       img.addEventListener("load", () => { measure(); schedule(); }, { once: true });
       if (p.overlays && p.overlays.length) renderOverlays(wrap, p.overlays);
-      if (i === 0 && intro && !reduce && card.dataset.dir) {
-        card.classList.add("ssm-starting");
-        playEnter(wrap, card.dataset.dir);
-        setTimeout(() => card.classList.remove("ssm-starting"), 1000);
-      }
       card.append(wrap);
       return card;
     });
@@ -456,8 +454,25 @@ export function mountStack(root, photos, opts = {}) {
       if (strip && typeof strip.text === "string" && strip.text.trim()) root.append(makeStrip(strip.text, strip.rot, strip.color));
     });
     const first = cards[0];
-    if (first) setTimeout(() => first.classList.add("ssm-in"), 0);
     if (reduce) cards.forEach(c => c.classList.add("ssm-in"));
+    else if (first) {
+      const reveal = () => {
+        if (intro && first.dataset.dir) {
+          first.classList.add("ssm-starting");
+          playEnter(/** @type {HTMLElement} */ (first.firstElementChild), first.dataset.dir);
+          setTimeout(() => first.classList.remove("ssm-starting"), 1000);
+        }
+        first.classList.add("ssm-in");
+      };
+      if (intro && opts.firstEager === false && typeof IntersectionObserver === "function") {
+        firstView = new IntersectionObserver(entries => {
+          if (!entries.some(entry => entry.isIntersecting)) return;
+          firstView?.disconnect();
+          reveal();
+        }, { threshold: 0.05 });
+        firstView.observe(first);
+      } else setTimeout(reveal, 0);
+    }
     measure(); schedule();
   };
 
@@ -494,7 +509,7 @@ export function mountStack(root, photos, opts = {}) {
   return {
     /** Swap photos (e.g. colour change) without the intro. */
     setPhotos(/** @type {{url:string, alt:string, overlays?: any[]}[]} */ list) { build(list, false); cards.forEach(c => c.classList.add("ssm-in")); },
-    destroy() { tickers.delete(tick); root.textContent = ""; },
+    destroy() { firstView?.disconnect(); tickers.delete(tick); root.textContent = ""; },
   };
 }
 

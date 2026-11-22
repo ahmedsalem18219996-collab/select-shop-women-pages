@@ -8,7 +8,7 @@ const STORAGE = "https://byluoipdunralsurwebt.supabase.co/storage/v1/object/publ
 const IMG = new URL("../../assets/catalog-thumbs/005a3ee1a8504efca19a780f21981d33.jpg.w400.webp", import.meta.url);
 const GENERATIVE = /gemini|generativelanguage|aistudio|makersuite|openai|stability\.ai|replicate\.com|midjourney|huggingface|imagen/i;
 const mockLog = async (request) => (await request.get("/__mock/log")).json();
-const publish = (request, design) => request.post("/__mock/landing", { data: { code: "SS-1008", design } });
+const publish = (request, design, code = "SS-1008") => request.post("/__mock/landing", { data: { code, design } });
 const DESIGN = {
   v: 1, template: "editorial", order: ["hero", "product", "features", "closing"], hidden: [], background: "navy", font: "readex", divider: "dots",
   title: "جاكيت جلد للشتا", description: "خامة تقيلة\nوقصّة مظبوطة", features: ["جلد صناعي ناعم", "بطانة دافية"],
@@ -52,6 +52,59 @@ test("published design: 3 marketing images, texts, CTA options, order card look;
   await expect(page.locator("#lpOrder")).toHaveCSS("background-color", "rgb(216, 179, 106)"); // wait for the async design + CSS transition
   await expect(page.locator("#lpPrice")).toHaveText("١٬٢٠٠"); // from women-checkout, not from the design
   expect(page.hosts.filter(h => GENERATIVE.test(h))).toEqual([]);
+});
+
+test("the published Studio stack stays off the first paint and renders ordered, light motion after the form", async ({ page, request }) => {
+  await publish(request, { ...DESIGN, studioStack: { v: 1, accent: "#9c2044", photos: [
+    { path: "women-storefront/storefront/studio-features.webp", enter: "blur", loop: "bounce", fit: "fill",
+      overlays: [{ type: "text", text: "ستايل يعبّر عنك", fx: "aurora", font: "Cairo", x: 50, y: 45, scale: 1 }] },
+    { path: "women-storefront/storefront/studio-closing.webp", enter: "flip", loop: "float", overlays: [] },
+  ] } });
+  const assets = [];
+  page.on("request", r => { if (/\/admin\/studio\/|\/lp\/motion\.js|\/women-storefront\/storefront\//.test(r.url())) assets.push(r.url()); });
+  const loaded = page.waitForResponse(r => r.url().endsWith("/landing/SS-1008") && r.ok());
+  await page.goto(LP);
+  await loaded;
+  await expect(page.locator("#lpHero img")).toBeVisible();
+  await expect(page.locator("#lpAddCart")).toBeEnabled();
+  await expect(page.locator(".lp-studio-stack,.studio-hero")).toHaveCount(0);
+  expect(assets).toEqual([]);
+
+  await page.locator("#lpForm").scrollIntoViewIfNeeded();
+  const stack = page.locator("#lpForm + .lp-studio-stack");
+  const cards = stack.locator(".ssm-card");
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first()).toHaveAttribute("data-dir", "blur");
+  await expect(cards.last()).toHaveAttribute("data-dir", "flip");
+  await expect(cards.first().locator(".ssm-main")).toHaveAttribute("loading", "lazy");
+  await expect(cards.first().locator(".ssm-main")).toHaveAttribute("src", STORAGE + "women-storefront/storefront/studio-features.webp");
+  await expect(cards.last().locator(".ssm-main")).toHaveAttribute("src", STORAGE + "women-storefront/storefront/studio-closing.webp");
+  await expect(cards.first()).toHaveCSS("background-color", "rgb(238, 236, 233)");
+  await expect(cards.first().locator(".ssm-main")).toHaveCSS("animation-name", "ssm-photo-bounce");
+  await expect(stack.locator(".ssm-fx-aurora")).toHaveText("ستايل يعبّر عنك");
+  await expect(stack).toHaveCSS("--ssm-accent", "#9c2044");
+  await expect(page.locator("#lpHero img")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
+test("a selected SKU's published Studio stays visible without animation with reduced motion", async ({ page, request }) => {
+  const code = "SS-1023";
+  await publish(request, { studioStack: { v: 1, photos: [
+    { path: "women-storefront/storefront/studio-beige.webp", enter: "flip", loop: "bounce", overlays: [] },
+  ] } }, code);
+  try {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/lp/chinese-jacket/?color=" + code);
+    await expect(page.locator('#lpColors [data-code="SS-1023"]')).toHaveAttribute("aria-pressed", "true");
+    await page.locator("#lpForm").scrollIntoViewIfNeeded();
+    const card = page.locator(".lp-studio-stack .ssm-card");
+    await expect(card).toBeVisible();
+    await expect(card).toHaveCSS("position", "relative");
+    await expect(card.locator(".ssm-main")).toHaveCSS("animation-name", "none");
+    await expect(card.locator(".ssm-main")).toHaveAttribute("src", STORAGE + "women-storefront/storefront/studio-beige.webp");
+  } finally {
+    await publish(request, null, code);
+  }
 });
 
 for (const position of ["below", "overlay"]) {

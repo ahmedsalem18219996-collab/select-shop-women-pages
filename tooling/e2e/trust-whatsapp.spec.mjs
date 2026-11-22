@@ -48,6 +48,18 @@ test("product page with sizes: «محتارة في المقاس؟» next to the 
   expect((await ask.boundingBox()).height).toBeGreaterThanOrEqual(44);
 });
 
+test("the first WhatsApp click on the automatic product page already has the name and SKU", async ({ page }) => {
+  await page.route("**/js/store-contact.js?*", route => route.abort()); // the lazy contact module may still be downloading on the first tap
+  await page.route("https://wa.me/**", route => route.fulfill({ body: "WhatsApp", contentType: "text/plain" }));
+  await page.goto("/lp/?p=SS-1099");
+  await expect(page.locator("#lpAddCart")).toBeEnabled();
+  const name = (await page.locator("#lpTitle").textContent()).trim();
+  expect(name).toBeTruthy();
+  await page.locator("a.wa-fab").click();
+  await expect(page).toHaveURL(/^https:\/\/wa\.me\/201289437444\?text=/);
+  expect(text(page.url())).toBe(`أهلًا، عندي سؤال عن ${name} (كود SS-1099).`);
+});
+
 test("home: general WhatsApp message, three trust items, shipping link, fab clear of the tab bar", async ({ page }) => {
   await page.goto("/");
   const fab = page.locator("a.wa-fab");
