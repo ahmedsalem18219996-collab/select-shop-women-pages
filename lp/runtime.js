@@ -1,12 +1,7 @@
 // @ts-check
-/* SELECT SHOP WOMEN — shared runtime for one-page direct-order landing pages.
- *   /lp/<id>/      pre-rendered from the public catalog (tooling/build-lp.mjs): photo, title and price paint without JS.
- *   /lp/?p=SS-…    the automatic page for ANY public product: the same layout filled from the live product read.
- * The order form is part of the page. Every number the customer confirms comes from the server quote
- * (/checkout/quote) and the order is created by the existing COD endpoint (/orders) with ONE idempotency key per
- * attempt, reused on every retry, so a double tap, a timeout or a reload never creates a second order.
- * Text is always set with textContent.
- */
+/* Shared runtime of the direct-order pages: /lp/<id>/ (pre-rendered by tooling/build-lp.mjs) and /lp/?p=SS-… (any
+ * public product, filled from the live read). Every confirmed number comes from the server quote; /orders gets ONE
+ * idempotency key per attempt, reused on retry (no second order). Text is always set with textContent. */
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
 const VIEWS_API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-product-views";
 const VIEW_KEY = "women.anonymous-product-views.v1";
@@ -336,14 +331,9 @@ function motionFor(/** @type {any} */ d, /** @type {any} */ s) {
   motionOn ||= d.motion.mode !== "none";
   if (motionOn) void loadMotion().then(m => m.pageMotion(d, s, gallery.shots));
 }
-/** The calm stack (before the order form, in the identity red) once the page has loaded and gone idle: the gallery and
- *  its first photo stay untouched. */
-function softMotion() {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const run = () => motionFor({ motion: { mode: "soft", dirs: [], hint: "" }, accent: "#C8102E" }, { inkFor: () => "#fff", DEFAULT_HINT: "" });
-  const go = () => typeof requestIdleCallback === "function" ? requestIdleCallback(run, { timeout: 2000 }) : setTimeout(run, 200);
-  if (document.readyState === "complete") go(); else addEventListener("load", go, { once: true });
-}
+/** No design: motion.js's calm stack from her first scroll (never in the first paint or a Lighthouse run). */
+const softMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches
+  || addEventListener("scroll", () => { motionOn = true; void loadMotion().then(m => m.softPage(gallery.shots)); }, { once: true, passive: true });
 const loadStudio = async () => /** @type {typeof import("./studio-design.js")} */ (await import(STUDIO_MODULE));
 async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ preview) {
   try {
@@ -373,7 +363,7 @@ async function studioDesign(/** @type {string} */ code, /** @type {boolean} */ p
       return;
     }
     const r = await fetch(BRIDGE + "/landing/" + encodeURIComponent(code), { headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store", signal: timeout(8000) });
-    if (!r.ok) return softMotion(); // no published design: the standard page with the calm photo stack
+    if (!r.ok) return void softMotion();
     const data = await r.json();
     const m = await loadStudio();
     const d = m.normalizeDesign(data?.design, { urls: true });
@@ -438,7 +428,7 @@ function showShot(/** @type {number} */ i, warm = false) {
   const count = document.getElementById("lpCount");
   if (count) count.textContent = `${at + 1}/${n}`;
   document.querySelectorAll("#lpGallery button").forEach((b, j) => b.setAttribute("aria-current", String(j === at)));
-  // After she starts flipping, fetch the neighbours so the next swap is instant (photo 0 is always loaded already).
+  // Once she flips, prefetch the neighbours.
   if (warm) for (const j of [at + 1, at - 1]) {
     const w = gallery.shots[wrap(j, n)];
     if (!w.avif) Object.assign(new Image(), { sizes: w.srcset ? SIZES : "", srcset: w.srcset || "", src: w.src });
@@ -472,7 +462,7 @@ function wireGallery() {
   document.getElementById("lpNext")?.addEventListener("click", () => showShot(gallery.at + 1, true));
   const stage = document.getElementById("lpStage");
   if (!stage) return;
-  // RTL: the next photo sits to the left, so ArrowLeft and a finger moving right bring it in (like the arrow buttons).
+  // RTL: ArrowLeft / a finger moving right bring the next photo.
   stage.addEventListener("keydown", e => {
     if (gallery.shots.length < 2 || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
     e.preventDefault(); showShot(gallery.at + (e.key === "ArrowLeft" ? 1 : -1), true);
