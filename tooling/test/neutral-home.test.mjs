@@ -76,7 +76,7 @@ test("home: Neutral sheet and fonts, light only (no theme boot or switch), campa
   assert.ok(home.includes('<meta name="theme-color" content="#FAFAF9">'));
   assert.doesNotMatch(home, /theme-boot|data-theme-toggle/);
   const sheets = [...home.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1]);
-  assert.deepEqual(sheets, ["css/atelier-site.css?v=20261114-luxe", "css/neutral.css?v=20261122-trust"]);
+  assert.deepEqual(sheets, ["css/atelier-site.css?v=20261122-wordmark", "css/neutral.css?v=20261122-wordmark"]);
   assert.match(home, /<script type="module" src="js\/home-campaign\.js\?v=[\w-]+"><\/script>/);
   assert.match(await source("js/config.js"), /campaignSlug: '[a-z0-9-]*'/);
   const css = await source("css/neutral.css");

@@ -108,7 +108,7 @@ test("trust strip and WhatsApp on every product page; none on checkout or order 
     assert.equal(page.match(/<ul class="trust"/g)?.length, 1, d.name + ": one strip");
     assert.match(page, /<ul class="trust"[^>]*><li><svg[^]*?عايني قبل ما تدفعي[^]*?<\/ul>/, d.name);
     assert.match(page, /<a class="wa-fab" href="https:\/\/wa\.me\/201289437444\?text=[^"]+" data-wa rel="noopener" aria-label="كلمينا على واتساب">/, d.name);
-    assert.match(page, /\.mark::before\{content:"S\.";direction:ltr;unicode-bidi:isolate/, d.name);
+    assert.match(page, /<span class="shop-wordmark" dir="ltr"><b>select<\/b><small>shop<\/small><\/span>/, d.name);
     const code = JSON.parse(page.match(/<script type="application\/json" id="lp-data">([^<]*)<\/script>/)[1]).code;
     const og = page.match(/<meta property="og:image" content="([^"]+)">/)[1];
     assert.ok(og.startsWith("https://selectshopeg.com/lp/") && og.endsWith("/0-800.webp"), d.name);

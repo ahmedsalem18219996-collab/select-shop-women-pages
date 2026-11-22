@@ -298,9 +298,11 @@ html{background:var(--bg)}
 ::selection{background:#111;color:#fff}
 :focus-visible,a:focus-visible,button:focus-visible,.lp-opt input:focus-visible+span{outline:2px solid #111;outline-offset:3px}
 .top{background:rgba(250,250,249,.86);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--line)}
-.mark{flex-direction:row;align-items:center;gap:8px;font:800 18px/1 var(--f-num);letter-spacing:-.02em;text-transform:lowercase;color:var(--ink)}
-.mark::before{content:"S.";direction:ltr;unicode-bidi:isolate;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#111;color:#fff;font-size:14px;letter-spacing:0;text-transform:none}
-.mark::after{content:"shop";font:500 12px/1 var(--f-num);letter-spacing:0;color:var(--muted)}
+.mark{justify-content:center;min-height:44px}
+.mark::before,.mark::after{content:none}
+.shop-wordmark{display:inline-flex;align-items:baseline;gap:6px;unicode-bidi:isolate;white-space:nowrap}
+.shop-wordmark>b{font:800 clamp(20px,4vw,24px)/1 var(--f-num);letter-spacing:-.03em;color:var(--ink)}
+.shop-wordmark>small{font:400 13px/1 var(--f);letter-spacing:.055em;color:var(--muted)}
 .top .jump{border-bottom:1.5px solid var(--nx-accent)}
 #lpCartLink{border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);padding:0 14px}
 .browse-home::before{color:var(--ink)}
@@ -396,7 +398,7 @@ body[data-campaign] .campaign-jump{border-radius:16px}
 </style>
 </head>
 <body>
-<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية">SELECT</a><a class="jump" href="#lpForm">تسجيل الطلب</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة <span id="lpCartCount"></span></a><a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a></header>
+<header class="top"><a class="mark" href="/" aria-label="SELECT SHOP الرئيسية"><span class="shop-wordmark" dir="ltr"><b>select</b><small>shop</small></span></a><a class="jump" href="#lpForm">تسجيل الطلب</a><a href="/cart/" id="lpCartLink" aria-label="شنطة التسوق">الشنطة <span id="lpCartCount"></span></a><a href="/" class="browse-home browse-home--top" aria-label="للرجوع للرئيسية لاختيار موديلات أكثر" title="للرجوع للرئيسية لاختيار موديلات أكثر"><span class="browse-home__wide">للرجوع للرئيسية لاختيار موديلات أكثر</span><span class="browse-home__compact">اكتشف موديلات أكتر</span></a></header>
 <main class="page">
 <div class="media">
 <div class="stage" id="lpStage">

@@ -12,7 +12,6 @@
  color-scheme:light;
 }
 html{background:#FAFAF9 none}
-.nx-mark,.atelier-checkout .mark::before{direction:ltr;unicode-bidi:isolate} /* "S." not ".S" in RTL */
 ::selection{background:#111;color:#fff}
 
 /* ---------- bag (/cart/): header, tab bar and canvas come from css/neutral.css ---------- */
@@ -55,10 +54,7 @@ html{background:#FAFAF9 none}
 /* ---------- checkout (/checkout/) ---------- */
 .atelier-checkout{font-family:var(--f)}
 .atelier-checkout .top{max-width:640px;min-height:64px;padding:10px 20px;border-bottom:1px solid var(--line)}
-/* wordmark "SELECT shop" with the home's "S." tile at the start (right); the pseudo-elements are ordered before the text */
-.atelier-checkout .mark{display:flex;flex-direction:row;align-items:center;gap:6px;min-height:44px;font:800 18px/1 var(--f-num);letter-spacing:-.02em;color:var(--ink)}
-.atelier-checkout .mark::before{content:"S.";order:-1;display:grid;place-items:center;width:36px;height:36px;border-radius:9px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);font-size:18px}
-.atelier-checkout .mark::after{content:"SHOP";order:-1;width:auto;height:auto;background:none;font:800 18px/1 var(--f-num)}
+.atelier-checkout .mark{justify-content:center;min-height:44px}
 .atelier-checkout .top>a:last-child{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);font:600 14px/1 var(--f);text-decoration:none}
 .atelier-checkout .wrap{max-width:640px;padding:20px 20px 40px}
 .atelier-checkout h1{margin:0 0 4px;font:800 28px/1.4 var(--f-display);letter-spacing:0}
