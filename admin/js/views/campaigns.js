@@ -136,7 +136,7 @@ export default {
         if (reply.outcome === 'saved' && reply.homeCampaignSlug === slug) {
           homeCampaignSlug = reply.homeCampaignSlug;
           paint();
-          done(slug ? 'المجموعة هتظهر في الرئيسية.' : 'الرئيسية رجعت للشكل العادي.');
+          done(slug ? 'اتحفظ اختيار المجموعة للرئيسية.' : 'اتشال اختيار المجموعة للرئيسية.');
         } else if (reply.reason === 'campaign_unavailable') {
           island('error', 'المجموعة غير متاحة دلوقتي. راجع المنتجات المنشورة فيها.');
         } else fail(reply);
@@ -582,7 +582,7 @@ export default {
           title.append(make('h3', '', item.title), make('small', 'muted', item.slug));
           const badge = make('span', 'badge ' + (item.status === 'published' ? 'success' : item.status === 'archived' ? 'muted' : 'info'), statusLabel(item.status));
           cardHead.append(title, make('span', 'space'), badge);
-          if (item.slug === homeCampaignSlug) cardHead.append(make('span', 'badge info', 'على الرئيسية'));
+          if (item.slug === homeCampaignSlug) cardHead.append(make('span', 'badge info', 'مختارة للرئيسية'));
           card.append(cardHead);
           card.append(make('p', 'muted', item.description || 'بدون وصف'));
           const chips = make('div', 'campaign-product-chips');
