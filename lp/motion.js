@@ -12,7 +12,7 @@
 /** @typedef {{ el: HTMLElement, setImages: (l: Shot[]) => void, measure: () => void, update: () => void, destroy: () => void }} Stack */
 /** Per mode: card travel (%), 3D turn (deg), tilt (deg), extra zoom, scroll span (× viewport), dimming, blur (px),
  *  shrink of the older card, circle-open duration (s), white flash on open, rock of the older card (deg).
- *  soft = product pages without a Studio design: a section before the order form (the gallery stays); photos only
+ *  soft = product pages without a Studio design: a section right after the order form, from the first scroll (the gallery stays); photos only
  *  slide/fade in, stay sharp and still; no circle, hint or nudge. */
 export const MODES = {
   cinematic: { travel: 105, turn: 55, tilt: 8, zoom: 0.3, span: 0.8, dim: 0.6, blur: 2, shrink: 0.1, open: 1.5, flash: true, rock: 2 },
@@ -212,15 +212,20 @@ export function pageMotion(d, s, shots) {
   const root = document.documentElement, ink = s.inkFor(d.accent);
   pageStack?.destroy(); pageStack = null; delete root.dataset.motion;
   const soft = d.motion.mode === "soft";
-  const anchor = soft ? document.getElementById("lpForm") : document.querySelector("main.page .media")?.firstElementChild;
+  const form = document.getElementById("lpForm");
+  // soft: right after the form, so nothing above the form ever moves while she fills it in (lazy photos change height).
+  const anchor = soft ? form?.nextElementSibling : document.querySelector("main.page .media")?.firstElementChild;
   if (d.motion.mode === "none" || !anchor) { removeHint(); return; }
   const title = String(document.getElementById("lpTitle")?.textContent || "").trim();
   const price = String(document.getElementById("lpPrice")?.textContent || "").trim();
   if (!soft) root.dataset.motion = d.motion.mode; // replaces the gallery
   pageStack = mountStack(anchor, shots, { mode: d.motion.mode, dirs: d.motion.dirs, accent: d.accent, ink,
     caption: soft && title ? { title, price } : null, marquee: (title ? title + " · " : "") + "الدفع عند الاستلام" });
-  if (soft) pageStack.el.style.order = getComputedStyle(anchor).order; // the flex column orders by `order`, not the DOM
+  if (soft && form) pageStack.el.style.order = getComputedStyle(form).order; // the flex column orders by `order`, not the DOM
   else mountHint(d.motion.hint || s.DEFAULT_HINT, d.accent, ink);
 }
+/** Product page without a Studio design: the soft stack in the identity red. */
+export const softPage = (/** @type {Shot[]} */ shots) =>
+  pageMotion({ motion: { mode: "soft", dirs: [], hint: "" }, accent: "#C8102E" }, /** @type {any} */ ({ inkFor: () => "#fff" }), shots);
 /** The chosen colour's photos go into the product page stack. */
 export const pageShots = (/** @type {Shot[]} */ shots) => pageStack?.setImages(shots);

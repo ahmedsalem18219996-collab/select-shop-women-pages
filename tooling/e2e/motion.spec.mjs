@@ -47,14 +47,19 @@ test("cinematic product page: photo stack, main colour, scroll hint that hides o
   await expect(page.locator("#lpCartCount")).toHaveText("1");
 });
 
-test("a page without a Studio design: the soft stack before the order form, only after load; the gallery stays", async ({ page }) => {
+test("a page without a Studio design: the soft stack right after the order form from the first scroll; the gallery stays", async ({ page }) => {
+  const motionRequests = [];
+  page.on("request", r => { if (/\/lp\/motion\.(js|css)/.test(r.url())) motionRequests.push(r.url()); });
   await page.goto("/lp/ss-1008/");
+  await page.waitForLoadState("load");
+  await page.waitForTimeout(800);
+  expect(motionRequests).toEqual([]);                                              // nothing before she scrolls (nor in Lighthouse)
+  await page.mouse.wheel(0, 200);
   const stack = page.locator(".mo-stack[data-mode=soft]");
-  await expect(stack.locator(".mo-sec").first()).toBeVisible();
-  expect(await stack.evaluate(e => e.nextElementSibling?.id)).toBe("lpForm");
+  await expect(stack).toHaveCount(1);
+  expect(await stack.evaluate(e => e.previousElementSibling?.id)).toBe("lpForm"); // nothing above the form ever moves
   const y = (s) => page.locator(s).evaluate(e => e.getBoundingClientRect().top);
-  expect(await y(".mo-stack")).toBeGreaterThan(await y("#lpTitle"));               // after the details, before the form
-  expect(await y(".mo-stack")).toBeLessThan(await y("#lpForm"));
+  expect(await y(".mo-stack")).toBeGreaterThan(await y("#lpForm"));
   await expect(page.locator("#lpStage")).toBeVisible();                            // gallery, thumbnails and zoom untouched
   await expect(page.locator("html")).not.toHaveAttribute("data-motion", /.*/);
   await expect(stack.locator(".mo-first .mo-mark")).toHaveText((await page.locator("#lpTitle").textContent() || "").trim());
@@ -62,32 +67,24 @@ test("a page without a Studio design: the soft stack before the order form, only
   await expect(stack.locator(".mo-marq")).toHaveCSS("background-color", "rgb(200, 16, 46)");
   await expect(stack.locator(".mo-glint").first()).toBeHidden();
   await expect(page.locator(".mo-hint")).toHaveCount(0);                            // no hint pill, no nudge
-  const timing = await page.evaluate(() => ({ load: performance.getEntriesByType("navigation")[0].loadEventEnd,
-    motion: performance.getEntriesByType("resource").filter(r => /\/lp\/motion\.js/.test(r.name)).map(r => r.startTime) }));
-  expect(timing.motion.length).toBe(1);
-  expect(timing.motion[0]).toBeGreaterThanOrEqual(timing.load);                    // never competes with the first paint
-  await page.mouse.wheel(0, 3000);
+  await stack.scrollIntoViewIfNeeded();
+  await page.mouse.wheel(0, 1500);
   await expect(stack.locator(".mo-sec").first()).toHaveCSS("filter", "brightness(1)"); // photos stay sharp and bright
-  if (test.info().project.name === "mobile") {
-    await stack.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: test.info().outputPath("soft-stack.png") });
-  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()?.width || 0);
 });
 
 test("a published design without motion, and reduced motion, never load the motion files", async ({ page, request }) => {
   const motionRequests = [];
   page.on("request", r => { if (/\/lp\/motion\.(js|css)/.test(r.url())) motionRequests.push(r.url()); });
-  const idle = () => page.evaluate(() => new Promise(r => requestIdleCallback(() => setTimeout(r, 300), { timeout: 2500 })));
   await withDesign(request, "SS-1008", design("none"));
   await page.goto("/lp/ss-1008/");
-  await page.waitForLoadState("load");
   await expect(page.locator("html")).toHaveAttribute("data-studio-accent", /.*/);
-  await idle();
+  await page.mouse.wheel(0, 400); await page.waitForTimeout(800);
   await setDesign(request, "SS-1008", null);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/lp/ss-1008/");
   await page.waitForLoadState("load");
-  await idle();
+  await page.mouse.wheel(0, 400); await page.waitForTimeout(800);
   await expect(page.locator(".mo-stack")).toHaveCount(0);
   expect(motionRequests).toEqual([]);
 });
