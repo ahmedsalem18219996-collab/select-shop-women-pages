@@ -1,8 +1,9 @@
 import test from "node:test";
+import { existsSync } from "node:fs";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { lineOk, findVariant, sellableValues, priceLabel, egMobile, checkBuyer, photoSet, photoFiles, openValues, colourIndex, colourMedia, variantColourChoices, colourDiscoveryText } from "../../lp/runtime.js";
-import { render, renderShell, shellRoutes, photos, esc, AB_SNIPPET, PREFETCH, colorsOf, colorData, readexFaces } from "../build-lp.mjs";
+import { render, renderShell, shellRoutes, photos, esc, AB_SNIPPET, PREFETCH, colorsOf, colorData, NEUTRAL_FACES } from "../build-lp.mjs";
 
 test("landing copy states availability is pending and makes no inspection promise", () => {
   const html = renderShell("", {});
@@ -122,15 +123,16 @@ test("gallery markup: one photo has no arrows, counter or thumbnails; several ph
   assert.match(many, /<img src="img\/SS-9001\/0-800.webp"[^>]* width="800" height="1067"/); // 3:4, the uncropped photo shape
 });
 
-test("generator: escapes text, primary photo first, refuses missing price, inlines only Readex", () => {
+test("generator: escapes text, primary photo first, refuses missing price, inlines the three neutral faces", () => {
   assert.equal(esc(`<b>"x"&'`), "&lt;b&gt;&quot;x&quot;&amp;&#39;");
   assert.equal(photos({ media: [media(1, false), media(2, true), { url: "https://evil.example/x.jpg" }] })[0].position, 2);
   const page = { id: "t", code: "SS-9001", benefits: ["x"], video: null };
   assert.throws(() => render(page, { "SS-9001": { ...sized, media: [media(1, true)], price: {} } }), /no real price/);
   const html = render(page, { "SS-9001": { ...sized, title: "<script>", media: [media(1, true)] } });
   assert.ok(html.includes('<h1 id="lpTitle">&lt;script&gt;</h1>'));
-  const faces = readexFaces("@font-face {\n  font-family: 'DM Mono';\n  src: url('../assets/fonts/a.woff2');\n}\n@font-face {\n  font-family: 'Readex Pro';\n  src: url('../assets/fonts/b.woff2');\n}");
-  assert.ok(faces.includes("/assets/fonts/b.woff2") && !faces.includes("DM Mono") && !faces.includes("../"));
+  assert.deepEqual([...NEUTRAL_FACES.matchAll(/font-family:'([^']+)'/g)].map(m => m[1]), ["IBM Plex Sans Arabic", "Alexandria", "Manrope"]);
+  for (const [, file] of NEUTRAL_FACES.matchAll(/url\((\/assets\/fonts\/neutral\/[\w-]+\.woff2)\)/g)) assert.ok(existsSync(new URL("../.." + file, import.meta.url)), file);
+  assert.ok(!/Readex|\.\.\//.test(NEUTRAL_FACES) && NEUTRAL_FACES.split("@font-face").length === 4);
 });
 
 // Every pre-rendered landing page (one per advertised product or model): default colour = first configured code.
@@ -194,7 +196,7 @@ test("automatic shell: same form and runtime, no product data baked in, committe
   const html = renderShell("");
   assert.ok(html.includes('id="lpForm"') && html.includes('"auto":true') && html.includes("/js/catalog-thumbs.js"));
   assert.ok(!html.includes('"code":') && html.includes('<h1 id="lpTitle"></h1>'), "no product baked into the shell");
-  const faces = readexFaces(await readFile(new URL("../../css/fonts.css", import.meta.url), "utf8"));
+  const faces = NEUTRAL_FACES;
   const committed = await readFile(new URL("../../lp/index.html", import.meta.url), "utf8");
   const generated = renderShell(faces, await shellRoutes());
   let firstDifference = 0;
@@ -220,7 +222,7 @@ test("every generated product page: zoomable original photos, trust strip, in-fo
     assert.ok(page.indexOf('id="lpMore"') < page.indexOf('id="lpForm"'), d.name + ": product details must precede the order form");
     assert.ok(page.indexOf('id="lpOptions"') < page.indexOf('id="lpDesc"'), d.name + ": choices must come before the product description");
     if (page.includes('id="lpColors"')) assert.ok(page.indexOf('id="lpColors"') < page.indexOf('id="lpDesc"'), d.name + ": model colours must come before the description");
-    assert.match(page, /grid-template-areas:"brand jump cart theme" "browse browse browse browse"/, d.name + ": mobile header must give browsing its own row");
+    assert.match(page, /grid-template-areas:"brand jump cart" "browse browse browse"/, d.name + ": mobile header must give browsing its own row");
     assert.match(page, /browse-home__compact">اكتشف موديلات أكتر<\/span>/, d.name + ": clear mobile browse CTA");
     assert.match(page, /\.browse-home\{[^}]*background:transparent[^}]*color:var\(--ink\)/, d.name + ": theme-safe catalogue link");
     const form = page.slice(page.indexOf('id="lpForm"'));
