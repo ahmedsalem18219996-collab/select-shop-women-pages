@@ -47,13 +47,49 @@ test("cinematic product page: photo stack, main colour, scroll hint that hides o
   await expect(page.locator("#lpCartCount")).toHaveText("1");
 });
 
-test("calm and bold modes and an ordinary page: each mode is applied; a page without motion never loads it", async ({ page, request }) => {
+test("a page without a Studio design: the soft stack right after the order form from the first scroll; the gallery stays", async ({ page }) => {
   const motionRequests = [];
   page.on("request", r => { if (/\/lp\/motion\.(js|css)/.test(r.url())) motionRequests.push(r.url()); });
   await page.goto("/lp/ss-1008/");
-  await expect(page.locator("#lpStage")).toBeVisible();
+  await page.waitForLoadState("load");
+  await page.waitForTimeout(800);
+  expect(motionRequests).toEqual([]);                                              // nothing before she scrolls (nor in Lighthouse)
+  await page.mouse.wheel(0, 200);
+  const stack = page.locator(".mo-stack[data-mode=soft]");
+  await expect(stack).toHaveCount(1);
+  expect(await stack.evaluate(e => e.previousElementSibling?.id)).toBe("lpForm"); // nothing above the form ever moves
+  const y = (s) => page.locator(s).evaluate(e => e.getBoundingClientRect().top);
+  expect(await y(".mo-stack")).toBeGreaterThan(await y("#lpForm"));
+  await expect(page.locator("#lpStage")).toBeVisible();                            // gallery, thumbnails and zoom untouched
+  await expect(page.locator("html")).not.toHaveAttribute("data-motion", /.*/);
+  await expect(stack.locator(".mo-first .mo-mark")).toHaveText((await page.locator("#lpTitle").textContent() || "").trim());
+  await expect(stack.locator(".mo-first .mo-price")).toHaveText((await page.locator("#lpPrice").textContent() || "").trim());
+  await expect(stack.locator(".mo-marq")).toHaveCSS("background-color", "rgb(200, 16, 46)");
+  await expect(stack.locator(".mo-glint").first()).toBeHidden();
+  await expect(page.locator(".mo-hint")).toHaveCount(0);                            // no hint pill, no nudge
+  await stack.scrollIntoViewIfNeeded();
+  await page.mouse.wheel(0, 1500);
+  await expect(stack.locator(".mo-sec").first()).toHaveCSS("filter", "brightness(1)"); // photos stay sharp and bright
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()?.width || 0);
+});
+
+test("a published design without motion, and reduced motion, never load the motion files", async ({ page, request }) => {
+  const motionRequests = [];
+  page.on("request", r => { if (/\/lp\/motion\.(js|css)/.test(r.url())) motionRequests.push(r.url()); });
+  await withDesign(request, "SS-1008", design("none"));
+  await page.goto("/lp/ss-1008/");
+  await expect(page.locator("html")).toHaveAttribute("data-studio-accent", /.*/);
+  await page.mouse.wheel(0, 400); await page.waitForTimeout(800);
+  await setDesign(request, "SS-1008", null);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/lp/ss-1008/");
+  await page.waitForLoadState("load");
+  await page.mouse.wheel(0, 400); await page.waitForTimeout(800);
   await expect(page.locator(".mo-stack")).toHaveCount(0);
   expect(motionRequests).toEqual([]);
+});
+
+test("calm and bold modes: each mode is applied", async ({ page, request }) => {
   for (const mode of ["calm", "bold"]) {
     await withDesign(request, "SS-1008", design(mode, { accent: "" }));
     await page.goto("/lp/ss-1008/");

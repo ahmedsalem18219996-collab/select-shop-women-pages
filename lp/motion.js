@@ -11,14 +11,17 @@
 /** @typedef {{ src: string, alt?: string }} Shot */
 /** @typedef {{ el: HTMLElement, setImages: (l: Shot[]) => void, measure: () => void, update: () => void, destroy: () => void }} Stack */
 /** Per mode: card travel (%), 3D turn (deg), tilt (deg), extra zoom, scroll span (× viewport), dimming, blur (px),
- *  shrink of the older card, circle-open duration (s), white flash on open. */
+ *  shrink of the older card, circle-open duration (s), white flash on open, rock of the older card (deg).
+ *  soft = product pages without a Studio design: a section right after the order form, from the first scroll (the gallery stays); photos only
+ *  slide/fade in, stay sharp and still; no circle, hint or nudge. */
 export const MODES = {
-  cinematic: { travel: 105, turn: 55, tilt: 8, zoom: 0.3, span: 0.8, dim: 0.6, blur: 2, shrink: 0.1, open: 1.5, flash: true },
-  calm: { travel: 14, turn: 0, tilt: 0, zoom: 0.06, span: 1.1, dim: 0.35, blur: 0, shrink: 0.05, open: 2.2, flash: false },
-  bold: { travel: 120, turn: 70, tilt: 12, zoom: 0.4, span: 0.55, dim: 0.7, blur: 3, shrink: 0.14, open: 0.9, flash: true },
+  cinematic: { travel: 105, turn: 55, tilt: 8, zoom: 0.3, span: 0.8, dim: 0.6, blur: 2, shrink: 0.1, open: 1.5, flash: true, rock: 2 },
+  calm: { travel: 14, turn: 0, tilt: 0, zoom: 0.06, span: 1.1, dim: 0.35, blur: 0, shrink: 0.05, open: 2.2, flash: false, rock: 2 },
+  bold: { travel: 120, turn: 70, tilt: 12, zoom: 0.4, span: 0.55, dim: 0.7, blur: 3, shrink: 0.14, open: 0.9, flash: true, rock: 2 },
+  soft: { travel: 10, turn: 0, tilt: 0, zoom: 0, span: 1, dim: 0, blur: 0, shrink: 0, open: 0, flash: false, rock: 0 },
 };
 
-const CSS_URL = new URL("./motion.css?v=20261120-campaign", import.meta.url).href;
+const CSS_URL = new URL("./motion.css?v=20261122-soft", import.meta.url).href;
 
 const reduce = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const clamp = (/** @type {number} */ v, /** @type {number} */ a, /** @type {number} */ b) => Math.max(a, Math.min(b, v));
@@ -44,7 +47,7 @@ function install() {
   // A short shake of the first stack every 5 s until the visitor scrolls once, so it is clear there is more below.
   const nudge = () => {
     const first = [...stacks][0]?.el;
-    if (userScrolled || reduce() || !first || document.hidden) return;
+    if (userScrolled || reduce() || !first || document.hidden || first.dataset.mode === "soft") return;
     first.classList.remove("mo-nudge"); void first.offsetWidth; first.classList.add("mo-nudge");
   };
   setTimeout(nudge, 2600);
@@ -149,7 +152,7 @@ export function mountStack(anchor, shots, o) {
         }
         const next = secs[i + 1] || el.querySelector(".mo-marq") || el.nextElementSibling;
         const t = next ? clamp(1 - next.getBoundingClientRect().top / vh, 0, 1) : 0;
-        s.style.transform = `scale(${(1 - t * mode.shrink).toFixed(3)}) rotate(${((i % 2 ? 1 : -1) * t * 2).toFixed(2)}deg)`;
+        s.style.transform = `scale(${(1 - t * mode.shrink).toFixed(3)}) rotate(${((i % 2 ? 1 : -1) * t * mode.rock).toFixed(2)}deg)`;
         s.style.filter = `brightness(${(1 - t * mode.dim).toFixed(3)})` + (mode.blur ? ` blur(${(t * mode.blur).toFixed(2)}px)` : "");
       });
     },
@@ -208,13 +211,21 @@ export function flyToBag(/** @type {Element} */ from, /** @type {string|undefine
 export function pageMotion(d, s, shots) {
   const root = document.documentElement, ink = s.inkFor(d.accent);
   pageStack?.destroy(); pageStack = null; delete root.dataset.motion;
-  const anchor = document.querySelector("main.page .media")?.firstElementChild;
+  const soft = d.motion.mode === "soft";
+  const form = document.getElementById("lpForm");
+  // soft: right after the form, so nothing above the form ever moves while she fills it in (lazy photos change height).
+  const anchor = soft ? form?.nextElementSibling : document.querySelector("main.page .media")?.firstElementChild;
   if (d.motion.mode === "none" || !anchor) { removeHint(); return; }
   const title = String(document.getElementById("lpTitle")?.textContent || "").trim();
-  root.dataset.motion = d.motion.mode;
+  const price = String(document.getElementById("lpPrice")?.textContent || "").trim();
+  if (!soft) root.dataset.motion = d.motion.mode; // replaces the gallery
   pageStack = mountStack(anchor, shots, { mode: d.motion.mode, dirs: d.motion.dirs, accent: d.accent, ink,
-    marquee: (title ? title + " · " : "") + "الدفع عند الاستلام" });
-  mountHint(d.motion.hint || s.DEFAULT_HINT, d.accent, ink);
+    caption: soft && title ? { title, price } : null, marquee: (title ? title + " · " : "") + "الدفع عند الاستلام" });
+  if (soft && form) pageStack.el.style.order = getComputedStyle(form).order; // the flex column orders by `order`, not the DOM
+  else mountHint(d.motion.hint || s.DEFAULT_HINT, d.accent, ink);
 }
+/** Product page without a Studio design: the soft stack in the identity red. */
+export const softPage = (/** @type {Shot[]} */ shots) =>
+  pageMotion({ motion: { mode: "soft", dirs: [], hint: "" }, accent: "#C8102E" }, /** @type {any} */ ({ inkFor: () => "#fff" }), shots);
 /** The chosen colour's photos go into the product page stack. */
 export const pageShots = (/** @type {Shot[]} */ shots) => pageStack?.setImages(shots);
