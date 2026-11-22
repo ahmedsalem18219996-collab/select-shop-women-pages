@@ -28,14 +28,10 @@ body{background:radial-gradient(70% 22% at 90% 4%,rgba(214,206,196,.55),transpar
  .hdr{background:rgba(250,250,249,.82);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px)}
 }
 
-/* ---------- header: "S." mark + wordmark, search, bag (count only above 0) ---------- */
+/* ---------- header: wordmark, search, bag (count only above 0) ---------- */
 .hdr{background:var(--glass);border-bottom:1px solid var(--hair)}
 .hdr-in{min-height:var(--hdr);height:var(--hdr);display:flex;justify-content:space-between;align-items:center}
 .logo{display:flex;align-items:center;gap:10px;color:var(--ink);justify-items:normal}
-.nx-mark{width:36px;height:36px;border-radius:9px;background:#fff;box-shadow:inset 0 0 0 1px var(--hair);display:grid;place-items:center;font:800 20px/1 var(--f-num);font-style:normal;direction:ltr;unicode-bidi:isolate} /* "S." not ".S" in RTL */
-.nx-word{direction:ltr;unicode-bidi:isolate;display:flex;gap:.28em;align-items:baseline}
-.logo b,.logo small{font:800 19px/1 var(--f-num);letter-spacing:-.04em;text-transform:uppercase;color:var(--ink);margin:0}
-.logo b::after{content:none}
 .hdr-tools{display:flex;gap:6px}
 .ibtn{width:44px;height:44px;min-width:44px;border-radius:12px;border:1px solid var(--hair);color:var(--ink)}
 .ibtn:active,.hdr-tools .hdr-desktop-action:hover{background:var(--elev)}

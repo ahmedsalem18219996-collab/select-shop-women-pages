@@ -16,8 +16,6 @@ button{font:inherit}
 :focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 .collection-header{max-width:1180px;margin:auto;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .brand{display:flex;align-items:baseline;gap:8px}
-.brand-mark{font-size:25px;font-weight:900;letter-spacing:-1px}
-.brand-sub{font-size:10px;letter-spacing:2px;color:var(--muted);font-weight:700}
 .catalog-link{font-size:12px;color:var(--cyan);font-weight:700;min-height:44px;display:inline-flex;align-items:center}
 .collection-shell{max-width:1180px;min-height:68vh;margin:0 auto;padding:8px 16px 120px}
 .collection-hero{padding:clamp(22px,5vw,54px);border-radius:22px;background:var(--card);border:1px solid var(--line);margin-bottom:14px}

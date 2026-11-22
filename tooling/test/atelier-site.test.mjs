@@ -4,11 +4,11 @@ import { readFile } from "node:fs/promises";
 
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 const storeRoutes = [
-  ["index.html", 'href="css/atelier-site.css?v=20261114-luxe"', 'class="atelier-home"'],
-  ["p/index.html", 'href="../css/atelier-site.css?v=20261114-luxe"', 'class="atelier-product"'],
-  ["cart/index.html", 'href="../css/atelier-site.css?v=20261114-luxe"', 'class="atelier-cart"'],
-  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261114-luxe"', 'class="atelier-checkout"'],
-  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261114-luxe"', 'class="atelier-success"'],
+  ["index.html", 'href="css/atelier-site.css?v=20261122-wordmark"', 'class="atelier-home"'],
+  ["p/index.html", 'href="../css/atelier-site.css?v=20261122-wordmark"', 'class="atelier-product"'],
+  ["cart/index.html", 'href="../css/atelier-site.css?v=20261122-wordmark"', 'class="atelier-cart"'],
+  ["checkout/index.html", 'href="../css/atelier-site.css?v=20261122-wordmark"', 'class="atelier-checkout"'],
+  ["order-success/index.html", 'href="../css/atelier-site.css?v=20261122-wordmark"', 'class="atelier-success"'],
 ];
 
 test("Atelier shared style loads on every public storefront step", async () => {
@@ -120,7 +120,7 @@ test("bag, checkout and campaign page use the Neutral look: light only, the home
     assert.equal(html.split('rel="preload"').length - 1, 1, path + " one font preload");
     assert.ok(html.indexOf('href="../css/neutral-shop.css?v=') > html.indexOf("atelier-site.css"), path + " Neutral sheet loads last");
   }
-  assert.match(await source("cart/index.html"), /<i class="nx-mark" aria-hidden="true">S\.<\/i>/);
+  assert.match(await source("cart/index.html"), /<span class="shop-wordmark" dir="ltr"><b>select<\/b><small>shop<\/small><\/span>/);
   const campaign = await source("collections/index.html");
   assert.match(campaign, /<meta name="theme-color" content="#FAFAF9">/);
   assert.match(campaign, /style-src 'self'; font-src 'self';/); // CSP unchanged: fonts live in the sheet, not inline

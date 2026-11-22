@@ -43,6 +43,10 @@ body{background:transparent}
 .logo b{direction:ltr;font:600 21px/1 var(--f-body);letter-spacing:.34em;margin-inline-end:-.34em;text-transform:uppercase;color:var(--ink)}
 .logo b::after{content:none}
 .logo small{font:400 8.5px/1.6 var(--f-body);letter-spacing:.36em;color:var(--dust);text-transform:uppercase;margin-top:3px}
+.shop-wordmark{display:inline-flex;align-items:baseline;gap:6px;unicode-bidi:isolate;white-space:nowrap}
+.shop-wordmark>b{font:800 clamp(20px,4vw,24px)/1 var(--f-num);letter-spacing:-.03em;color:var(--ink);margin:0;text-transform:none}
+.shop-wordmark>small{font:400 13px/1 var(--f-body);letter-spacing:.055em;color:var(--muted);margin:0;text-transform:none}
+.shop-wordmark>b::after{content:none}
 .hdr-links a{font-size:13px;letter-spacing:.02em}
 .hdr-links a:hover,.commerce-head-link:hover{color:var(--cyan)}
 .ibtn{min-height:44px;min-width:44px;border-radius:0}
@@ -186,7 +190,7 @@ body{background:transparent}
 :is(.atelier-checkout,.atelier-success) .top>.theme-toggle{margin-inline-start:auto;margin-inline-end:6px}
 .atelier-checkout .top,.atelier-success .top{max-width:640px;padding:18px 22px;border-bottom:1px solid var(--hair)}
 .atelier-checkout .mark,.atelier-success .mark{color:var(--ink);font-size:20px;letter-spacing:.34em}
-.atelier-checkout .mark::after,.atelier-success .mark::after{background:var(--gold)}
+.atelier-checkout .mark::after,.atelier-success .mark::after{content:none}
 .atelier-checkout .wrap,.atelier-success .wrap{max-width:640px;padding:22px 20px 64px}
 .atelier-checkout h1,.atelier-success h1{font:300 clamp(28px,5vw,42px)/1.3 var(--f-body);letter-spacing:-.02em}
 .atelier-checkout .card,.atelier-success .card{border:1px solid var(--hair);border-radius:0;background:var(--chalk)}
