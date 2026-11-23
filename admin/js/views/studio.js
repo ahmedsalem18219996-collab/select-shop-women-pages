@@ -154,7 +154,6 @@ export default {
 
     const stackEditor = createStudioStackEditor({
       code, title: p.title, initial: state.draft?.studioStack, marqueeSettings: state.studioMarquee,
-      price: Number.isFinite(p.base_price?.amount_minor) ? new Intl.NumberFormat('ar-EG').format(p.base_price.amount_minor / 100) + ' جنيه' : '',
       editable: editor && landingLive,
       legacyPaths: () => design.order.map(slot => design.images[slot]).filter(Boolean),
       onChange: () => { edited(); paintStatus(); }, onBusy: () => paintStatus(),
