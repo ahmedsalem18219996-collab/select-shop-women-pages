@@ -11,10 +11,10 @@ test('the fixed copy library contains all 24 approved phrases without policy or 
 
 test('copy warnings distinguish restricted claims from prices and ordinary numbers', () => {
   for (const text of ['قبل النفَاد', 'قبل-نفاد الكمية', 'آخِر القِطع', 'خصــم', 'ضمان', 'استبدال', 'الإسترجاع', 'خلال ٣ أيام',
-    'خلال X أيام', 'خلال يومين', 'خلال واحد وعشرين يومًا']) {
+    'خلال X أيام', 'خلال يومين', 'خلال واحد وعشرين يومًا', 'خ\u200Bصم']) {
     assert.equal(getStudioCopyWarnings(text).restricted, true, text);
   }
-  for (const text of ['١٬٢٥٠ جنيه', 'EGP 500', 'السعر ٤٥٠', '450ج.م', 'LE 399']) {
+  for (const text of ['١٬٢٥٠ جنيه', '2,400 ج', 'EGP 500', 'السعر ٤٥٠', '450ج.م', 'LE 399']) {
     assert.deepEqual(getStudioCopyWarnings(text), { restricted: false, price: true }, text);
   }
   assert.deepEqual(getStudioCopyWarnings('مقاس ٤٢ وتتوفر بـ ٣ ألوان'), { restricted: false, price: false });

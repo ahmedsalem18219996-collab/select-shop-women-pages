@@ -34,12 +34,12 @@ export const STUDIO_COPY = {
 
 const RESTRICTED = /قبل[\s\p{P}]+(?:ال)?نفاد|اخر[\s\p{P}]+(?:ال)?قطع|خصم|ضمان|استبدال|استرجاع|خلال[\s\p{P}]+(?:(?:\d+(?:[.,٫]\d+)?|[\p{L}]+(?:\s+[\p{L}]+){0,2})\s+)?(?:ايام|يوم(?:ا|ين)?)(?!\p{L})/u;
 const AMOUNT = String.raw`(?:\d+(?:[.,٬٫ ]\d+)*)`;
-const CURRENCY = String.raw`(?:جنيه(?:ا|ات)?|ج[.\s]*م\.?|egp|l\.?e\.?|[$£€])`;
+const CURRENCY = String.raw`(?:جنيه(?:ا|ات)?|ج(?:[.\s]*م\.?)?|egp|l\.?e\.?|[$£€])`;
 const PRICE = new RegExp(String.raw`${AMOUNT}\s*${CURRENCY}(?!\p{L})|(?:${CURRENCY}|السعر|سعر)(?!\p{L})[\s:=–-]*${AMOUNT}`, 'u');
 
 export function getStudioCopyWarnings(value) {
   const normalized = String(value ?? '').normalize('NFKC')
-    .replace(/[\p{M}\u0640]/gu, '').replace(/[أإآٱ]/g, 'ا')
+    .replace(/[\p{M}\p{Cf}\u0640]/gu, '').replace(/[أإآٱ]/g, 'ا')
     .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 0x660))
     .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 0x6f0))
     .toLowerCase();
