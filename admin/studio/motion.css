@@ -88,6 +88,13 @@
 .ssm-o-callout{background:rgba(0,0,0,.72);color:#fff;font-weight:800;font-size:calc(13*var(--u)*var(--s,1));padding:calc(6*var(--u)) calc(10*var(--u));border-radius:calc(8*var(--u));border-inline-start:calc(3*var(--u)) solid var(--c,var(--ssm-accent));white-space:pre-line;width:max-content;max-width:62%;line-height:1.35;text-align:start}
 .ssm-o-text{color:var(--c,#fff);font-weight:900;font-size:calc(26*var(--u)*var(--s,1));line-height:1.2;text-align:center;text-shadow:0 calc(2*var(--u)) calc(14*var(--u)) rgba(0,0,0,.75);white-space:pre-line;width:max-content;max-width:90%}
 .ssm-o-badge{background:var(--c,var(--ssm-accent));color:#fff;font-weight:900;font-size:calc(15*var(--u)*var(--s,1));padding:calc(6*var(--u)*var(--s,1)) calc(14*var(--u)*var(--s,1));border-radius:999px;white-space:nowrap;box-shadow:0 calc(6*var(--u)) calc(18*var(--u)) rgba(0,0,0,.35)}
+.ssm-o-ribbon{--ribbon-w:min(94%,calc(76% * var(--s,1)));--ribbon-h:min(22%,calc(9% * var(--s,1)));
+  left:clamp(calc(var(--ribbon-w) / 2),var(--ribbon-x),calc(100% - var(--ribbon-w) / 2));
+  top:clamp(calc(var(--ribbon-h) / 2),var(--ribbon-y),calc(100% - var(--ribbon-h) / 2));
+  display:grid;place-items:center;width:var(--ribbon-w);height:var(--ribbon-h);box-sizing:border-box;
+  padding:0 calc(12*var(--u));border-radius:calc(9*var(--u));color:var(--ssm-accent-ink,#fff);text-align:center}
+.ssm-ribbon-label{width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;
+  font-size:calc(clamp(22px,6.667cqw,26px) * var(--s,1) * var(--ribbon-fit,1));line-height:1.1}
 .ssm-o-arrow{width:0;height:0;border-top:calc(11*var(--u)*var(--s,1)) solid transparent;border-bottom:calc(11*var(--u)*var(--s,1)) solid transparent;border-left:calc(20*var(--u)*var(--s,1)) solid var(--c,var(--ssm-accent))}
 /* entrances (all keep the element centred and its own rotation) */
 @keyframes ssm-in-pop{from{transform:translate(-50%,-50%) rotate(var(--rot,0deg)) scale(0);opacity:0}to{transform:translate(-50%,-50%) rotate(var(--rot,0deg)) scale(1);opacity:1}}

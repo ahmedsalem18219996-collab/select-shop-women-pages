@@ -74,6 +74,116 @@ const openStudio = async (page) => {
   if ((await legacy.getAttribute('aria-expanded')) === 'false') await legacy.click();
 };
 
+test('a long ribbon fits, moves and resizes in the editor, then renders from the saved design', async ({ page, request }) => {
+  const mobile = test.info().project.name === 'mobile';
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+  const store = newStore();
+  store.landing.draft = { studioStack: { v: 1, photos: [
+    { path: 'women-storefront/storefront/qa-ribbon.webp', overlays: [] },
+  ] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual'), stage = editor.locator('[data-visual-stage]');
+  await expect(editor).toBeVisible();
+  const elementsTab = editor.locator('[data-tab="elements"]');
+  if (await elementsTab.isVisible()) await elementsTab.click();
+  await editor.locator('[data-element="strip"]').click();
+  const ribbon = stage.locator('.ssm-o-ribbon'), copy = editor.locator('[data-field="text"]');
+  const ratio = await ribbon.evaluate(el => [el.offsetWidth / el.offsetParent.clientWidth, el.offsetHeight / el.offsetParent.clientHeight]);
+  expect(ratio[0]).toBeCloseTo(.76,1);
+  expect(ratio[1]).toBeCloseTo(.09,2);
+  for (const key of ['size','x','y','rot']) await expect(editor.locator('[data-field="' + key + '"]')).toBeVisible();
+  const caption = 'اختاري اللون والمقاس اللي يناسبك وعايني القطعة بنفسك قبل ما تدفعي';
+  await copy.fill(caption);
+  const label = ribbon.locator('.ssm-ribbon-label');
+  await expect(label).toHaveText(caption);
+  const labelFits = locator => locator.evaluate(el => {
+    const line = parseFloat(getComputedStyle(el).lineHeight);
+    return el.scrollWidth <= el.clientWidth && el.scrollHeight <= Math.min(el.parentElement.clientHeight,line * 2) + 1;
+  });
+  await expect.poll(() => labelFits(label)).toBe(true);
+  async function drag(target, dx, dy) {
+    await target.scrollIntoViewIfNeeded();
+    const rect = await target.boundingBox();
+    const x = Math.round(rect.x + rect.width / 2), y = Math.round(rect.y + rect.height / 2);
+    if (mobile) {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchStart', touchPoints:[{x,y}] });
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchMove', touchPoints:[{x:x + dx,y:y + dy}] });
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchEnd', touchPoints:[] });
+      await cdp.detach();
+    } else {
+      await page.mouse.move(x,y);
+      await page.mouse.down();
+      await page.mouse.move(x + dx,y + dy,{ steps:4 });
+      await page.mouse.up();
+    }
+  }
+  await drag(label,10,-18);
+  await expect(editor.locator('[data-field="x"]')).not.toHaveValue('50');
+  await expect(editor.locator('[data-field="y"]')).not.toHaveValue('82');
+  await drag(stage.locator('[data-resize]'),-35,-12);
+  await expect(editor.locator('[data-field="size"]')).not.toHaveValue('1');
+  await editor.locator('[data-field="rot"]').fill('8');
+  await page.locator('[data-studio-save]').click();
+  await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status','draft');
+  const saved = store.landing.draft;
+  const layer = saved.studioStack.photos[0].overlays[0];
+  expect(layer).toMatchObject({ type:'badge',fx:'ribbon',rot:8,text:caption });
+  expect(layer.size).not.toBe(1);
+  expect(layer.x).not.toBe(50);
+  expect(layer.y).not.toBe(82);
+  await page.reload();
+  await expect(stage.locator('.ssm-ribbon-label')).toHaveText(caption);
+  try {
+    const publishedFixture = await request.post('/__mock/landing', { data:{ code:'SS-1008', design:saved } });
+    expect(publishedFixture.status()).toBe(204);
+    await page.emulateMedia({ reducedMotion:'reduce' });
+    await page.goto('/lp/ss-1008/');
+    await expect(page.locator('.lp-studio-stack')).toHaveCount(0);
+    await page.locator('#lpForm').scrollIntoViewIfNeeded();
+    const publicRibbon = page.locator('.lp-studio-stack .ssm-o-ribbon');
+    const publicLabel = publicRibbon.locator('.ssm-ribbon-label');
+    await expect(publicLabel).toHaveText(caption);
+    await expect.poll(() => labelFits(publicLabel)).toBe(true);
+    for (const [property,value] of [['--ribbon-x',layer.x + '%'], ['--ribbon-y',layer.y + '%'], ['--s',String(layer.size)], ['--rot','8deg']]) {
+      await expect(publicRibbon).toHaveCSS(property,value);
+    }
+  } finally {
+    await request.post('/__mock/landing', { data:{ code:'SS-1008', design:null } });
+  }
+});
+
+test('library shapes start inside the frame and share the selected element controls', async ({ page }) => {
+  const store = newStore();
+  store.landing.draft = { studioStack: { v: 1, photos: [
+    { path:'women-storefront/storefront/qa-shapes.webp', overlays:[] },
+  ] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual'), stage = editor.locator('[data-visual-stage]');
+  await expect(editor).toBeVisible();
+  const elementsTab = editor.locator('[data-tab="elements"]');
+  if (await elementsTab.isVisible()) await elementsTab.click();
+  for (const type of ['badge','arrow','dot','circle','callout','icon']) {
+    await editor.locator('[data-element="' + type + '"]').click();
+    const shape = stage.locator('.ssm-o-' + type);
+    await expect(shape).toBeVisible();
+    const valid = await shape.evaluate(el => {
+      const frame = el.closest('.ssm-wrap').getBoundingClientRect();
+      const bounds = [el.getBoundingClientRect(), ...[...el.closest('.ssm-layer').querySelectorAll('line')].map(l => l.getBoundingClientRect())];
+      const left = Math.min(...bounds.map(b => b.left)), right = Math.max(...bounds.map(b => b.right));
+      const top = Math.min(...bounds.map(b => b.top)), bottom = Math.max(...bounds.map(b => b.bottom));
+      return left >= frame.left && right <= frame.right && top >= frame.top && bottom <= frame.bottom
+        && (right - left) * (bottom - top) < .3 * frame.width * frame.height;
+    });
+    expect(valid,type).toBe(true);
+    for (const key of ['size','x','y','rot']) await expect(editor.locator('[data-field="' + key + '"]')).toBeVisible();
+    await expect(stage.locator('[data-resize]')).toBeVisible();
+    await editor.locator('[data-action="remove-layer"]').click();
+  }
+});
+
 test('the visual Studio applies cards, selects text on the phone, replays motion, and saves the same payload', async ({ page }) => {
   const store = newStore();
   await signIn(page, OWNER, store);

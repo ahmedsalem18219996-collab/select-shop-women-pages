@@ -510,7 +510,7 @@ function layout(o) {
     ? ORDER_FORM.replace('</small></h2>', '</small></h2>\n' + checkoutPicker)
     : ORDER_FORM;
   // Product Landing Studio is part of the shared runtime, so every LP must fetch this release.
-  const choiceVersion = "20261122-colours";
+  const runtimeVersion = "20261123-sizing";
   const wa = esc(o.wa);
   return `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -567,7 +567,7 @@ ${o.video}
 <footer><strong dir="ltr">SELECT SHOP</strong><p>الدفع نقدًا عند الاستلام · اختيار اللون والمقاس قبل تأكيد الطلب</p></footer>
 <noscript><p style="text-align:center">${o.noscript}</p></noscript>
 <script type="application/json" id="lp-data">${o.data}</script>
-${o.scripts}<script type="module" src="/lp/runtime.js?v=${choiceVersion}"></script>
+${o.scripts}<script type="module" src="/lp/runtime.js?v=${runtimeVersion}"></script>
 </body>
 </html>
 `;

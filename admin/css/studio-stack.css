@@ -79,6 +79,10 @@
   border:2px dashed #ffffffdf;border-radius:50%;background:#17274d2b;color:#fff;
 }
 .studio-visual-handle[aria-pressed="true"] { border-color:#fff;border-style:solid;background:#2860e752;box-shadow:0 0 0 4px #3767e77d }
+.studio-visual-stage.ssm-edit .studio-visual-resize {
+  display:grid;place-items:center;width:44px;height:44px;border:2px solid #fff;
+  background:#2457bd;color:#fff;cursor:nwse-resize;font-size:19px
+}
 .studio-visual-photos { display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;padding-bottom:5px }
 .studio-visual-thumb {
   position:relative;width:42px;height:57px;padding:0;border:2px solid #c7d8f4;border-radius:10px;background:#eef5ff;
