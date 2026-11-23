@@ -1,6 +1,7 @@
 import { t, getLang } from '../i18n.js';
 import { html, render, $, icon, money, fmtNum, ago, statusBadge, skCards, skRows, spotlight, countUp, fail, esc } from '../ui.js';
 import { call } from '../api.js';
+import { mountTodayCalls } from '../order-followup.js';
 
 export function activityLine(a) {
   const who = a.actor_email ? a.actor_email.split('@')[0] : t(`role.${a.actor_role || 'staff'}`);
@@ -95,6 +96,7 @@ export default {
         <div class="card kpi spotlight lift"><span class="label">${icon('eye')}${t('dash.views7')}</span>
           <span class="value" data-count="${d.views.days_7}">0</span><span class="foot">${t('dash.viewsToday')}: ${fmtNum(d.views.today)}</span></div>
       </section>
+      ${can('orders.view') ? html`<section class="card stack" aria-label="اتصالات النهارده" data-today-calls style="margin-bottom:14px"></section>` : ''}
       ${can('owner') ? html`<section class="card" data-profit-summary aria-label="لوحة الأرباح والمرتجعات" style="margin-bottom:14px"><div class="card-head"><h3>الأرباح والمرتجعات</h3><span class="muted">للمالك فقط</span></div><p class="muted">تابع المبيعات وتكلفة المورد والمرتجعات من التقرير المالي، من غير اعتبار طلبات الاسترجاع أرباحًا مؤكدة.</p><a class="btn btn-primary" href="#/finance">فتح لوحة المالك المالية</a></section>` : ''}
       <section class="card" aria-label="إدارة المنتجات المعروضة والزيارات" style="margin-bottom:14px">
         <div class="card-head"><h3>التحكم في المنتجات المعروضة بالمتجر</h3></div>
@@ -130,6 +132,8 @@ export default {
           <ul class="timeline">${d.activity.map((a) => html`<li>${activityLine(a)}<small>${ago(a.at)}</small></li>`)}</ul></section>` : ''}
       </div></div>`);
     spotlight(el); countUp(el);
+    const queue = $('[data-today-calls]', el);
+    if (queue) void mountTodayCalls(queue, { canManage: can('orders.manage'), call });
     void populateProductViews(el, d.top_viewed);
   },
 };

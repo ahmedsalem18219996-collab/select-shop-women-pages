@@ -1,6 +1,7 @@
 import { t } from '../i18n.js';
 import { html, render, $, $$, icon, money, fmtNum, ago, date, statusBadge, skRows, confirmDialog, withBusy, done, fail, debounce, toMinor } from '../ui.js';
 import { call } from '../api.js';
+import { chooseOrderReason, mountOrderFollowup, mountTodayCalls, snapshotItems } from '../order-followup.js';
 import { activityLine } from './dashboard.js';
 
 const STAGES = ['preparing', 'shipped', 'delivered'];
@@ -15,9 +16,7 @@ const csvCell = (value) => {
 };
 function orderShippingRow(data) {
   const o = data?.order || {}, f = data?.fulfillment || {};
-  const groups = Array.isArray(o.groups) ? o.groups : [];
-  const items = groups.flatMap(g => Array.isArray(g.items) ? g.items : []);
-  const lines = items.length ? items : (Array.isArray(o.items) ? o.items : []);
+  const lines = snapshotItems(o);
   const summary = lines.map(x => {
     const sizes = (x.option_selections || []).map(v => v.value).join(' / ');
     return [x.product_title || x.product_public_code || 'منتج', sizes, '×' + (x.quantity ?? 1)].filter(Boolean).join(' ');
@@ -72,12 +71,13 @@ async function exportShippingCsv(button, state) {
   } finally { button.disabled = false; button.textContent = original; }
 }
 
-async function renderList({ el, query, session }) {
+async function renderList({ el, query, session, can }) {
   const state = { q: query.get('q') || '', status: query.get('status') ?? 'active', stage: query.get('stage') || '' };
   render(el, html`<div class="page">
     <div class="page-head"><div><h2>${t('orders.title')}</h2><p>${t('orders.subtitle')}</p></div>
       ${session?.role === 'owner' ? html`<button type="button" class="btn btn-primary" data-export-shipping>تنزيل شيت الشحن (Excel)</button>` : ''}</div>
     ${session?.role === 'owner' ? html`<p class="muted" style="font-size:12px">ينزّل الأوردرات المؤكدة حسب الفلتر الحالي (حتى 99 أوردر في كل ملف). الملف فيه بيانات العملاء؛ شاركه مع شركة الشحن فقط.</p>` : ''}
+    <section class="card stack" aria-label="اتصالات النهارده" data-today-calls style="margin-bottom:14px"></section>
     <section class="card" aria-label="خطوات البيع حسب الطلب" style="margin-bottom:14px">
       <b>البيع حسب الطلب — بدون مخزون فعلي</b>
       <p class="muted" style="margin-top:6px">الطلب الجديد يظل «معلقًا» حتى يتم التأكد من بيانات العميل واللون والمقاس والعنوان، ومراجعة التوافر والسعر عند المورد. بعد الاتفاق والتجهيز، يتم تأكيد الطلب وبدء الشحن. أرقام المخزون في النظام تنظيمية ولا تعني وجود البضاعة لديك.</p>
@@ -88,6 +88,7 @@ async function renderList({ el, query, session }) {
     <div class="chips" role="group" aria-label="${t('orders.stageFilter')}">${['', 'none', 'preparing', 'shipped', 'delivered', 'return_requested', 'returned'].map((s) => html`<button class="chip" data-stage="${s}" aria-pressed="${state.stage === s}">${s ? t('stage.' + s) : t('orders.stageFilter')}</button>`)}</div>
     <div id="results">${skRows(6)}</div></div>`);
   $('[data-export-shipping]', el)?.addEventListener('click',e=>exportShippingCsv(e.currentTarget,state));
+  void mountTodayCalls($('[data-today-calls]', el), { canManage: can('orders.manage'), call });
   const results = $('#results', el);
   let lastLoad = 0;
   const load = async () => {
@@ -179,8 +180,7 @@ async function renderDetail(ctx, code) {
   const { order: o, fulfillment: f, fulfillment_events: ev = [], activity } = r.data;
   const reload = () => renderDetail(ctx, code);
   const stage = f?.stage || null;
-  // The database groups lines per shipping group (groups[].items); a flat list is kept as a fallback.
-  const lines = (o.groups || []).flatMap((g) => g.items || []).concat(o.items || []);
+  const lines = snapshotItems(o);
   const next = o.status === 'confirmed' ? (NEXT[stage] || []) : [];
   const history = [...(o.history || []).map((h) => ({ at: h.changed_at, text: t('status.' + h.to_status) })), ...ev.map((e) => ({ at: e.at, text: t('stage.' + e.to) + (e.note ? ` · ${e.note}` : '') }))]
     .sort((a, b) => String(b.at).localeCompare(String(a.at)));
@@ -191,6 +191,7 @@ async function renderDetail(ctx, code) {
         ${(o.allowed_transitions || []).includes('confirmed') ? html`<button class="btn btn-primary" data-to="confirmed">${icon('check')}${t('orders.confirm')}</button>` : ''}
         ${(o.allowed_transitions || []).includes('cancelled') && (!stage || stage === 'preparing') ? html`<button class="btn btn-danger" data-to="cancelled">${t('orders.cancel')}</button>` : ''}</div>` : ''}</div>
     <div class="editor"><div class="stack">
+      <section class="card stack" aria-label="تأكيد المكالمة" data-order-followup></section>
       ${o.status === 'pending' ? html`<section class="card stack" aria-label="مراجعة طلب جديد حسب الطلب">
         <h3>قبل تأكيد الأوردر</h3>
         <p class="muted">١. التأكد من بيانات العميل واللون والمقاس. ٢. مراجعة السعر والتوافر عند المورد. ٣. تحديد ميعاد الشحن وتوفير القطعة. ٤. بعد ذلك يتم استخدام «تأكيد الطلب»؛ وإذا كانت القطعة غير متاحة، يتم إلغاء الطلب بدلًا من تأكيد شحن غير مضمون.</p>
@@ -199,7 +200,7 @@ async function renderDetail(ctx, code) {
         <div class="stepper">${STAGES.map((s) => { const idx = STAGES.indexOf(stage), i = STAGES.indexOf(s); return html`<div class="step ${i < idx || (stage === 'delivered' && s === 'delivered') ? 'done' : i === idx ? 'now' : ''}"><i></i>${t('stage.' + s)}</div>`; })}
           <div class="step ${['return_requested', 'returned'].includes(stage) ? 'now' : ''}"><i></i>${stage === 'returned' ? t('stage.returned') : t('stage.return_requested')}</div></div>
         ${can('orders.manage') && next.length ? html`<form class="stack" id="ff"><div class="grid2">
-          <label class="field"><span>${t('orders.nextStage')}</span><select class="select" id="fs">${next.map((s) => html`<option value="${s}">${t('stage.' + s)}</option>`)}</select></label>
+          <label class="field"><span>${t('orders.nextStage')}</span><select class="select" id="fs">${next.map((s) => html`<option value="${s}">${s === 'returned' && stage === 'shipped' ? `${t('stage.returned')} / رفض الاستلام` : t('stage.' + s)}</option>`)}</select></label>
           <label class="field"><span>${t('orders.carrier')}</span><input class="input" id="fc" value="${f?.carrier || ''}" maxlength="80"></label>
           <label class="field"><span>${t('orders.tracking')}</span><input class="input ltr" id="ft" value="${f?.tracking_code || ''}" maxlength="80"></label>
           <label class="field"><span>${t('orders.note')}</span><input class="input" id="fn" maxlength="500"></label></div>
@@ -221,6 +222,7 @@ async function renderDetail(ctx, code) {
       <section class="card"><div class="card-head"><h3>${t('orders.history')}</h3></div><ul class="timeline">${history.map((h) => html`<li>${h.text}<small>${date(h.at)}</small></li>`)}</ul></section>
       ${activity?.length ? html`<section class="card"><div class="card-head"><h3>${t('nav.activity')}</h3></div><ul class="timeline">${activity.map((a) => html`<li>${activityLine(a)}<small>${date(a.at)}</small></li>`)}</ul></section>` : ''}
     </aside></div></div>`);
+  const hasFollowup = mountOrderFollowup($('[data-order-followup]', el), { order: o, canManage: can('orders.manage'), call });
   const settlement = $('#return-finance', el);
   if (settlement) mountReturnFinance(settlement, o.public_order_code);
   // Campaign parameters recorded with the order (utm_*, ad set). Optional: older orders or a server without it show nothing.
@@ -239,14 +241,32 @@ async function renderDetail(ctx, code) {
   }).catch(() => null);
   $$('[data-to]', el).forEach((b) => b.addEventListener('click', async () => {
     const to = b.dataset.to;
-    if (!(await confirmDialog({ title: to === 'confirmed' ? t('orders.confirm') : t('orders.cancel'), text: to === 'confirmed' ? 'هل تمت مراجعة بيانات العميل وتوافر اللون والمقاس والسعر عند المورد، وتحديد ميعاد الشحن؟ تأكيد الطلب يعني أن الطلب جاهز للتجهيز والشحن.' : t('orders.cancelQ'), okText: to === 'confirmed' ? t('orders.confirm') : t('orders.cancel'), danger: to === 'cancelled' }))) return;
-    const res = await withBusy(b, () => call('orders.transition', { code, version: o.status_version, target: to }));
+    const cancelled = to === 'cancelled';
+    const action = cancelled ? t('orders.cancel') : t('orders.confirm');
+    const args = { code, version: o.status_version, target: to };
+    if (cancelled && await hasFollowup()) {
+      if (!b.isConnected) return;
+      const reason = await chooseOrderReason(action, action, t('orders.cancelQ'));
+      if (!reason) return;
+      args.reason = reason;
+    } else if (!(await confirmDialog({ title: action, text: cancelled ? t('orders.cancelQ') : 'هل تمت مراجعة بيانات العميل وتوافر اللون والمقاس والسعر عند المورد، وتحديد ميعاد الشحن؟ تأكيد الطلب يعني أن الطلب جاهز للتجهيز والشحن.', okText: action, danger: cancelled }))) return;
+    if (!b.isConnected) return;
+    const res = await withBusy(b, () => call('orders.transition', args));
     if (res.outcome === 'changed') { done(); reload(); } else { fail(res); if (res.outcome === 'conflict') reload(); }
   }));
   $('#ff', el)?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const res = await withBusy($('button', e.currentTarget), () => call('orders.set_fulfillment', { code, stage: $('#fs', el).value, version: f?.version || 0,
-      carrier: $('#fc', el).value.trim() || null, tracking_code: $('#ft', el).value.trim() || null, note: $('#fn', el).value.trim() || null }));
+    const form = e.currentTarget;
+    const args = { code, stage: $('#fs', form).value, version: f?.version || 0,
+      carrier: $('#fc', form).value.trim() || null, tracking_code: $('#ft', form).value.trim() || null, note: $('#fn', form).value.trim() || null };
+    if (args.stage === 'returned' && await hasFollowup()) {
+      if (!form.isConnected) return;
+      const reason = await chooseOrderReason(stage === 'shipped' ? 'رفض الاستلام أو الإرجاع' : 'سبب الإرجاع', t('app.save'));
+      if (!reason) return;
+      args.reason = reason;
+    }
+    if (!form.isConnected) return;
+    const res = await withBusy($('button', form), () => call('orders.set_fulfillment', args));
     if (res.outcome === 'saved') { done(); reload(); } else { fail(res); if (res.outcome === 'conflict') reload(); }
   });
 }
