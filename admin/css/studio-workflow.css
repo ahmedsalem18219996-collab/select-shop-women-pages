@@ -1,0 +1,64 @@
+.studio-draft-workflow {
+  inline-size: min(100%, 32rem);
+  min-inline-size: 0;
+}
+
+.studio-readiness h3,
+.studio-readiness p {
+  margin: 0;
+}
+
+.studio-readiness-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: .82rem;
+}
+
+.studio-check-ok { color: var(--success, #117848); }
+.studio-check-blocked { color: var(--danger, #b91c1c); }
+
+.studio-draft-actions {
+  margin-block: 8px;
+}
+
+.studio-draft-options {
+  display: grid;
+  gap: 6px;
+  min-inline-size: 0;
+  border: 1px solid var(--line, #cbd5e1);
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.studio-draft-options label,
+.studio-marquee-check {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  min-block-size: 44px;
+  cursor: pointer;
+}
+
+.studio-draft-options input,
+.studio-marquee-check input {
+  inline-size: 20px;
+  block-size: 20px;
+  margin: 0;
+  flex: none;
+}
+
+.studio-draft-actions .btn,
+#studio-marquee .btn {
+  min-block-size: 44px;
+}
+
+.studio-marquee-row {
+  display: grid;
+  gap: .5rem;
+  border: 1px solid var(--line, #cbd5e1);
+  border-radius: 12px;
+  padding: 8px 12px;
+}

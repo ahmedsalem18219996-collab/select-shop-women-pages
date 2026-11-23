@@ -233,15 +233,13 @@ export const pageShots = (/** @type {Shot[]} */ shots) => pageStack?.setImages(s
 
 const STUDIO_ASSETS = new URL("../admin/studio/", import.meta.url);
 const STUDIO_STORAGE = "https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/";
-const STUDIO_PHOTO = /^women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(webp|jpg|jpeg|png)$/;
+const STUDIO_VERSION = "?v=20261123-studio-v2";
 
 /** The shared Studio renderer and its assets are requested only after scrolling toward the order form. */
 export async function publishedStudio(/** @type {any} */ design) {
   const form = document.getElementById("lpForm");
   if (!form) return;
-  const photos = design.photos.slice(0, 8).filter((/** @type {any} */ p) => typeof p?.path === "string" && STUDIO_PHOTO.test(p.path))
-    .map((/** @type {any} */ p) => ({ ...p, url: STUDIO_STORAGE + p.path, alt: "صورة للمنتج" }));
-  if (!photos.length) return;
+  const v2 = Boolean(design.marquee || design.scrollHint);
   if (typeof IntersectionObserver === "function" && form.getBoundingClientRect().top > innerHeight + 400) {
     await new Promise(resolve => {
       const nearby = new IntersectionObserver(entries => {
@@ -253,7 +251,9 @@ export async function publishedStudio(/** @type {any} */ design) {
     });
   }
   const asset = (/** @type {string} */ path) => new URL(path, STUDIO_ASSETS).href;
-  const styles = ["motion.css?v=20261123-sizing", "fonts/fonts-studio.css"].map(path => new Promise((resolve, reject) => {
+  const css = ["motion.css" + STUDIO_VERSION, "fonts/fonts-studio.css"];
+  if (v2) css.push("studio-v2-motion.css" + STUDIO_VERSION);
+  const styles = css.map(path => new Promise((resolve, reject) => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = asset(path);
@@ -261,12 +261,25 @@ export async function publishedStudio(/** @type {any} */ design) {
     link.onerror = reject;
     document.head.append(link);
   }));
-  const [studio] = await Promise.all([import(asset("motion.js?v=20261123-sizing")), ...styles]);
+  // The same cached promise is already used by the WhatsApp links on the first interaction.
+  const settings = v2 && design.marquee?.enabled !== false
+    ? import(/** @type {string} */ ("../js/store-contact.js?v=20261122")).then(m => m.storefront()).then(s => s?.studioMarquee).catch(() => undefined)
+    : undefined;
+  const [studio, features, marquee] = await Promise.all([
+    import(asset("motion.js" + STUDIO_VERSION)),
+    v2 ? import(asset("studio-v2-motion.js" + STUDIO_VERSION)) : null,
+    settings,
+    ...styles,
+  ]);
+  const photos = design.photos.slice(0, 8).filter((/** @type {any} */ p) => studio.validStudioPhotoPath(p?.path))
+    .map((/** @type {any} */ p) => ({ ...p, url: STUDIO_STORAGE + p.path, alt: "صورة للمنتج" }));
+  if (!photos.length) return;
   const section = document.createElement("section");
   section.className = "lp-studio-stack ssm-stack--light";
   section.setAttribute("aria-label", "صور وتفاصيل القطعة");
   section.style.order = getComputedStyle(form).order;
   studio.applyAccent(section, /^#[\da-f]{6}$/i.test(design.accent) ? design.accent : "#111111");
   checkoutTail(form).after(section);
-  studio.mountStack(section, photos, { firstEager: false });
+  if (features) features.mountStudioStack(section, photos, design, marquee);
+  else studio.mountStack(section, photos, { firstEager: false });
 }

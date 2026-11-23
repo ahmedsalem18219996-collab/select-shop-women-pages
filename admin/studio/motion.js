@@ -381,6 +381,8 @@ export function makeStrip(/** @type {string} */ text, rot = -3, color = "") {
 
 /* ===================== photo frame (any photo → 9:16) ===================== */
 export const PHOTO_FITS = ["auto", "fill", "cover"];
+const STUDIO_PHOTO = /^(?:women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(?:webp|jpg|jpeg|png)|product-media\/media\/[0-9a-f]{32}\.(?:jpg|png|webp))$/;
+export const validStudioPhotoPath = (/** @type {unknown} */ path) => typeof path === "string" && STUDIO_PHOTO.test(path);
 /**
  * Put a photo into a 9:16 frame. "cover" crops to fill; "fill" keeps the whole photo centred over a blurred,
  * enlarged copy of itself; "auto" picks "fill" for square / landscape photos and "cover" for portrait ones.
@@ -391,16 +393,18 @@ export function mountPhoto(wrap, photo, eager = false) {
   const shade = /** @type {any} */ (photo).shade;
   if (PHOTO_SHADES.includes(shade) && shade) { const sd = document.createElement("div"); sd.className = "ssm-shade ssm-shade-" + shade; wrap.prepend(sd); }
   const img = document.createElement("img");
-  img.className = "ssm-main"; img.src = photo.url; img.alt = photo.alt || ""; img.decoding = "async";
+  img.className = "ssm-main"; img.alt = photo.alt || ""; img.decoding = "async";
+  img.width = 900; img.height = 1600;
   if (eager) { img.loading = "eager"; img.setAttribute("fetchpriority", "high"); } else img.loading = "lazy";
+  img.src = photo.url;
   const fit = PHOTO_FITS.includes(/** @type {string} */ (photo.fit)) ? photo.fit : "auto";
   const apply = () => {
     const ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 0.5625;
     const fill = fit === "fill" || (fit === "auto" && ratio > 0.68);
     wrap.classList.toggle("ssm-fill", fill);
     if (fill && !wrap.querySelector(".ssm-bg")) {
-      const bg = document.createElement("img"); bg.className = "ssm-bg"; bg.src = photo.url; bg.alt = ""; bg.setAttribute("aria-hidden", "true");
-      bg.loading = img.loading; bg.decoding = "async";
+      const bg = document.createElement("img"); bg.className = "ssm-bg"; bg.alt = ""; bg.setAttribute("aria-hidden", "true");
+      bg.loading = img.loading; bg.decoding = "async"; bg.src = photo.url;
       wrap.prepend(bg);
     }
   };
@@ -459,7 +463,7 @@ function wire() {
  * alternating from the side and from the top; a covered card shrinks, dims and tilts.
  * @param {HTMLElement} root empty container
  * @param {{url:string, alt:string, overlays?: any[], enter?: string, fit?: string, strip?: {text:string, rot?: number, color?: string}}[]} photos
- * @param {{mode?: "cinematic", next?: () => (Element|null), firstEager?: boolean}} [opts]
+ * @param {{mode?: "cinematic", next?: () => (Element|null), firstEager?: boolean, lazyIntro?: boolean}} [opts]
  */
 export function mountStack(root, photos, opts = {}) {
   const reduce = reducedMotion();
@@ -503,7 +507,7 @@ export function mountStack(root, photos, opts = {}) {
         }
         first.classList.add("ssm-in");
       };
-      if (intro && opts.firstEager === false && typeof IntersectionObserver === "function") {
+      if (intro && (opts.firstEager === false || opts.lazyIntro) && typeof IntersectionObserver === "function") {
         firstView = new IntersectionObserver(entries => {
           if (!entries.some(entry => entry.isIntersecting)) return;
           firstView?.disconnect();

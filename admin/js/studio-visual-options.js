@@ -1,24 +1,24 @@
 // Layer and photo presets adapted from the approved Studio handoff.
-const STRIP_TEXT = "عرض لفترة محدودة • اطلب دلوقتي";
+const STRIP_TEXT = "اختاري مقاسك واطلبي";
 export const TEMPLATES = [
-  { name: "صفحة: عنوان وسعر", full: true, shade: "bottom", items: [
-    { type: "text", x: 50, y: 6, text: "{name} – كمية محدودة", fx: "block", font: "Cairo", size: 0.62, in: "drop" },
+  { name: "صفحة: عنوان وطلب", full: true, shade: "bottom", items: [
+    { type: "text", x: 50, y: 6, text: "{name}", fx: "block", font: "Cairo", size: 0.62, in: "drop" },
     { type: "text", x: 50, y: 62, text: "مش هتحتار تلبس إيه النهارده!", fx: "marker", font: "Cairo", size: 1.2, sh: "soft", in: "slide" },
     { type: "text", x: 50, y: 71, text: "طقم جاهز يخلّي طلتك ملفتة في ثواني", font: "Cairo", size: 0.55, sh: "strong", in: "pop", delay: 0.9 },
-    { type: "badge", x: 50, y: 79, text: "{price} بس!", size: 1.5, in: "zoom", anim: "pulse", delay: 1.2 },
-    { type: "badge", x: 50, y: 86, text: "اطلب دلوقتي", color: "#ffffff", size: 0.8, in: "pop", anim: "float", delay: 1.5 }] },
+    { type: "badge", x: 50, y: 79, text: "الدفع عند الاستلام", size: 1.1, in: "pop", delay: 1.2 },
+    { type: "badge", x: 50, y: 86, text: "احجزي قطعتك", color: "#ffffff", size: 0.8, in: "pop", delay: 1.5 }] },
   { name: "صفحة: راحة وشياكة", full: true, shade: "bottom", items: [
     { type: "text", x: 50, y: 66, text: "راحة طول اليوم.. وشياكة من غير مجهود", fx: "underline", font: "Changa", size: 1.05, sh: "soft", in: "slide" },
     { type: "text", x: 50, y: 76, text: "قصّة واسعة مريحة", font: "Cairo", size: 0.6, sh: "strong", in: "pop", delay: 0.9 },
-    { type: "badge", x: 50, y: 84, text: "اطلب دلوقتي بـ {price}", size: 1.05, in: "drop", anim: "heart", delay: 1.2 }] },
+    { type: "badge", x: 50, y: 84, text: "احجزي قطعتك", size: 1.05, in: "pop", delay: 1.2 }] },
   { name: "صفحة: تفاصيل", full: true, shade: "both", items: [
     { type: "text", x: 70, y: 9, text: "تفاصيل تفرق عن أي طقم تاني", fx: "sticker", font: "Lalezar", size: 0.5, rot: -4, in: "spin" },
     { type: "dot", x: 44, y: 38, anim: "pulse", delay: 0.6 }, { type: "callout", x: 44, y: 38, x2: 20, y2: 28, text: "سوستة بتصميم جريء", in: "slide", delay: 0.7 },
     { type: "dot", x: 64, y: 47, anim: "pulse", delay: 1 }, { type: "callout", x: 64, y: 47, x2: 78, y2: 58, text: "تطريز بارز", in: "slide", delay: 1.1 },
     { type: "text", x: 50, y: 80, text: "تفاصيل تخطف العين من أول ثانية", fx: "glow", font: "Lalezar", size: 1.1, in: "zoom", delay: 1.4 }] },
-  { name: "عرض", strip: STRIP_TEXT, items: [
-    { type: "badge", x: 50, y: 7, text: "عرض لفترة محدودة", in: "drop", anim: "float" },
-    { type: "text", x: 50, y: 80, text: "اكتب العرض هنا", size: 1.2, in: "type", font: "Lalezar" },
+  { name: "دعوة للطلب", strip: STRIP_TEXT, items: [
+    { type: "badge", x: 50, y: 7, text: "اختيارنا", in: "pop" },
+    { type: "text", x: 50, y: 80, text: "اختاري اللي يشبهك", size: 1.2, in: "slide", font: "Lalezar" },
     { type: "arrow", x: 20, y: 62, x2: 30, y2: 74, anim: "shake", delay: 1.4 }] },
   { name: "تفاصيل", items: [
     { type: "dot", x: 40, y: 30, anim: "pulse" }, { type: "callout", x: 40, y: 30, x2: 76, y2: 40, text: "تطريز بارز", in: "slide" },
@@ -26,11 +26,11 @@ export const TEMPLATES = [
   { name: "جديد وصل", strip: "جديد • وصل النهارده", items: [
     { type: "badge", x: 50, y: 8, text: "جديد", size: 1.4, in: "spin", anim: "heart", color: "#ff2d8a" },
     { type: "text", x: 50, y: 82, text: "وصل الموديل اللي مستنيينه", in: "slide", font: "Changa" }] },
-  { name: "سعر", items: [
-    { type: "badge", x: 50, y: 88, text: "اكتب السعر", size: 1.6, in: "zoom", anim: "pulse" }] },
+  { name: "اختيارنا", items: [
+    { type: "badge", x: 50, y: 88, text: "اختيارنا", size: 1.2, in: "pop" }] },
   { name: "دفع عند الاستلام", items: [
     { type: "badge", x: 50, y: 9, text: "الدفع عند الاستلام", in: "drop", anim: "float", color: "#16a34a" },
-    { type: "badge", x: 50, y: 90, text: "اكتب السعر", size: 1.3, in: "zoom", anim: "pulse", delay: 0.8 }] },
+    { type: "badge", x: 50, y: 90, text: "عايني قبل ما تدفعي", size: 1.1, in: "pop", delay: 0.8 }] },
   { name: "نيون", items: [
     { type: "text", x: 50, y: 15, text: "ستايلك يبدأ هنا", size: 1.3, in: "zoom", anim: "neon", color: "#ff2d8a", font: "Lalezar" }] },
   { name: "فخامة", items: [
@@ -63,6 +63,10 @@ export const TEXT_LOOPS = [...LOOPS, ['shake','هزّة'], ['neon','نيون'], 
 export const FONTS = [['','افتراضي'], ['Cairo','كايرو'], ['Changa','تشانجا'], ['El Messiri','المسيري'], ['Aref Ruqaa','عارف رقعة'], ['Marhey','مرحي'], ['Lalezar','لاليزار']];
 export const FITS = [['auto','تلقائي'], ['fill','الصورة كاملة'], ['cover','ملء الإطار']];
 export const SHADES = [['','بدون'], ['bottom','أسفل'], ['top','أعلى'], ['both','أعلى وأسفل'], ['full','كامل']];
+export const SCROLL_HINTS = [
+  ['pill','كبسولة زجاجية'], ['arrow','سهم بيتنطط'], ['finger','إصبع بيسحب'], ['shine','نص لامع'],
+  ['dots','نقاط جانبية'], ['progress','خط تقدّم'], ['none','من غير'],
+];
 export const ELEMENTS = [
   ['text','كتابة','T'], ['badge','شارة','★'], ['dot','دايرة بتنوّر','◉'], ['callout','خط شرح','⟋'],
   ['arrow','سهم','➜'], ['circle','دايرة تحديد','◯'], ['icon','أيقونة','✦'], ['strip','شريط كلام','≋'],

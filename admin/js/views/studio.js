@@ -7,7 +7,9 @@ import { withBusy, island, done, fail, ago, confirmDialog } from '../ui.js';
 import { call, mediaUrl, uploadLandingImage } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
 import { buildGeminiPrompt, STUDIO_STYLES } from '../studio-prompts.js';
-import { createStudioStackEditor } from '../studio-stack-editor.js?v=20261123-sizing';
+import { createStudioStackEditor } from '../studio-stack-editor.js?v=20261123-studio-v2';
+import { getStudioCopyWarnings, getStudioStackCopyWarnings } from '../studio-copy.js?v=20261123-studio-v2';
+import { resetStudioDialog, studioTemplateDialog, studioVersionsDialog } from '../studio-drafts.js?v=20261123-studio-v2';
 import { normalizeDesign, defaultDesign, HIDEABLE, CHOICES, IMAGE_PATH, STORAGE, parseDesignImport, suggestAccent, DEFAULT_HINT, MAX_MOTION_IMAGES } from '../../../lp/studio-design.js?v=20261120-campaign';
 
 const make = (tag, cls = '', text = '') => {
@@ -56,6 +58,17 @@ function select(name, options, labels, value) {
   options.forEach(o => { const op = make('option', '', labels[o] || o); op.value = o; s.append(op); });
   s.value = value;
   return s;
+}
+
+function hasPricedOptions(product) {
+  const options = product.options || [];
+  const colour = options.find(option => /لون|colou?r/i.test(option.name));
+  const size = options.find(option => /مقاس|حجم|size/i.test(option.name));
+  return Boolean(colour && size && (product.variants || []).some(variant =>
+    variant.active && (variant.amount_minor ?? product.base_price?.amount_minor) > 0
+    && [colour, size].every(option => variant.selections?.some(selection =>
+      selection.option_id === option.option_id && option.values?.some(value => value.value_id === selection.value_id && value.active !== false)))
+  ));
 }
 
 async function renderPicker(ctx) {
@@ -125,19 +138,46 @@ export default {
     if (editor) actions.append(saveBtn);
     if (owner) actions.append(publishBtn, unpublishBtn);
     actions.append(liveLink);
-    head.append(actions);
+    const workflow = make('div', 'stack studio-draft-workflow');
+    const readiness = make('section', 'studio-readiness card stack');
+    readiness.setAttribute('aria-label', 'جاهزة للنشر؟');
+    readiness.append(make('h3', '', 'جاهزة للنشر؟'));
+    const checks = make('ul', 'studio-readiness-list');
+    const warnings = make('p', 'muted');
+    readiness.append(checks, warnings);
+    if (owner) workflow.append(readiness);
+    workflow.append(actions);
+    head.append(workflow);
     page.append(head);
     if (!landingLive) page.append(make('p', 'card warn', 'حفظ التصميم يتطلب تفعيل الخادم (Migration الـ Studio لسه متطبقتش). المعاينة شغالة.'));
     if (!editor) page.append(make('p', 'card', 'صلاحيتك للعرض فقط: تقدر تشوف التصميم والمعاينة بدون حفظ.'));
 
     const stackEditor = createStudioStackEditor({
-      code, title: p.title, initial: state.draft?.studioStack,
+      code, title: p.title, initial: state.draft?.studioStack, marqueeSettings: state.studioMarquee,
       price: Number.isFinite(p.base_price?.amount_minor) ? new Intl.NumberFormat('ar-EG').format(p.base_price.amount_minor / 100) + ' جنيه' : '',
       editable: editor && landingLive,
       legacyPaths: () => design.order.map(slot => design.images[slot]).filter(Boolean),
       onChange: () => { edited(); paintStatus(); }, onBusy: () => paintStatus(),
     });
     page.append(stackEditor.el);
+
+    const draftActions = make('div', 'row wrap studio-draft-actions');
+    const resetBtn = button('ابدأ من جديد', 'btn-soft', () => resetStudioDialog(keepPhotos =>
+      replaceDraft('landing.reset', { keepPhotos, design: currentPayload() }, resetBtn, 'اتعملت مسودة جديدة واتحفظت النسخة السابقة.')
+    ));
+    const versionsBtn = button('رجوع لنسخة سابقة', 'btn-ghost', () =>
+      studioVersionsDialog(code, versionsBtn, id => replaceDraft('landing.restore', { id }, versionsBtn, 'اترجعت النسخة للمسودة.')));
+    const copyBtn = button('نسخ التصميم', 'btn-ghost', () => copyDesign());
+    const templateBtn = button('استخدم كقالب لمنتجات تانية', 'btn-soft', () => template());
+    if (editor && landingLive) {
+      draftActions.append(resetBtn, versionsBtn, copyBtn, templateBtn);
+      page.append(draftActions);
+    }
+    if (owner) {
+      const settingsLink = make('a', 'btn btn-ghost', 'إعداد الشريط للمتجر');
+      settingsLink.href = '#/settings';
+      draftActions.append(settingsLink);
+    }
 
     const layout = make('div', 'studio-layout');
     const controls = make('div', 'studio-controls stack');
@@ -434,6 +474,35 @@ export default {
       else thumb.append(make('span', 'muted', 'لا توجد صورة'));
       rm.disabled = !path || !editor;
     });
+    let writing = false;
+    const ready = () => {
+      const stack = stackEditor.payload();
+      const photos = stack?.photos || [];
+      const v2 = Boolean(stack?.marquee || stack?.scrollHint);
+      const cover = Boolean(photos[0]?.path);
+      const copy = getStudioStackCopyWarnings(stack);
+      const marquee = state.studioMarquee;
+      const text = [design.title, design.description, ...design.features, design.cta.text, design.orderCard.title, design.motion.hint];
+      if (v2 && stack?.marquee?.enabled !== false && marquee?.enabled && Array.isArray(marquee.lines)) {
+        text.push(...marquee.lines.filter(line => !line.hidden).map(line => line.text));
+      }
+      const copyFlags = text.map(getStudioCopyWarnings);
+      const restricted = copy.restricted || copyFlags.some(flag => flag.restricted);
+      const price = copy.price || copyFlags.some(flag => flag.price);
+      const shadow = photos.every(photo => (photo.overlays || []).every(item =>
+        !['text', 'badge', 'callout'].includes(item.type) || !item.text || item.sh !== ''));
+      return {
+        blocking: v2 && (!cover || restricted),
+        entries: [
+          [cover && v2, 'الصورة الأولى موجودة وبأولوية تحميل عالية', v2 && !cover],
+          [shadow, 'ظل النص شغّال'],
+          [!restricted, 'مفيش كلمات ممنوعة', v2 && restricted],
+          [hasPricedOptions(p), 'المنتج له لون ومقاس وسعر من السيرفر'],
+          [photos.length > 0 && photos.every(photo => photo.path), 'مساحة كل صورة محجوزة قبل التحميل'],
+        ],
+        price,
+      };
+    };
     const paintStatus = () => {
       const published = !!state.published;
       const pending = published && (JSON.stringify(normalizeDesign(state.published)) !== JSON.stringify(design)
@@ -443,10 +512,23 @@ export default {
         : published ? (pending || dirty ? 'منشور — فيه تعديلات غير منشورة' : 'منشور ' + (state.published_at ? ago(state.published_at) : ''))
           : 'مسودة غير منشورة';
       statusBadge.dataset.studioStatus = !state.version ? 'new' : published ? (pending || dirty ? 'changed' : 'published') : 'draft';
-      saveBtn.disabled = !editor || !landingLive || stackEditor.pending();
-      publishBtn.disabled = !landingLive || !state.version || dirty || stackEditor.pending();
+      const draftBusy = writing || stackEditor.pending();
+      saveBtn.disabled = !editor || !landingLive || draftBusy;
+      for (const control of [resetBtn, versionsBtn, copyBtn, templateBtn]) control.disabled = draftBusy;
+      const scan = ready();
+      if (owner) {
+        checks.replaceChildren(...scan.entries.map(([ok, label, blocking]) => {
+          const item = make('li', blocking ? 'studio-check-blocked' : ok ? 'studio-check-ok' : '');
+          item.textContent = (ok ? '✓ ' : '✗ ') + label + (blocking ? ' — لازم يتصلّح قبل النشر' : '');
+          return item;
+        }));
+        warnings.textContent = scan.price ? 'راجع الأسعار المكتوبة في التصميم. السعر والشحن بيتعرضوا من السيرفر.' : '';
+        warnings.hidden = !scan.price;
+      }
+      publishBtn.disabled = !landingLive || !state.version || dirty || draftBusy || scan.blocking;
       publishBtn.title = dirty ? 'احفظ المسودة الأول' : '';
       unpublishBtn.hidden = !published;
+      unpublishBtn.disabled = draftBusy;
     };
     function edited() { dirty = true; editRevision++; }
     const changed = () => {
@@ -493,15 +575,20 @@ export default {
     // A new design starts with a main colour suggested from the product photos; the Owner can change or clear it.
     if (!state.draft && !design.accent && editor) void suggest(false);
 
-    async function save() {
-      if (stackEditor.pending()) return;
+    function currentPayload() {
       readControls();
-      const revision = editRevision;
       const stack = stackEditor.payload();
-      const payload = { ...state.draft, ...design, ...(stack && { studioStack: stack }) };
-      await withBusy(saveBtn, async () => {
-        const r = await call('landing.save', { code, version: state.version || 0, design: payload });
-        if (!ctx.el.isConnected) return;
+      return { ...state.draft, ...design, ...(stack && { studioStack: stack }) };
+    }
+    async function save({ quiet = false } = {}) {
+      if (writing || stackEditor.pending()) return false;
+      const payload = currentPayload();
+      const revision = editRevision;
+      writing = true;
+      paintStatus();
+      try {
+        const r = await withBusy(saveBtn, () => call('landing.save', { code, version: state.version || 0, design: payload }));
+        if (!page.isConnected) return false;
         if (r.outcome === 'saved') {
           state = { ...state, version: r.version, draft: r.draft };
           if (revision === editRevision) {
@@ -509,22 +596,83 @@ export default {
             stackEditor.setSaved(r.draft?.studioStack);
             dirty = false;
           }
-          paintStatus();
-          done(owner ? 'اتحفظت المسودة. راجع المعاينة واضغط «اعتماد ونشر» لما تكون جاهزة.' : 'اتحفظت المسودة. النشر بيكون من إدارة المتجر.');
+          if (!quiet) done(owner ? 'اتحفظت المسودة. راجع المعاينة قبل النشر.' : 'اتحفظت المسودة. النشر بيكون من إدارة المتجر.');
+          return revision === editRevision;
         } else if (r.outcome === 'conflict') island('error', 'حد تاني عدّل التصميم. افتح الصفحة من جديد علشان تشوف آخر نسخة.');
         else if (r.outcome === 'invalid' && r.field?.startsWith('studioStack')) island('error', 'اتأكد من الصور والنصوص. لو التصميم كبير، قلّل العناصر وحاول تحفظ تاني.');
         else fail(r);
-      });
+      } finally {
+        writing = false;
+        if (page.isConnected) paintStatus();
+      }
+      return false;
+    }
+    async function replaceDraft(op, args, trigger, message) {
+      if (writing || stackEditor.pending()) return;
+      writing = true;
+      page.inert = true;
+      paintStatus();
+      try {
+        const result = await withBusy(trigger, () => call(op, { code, version: state.version || 0, ...args }));
+        if (!page.isConnected) return;
+        if (result.outcome === 'saved') {
+          done(message);
+          ctx.go('studio/' + code);
+        } else if (result.outcome === 'conflict') {
+          island('error', 'التصميم اتعدّل. افتح الصفحة من جديد قبل ما تكمّل.');
+        } else fail(result);
+      } finally {
+        writing = page.inert = false;
+        if (page.isConnected) paintStatus();
+      }
+    }
+    async function copyDesign() {
+      if (writing || stackEditor.pending()) return;
+      if (!state.version && !(await save({ quiet: true }))) return;
+      writing = true;
+      paintStatus();
+      try {
+        const result = await withBusy(copyBtn, () => call('landing.snapshot', {
+          code, version: state.version, design: currentPayload(),
+        }));
+        if (!page.isConnected) return;
+        if (result.outcome === 'saved') island('info', 'اتحفظت نسخة من التصميم في سجل النسخ.');
+        else if (result.outcome === 'conflict') island('error', 'التصميم اتعدّل. افتح الصفحة من جديد قبل ما تنسخه.');
+        else fail(result);
+      } finally {
+        writing = false;
+        if (page.isConnected) paintStatus();
+      }
+    }
+    function template() {
+      return studioTemplateDialog({ code, opener: templateBtn, onSave: async targets => {
+        if (writing || stackEditor.pending()) return false;
+        if ((dirty || !state.version) && !(await save({ quiet: true }))) return false;
+        writing = true;
+        paintStatus();
+        try {
+          const result = await call('landing.template', { code, version: state.version, targets });
+          if (result.outcome === 'saved') { done('اتحفظ القالب كمسودة للمنتجات المختارة.'); return true; }
+          if (result.outcome === 'conflict') island('error', 'مسودة من المسودات اتعدّلت. راجع النسخة الجديدة وجرّب تاني.');
+          else fail(result);
+          return false;
+        } finally {
+          writing = false;
+          if (page.isConnected) paintStatus();
+        }
+      }});
     }
     async function publish() {
       if (dirty) { island('error', 'احفظ المسودة الأول، وبعدين انشر.'); return; }
-      const newStack = Boolean(state.draft?.studioStack?.photos?.length);
-      const publishText = newStack ? 'هتتحدد النسخة المنشورة. عرض الصور والحركة الجديدة يبدأ بعد تفعيلها في صفحة المنتج.' : 'التصميم المحفوظ هيظهر لكل العميلات على صفحة المنتج.';
+      if (ready().blocking || writing || stackEditor.pending()) return;
+      const publishText = 'التصميم المحفوظ هيظهر لكل العميلات على صفحة المنتج.';
       if (!(await confirmDialog({ title: 'نشر التصميم؟', text: publishText, okText: 'نشر' }))) return;
       await withBusy(publishBtn, async () => {
         const r = await call('landing.publish', { code, version: state.version });
-        if (r.outcome === 'published') { state = { ...state, published: state.draft, published_at: r.published_at }; paintStatus(); done(newStack ? 'اتحفظت النسخة المنشورة.' : 'اتنشر التصميم على صفحة المنتج.'); }
+        if (r.outcome === 'published') { state = { ...state, published: state.draft, published_at: r.published_at }; paintStatus(); done('اتنشر التصميم على صفحة المنتج.'); }
         else if (r.outcome === 'conflict') island('error', 'التصميم اتعدل بعد آخر تحميل. افتح الصفحة من جديد.');
+        else if (r.field === 'restrictedCopy') island('error', 'راجع الكلمات الممنوعة قبل النشر.');
+        else if (r.field === 'studioStack.photos[0].path') island('error', 'الصورة الأولى مش متاحة. اختار صورة تانية قبل النشر.');
         else fail(r);
       });
     }
