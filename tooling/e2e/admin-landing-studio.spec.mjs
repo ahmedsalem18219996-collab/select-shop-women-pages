@@ -372,6 +372,8 @@ test('per-design marquee and scroll hints update the previews and round-trip thr
   await expect(stage).toHaveAttribute('data-marquee-position', 'above');
 });
 
+// The mobile tab bar is fixed over the bottom of the viewport: centre the element first so the click never lands on the bar.
+const clickPreview = async (locator) => { await locator.evaluate(element => element.scrollIntoView({ block:'center' })); await locator.click(); };
 test('Owner: uploads the 3 marketing images by hand, edits every control, saves a draft, reopens it, publishes', async ({ page }) => {
   const store = newStore();
   await signIn(page, OWNER, store);
@@ -397,13 +399,13 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
   // The live preview is the real page fed the unsaved draft; ordering is off inside it.
   const mobile = page.frameLocator('[data-preview-frame=mobile]');
   await expect(mobile.locator('.studio-hero h2')).toHaveText('جاكيت جلد للشتا');
-  await mobile.locator('.studio-hero h2').click();
+  await clickPreview(mobile.locator('.studio-hero h2'));
   await expect(page.locator('[name=title]')).toBeFocused();
-  await mobile.locator('.studio-hero [data-studio-image=hero]').click();
+  await clickPreview(mobile.locator('.studio-hero [data-studio-image=hero]'));
   await expect(page.locator('[data-slot-upload=hero]')).toBeFocused();
-  await mobile.locator('.studio-hero [data-studio-cta]').first().click();
+  await clickPreview(mobile.locator('.studio-hero [data-studio-cta]').first());
   await expect(page.locator('[name=ctaText]')).toBeFocused();
-  await mobile.locator('#lpForm h2').click();
+  await clickPreview(mobile.locator('#lpForm h2'));
   await expect(page.locator('[name=cardTitle]')).toBeFocused();
   await expect(mobile.locator('.studio-closing')).toHaveCount(0);
   await expect(mobile.locator('.studio-media [data-studio-cta]').first()).toHaveText('احجزي قطعتك');
