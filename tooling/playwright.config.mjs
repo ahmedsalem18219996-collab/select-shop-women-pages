@@ -12,10 +12,10 @@ export default defineConfig({
   projects: [
     { name: "mobile", use: { ...devices["Pixel 7"] } },
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    // Opt-in Safari-engine smoke: only the theme suite runs on WebKit; normal local/Chromium runs stay unchanged.
+    // Opt-in Safari-engine smoke: only the theme, upload, Studio, call-confirmation and ad-report suites run on WebKit; normal local/Chromium runs stay unchanged.
     ...(process.env.PW_WEBKIT === "1" ? [
-      { name: "webkit-mobile", testMatch: /(?:theme|image-upload-compat)\.spec\.mjs$/, use: { ...devices["iPhone 13"], browserName: "webkit" } },
-      { name: "webkit-desktop", testMatch: /(?:theme|image-upload-compat)\.spec\.mjs$/, use: { ...devices["Desktop Safari"], browserName: "webkit" } },
+      { name: "webkit-mobile", testMatch: /(?:theme|image-upload-compat|admin-landing-studio|landing-studio|admin-order-followup|admin-ad-tracking)\.spec\.mjs$/, use: { ...devices["iPhone 13"], browserName: "webkit" } },
+      { name: "webkit-desktop", testMatch: /(?:theme|image-upload-compat|admin-landing-studio|landing-studio|admin-order-followup|admin-ad-tracking)\.spec\.mjs$/, use: { ...devices["Desktop Safari"], browserName: "webkit" } },
     ] : []),
   ],
 });
