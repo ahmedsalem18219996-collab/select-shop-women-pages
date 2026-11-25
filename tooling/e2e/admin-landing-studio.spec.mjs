@@ -74,6 +74,119 @@ const openStudio = async (page) => {
   if ((await legacy.getAttribute('aria-expanded')) === 'false') await legacy.click();
 };
 
+test('a long ribbon fits, moves and resizes in the editor, then renders from the saved design', async ({ page, request }) => {
+  const mobile = test.info().project.name === 'mobile';
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+  const store = newStore();
+  store.landing.draft = { studioStack: { v: 1, photos: [
+    { path: 'women-storefront/storefront/qa-ribbon.webp', overlays: [] },
+  ] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual'), stage = editor.locator('[data-visual-stage]');
+  await expect(editor).toBeVisible();
+  const elementsTab = editor.locator('[data-tab="elements"]');
+  if (await elementsTab.isVisible()) await elementsTab.click();
+  await editor.locator('[data-element="strip"]').click();
+  const ribbon = stage.locator('.ssm-o-ribbon'), copy = editor.locator('[data-field="text"]');
+  const ratio = await ribbon.evaluate(el => [el.offsetWidth / el.offsetParent.clientWidth, el.offsetHeight / el.offsetParent.clientHeight]);
+  expect(ratio[0]).toBeCloseTo(.76,1);
+  expect(ratio[1]).toBeCloseTo(.09,2);
+  await editor.locator('[data-section="geometry"] summary').click();
+  for (const key of ['size','x','y','rot']) await expect(editor.locator('[data-field="' + key + '"]')).toBeVisible();
+  const caption = 'اختاري اللون والمقاس اللي يناسبك وعايني القطعة بنفسك قبل ما تدفعي';
+  await copy.fill(caption);
+  const label = ribbon.locator('.ssm-ribbon-label');
+  await expect(label).toHaveText(caption);
+  const labelFits = locator => locator.evaluate(el => {
+    const line = parseFloat(getComputedStyle(el).lineHeight);
+    return el.scrollWidth <= el.clientWidth && el.scrollHeight <= Math.min(el.parentElement.clientHeight,line * 2) + 1;
+  });
+  await expect.poll(() => labelFits(label)).toBe(true);
+  async function drag(target, dx, dy) {
+    await target.scrollIntoViewIfNeeded();
+    const rect = await target.boundingBox();
+    const x = Math.round(rect.x + rect.width / 2), y = Math.round(rect.y + rect.height / 2);
+    if (mobile) {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchStart', touchPoints:[{x,y}] });
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchMove', touchPoints:[{x:x + dx,y:y + dy}] });
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchEnd', touchPoints:[] });
+      await cdp.detach();
+    } else {
+      await page.mouse.move(x,y);
+      await page.mouse.down();
+      await page.mouse.move(x + dx,y + dy,{ steps:4 });
+      await page.mouse.up();
+    }
+  }
+  await drag(label,10,-18);
+  await expect(editor.locator('[data-field="x"]')).not.toHaveValue('50');
+  await expect(editor.locator('[data-field="y"]')).not.toHaveValue('82');
+  await drag(stage.locator('[data-resize]'),-35,-12);
+  await expect(editor.locator('[data-field="size"]')).not.toHaveValue('1');
+  await editor.locator('[data-field="rot"]').fill('8');
+  await page.locator('[data-studio-save]').click();
+  await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status','draft');
+  const saved = store.landing.draft;
+  const layer = saved.studioStack.photos[0].overlays[0];
+  expect(layer).toMatchObject({ type:'badge',fx:'ribbon',rot:8,text:caption });
+  expect(layer.size).not.toBe(1);
+  expect(layer.x).not.toBe(50);
+  expect(layer.y).not.toBe(82);
+  await page.reload();
+  await expect(stage.locator('.ssm-ribbon-label')).toHaveText(caption);
+  try {
+    const publishedFixture = await request.post('/__mock/landing', { data:{ code:'SS-1008', design:saved } });
+    expect(publishedFixture.status()).toBe(204);
+    await page.emulateMedia({ reducedMotion:'reduce' });
+    await page.goto('/lp/ss-1008/');
+    await expect(page.locator('.lp-studio-stack')).toHaveCount(0);
+    await page.locator('#lpForm').scrollIntoViewIfNeeded();
+    const publicRibbon = page.locator('.lp-studio-stack .ssm-o-ribbon');
+    const publicLabel = publicRibbon.locator('.ssm-ribbon-label');
+    await expect(publicLabel).toHaveText(caption);
+    await expect.poll(() => labelFits(publicLabel)).toBe(true);
+    for (const [property,value] of [['--ribbon-x',layer.x + '%'], ['--ribbon-y',layer.y + '%'], ['--s',String(layer.size)], ['--rot','8deg']]) {
+      await expect(publicRibbon).toHaveCSS(property,value);
+    }
+  } finally {
+    await request.post('/__mock/landing', { data:{ code:'SS-1008', design:null } });
+  }
+});
+
+test('library shapes start inside the frame and share the selected element controls', async ({ page }) => {
+  const store = newStore();
+  store.landing.draft = { studioStack: { v: 1, photos: [
+    { path:'women-storefront/storefront/qa-shapes.webp', overlays:[] },
+  ] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual'), stage = editor.locator('[data-visual-stage]');
+  await expect(editor).toBeVisible();
+  const elementsTab = editor.locator('[data-tab="elements"]');
+  if (await elementsTab.isVisible()) await elementsTab.click();
+  for (const type of ['badge','arrow','dot','circle','callout','icon']) {
+    await editor.locator('[data-element="' + type + '"]').click();
+    const shape = stage.locator('.ssm-o-' + type);
+    await expect(shape).toBeVisible();
+    const valid = await shape.evaluate(el => {
+      const frame = el.closest('.ssm-wrap').getBoundingClientRect();
+      const bounds = [el.getBoundingClientRect(), ...[...el.closest('.ssm-layer').querySelectorAll('line')].map(l => l.getBoundingClientRect())];
+      const left = Math.min(...bounds.map(b => b.left)), right = Math.max(...bounds.map(b => b.right));
+      const top = Math.min(...bounds.map(b => b.top)), bottom = Math.max(...bounds.map(b => b.bottom));
+      return left >= frame.left && right <= frame.right && top >= frame.top && bottom <= frame.bottom
+        && (right - left) * (bottom - top) < .3 * frame.width * frame.height;
+    });
+    expect(valid,type).toBe(true);
+    const geometry = editor.locator('[data-section="geometry"]');
+    if ((await geometry.getAttribute('open')) === null) await geometry.locator('summary').click();
+    for (const key of ['size','x','y','rot']) await expect(editor.locator('[data-field="' + key + '"]')).toBeVisible();
+    await expect(stage.locator('[data-resize]')).toBeVisible();
+    await editor.locator('[data-action="remove-layer"]').click();
+  }
+});
+
 test('the visual Studio applies cards, selects text on the phone, replays motion, and saves the same payload', async ({ page }) => {
   const store = newStore();
   await signIn(page, OWNER, store);
@@ -91,6 +204,7 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   await editor.locator('[data-choice="fx"][data-value="aurora"]').click();
   await expect(stage.locator('.ssm-fx-aurora')).toHaveText('ستايل يعبّر عنك');
   const inspector = editor.locator('.studio-visual-inspector');
+  await inspector.locator('[data-section="shadow"] summary').click();
   const automaticShadow = inspector.getByRole('button', { name:'تلقائي', exact:true });
   await expect(automaticShadow).toHaveAttribute('aria-pressed','true');
   await expect(stage.locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-soft/);
@@ -122,6 +236,144 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   await expect(stage.locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-none/);
 });
 
+test('the selected element and side library remember collapsible sections and edit approved Arabic presets', async ({ page }) => {
+  const mobile = test.info().project.name === 'mobile';
+  if (mobile) await page.setViewportSize({ width:390, height:844 });
+  const store = newStore();
+  store.landing.draft = { studioStack: { v:1, photos:[{
+    path:'women-storefront/storefront/qa-studio-copy.webp', overlays:[{ type:'text', x:50, y:48, text:'إطلالتك الجاية تبدأ من هنا' }],
+  }] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual');
+  const toolbox = editor.locator('.studio-visual-tools');
+  const templates = toolbox.locator('[data-section="templates"]');
+  await templates.locator('summary').press('Enter');
+  await expect(templates).not.toHaveAttribute('open', '');
+  await expect(templates.locator('[data-template]').first()).toBeHidden();
+  await page.reload();
+  await expect(templates).not.toHaveAttribute('open', '');
+  await toolbox.getByRole('button', { name:'فتح الكل' }).click();
+  await expect(templates).toHaveAttribute('open', '');
+  const selectText = () => editor.locator('.ssm-wrap button[data-overlay="0"]').press('Enter');
+  await selectText();
+  const inspector = editor.locator('.studio-visual-inspector');
+  const text = inspector.locator('[data-field="text"]');
+  await expect(text).toBeFocused();
+  await expect(inspector.locator('[data-section="copy"]')).toHaveAttribute('open', '');
+  await expect(inspector.locator('[data-section="effect"]')).toHaveAttribute('open', '');
+  await expect(inspector.locator('[data-section="font"]')).not.toHaveAttribute('open', '');
+  expect(await inspector.locator('summary').first().evaluate(summary => summary.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  const take = async (file, locator) => {
+    if (!mobile) return;
+    await locator.evaluate(element => element.scrollIntoView({ block:'center' }));
+    await page.screenshot({ path:test.info().outputPath(file), animations:'disabled', scale:'css' });
+  };
+  await take('studio-inspector-expanded.png', inspector.locator('[data-section="effect"]'));
+  await inspector.getByRole('button', { name:'فتح الكل' }).press('Enter');
+  await expect(inspector.locator('[data-section="font"]')).toHaveAttribute('open', '');
+  await inspector.getByRole('button', { name:'قفل الكل' }).press('Enter');
+  await expect(inspector.locator('details[open]')).toHaveCount(0);
+  await expect(text).toBeHidden();
+  await take('studio-inspector-collapsed.png', inspector);
+  const library = inspector.locator('[data-section="library"]');
+  await library.locator('summary').press('Space');
+  const titleTab = library.getByRole('tab', { name:'عناوين' });
+  await expect(titleTab).toHaveAttribute('aria-selected', 'true');
+  await take('studio-copy-library.png', library);
+  await titleTab.press('ArrowLeft');
+  const subtitleTab = library.getByRole('tab', { name:'سطر تحت العنوان' });
+  await expect(subtitleTab).toBeFocused();
+  await expect(subtitleTab).toHaveAttribute('aria-selected', 'true');
+  await library.getByRole('button', { name:'شوفي القطعة وعايني قبل ما تدفعي' }).click();
+  await expect(editor.locator('.ssm-o-text')).toHaveText('شوفي القطعة وعايني قبل ما تدفعي');
+  await inspector.locator('[data-section="copy"] summary').click();
+  await expect(text).toHaveValue('شوفي القطعة وعايني قبل ما تدفعي');
+  await text.fill('خصم ٤٥٠ جنيه خلال ٣ أيام');
+  await expect(inspector.getByRole('status')).toContainText('غير مسموح');
+  await expect(inspector.getByRole('status')).toContainText('شيلي رقم السعر');
+  await expect(text).toBeFocused();
+  await text.fill('تتلبس في الشغل وفي الخروجة');
+  await expect(inspector.getByRole('status')).toBeHidden();
+  await page.locator('[data-studio-save]').click();
+  await expect.poll(() => store.landing.draft.studioStack.photos[0].overlays[0]).toMatchObject({
+    text:'تتلبس في الشغل وفي الخروجة', in:'blur', anim:'none', fx:'',
+  });
+  await page.reload();
+  await selectText();
+  await expect(library).toHaveAttribute('open', '');
+  await expect(inspector.locator('[data-section="effect"]')).not.toHaveAttribute('open', '');
+});
+
+test('per-design marquee and scroll hints update the previews and round-trip through draft save', async ({ page }) => {
+  const mobile = test.info().project.name === 'mobile';
+  if (mobile) await page.setViewportSize({ width:390, height:844 });
+  const store = newStore();
+  store.landing.draft = { studioStack: { v:1, photos:[
+    { path:'women-storefront/storefront/qa-v2-first.webp', overlays:[] },
+    { path:'women-storefront/storefront/qa-v2-next.webp', overlays:[] },
+  ] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual'), stage = editor.locator('[data-visual-stage]');
+  const pageTab = editor.locator('[data-tab="page"]');
+  await expect(stage).toBeVisible();
+  await expect(stage.locator('.ssm-v2-marquee')).toHaveCount(0);
+  if (await pageTab.isVisible()) await pageTab.click();
+  const marquee = editor.locator('[data-section="marquee"]');
+  await marquee.locator('summary').click();
+  const switcher = marquee.getByRole('switch', { name:'إظهار الشريط' });
+  await expect(switcher).toBeChecked();
+  await marquee.getByRole('button', { name:'تحت الصور' }).click();
+  await expect(stage).toHaveAttribute('data-marquee-position', 'below');
+  await expect(stage.locator('.ssm-v2-marquee')).toBeVisible();
+  await switcher.uncheck();
+  await expect(stage.locator('.ssm-v2-marquee')).toHaveCount(0);
+  await switcher.check();
+  await marquee.getByRole('button', { name:'فوق الصور' }).click();
+  await expect(stage).toHaveAttribute('data-marquee-position', 'above');
+  if (mobile) {
+    await stage.evaluate(element => element.scrollIntoView({ block:'center' }));
+    await page.screenshot({ path:test.info().outputPath('studio-marquee-preview.png'), animations:'disabled', scale:'css' });
+  }
+  const hints = editor.locator('[data-section="hint"]');
+  await hints.locator('summary').click();
+  const cards = hints.locator('[data-choice="scroll-hint"]');
+  await expect(cards).toHaveCount(7);
+  await expect(hints.locator('.ssm-v2-hint')).toHaveCount(6);
+  for (const style of ['pill','arrow','finger','shine','dots','progress','none']) {
+    await cards.filter({ has:page.locator('[data-sample-value="' + style + '"]') }).click();
+    await expect(stage.locator('.ssm-v2-hint[data-style="' + style + '"]')).toHaveCount(style === 'none' ? 0 : 1);
+    if (mobile) {
+      await stage.evaluate(element => element.scrollIntoView({ block:'center' }));
+      await page.screenshot({ path:test.info().outputPath('hint-' + style + '-390.png'), animations:'disabled', scale:'css' });
+    }
+  }
+  await hints.getByRole('button', { name:'خط تقدّم' }).click();
+  await hints.getByRole('switch', { name:'تدرّج بلون الحملة' }).check();
+  await expect(stage.locator('.ssm-v2-hint')).toHaveAttribute('data-gradient', 'true');
+  if (mobile) {
+    await stage.evaluate(element => element.scrollIntoView({ block:'center' }));
+    await page.screenshot({ path:test.info().outputPath('hint-progress-gradient-390.png'), animations:'disabled', scale:'css' });
+    await hints.evaluate(element => element.scrollIntoView({ block:'center' }));
+    await page.screenshot({ path:test.info().outputPath('studio-scroll-hint-cards.png'), animations:'disabled', scale:'css' });
+  }
+  await editor.locator('[data-action="full"]').click();
+  const preview = editor.frameLocator('iframe');
+  await expect(preview.locator('.ssm-v2-marquee')).toBeVisible();
+  await expect(preview.locator('.ssm-v2-hint')).toHaveAttribute('data-gradient', 'true');
+  await editor.locator('[data-action="close"]').click();
+  await page.locator('[data-studio-save]').click();
+  await expect.poll(() => store.landing.draft.studioStack).toMatchObject({
+    marquee:{ enabled:true, position:'above' }, scrollHint:{ style:'progress', gradient:true },
+  });
+  await page.reload();
+  await expect(stage.locator('.ssm-v2-hint')).toHaveAttribute('data-gradient', 'true');
+  await expect(stage).toHaveAttribute('data-marquee-position', 'above');
+});
+
+// The mobile tab bar is fixed over the bottom of the viewport: centre the element first so the click never lands on the bar.
+const clickPreview = async (locator) => { await locator.evaluate(element => element.scrollIntoView({ block:'center' })); await locator.click(); };
 test('Owner: uploads the 3 marketing images by hand, edits every control, saves a draft, reopens it, publishes', async ({ page }) => {
   const store = newStore();
   await signIn(page, OWNER, store);
@@ -147,13 +399,13 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
   // The live preview is the real page fed the unsaved draft; ordering is off inside it.
   const mobile = page.frameLocator('[data-preview-frame=mobile]');
   await expect(mobile.locator('.studio-hero h2')).toHaveText('جاكيت جلد للشتا');
-  await mobile.locator('.studio-hero h2').click();
+  await clickPreview(mobile.locator('.studio-hero h2'));
   await expect(page.locator('[name=title]')).toBeFocused();
-  await mobile.locator('.studio-hero [data-studio-image=hero]').click();
+  await clickPreview(mobile.locator('.studio-hero [data-studio-image=hero]'));
   await expect(page.locator('[data-slot-upload=hero]')).toBeFocused();
-  await mobile.locator('.studio-hero [data-studio-cta]').first().click();
+  await clickPreview(mobile.locator('.studio-hero [data-studio-cta]').first());
   await expect(page.locator('[name=ctaText]')).toBeFocused();
-  await mobile.locator('#lpForm h2').click();
+  await clickPreview(mobile.locator('#lpForm h2'));
   await expect(page.locator('[name=cardTitle]')).toBeFocused();
   await expect(mobile.locator('.studio-closing')).toHaveCount(0);
   await expect(mobile.locator('.studio-media [data-studio-cta]').first()).toHaveText('احجزي قطعتك');

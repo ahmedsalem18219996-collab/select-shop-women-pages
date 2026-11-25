@@ -136,6 +136,7 @@ export function applyAccent(/** @type {HTMLElement} */ el, /** @type {string} */
   if (!/^#[0-9a-f]{6}$/i.test(colour)) return;
   el.style.setProperty("--ssm-accent", colour);
   el.style.setProperty("--ssm-accent-glow", colour + "73");
+  el.style.setProperty("--ssm-accent-ink", isLight(colour) ? "#111" : "#fff");
 }
 
 
@@ -209,7 +210,7 @@ export function sanitizeOverlays(/** @type {any} */ list) {
   return list.slice(0, 24).filter(o => o && OVERLAY_TYPES.includes(o.type)).map(o => ({
     type: o.type,
     x: pct(o.x), y: pct(o.y), x2: pct(o.x2, pct(o.x) + 15), y2: pct(o.y2, pct(o.y)),
-    text: typeof o.text === "string" ? o.text.slice(0, 80) : "",
+    text: typeof o.text === "string" ? [...o.text].slice(0, 80).join("") : "",
     color: /^#[0-9a-f]{6}$/i.test(o.color || "") ? o.color : "",
     size: clamp(Number.isFinite(+o.size) ? +o.size : 1, 0.6, 2.5),
     anim: OVERLAY_LOOPS.includes(o.anim) ? o.anim : "none",
@@ -231,6 +232,27 @@ export function isLight(/** @type {string} */ hexColour) {
   if (!/^#[0-9a-f]{6}$/i.test(hexColour)) return false;
   const [r, g, b] = [1, 3, 5].map(i => parseInt(hexColour.slice(i, i + 2), 16));
   return 0.299 * r + 0.587 * g + 0.114 * b > 160;
+}
+
+/** Shrink ribbon text only when it cannot fit into two lines at its intended size. */
+export function fitRibbonLabels(/** @type {HTMLElement} */ root) {
+  for (const node of root.querySelectorAll(".ssm-ribbon-label")) {
+    const label = /** @type {HTMLElement} */ (node);
+    const height = label.parentElement?.clientHeight ?? 0;
+    if (!height || !label.clientWidth) continue;
+    label.style.removeProperty("--ribbon-fit");
+    const fits = () => label.scrollWidth <= label.clientWidth
+      && label.scrollHeight <= Math.min(height, 2 * parseFloat(getComputedStyle(label).lineHeight)) + 1;
+    if (fits()) continue;
+    let low = 0.1, high = 1;
+    for (let step = 0; step < 8; step++) {
+      const middle = (low + high) / 2;
+      label.style.setProperty("--ribbon-fit", String(middle));
+      if (fits()) low = middle;
+      else high = middle;
+    }
+    label.style.setProperty("--ribbon-fit", String(low));
+  }
 }
 
 const IN_CSS = {
@@ -266,6 +288,7 @@ export function renderOverlays(/** @type {HTMLElement} */ wrap, /** @type {any[]
   layer.append(svg);
   items.forEach((o, i) => {
     const color = o.color || "var(--ssm-accent)";
+    const ribbon = o.type === "badge" && o.fx === "ribbon";
     const d = o.delay === null ? 0.15 + i * 0.12 : o.delay;
     const delay = `${d}s`;
     if (o.type === "callout" || o.type === "arrow") {
@@ -301,14 +324,25 @@ export function renderOverlays(/** @type {HTMLElement} */ wrap, /** @type {any[]
     if (o.font) { el.style.fontFamily = `"${o.font}", system-ui, sans-serif`; if (fontInfo(o.font)?.heavy) el.style.fontWeight = "400"; }
     el.style.setProperty("--anim", animFor(o, d));
     const at = o.type === "callout" ? [o.x2, o.y2] : o.type === "arrow" ? [o.x2, o.y2] : [o.x, o.y];
-    el.style.left = at[0] + "%"; el.style.top = at[1] + "%";
+    if (ribbon) {
+      el.classList.add("ssm-o-ribbon");
+      el.style.setProperty("--ribbon-x", at[0] + "%");
+      el.style.setProperty("--ribbon-y", at[1] + "%");
+      if (o.color) el.style.color = isLight(o.color) ? "#111" : "#fff";
+    } else {
+      el.style.left = at[0] + "%"; el.style.top = at[1] + "%";
+    }
     if (o.type === "arrow") {
       const ang = Math.atan2(o.y2 - o.y, (o.x2 - o.x) * 0.56) * 180 / Math.PI; // photos are ~9:16
       el.style.setProperty("--rot", (ang + o.rot).toFixed(1) + "deg");
     } else {
       el.style.setProperty("--rot", o.rot + "deg");
     }
-    if (o.type === "arrow" || o.type === "icon") { /* drawn by CSS / SVG */ } else if (o.type === "text") {
+    if (ribbon) {
+      const label = document.createElement("span");
+      label.className = "ssm-ribbon-label"; label.dir = "auto"; label.textContent = o.text;
+      el.append(label);
+    } else if (o.type === "arrow" || o.type === "icon") { /* drawn by CSS / SVG */ } else if (o.type === "text") {
       const t = document.createElement("span"); t.className = "ssm-t"; t.textContent = o.text; el.append(t); // inline, so line effects follow each line
     } else if (o.type !== "dot" && o.type !== "circle") {
       el.textContent = o.text;
@@ -321,6 +355,11 @@ export function renderOverlays(/** @type {HTMLElement} */ wrap, /** @type {any[]
     layer.append(el);
   });
   wrap.append(layer);
+  if (layer.querySelector(".ssm-ribbon-label")) {
+    const fit = () => { if (layer.isConnected) fitRibbonLabels(layer); };
+    requestAnimationFrame(fit);
+    if (document.fonts.status === "loading") void document.fonts.ready.then(fit);
+  }
   return layer;
 }
 
@@ -342,6 +381,8 @@ export function makeStrip(/** @type {string} */ text, rot = -3, color = "") {
 
 /* ===================== photo frame (any photo → 9:16) ===================== */
 export const PHOTO_FITS = ["auto", "fill", "cover"];
+const STUDIO_PHOTO = /^(?:women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(?:webp|jpg|jpeg|png)|product-media\/media\/[0-9a-f]{32}\.(?:jpg|png|webp))$/;
+export const validStudioPhotoPath = (/** @type {unknown} */ path) => typeof path === "string" && STUDIO_PHOTO.test(path);
 /**
  * Put a photo into a 9:16 frame. "cover" crops to fill; "fill" keeps the whole photo centred over a blurred,
  * enlarged copy of itself; "auto" picks "fill" for square / landscape photos and "cover" for portrait ones.
@@ -352,16 +393,18 @@ export function mountPhoto(wrap, photo, eager = false) {
   const shade = /** @type {any} */ (photo).shade;
   if (PHOTO_SHADES.includes(shade) && shade) { const sd = document.createElement("div"); sd.className = "ssm-shade ssm-shade-" + shade; wrap.prepend(sd); }
   const img = document.createElement("img");
-  img.className = "ssm-main"; img.src = photo.url; img.alt = photo.alt || ""; img.decoding = "async";
+  img.className = "ssm-main"; img.alt = photo.alt || ""; img.decoding = "async";
+  img.width = 900; img.height = 1600;
   if (eager) { img.loading = "eager"; img.setAttribute("fetchpriority", "high"); } else img.loading = "lazy";
+  img.src = photo.url;
   const fit = PHOTO_FITS.includes(/** @type {string} */ (photo.fit)) ? photo.fit : "auto";
   const apply = () => {
     const ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 0.5625;
     const fill = fit === "fill" || (fit === "auto" && ratio > 0.68);
     wrap.classList.toggle("ssm-fill", fill);
     if (fill && !wrap.querySelector(".ssm-bg")) {
-      const bg = document.createElement("img"); bg.className = "ssm-bg"; bg.src = photo.url; bg.alt = ""; bg.setAttribute("aria-hidden", "true");
-      bg.loading = img.loading; bg.decoding = "async";
+      const bg = document.createElement("img"); bg.className = "ssm-bg"; bg.alt = ""; bg.setAttribute("aria-hidden", "true");
+      bg.loading = img.loading; bg.decoding = "async"; bg.src = photo.url;
       wrap.prepend(bg);
     }
   };
@@ -420,7 +463,7 @@ function wire() {
  * alternating from the side and from the top; a covered card shrinks, dims and tilts.
  * @param {HTMLElement} root empty container
  * @param {{url:string, alt:string, overlays?: any[], enter?: string, fit?: string, strip?: {text:string, rot?: number, color?: string}}[]} photos
- * @param {{mode?: "cinematic", next?: () => (Element|null), firstEager?: boolean}} [opts]
+ * @param {{mode?: "cinematic", next?: () => (Element|null), firstEager?: boolean, lazyIntro?: boolean}} [opts]
  */
 export function mountStack(root, photos, opts = {}) {
   const reduce = reducedMotion();
@@ -464,7 +507,7 @@ export function mountStack(root, photos, opts = {}) {
         }
         first.classList.add("ssm-in");
       };
-      if (intro && opts.firstEager === false && typeof IntersectionObserver === "function") {
+      if (intro && (opts.firstEager === false || opts.lazyIntro) && typeof IntersectionObserver === "function") {
         firstView = new IntersectionObserver(entries => {
           if (!entries.some(entry => entry.isIntersecting)) return;
           firstView?.disconnect();
@@ -479,6 +522,7 @@ export function mountStack(root, photos, opts = {}) {
   const measure = () => {
     const vh = innerHeight;
     cards.forEach(c => c.style.setProperty("--ssm-top", reduce ? "0px" : Math.min(0, vh - c.offsetHeight) + "px"));
+    fitRibbonLabels(root);
   };
 
   const tick = () => {

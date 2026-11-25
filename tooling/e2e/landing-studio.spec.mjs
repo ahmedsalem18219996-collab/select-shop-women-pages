@@ -9,6 +9,11 @@ const IMG = new URL("../../assets/catalog-thumbs/005a3ee1a8504efca19a780f21981d3
 const GENERATIVE = /gemini|generativelanguage|aistudio|makersuite|openai|stability\.ai|replicate\.com|midjourney|huggingface|imagen/i;
 const mockLog = async (request) => (await request.get("/__mock/log")).json();
 const publish = (request, design, code = "SS-1008") => request.post("/__mock/landing", { data: { code, design } });
+const storefront = (request, studioMarquee) => request.post("/__mock/storefront", { data: studioMarquee ? { studioMarquee } : null });
+const v2Photos = [
+  { path: "product-media/media/005a3ee1a8504efca19a780f21981d33.jpg" },
+  { path: "women-storefront/storefront/studio-closing.webp" },
+];
 const DESIGN = {
   v: 1, template: "editorial", order: ["hero", "product", "features", "closing"], hidden: [], background: "navy", font: "readex", divider: "dots",
   title: "جاكيت جلد للشتا", description: "خامة تقيلة\nوقصّة مظبوطة", features: ["جلد صناعي ناعم", "بطانة دافية"],
@@ -123,6 +128,72 @@ test("a selected SKU's published Studio stays visible without animation with red
   } finally {
     await publish(request, null, code);
   }
+});
+
+test("Studio v2 reserves its first photo, reuses the lazy storefront read and puts active marquee lines before the photos", async ({ page, request }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await storefront(request, { enabled: true, speed: 30, lines: [
+    { text: "الدفع عند الاستلام", hidden: false }, { text: "رسالة مخفية", hidden: true },
+  ] });
+  await publish(request, { studioStack: { v: 1, marquee: { enabled: true, position: "above" }, scrollHint: { style: "pill" }, photos: v2Photos } });
+  const assets = [];
+  page.on("request", r => { if (/studio-v2-motion|public\/storefront/.test(r.url())) assets.push(r.url()); });
+  try {
+    await page.goto(LP);
+    const form = page.locator("#lpForm");
+    await expect(page.locator("#lpAddCart")).toBeEnabled();
+    const before = await form.evaluate(el => el.getBoundingClientRect().top + scrollY);
+    expect(assets).toEqual([]);
+    await form.scrollIntoViewIfNeeded();
+    const stack = page.locator("#lpForm ~ .bar + .lp-studio-stack");
+    const gallery = stack.locator(".ssm-stack");
+    const first = gallery.locator(".ssm-card").first();
+    const second = gallery.locator(".ssm-card").nth(1);
+    await expect(stack.locator(".ssm-v2-marquee + .ssm-stack")).toHaveCount(1);
+    await expect(stack.getByRole("listitem")).toHaveText("الدفع عند الاستلام");
+    await expect(stack.getByText("رسالة مخفية")).toHaveCount(0);
+    await expect(stack.locator(".ssm-v2-marquee-track")).toHaveCSS("animation-duration", "30s");
+    await expect(first.locator("img.ssm-main")).toHaveAttribute("loading", "eager");
+    await expect(first.locator("img.ssm-main")).toHaveAttribute("fetchpriority", "high");
+    await expect(first.locator("img.ssm-main")).toHaveAttribute("width", "900");
+    await expect(first.locator("img.ssm-main")).toHaveAttribute("height", "1600");
+    await expect(second.locator("img.ssm-main")).toHaveAttribute("loading", "lazy");
+    await expect(first.locator("img.ssm-main")).toHaveAttribute("src", STORAGE + v2Photos[0].path);
+    expect((await first.boundingBox()).height).toBeCloseTo(844 * 0.85, 0);
+    expect(await form.evaluate(el => el.getBoundingClientRect().top + scrollY)).toBeCloseTo(before, 0);
+    expect(assets.filter(url => url.endsWith("/public/storefront"))).toHaveLength(1);
+    const hint = first.locator('.ssm-v2-hint[data-style="pill"]');
+    await hint.scrollIntoViewIfNeeded();
+    await expect(hint).toBeInViewport();
+    await page.mouse.click(195, 650);
+    await expect(hint).toBeHidden();
+  } finally { await storefront(request, null); }
+});
+
+test("Studio v2 removes an all-hidden marquee and keeps progress visible for reduced motion", async ({ page, request }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await storefront(request, { enabled: true, speed: 25, lines: [{ text: "رسالة مخفية", hidden: true }] });
+  const options = { v: 1, accent: "#9c2044", marquee: { enabled: true, position: "below" }, scrollHint: { style: "progress", gradient: true }, photos: v2Photos };
+  await publish(request, { studioStack: options });
+  try {
+    await page.goto(LP);
+    await page.locator("#lpForm").scrollIntoViewIfNeeded();
+    const stack = page.locator(".lp-studio-stack");
+    await expect(stack.locator(".ssm-card")).toHaveCount(2);
+    await expect(stack.locator(".ssm-v2-marquee")).toHaveCount(0);
+    const progress = stack.locator('.ssm-v2-hint[data-style="progress"]');
+    await expect(progress).toHaveAttribute("data-gradient", "true");
+    await expect(progress.locator("span")).toHaveCSS("transition-duration", "0s");
+    await stack.locator(".ssm-card").last().scrollIntoViewIfNeeded();
+    await expect(progress).toBeVisible();
+
+    await storefront(request, null);
+    await page.reload();
+    await page.locator("#lpForm").scrollIntoViewIfNeeded();
+    const marquee = stack.locator(".ssm-stack + .ssm-v2-marquee");
+    await expect(marquee.getByRole("listitem")).toHaveText(["الدفع عند الاستلام", "عايني قبل ما تدفعي", "شحن لكل المحافظات"]);
+    await expect(marquee.locator(".ssm-v2-marquee-track")).toHaveCSS("animation-name", "none");
+  } finally { await storefront(request, null); }
 });
 
 for (const position of ["below", "overlay"]) {
