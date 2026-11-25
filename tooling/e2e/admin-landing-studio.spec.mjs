@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 
 // Admin Landing Studio against an in-memory Admin API. Never reaches live Supabase: every Admin call is answered
 // here, storage images are served locally and any other supabase.co request is aborted.
@@ -8,6 +7,7 @@ test.use({ bypassCSP: true });
 
 const STORAGE = 'https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/';
 const IMG = new URL('../../assets/catalog-thumbs/005a3ee1a8504efca19a780f21981d33.jpg.w400.webp', import.meta.url);
+const uploadImage = async () => ({ name: 'photo.webp', mimeType: 'image/webp', buffer: await readFile(IMG) });
 const GENERATIVE = /gemini|generativelanguage|aistudio|makersuite|openai|stability\.ai|replicate\.com|midjourney|huggingface|imagen/i;
 const OWNER = { role: 'owner', email: 'qa-owner@example.test', permissions: [] };
 const STAFF = { role: 'staff', email: 'qa-staff@example.test', permissions: ['products.view', 'products.edit'] };
@@ -126,7 +126,7 @@ test('a long ribbon fits, moves and resizes in the editor, then renders from the
   await drag(stage.locator('[data-resize]'),-35,-12);
   await expect(editor.locator('[data-field="size"]')).not.toHaveValue('1');
   await editor.locator('[data-field="rot"]').fill('8');
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status','draft');
   const saved = store.landing.draft;
   const layer = saved.studioStack.photos[0].overlays[0];
@@ -194,14 +194,14 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   const editor = page.locator('.studio-visual');
   const stage = editor.locator('[data-visual-stage]');
   await expect(page.locator('[data-legacy-studio]')).toHaveAttribute('aria-expanded','false');
-  await editor.locator('[data-stack-files]').setInputFiles([fileURLToPath(IMG), fileURLToPath(IMG)]);
+  await editor.locator('[data-stack-files]').setInputFiles([await uploadImage(), await uploadImage()]);
   await expect(editor.locator('.studio-visual-thumb')).toHaveCount(2);
   await editor.locator('[data-template="0"][data-own="false"]').click();
   await stage.locator('button[data-overlay="1"]').click();
   const copy = editor.locator('[data-field="text"]');
   await expect(copy).toHaveValue(/النهارده/);
   await copy.fill('ستايل يعبّر عنك');
-  await editor.locator('[data-choice="fx"][data-value="aurora"]').click();
+  await clickPreview(editor.locator('[data-choice="fx"][data-value="aurora"]'));
   await expect(stage.locator('.ssm-fx-aurora')).toHaveText('ستايل يعبّر عنك');
   const inspector = editor.locator('.studio-visual-inspector');
   await inspector.locator('[data-section="shadow"] summary').click();
@@ -220,8 +220,8 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   await expect(editor.frameLocator('iframe').locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-none/);
   await editor.locator('[data-device="desktop"]').click();
   await expect(editor.locator('[data-device="desktop"]')).toHaveAttribute('aria-pressed','true');
-  await editor.locator('[data-action="close"]').click();
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(editor.locator('[data-action="close"]'));
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status','draft');
   const saved = store.landing.draft.studioStack;
   expect(saved.v).toBe(1);
@@ -373,14 +373,17 @@ test('per-design marquee and scroll hints update the previews and round-trip thr
 });
 
 // The mobile tab bar is fixed over the bottom of the viewport: centre the element first so the click never lands on the bar.
-const clickPreview = async (locator) => { await locator.evaluate(element => element.scrollIntoView({ block:'center' })); await locator.click(); };
+const clickPreview = async (locator) => {
+  await locator.evaluate(element => element.scrollIntoView({ block:'center', behavior:'instant' }));
+  await locator.click();
+};
 test('Owner: uploads the 3 marketing images by hand, edits every control, saves a draft, reopens it, publishes', async ({ page }) => {
   const store = newStore();
   await signIn(page, OWNER, store);
   await openStudio(page);
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'new');
   for (const slot of ['hero', 'features', 'closing']) {
-    await page.locator(`[data-slot-input=${slot}]`).setInputFiles(fileURLToPath(IMG));
+    await page.locator(`[data-slot-input=${slot}]`).setInputFiles(await uploadImage());
     await expect(page.locator(`[data-slot=${slot}] img`)).toHaveAttribute('src', /women-storefront\/storefront\/studio-\d\.webp$/);
   }
   expect(store.ops.filter(o => o.op === 'upload')).toEqual([
@@ -393,8 +396,8 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
     await page.locator(`select[name=${name}]`).selectOption(value);
   }
   await page.locator('[name=ctaText]').fill('احجزي قطعتك');
-  await page.locator('[data-section-up=closing]').click(); // verify manual reorder while keeping the product/order block last
-  await page.locator('label.switch', { has: page.locator('[data-section-visible=closing]') }).click();
+  await clickPreview(page.locator('[data-section-up=closing]')); // verify manual reorder while keeping the product/order block last
+  await clickPreview(page.locator('label.switch', { has: page.locator('[data-section-visible=closing]') }));
   await expect(page.locator('[data-section-visible=closing]')).not.toBeChecked();
   // The live preview is the real page fed the unsaved draft; ordering is off inside it.
   const mobile = page.frameLocator('[data-preview-frame=mobile]');
@@ -411,11 +414,11 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
   await expect(mobile.locator('.studio-media [data-studio-cta]').first()).toHaveText('احجزي قطعتك');
   await mobile.locator('#lpForm').evaluate(f => f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   await expect(mobile.locator('#lpStatus')).toContainText('معاينة فقط');
-  await page.locator('[data-preview=desktop]').click();
+  await clickPreview(page.locator('[data-preview=desktop]'));
   await expect(page.frameLocator('[data-preview-frame=desktop]').locator('.studio-features li')).toHaveText(['بطانة دافية']);
   await expect(page.locator('[data-studio-publish]')).toBeDisabled(); // unsaved changes cannot be published
 
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
   const saved = store.ops.find(o => o.op === 'landing.save').args;
   expect(saved.version).toBe(0);
@@ -445,11 +448,11 @@ test('Staff with edit rights saves drafts but has no publish control', async ({ 
   await signIn(page, STAFF, store);
   await openStudio(page);
   await expect(page.locator('[data-studio-publish], [data-studio-unpublish]')).toHaveCount(0);
-  await page.locator('[data-slot-input=hero]').setInputFiles(fileURLToPath(IMG));
+  await page.locator('[data-slot-input=hero]').setInputFiles(await uploadImage());
   await expect(page.locator('[data-slot=hero] img')).toHaveAttribute('src', /women-storefront\/storefront\/studio-1\.webp$/);
   expect(store.ops.filter(o => o.op === 'upload')).toEqual([{ op: 'upload', code: 'SS-1008' }]);
   await page.locator('[name=title]').fill('عنوان من الموظفة');
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
   expect(store.ops.filter(o => o.op === 'landing.publish')).toHaveLength(0);
 });
@@ -481,7 +484,7 @@ test('Owner: motion mode, per-photo entry direction, hint text and a main colour
   await expect(mobile.locator('html')).toHaveAttribute('data-motion', 'cinematic');
   await expect(mobile.locator('.mo-hint .mo-txt')).toHaveText('اسحبي لتحت');
   await expect(mobile.locator('#lpAddCart')).toHaveCSS('background-color', 'rgb(200, 16, 46)');
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
   const saved = store.ops.find(o => o.op === 'landing.save').args.design;
   expect(saved.motion).toEqual({ mode: 'cinematic', hint: 'اسحبي لتحت', dirs: ['side', 'top', 'side'] });
@@ -491,13 +494,13 @@ test('Owner: motion mode, per-photo entry direction, hint text and a main colour
     await page.screenshot({ path: test.info().outputPath('studio-motion.png') });
   }
 
-  await page.locator('[data-accent-clear]').click();
+  await clickPreview(page.locator('[data-accent-clear]'));
   await expect(mobile.locator('html')).not.toHaveAttribute('data-studio-accent', /.*/);
   await page.locator('select[name=motionMode]').selectOption('none');
   await expect(mobile.locator('html')).not.toHaveAttribute('data-motion', /.*/);
   await expect(mobile.locator('.mo-stack')).toHaveCount(0);
   await expect(mobile.locator('#lpStage')).toBeVisible();
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect.poll(() => store.ops.filter(o => o.op === 'landing.save').length).toBe(2);
   const second = store.ops.filter(o => o.op === 'landing.save')[1].args.design;
   expect(second.accent).toBe('');
