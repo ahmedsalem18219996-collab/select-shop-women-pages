@@ -22,3 +22,19 @@ test('copy warnings distinguish restricted claims from prices and ordinary numbe
   assert.deepEqual(getStudioStackCopyWarnings(stack), { restricted: true, price: true });
   assert.deepEqual(getStudioStackCopyWarnings(undefined), { restricted: false, price: false });
 });
+
+test('every ready-made and default Studio text avoids tried-on promises, restricted claims and prices', async () => {
+  const { TEMPLATES } = await import('../../admin/js/studio-visual-options.js');
+  const { DEFAULT_STUDIO_MARQUEE } = await import('../../admin/studio/studio-v2-motion.js');
+  const texts = [
+    ...Object.values(STUDIO_COPY).flatMap(category => category.phrases),
+    ...DEFAULT_STUDIO_MARQUEE.lines.map(line => line.text),
+    ...TEMPLATES.flatMap(template => template.items.map(item => item.text)),
+  ].filter(text => typeof text === 'string' && text.length);
+  assert.ok(texts.length > 40);
+  for (const text of texts) {
+    assert.doesNotMatch(text, /تجرب|جرّب|جرب/u, text); // no "try it on" promise: she may only inspect before paying
+    assert.deepEqual(getStudioCopyWarnings(text), { restricted: false, price: false }, text);
+  }
+  assert.ok(STUDIO_COPY.subtitles.phrases.includes('شوفي القطعة وعايني قبل ما تدفعي'));
+});

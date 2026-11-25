@@ -285,10 +285,10 @@ test('the selected element and side library remember collapsible sections and ed
   const subtitleTab = library.getByRole('tab', { name:'سطر تحت العنوان' });
   await expect(subtitleTab).toBeFocused();
   await expect(subtitleTab).toHaveAttribute('aria-selected', 'true');
-  await library.getByRole('button', { name:'شوفي القطعة، جرّبيها، وبعدها ادفعي' }).click();
-  await expect(editor.locator('.ssm-o-text')).toHaveText('شوفي القطعة، جرّبيها، وبعدها ادفعي');
+  await library.getByRole('button', { name:'شوفي القطعة وعايني قبل ما تدفعي' }).click();
+  await expect(editor.locator('.ssm-o-text')).toHaveText('شوفي القطعة وعايني قبل ما تدفعي');
   await inspector.locator('[data-section="copy"] summary').click();
-  await expect(text).toHaveValue('شوفي القطعة، جرّبيها، وبعدها ادفعي');
+  await expect(text).toHaveValue('شوفي القطعة وعايني قبل ما تدفعي');
   await text.fill('خصم ٤٥٠ جنيه خلال ٣ أيام');
   await expect(inspector.getByRole('status')).toContainText('غير مسموح');
   await expect(inspector.getByRole('status')).toContainText('شيلي رقم السعر');
