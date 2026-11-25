@@ -171,6 +171,8 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   await page.locator('[name="area"]').fill("مدينة نصر");
   await page.locator('[name="address"]').fill("عنوان اختبار فقط، شارع 1");
   await expect(page.locator("#placeOrder")).toBeEnabled();
+  const attribution = page.waitForRequest(r => r.url().endsWith("/orders/attribution") && r.method() === "POST")
+    .then(r => ({ pathname: new URL(r.frame().url()).pathname, body: r.postDataJSON() }));
   await page.locator("#placeOrder").click();
   await expect(page).toHaveURL(/order-success/);
   await expect(page.locator("#orderCode")).toHaveText(/^ORD-/);
@@ -180,8 +182,13 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   expect(log.orders.at(-1).lines.map(line => line.publicCode)).toEqual(
     expect.arrayContaining(["SS-1008", "SS-1011"])
   );
-  expect(log.attributions.at(-1).params.content).toBe("SS-1008");
-  expect(log.attributions.at(-1).params.landing).toContain("group-001");
+  const sent = await attribution;
+  expect(sent.pathname).toBe("/order-success/");
+  expect(sent.body.publicOrderCode).toBe(await page.locator("#orderCode").textContent());
+  await expect.poll(async () => (await mockLog(request)).attributions.length).toBe(before.attributions.length + 1);
+  const stored = (await mockLog(request)).attributions.at(-1);
+  expect(stored.params.content).toBe("SS-1008");
+  expect(stored.params.landing).toContain("group-001");
 });
 
 test("hidden sections and an empty design: hidden parts disappear, no design = the standard page", async ({ page, request }) => {
