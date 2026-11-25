@@ -189,6 +189,18 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   const stored = (await mockLog(request)).attributions.at(-1);
   expect(stored.params.content).toBe("SS-1008");
   expect(stored.params.landing).toContain("group-001");
+
+  const repeatAttributions = [];
+  page.on("request", r => {
+    if (r.method() === "POST" && r.url().endsWith("/orders/attribution")) repeatAttributions.push(r);
+  });
+  await page.reload();
+  await expect(page.locator("#orderCode")).toHaveText(sent.body.publicOrderCode);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/checkout\//);
+  await page.goForward();
+  await expect(page.locator("#orderCode")).toHaveText(sent.body.publicOrderCode);
+  expect(repeatAttributions).toHaveLength(0);
 });
 
 test("hidden sections and an empty design: hidden parts disappear, no design = the standard page", async ({ page, request }) => {
