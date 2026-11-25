@@ -36,6 +36,7 @@ async function recordAnonymousProductView(code) {
 
 const CART_KEY = "women.cart.v1";
 const ORDER_KEY = "women.order.idempotency.v1";
+const ORDER_ATTRIBUTION_KEY = "women.order.attribution.pending.v1";
 const GA_PURCHASE_KEY = "women.ga4.purchase.pending.v1";
 // Set by lp/runtime.js after a confirmed landing-page cart add; tags the GA4 purchase with the same "<page>:<a|b>" value.
 const LP_ATTRIBUTION_KEY = "women.lp.attribution.v1";
@@ -472,12 +473,15 @@ export async function showCheckout(live=false){
     try{
       const reply=await api("/orders","POST",payload);
       if(!/^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(reply.publicOrderCode))throw new Error("write_unconfirmed");
-      // Ad attribution (utm_*, ad set from the landing page visit): write-once, after the confirmed order, never blocking.
+      // Hand attribution to the confirmation page: WebKit can cancel a fetch during navigation.
       try {
         const ad=JSON.parse(sessionStorage.getItem("women.ad.params.v1")||"null");
-        const params={...(ad&&typeof ad==="object"?ad:{}),...(window.womenMetaIds?.()||{})}; // + Meta's fbp/fbc for the server's Conversions API
-        if(Object.keys(params).length)void fetch(API.replace("/women-checkout","/women-store-bridge")+"/orders/attribution",{method:"POST",mode:"cors",credentials:"omit",keepalive:true,
-          headers:{"Content-Type":"application/json"},body:JSON.stringify({idempotencyKey:payload.idempotencyKey,publicOrderCode:reply.publicOrderCode,params})}).catch(()=>null);
+        const params={...(ad&&typeof ad==="object"?ad:{}),...(window.womenMetaIds?.()||{})};
+        if(Object.keys(params).length) {
+          const attribution={idempotencyKey:payload.idempotencyKey,publicOrderCode:reply.publicOrderCode,params};
+          try { sessionStorage.setItem(ORDER_ATTRIBUTION_KEY,JSON.stringify(attribution)); }
+          catch { sendOrderAttribution(attribution); }
+        }
       } catch { /* attribution is optional */ }
       // Meta Lead is emitted only here, after the server creates the order (Purchase comes from the server once it is
       // confirmed). Event id = "lead-" + SHA-256 of the order's idempotency key, as the server sends it, so the two
@@ -520,9 +524,22 @@ export async function showCheckout(live=false){
     }
   });
 }
+function sendOrderAttribution(attribution){
+  void fetch(API.replace("/women-checkout","/women-store-bridge")+"/orders/attribution",{
+    method:"POST",mode:"cors",credentials:"omit",keepalive:true,
+    headers:{"Content-Type":"application/json"},body:JSON.stringify(attribution)
+  }).catch(()=>null);
+}
 function success(){
   const code=new URLSearchParams(location.search).get("order")||"";
   $("#orderCode").textContent=/^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(code)?code:"رقم الطلب غير متاح";
+  try {
+    const pending=JSON.parse(sessionStorage.getItem(ORDER_ATTRIBUTION_KEY)||"null");
+    if(pending?.publicOrderCode===code && /^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(code)) {
+      sessionStorage.removeItem(ORDER_ATTRIBUTION_KEY);
+      sendOrderAttribution(pending);
+    }
+  } catch { /* Never interfere with confirmation. */ }
   // Never count a manually loaded success URL as a conversion.
   try {
     const pending=JSON.parse(sessionStorage.getItem(GA_PURCHASE_KEY)||"null");
