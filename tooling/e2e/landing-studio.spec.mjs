@@ -254,12 +254,13 @@ test("campaign-linked landing pages show the other models and share one COD bag"
     expect.arrayContaining(["SS-1008", "SS-1011"])
   );
   const sent = await attribution;
-  expect(sent.pathname).toBe("/order-success/");
+  expect(sent.pathname).toBe("/checkout/");
   expect(sent.body.publicOrderCode).toBe(await page.locator("#orderCode").textContent());
   await expect.poll(async () => (await mockLog(request)).attributions.length).toBe(before.attributions.length + 1);
   const stored = (await mockLog(request)).attributions.at(-1);
   expect(stored.params.content).toBe("SS-1008");
   expect(stored.params.landing).toContain("group-001");
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual([]);
 
   const repeatAttributions = [];
   page.on("request", r => {
@@ -272,6 +273,131 @@ test("campaign-linked landing pages show the other models and share one COD bag"
   await page.goForward();
   await expect(page.locator("#orderCode")).toHaveText(sent.body.publicOrderCode);
   expect(repeatAttributions).toHaveLength(0);
+});
+
+const pendingPrefix = "women.order.attribution.v2:";
+const pendingAttributionCodes = page => page.evaluate(prefix =>
+  Object.keys(localStorage).filter(key => key.startsWith(prefix)).map(key => key.slice(prefix.length)).sort(), pendingPrefix);
+
+async function attributionReplies(context) {
+  const sent = [];
+  const state = { fail: true, outcome: "saved", sent };
+  await context.route("**/orders/attribution", async route => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ status: state.fail ? 503 : 200, json: { outcome: state.fail ? "error" : state.outcome } });
+  });
+  return state;
+}
+
+async function campaignCheckout(page) {
+  await page.goto(LP + "?utm_source=meta&utm_campaign=outbox-test");
+  await page.locator("#lpAddCart").click();
+  await expect(page.locator("#lpStatus")).toContainText("اتضافت للشنطة");
+  await page.goto("/checkout/");
+  await page.locator("#region").selectOption("cairo");
+  for (const [name, value] of Object.entries({ name: "اختبار آلي", phone: "01012345678", area: "مدينة نصر", address: "عنوان اختبار فقط، شارع 1" })) {
+    await page.locator(`[name="${name}"]`).fill(value);
+  }
+  await expect(page.locator("#placeOrder")).toBeEnabled();
+  const confirmation = page.waitForRequest(r => r.isNavigationRequest() && new URL(r.url()).pathname === "/order-success/");
+  await page.locator("#placeOrder").click();
+  return new URL((await confirmation).url()).searchParams.get("order");
+}
+
+test("campaign attribution retries a failed send after reload and clears the acknowledged order", async ({ page, context }) => {
+  const state = await attributionReplies(context);
+  const code = await campaignCheckout(page);
+  await expect(page).toHaveURL(/order-success/);
+  await expect.poll(() => state.sent.some(r => r.publicOrderCode === code)).toBe(true);
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual([code]);
+  state.fail = false;
+  await page.reload();
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual([]);
+  expect(state.sent.filter(r => r.publicOrderCode === code).length).toBeGreaterThan(1);
+});
+
+test("campaign attribution survives closing checkout before confirmation and resumes on the home page", async ({ page, context }) => {
+  const state = await attributionReplies(context);
+  await context.route("**/order-success/?*", route => route.fulfill({ status: 204 }));
+  const navigation = page.waitForRequest(r => new URL(r.url()).pathname === "/order-success/");
+  const code = await campaignCheckout(page);
+  await navigation;
+  await expect.poll(() => state.sent.some(r => r.publicOrderCode === code)).toBe(true);
+  await page.close();
+  state.fail = false;
+  const followup = await context.newPage();
+  const received = followup.waitForResponse(r => r.url().endsWith("/orders/attribution") && r.ok());
+  await followup.goto("/");
+  expect((await received).request().postDataJSON().publicOrderCode).toBe(code);
+  await expect.poll(() => pendingAttributionCodes(followup)).toEqual([]);
+});
+
+test("campaign attribution keeps two failed orders from one tab and retries both", async ({ page, context }) => {
+  const state = await attributionReplies(context);
+  const a = await campaignCheckout(page);
+  await expect(page).toHaveURL(/order-success/);
+  const b = await campaignCheckout(page);
+  await expect(page).toHaveURL(/order-success/);
+  expect(a).not.toBe(b);
+  const expected = [a, b].sort();
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual(expected);
+  state.fail = false;
+  const retryStart = state.sent.length;
+  await page.goto("/");
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual([]);
+  expect([...new Set(state.sent.slice(retryStart).map(r => r.publicOrderCode))].sort()).toEqual(expected);
+});
+
+test("campaign attribution clears a duplicate acknowledgement and stops sending", async ({ page, context }) => {
+  const state = await attributionReplies(context);
+  const code = await campaignCheckout(page);
+  await expect(page).toHaveURL(/order-success/);
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual([code]);
+  state.fail = false;
+  state.outcome = "duplicate";
+  await page.goto("/");
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual([]);
+  const count = state.sent.length;
+  await page.goto("/cart/");
+  await page.reload();
+  expect(state.sent).toHaveLength(count);
+});
+
+test("campaign attribution sends from checkout even if localStorage.setItem fails", async ({ page, context }) => {
+  const state = await attributionReplies(context);
+  state.fail = false;
+  await page.addInitScript(prefix => {
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (this === localStorage && key.startsWith(prefix)) throw new DOMException("Full", "QuotaExceededError");
+      return set.call(this, key, value);
+    };
+  }, pendingPrefix);
+  const sending = page.waitForRequest(r => r.url().endsWith("/orders/attribution"))
+    .then(r => ({ path: new URL(r.frame().url()).pathname, order: r.postDataJSON().publicOrderCode }));
+  const code = await campaignCheckout(page);
+  expect(await sending).toEqual({ path: "/checkout/", order: code });
+  await expect(page).toHaveURL(/order-success/);
+  expect(await pendingAttributionCodes(page)).toEqual([]);
+});
+
+test("campaign attribution ignores malformed and 24-hour-old copies and keeps at most five", async ({ page, context }) => {
+  const state = await attributionReplies(context);
+  await page.addInitScript(prefix => {
+    const now = Date.now();
+    for (const [i, digit] of [..."23456789"].entries()) {
+      const publicOrderCode = "ORD-AAAAAAA" + digit;
+      localStorage.setItem(prefix + publicOrderCode, JSON.stringify({
+        publicOrderCode, idempotencyKey: "attribution-fixture-" + digit,
+        queuedAt: i === 0 ? now - 86400000 : now - 200 + i,
+        params: i === 1 ? ["invalid"] : { campaign: "valid" },
+      }));
+    }
+  }, pendingPrefix);
+  await page.goto("/");
+  await expect.poll(() => state.sent.length).toBe(5);
+  expect(await pendingAttributionCodes(page)).toEqual([..."56789"].map(digit => "ORD-AAAAAAA" + digit));
+  expect(state.sent.map(r => r.publicOrderCode).sort()).toEqual(await pendingAttributionCodes(page));
 });
 
 test("hidden sections and an empty design: hidden parts disappear, no design = the standard page", async ({ page, request }) => {
