@@ -158,14 +158,14 @@ test("generated pages retain optional cart except explicitly focused direct-only
   assert.match(html, /id="lpCartLink"/);
   assert.match(html, /id="lpCartCount"/);
   assert.match(html, /id="lpOrder"/);
-  assert.match(html, /\/lp\/runtime\.js\?v=20261123-studio-v2/);
+  assert.match(html, /\/lp\/runtime\.js\?v=20261126-attribution/);
   assert.match(html, /\/lp\/image-zoom\.js\?v=20261114-auto-zoom/);
   const generated = await readdir(new URL("../../lp/", import.meta.url), { withFileTypes:true });
   const dirs = generated.filter(d => d.isDirectory() && (d.name.startsWith("ss-") || d.name === "ballon-suit"));
   assert.equal(dirs.length, 39);
   for (const d of dirs) {
     const page = await readFile(new URL("../../lp/" + d.name + "/index.html", import.meta.url), "utf8");
-    assert.match(page, /\/lp\/runtime\.js\?v=20261123-studio-v2/, d.name);
+    assert.match(page, /\/lp\/runtime\.js\?v=20261126-attribution/, d.name);
     assert.match(page, /id="lpAddCart"/, d.name);
     assert.match(page, /id="lpOrder"/, d.name);
     if (page.includes('"directOnly":true')) assert.doesNotMatch(page, /id="lpCartLink"/, d.name);
