@@ -74,6 +74,79 @@ const openStudio = async (page) => {
   if ((await legacy.getAttribute('aria-expanded')) === 'false') await legacy.click();
 };
 
+test('the saved Studio draft matches the published product at 390px and 1280px', async ({ page, request, baseURL }) => {
+  const store = newStore();
+  store.landing.draft = {
+    v: 1, template: 'classic', background: 'midnight', title: 'تصميم قبل التعديل',
+    description: 'وصف المنتج', features: ['ميزة واحدة'],
+    images: Object.fromEntries(['hero', 'features', 'closing'].map(slot => [slot, 'women-storefront/storefront/test-' + slot + '.webp'])),
+  };
+  await signIn(page, OWNER, store);
+  await openStudio(page);
+  await expect(page.locator('[data-legacy-studio]')).toHaveText('معاينة التصميم المحفوظ وإعداداته');
+  await page.locator('[name=title]').fill('عنوان بعد التعديل');
+  await page.locator('[data-studio-save]').click();
+  await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
+  await page.locator('[data-studio-publish]').click();
+  await page.locator('[data-yes]').click();
+  await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'published');
+  const design = store.landing.published;
+  expect(design.title).toBe('عنوان بعد التعديل');
+  const measure = async scope => {
+    await expect(scope.locator('.studio-hero h2')).toHaveText(design.title);
+    return scope.locator('.studio-sec').evaluateAll(async sections => {
+      const images = sections.flatMap(section => [...section.querySelectorAll('img')]);
+      images.forEach(image => { image.loading = 'eager'; });
+      await Promise.all(images.map(image => image.decode()));
+      await document.fonts.ready;
+      return sections.map(section => {
+        const box = section.getBoundingClientRect();
+        return {
+          width: box.width,
+          direction: getComputedStyle(section).direction,
+          background: getComputedStyle(section).backgroundColor,
+          nodes: [section, ...section.querySelectorAll('.studio-media, img, h2, p, li, button')].map(element => {
+            const rect = element.getBoundingClientRect();
+            return [rect.x, rect.y - box.y, rect.width, rect.height];
+          }),
+        };
+      });
+    });
+  };
+  const image = await readFile(IMG);
+  try {
+    await request.post('/__mock/landing', { data: { code: 'SS-1008', design } });
+    for (const [mode, width, height] of [['mobile', 390, 800], ['desktop', 1280, 900]]) {
+      await page.locator('[data-preview=' + mode + ']').click();
+      const preview = page.frameLocator('[data-preview-frame=' + mode + ']');
+      const saved = await measure(preview);
+      const published = await page.context().newPage();
+      try {
+        await published.setViewportSize({ width, height });
+        await published.route(STORAGE + '**', route => route.fulfill({ contentType: 'image/webp', body: image }));
+        await published.goto(baseURL + '/lp/?p=SS-1008');
+        const live = await measure(published);
+        expect(live).toHaveLength(3);
+        for (let i = 0; i < live.length; i++) {
+          expect(saved[i].width).toBe(live[i].width);
+          expect(saved[i].direction).toBe(live[i].direction);
+          expect(saved[i].background).toBe(live[i].background);
+          expect(saved[i].nodes).toHaveLength(live[i].nodes.length);
+          for (const [j, expected] of live[i].nodes.entries()) {
+            for (const [axis, value] of expected.entries()) {
+              expect(Math.abs(saved[i].nodes[j][axis] - value)).toBeLessThanOrEqual(live[i].width * .01);
+            }
+          }
+        }
+      } finally {
+        await published.close();
+      }
+    }
+  } finally {
+    await request.post('/__mock/landing', { data: { code: 'SS-1008', design: null } });
+  }
+});
+
 test('the visual Studio applies cards, selects text on the phone, replays motion, and saves the same payload', async ({ page }) => {
   const store = newStore();
   await signIn(page, OWNER, store);
