@@ -143,7 +143,9 @@ export default {
     const controls = make('div', 'studio-controls stack');
     const previewCol = make('div', 'studio-preview-col');
     layout.append(controls, previewCol);
-    const legacy = button('إعدادات التصميم السابق', 'btn-soft', () => {
+    const legacyTitle = Object.values(design.images).some(Boolean) && !state.draft?.studioStack?.photos?.length
+      ? 'معاينة التصميم المحفوظ وإعداداته' : 'إعدادات التصميم السابق';
+    const legacy = button(legacyTitle, 'btn-soft', () => {
       layout.hidden = !layout.hidden;
       legacy.setAttribute('aria-expanded', String(!layout.hidden));
       if (!layout.hidden) fit();
@@ -359,7 +361,7 @@ export default {
     });
     pvHead.append(seg);
     previewCol.append(pvHead);
-    const sizes = { mobile: [390, 800], desktop: [1366, 900] };
+    const sizes = { mobile: [390, 800], desktop: [1280, 900] };
     Object.entries(sizes).forEach(([kind, [w, h]]) => {
       const wrap = make('div', 'studio-frame studio-frame--' + kind);
       wrap.hidden = kind !== 'mobile';
