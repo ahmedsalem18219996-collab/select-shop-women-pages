@@ -87,6 +87,7 @@ async function mockApi(req, url, body) {
   if (p === "/women-store-bridge/orders/attribution" && req.method === "POST") {
     const known = [...keys.entries()].some(([k, v]) => k === body?.idempotencyKey && v.code === body?.publicOrderCode);
     if (!known) return [404, { error: "not_found" }];
+    if (log.attributions.some(saved => saved.publicOrderCode === body.publicOrderCode)) return [200, { outcome: "duplicate" }];
     log.attributions.push(body);
     return [200, { outcome: "saved" }];
   }

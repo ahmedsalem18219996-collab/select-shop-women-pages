@@ -5,7 +5,7 @@ const webkit = webkitAdmin ? {
   testMatch: /(?:admin-landing-studio|admin-order-followup|admin-ad-tracking|image-upload-compat)\.spec\.mjs$/,
 } : {
   testMatch: "**/landing-studio.spec.mjs",
-  grep: /campaign-linked landing pages show the other models and share one COD bag/,
+  grep: /campaign-linked landing pages show the other models and share one COD bag|campaign attribution /,
 };
 
 // One shared in-memory mock backend, so tests run serially to keep its order log deterministic.

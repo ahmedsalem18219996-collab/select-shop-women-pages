@@ -510,7 +510,7 @@ function layout(o) {
     ? ORDER_FORM.replace('</small></h2>', '</small></h2>\n' + checkoutPicker)
     : ORDER_FORM;
   // Product Landing Studio is part of the shared runtime, so every LP must fetch this release.
-  const runtimeVersion = "20261123-sizing";
+  const runtimeVersion = "20261126-attribution";
   const wa = esc(o.wa);
   return `<!doctype html>
 <html lang="ar" dir="rtl">
