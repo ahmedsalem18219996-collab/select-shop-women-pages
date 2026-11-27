@@ -1,5 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const webkitAdmin = process.env.WEBKIT_ADMIN === "1";
+const webkit = webkitAdmin ? {
+  testMatch: /(?:admin-landing-studio|admin-order-followup|admin-ad-tracking|image-upload-compat)\.spec\.mjs$/,
+} : {
+  testMatch: "**/landing-studio.spec.mjs",
+  grep: /campaign-linked landing pages show the other models and share one COD bag|campaign attribution /,
+};
+
 // One shared in-memory mock backend, so tests run serially to keep its order log deterministic.
 export default defineConfig({
   testDir: "e2e",
@@ -12,10 +20,10 @@ export default defineConfig({
   projects: [
     { name: "mobile", use: { ...devices["Pixel 7"] } },
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    // Opt-in Safari-engine smoke: only the theme suite runs on WebKit; normal local/Chromium runs stay unchanged.
-    ...(process.env.PW_WEBKIT === "1" ? [
-      { name: "webkit-mobile", testMatch: /(?:theme|image-upload-compat)\.spec\.mjs$/, use: { ...devices["iPhone 13"], browserName: "webkit" } },
-      { name: "webkit-desktop", testMatch: /(?:theme|image-upload-compat)\.spec\.mjs$/, use: { ...devices["Desktop Safari"], browserName: "webkit" } },
+    // CI covers the customer campaign checkout. WEBKIT_ADMIN=1 selects the manual suites.
+    ...(process.env.PW_WEBKIT === "1" || webkitAdmin ? [
+      { name: "webkit-mobile", ...webkit, use: { ...devices["iPhone 13"], browserName: "webkit" } },
+      { name: "webkit-desktop", ...webkit, use: { ...devices["Desktop Safari"], browserName: "webkit" } },
     ] : []),
   ],
 });
