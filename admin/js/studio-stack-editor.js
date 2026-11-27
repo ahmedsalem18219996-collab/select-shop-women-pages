@@ -1,12 +1,19 @@
 import { html, render, island, fail, icon } from './ui.js';
 import { uploadLandingImage, mediaUrl } from './api.js';
 import { optimizeUploadImage } from './image-optimize.js';
-import { accentFromImage, applyAccent, fitRibbonLabels, makeStrip, mountPhoto, playEnter, renderOverlays } from '../studio/motion.js?v=20261123-sizing';
-import { EFFECTS, ELEMENTS, ENTRIES, FITS, FONTS, LOOPS, SHADES, TEMPLATES, TEXT_ENTRIES, TEXT_LOOPS } from './studio-visual-options.js';
+import { accentFromImage, applyAccent, fitRibbonLabels, makeStrip, mountPhoto, playEnter, renderOverlays } from '../studio/motion.js?v=20261123-studio-v2';
+import { createMarquee, createScrollHint } from '../studio/studio-v2-motion.js?v=20261123-studio-v2';
+import { EFFECTS, ELEMENTS, ENTRIES, FITS, FONTS, LOOPS, SCROLL_HINTS, SHADES, TEMPLATES, TEXT_ENTRIES, TEXT_LOOPS } from './studio-visual-options.js?v=20261123-studio-v2';
+import { STUDIO_COPY, getStudioCopyWarnings } from './studio-copy.js?v=20261123-studio-v2';
 
 const PATH = /^women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(webp|jpg|jpeg|png)$/;
 const LIMIT = 8, MAX_LAYERS = 24;
 const TEMPLATE_KEY = 'women.studio.photo-presets.v1';
+const SECTIONS_KEY = 'women.studio.sections.v2';
+const OPEN_SECTIONS = new Set(['copy','effect','personal','templates','elements','layers','photos','accent']);
+const COPY_CATEGORIES = Object.keys(STUDIO_COPY);
+const DEFAULT_MARQUEE = { enabled:true, position:'above' };
+const DEFAULT_HINT = { style:'pill', gradient:false };
 const TABS = [['templates','قوالب','▦'], ['elements','عناصر','✦'], ['photo','الصورة','▣'], ['page','الصفحة','◐']];
 const PALETTE = ['#FFFFFF','#111111','#2563EB','#D0021B','#FF2D8A','#D8B36A','#16A34A','#7C3AED'];
 const PHOTO_FIELDS = new Set(['enter','loop','fit','shade']);
@@ -43,7 +50,7 @@ const clone = data => data?.v === 1 && Array.isArray(data.photos)
   ? structuredClone({ ...data, photos: data.photos.filter(photo => PATH.test(photo?.path)) }) : undefined;
 
 function loadStyles() {
-  for (const file of ['motion.css?v=20261123-sizing', 'fonts/fonts-studio.css']) {
+  for (const file of ['motion.css?v=20261123-studio-v2', 'studio-v2-motion.css?v=20261123-studio-v2', 'fonts/fonts-studio.css']) {
     const url = PATH_ASSET(file);
     if (document.querySelector('link[href="' + url + '"]')) continue;
     const link = document.createElement('link');
@@ -58,7 +65,13 @@ function localTemplates() {
     return Array.isArray(data) ? data.filter(t => typeof t?.name === 'string' && Array.isArray(t.items)).slice(0,20) : [];
   } catch { return []; }
 }
-const group = (label, body) => html`<section class="studio-visual-group"><h5>${label}</h5>${body}</section>`;
+function localSections() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SECTIONS_KEY) || '{}');
+    return stored && typeof stored === 'object' ? stored : {};
+  } catch { return {}; }
+}
+const group = (label, body) => label ? html`<section class="studio-visual-group"><h5>${label}</h5>${body}</section>` : body;
 const action = (key, text, icon, disabled = false) => html`<button type="button" class="studio-visual-chip" data-action="${key}" ${disabled ? 'disabled' : ''}><b aria-hidden="true">${icon}</b>${text}</button>`;
 const deck = (field, label, items, selected, mode = '') => group(label, html`<div class="studio-visual-deck" data-deck="${mode}">
   ${items.map(([value, name]) => html`<button type="button" class="studio-visual-choice" data-choice="${field}" data-value="${value}" aria-pressed="${String(value === selected)}">
@@ -75,11 +88,13 @@ const swatches = (key, label, current, fallback) => group(label, html`<div class
   <button type="button" class="studio-visual-chip" data-choice="${key}" data-value="" aria-pressed="${String(!current)}">افتراضي</button>
 </div>`);
 
-export function createStudioStackEditor({ code, title, price, initial, legacyPaths, editable, onChange, onBusy }) {
+export function createStudioStackEditor({ code, title, initial, legacyPaths, editable, marqueeSettings, onChange, onBusy }) {
   loadStyles();
   let stack = clone(initial), photoIndex = 0, layerIndex = -1, tab = 'templates', uploading = false;
   let playing = false, photoMode = 'add', playTimer, move, device = 'mobile', editedField;
+  let copyCategory = COPY_CATEGORIES[0];
   let personal = localTemplates();
+  const sections = localSections();
   const history = [], el = document.createElement('section');
   el.className = 'studio-stack-editor studio-visual';
   render(el, html`
@@ -121,10 +136,13 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
   const current = () => photos()[photoIndex];
   const selected = () => layerIndex === 'strip' ? current()?.strip : current()?.overlays[layerIndex];
   const canEdit = () => editable && !uploading;
-  const ensure = () => (stack ??= { v:1, accent:'', photos:[] });
+  const ensure = () => (stack ??= { v:1, accent:'', photos:[], marquee:{ ...DEFAULT_MARQUEE }, scrollHint:{ ...DEFAULT_HINT } });
+  const marquee = () => ({ ...DEFAULT_MARQUEE, ...stack?.marquee });
+  const hint = () => ({ ...DEFAULT_HINT, ...stack?.scrollHint });
+  const isOpen = key => typeof sections[key] === 'boolean' ? sections[key] : OPEN_SECTIONS.has(key);
 
   function send() {
-    if (dialog.open) frame.contentWindow?.postMessage({ type:'women-stack-preview', title, stack }, location.origin);
+    if (dialog.open) frame.contentWindow?.postMessage({ type:'women-stack-preview', title, stack, marqueeSettings }, location.origin);
   }
   function sizeFrame() {
     if (!dialog.open) return;
@@ -133,7 +151,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     Object.assign(frame.style, { width: w + 'px', height: h + 'px', transform: 'scale(' + scale + ')' });
     frame.parentElement.style.height = Math.floor(h * scale) + 'px';
   }
-  const observer = new ResizeObserver(() => { sizeFrame(); fitRibbonLabels(stage); });
+  const observer = new ResizeObserver(() => { sizeFrame(); fitRibbonLabels(stage); samples(tools); samples(inspector); });
   observer.observe(dialog);
   observer.observe(stage);
   frame.addEventListener('load', send);
@@ -149,6 +167,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
   function drawStage() {
     const photo = current();
     stage.replaceChildren();
+    delete stage.dataset.marqueePosition;
     stage.classList.toggle('ssm-edit', !playing);
     center.classList.toggle('is-playing', playing);
     play.textContent = playing ? '✎ تعديل' : '▶ شغّل';
@@ -165,6 +184,19 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     wrap.dataset.photoLoop = photo.loop || 'none';
     card.append(wrap);
     stage.append(card);
+    if (stack?.marquee || stack?.scrollHint) {
+      const options = marquee();
+      const banner = options.enabled && createMarquee(marqueeSettings, { preview:true });
+      if (banner) {
+        stage.dataset.marqueePosition = options.position;
+        if (options.position === 'above') stage.prepend(banner);
+        else stage.append(banner);
+      }
+      if (photoIndex === 0) {
+        const guide = createScrollHint(hint(), { preview:true, count:photos().length });
+        if (guide) wrap.append(guide);
+      }
+    }
     mountPhoto(wrap, { url:mediaUrl(photo.path), alt:'صورة ' + (photoIndex + 1), fit:photo.fit, shade:photo.shade }, true);
     const layer = renderOverlays(wrap, photo.overlays);
     if (photo.strip?.text) {
@@ -221,9 +253,15 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
   }
 
   function samples(root) {
-    for (const sample of root.querySelectorAll('[data-sample]')) {
+    for (const sample of root.querySelectorAll('[data-sample]:not([data-ready])')) {
+      if (sample.closest('details:not([open])') || !sample.getClientRects().length) continue;
+      sample.dataset.ready = '';
       const value = sample.dataset.sampleValue;
-      if (sample.dataset.sample === 'effect' || sample.dataset.sample === 'text-entry') {
+      if (sample.dataset.sample === 'hint') {
+        applyAccent(sample, stack?.accent || '#2563eb');
+        const guide = createScrollHint({ style:value, gradient:hint().gradient }, { preview:true, count:3 });
+        if (guide) sample.append(guide);
+      } else if (sample.dataset.sample === 'effect' || sample.dataset.sample === 'text-entry') {
         const effect = sample.dataset.sample === 'effect';
         renderOverlays(sample, [{ ...blankOverlay('text'), text:'ستايل', fx:effect ? value : '', in:effect ? 'pop' : value, x:50, y:50 }]);
         const preview = () => {
@@ -251,56 +289,129 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     <span class="studio-visual-template-preview" aria-hidden="true">${template.items.slice(0,MAX_LAYERS).map(item => html`<i style="left:${clamp(item.x,10,90)}%;top:${clamp(item.y,12,88)}%"></i>`)}${template.strip ? html`<em></em>` : ''}</span>
     ${template.name}
   </button>`;
+  const section = (key, label, body) => html`<details class="studio-visual-section" data-section="${key}" ${isOpen(key) ? 'open' : ''}>
+    <summary><span>${label}</span>${icon('chev')}</summary><div class="studio-visual-section-body">${body}</div>
+  </details>`;
+  const allSectionsButton = html`<button type="button" class="studio-visual-chip studio-visual-toggle-all" data-action="sections">فتح الكل</button>`;
+  const copyId = 'studio-copy-' + code;
+  function copyLibrary() {
+    return html`<div class="studio-visual-copy-tabs" role="tablist" aria-label="أنواع النصوص">
+      ${COPY_CATEGORIES.map(key => html`<button type="button" id="${copyId}-tab-${key}" role="tab" data-copy-tab="${key}"
+        aria-controls="${copyId}-panel-${key}" aria-selected="${String(key === copyCategory)}" tabindex="${key === copyCategory ? 0 : -1}">${STUDIO_COPY[key].label}</button>`)}
+      </div>
+      ${COPY_CATEGORIES.map(key => html`<div class="studio-visual-copy-list" role="tabpanel" id="${copyId}-panel-${key}"
+        aria-labelledby="${copyId}-tab-${key}" data-copy-panel="${key}" ${key === copyCategory ? '' : 'hidden'}>
+        ${STUDIO_COPY[key].phrases.map((phrase, index) => html`<button type="button" class="studio-visual-chip" data-copy-index="${index}">${phrase}</button>`)}
+      </div>`)}`;
+  }
+  function switchCopyTab(key) {
+    copyCategory = key;
+    for (const button of inspector.querySelectorAll('[data-copy-tab]')) {
+      const active = button.dataset.copyTab === key;
+      button.tabIndex = active ? 0 : -1;
+      button.setAttribute('aria-selected', String(active));
+      if (active) button.focus({ preventScroll:true });
+    }
+    for (const panel of inspector.querySelectorAll('[data-copy-panel]')) panel.hidden = panel.dataset.copyPanel !== key;
+  }
+  function updateWarnings(value) {
+    const warning = inspector.querySelector('[data-copy-warning]');
+    if (!warning) return;
+    const { restricted, price } = getStudioCopyWarnings(value);
+    warning.textContent = [
+      restricted && 'النص فيه كلام غير مسموح عند النشر. تقدري تعدّليه وتحفظي المسودة.',
+      price && 'استخدمي السعر من بيانات المنتج وشيلي رقم السعر من النص.',
+    ].filter(Boolean).join(' ');
+  }
+  function updateSectionsButton(panel) {
+    const details = [...panel.querySelectorAll('details[data-section]')].filter(d => d.getClientRects().length);
+    const button = panel.querySelector('[data-action="sections"]');
+    if (button) button.textContent = details.length && details.every(d => d.open) ? 'قفل الكل' : 'فتح الكل';
+    return details;
+  }
+  function rememberSections() {
+    try { localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections)); } catch { /* The in-memory state still applies. */ }
+  }
+  const toggle = (key, label, checked) => html`<label class="studio-visual-switch"><span>${label}</span>
+    <input type="checkbox" role="switch" data-design-toggle="${key}" ${checked ? 'checked' : ''}></label>`;
 
   function drawPanels() {
     const photo = current(), item = selected(), layerName = layerIndex === 'strip' ? 'شريط الكلام' : (item?.text || 'العنصر المختار');
+    const editableText = TEXT_TYPES.has(item?.type) || layerIndex === 'strip';
+    const active = document.activeElement;
+    const focusPanel = inspector.contains(active) ? inspector : tools.contains(active) ? tools : undefined;
+    const focusAttributes = ['data-choice','data-value','data-tab','data-copy-index','data-design-toggle'].filter(attr => active?.hasAttribute(attr));
     const tabs = TABS.map(([id,label,icon]) => html`<button type="button" data-tab="${id}" aria-pressed="${String(id === tab)}"><b aria-hidden="true">${icon}</b>${label}</button>`);
     const pane = (name, body) => html`<section class="studio-visual-pane" ${tab === name ? '' : 'hidden'}>${body}</section>`;
     render(thumbnails, html`${photos().map((p,i) => html`<button type="button" class="studio-visual-thumb" data-pick="${i}" aria-label="الصورة ${i+1}" aria-pressed="${String(photoIndex === i)}">
       <img alt="" src="${mediaUrl(p.path)}" decoding="async"><span>${i+1}</span></button>`)}
       ${editable && photos().length ? action('add','إضافة','＋',!canEdit() || photos().length >= LIMIT) : ''}`);
-    render(tools, html`<nav class="studio-visual-tabs" aria-label="أقسام الأدوات">${tabs}</nav>
+    render(tools, html`<header class="studio-visual-panel-head"><h4>مكتبة التصميم</h4>${allSectionsButton}</header>
+      <nav class="studio-visual-tabs" aria-label="أقسام الأدوات">${tabs}</nav>
       <fieldset ${canEdit() ? '' : 'disabled'}>
         ${pane('templates', html`
-          ${group('قوالبك', html`${action('save-template','احفظ تصميم الصورة كقالب','★',!photo)}${personal.length ? html`<div class="studio-visual-templates">${personal.map((t,i) => templateCard(t,i,true))}</div>` : ''}`)}
-          ${group('قوالب جاهزة', html`<div class="studio-visual-templates">${TEMPLATES.map((t,i) => templateCard(t,i))}</div>`)}`)}
+          ${section('personal','قوالبك', html`${action('save-template','احفظ تصميم الصورة كقالب','★',!photo)}${personal.length ? html`<div class="studio-visual-templates">${personal.map((t,i) => templateCard(t,i,true))}</div>` : ''}`)}
+          ${section('templates','قوالب جاهزة', html`<div class="studio-visual-templates">${TEMPLATES.map((t,i) => templateCard(t,i))}</div>`)}`)}
         ${pane('elements', html`
-          ${group('المكتبة', html`<div class="studio-visual-chips">${ELEMENTS.map(([value,label,icon]) => html`<button type="button" class="studio-visual-chip" data-element="${value}" ${photo ? '' : 'disabled'}><b aria-hidden="true">${icon}</b>${label}</button>`)}</div>`)}
-          ${photo?.overlays.length ? group('عناصر الصورة', html`<div class="studio-visual-layers">${photo.overlays.map((o,i) => html`<button type="button" class="studio-visual-chip" data-layer="${i}" aria-pressed="${String(i === layerIndex)}">${short(o.text || ELEMENTS.find(([key]) => key === o.type)?.[1],32)}</button>`)}</div>`) : ''}`)}
+          ${section('elements','المكتبة', html`<div class="studio-visual-chips">${ELEMENTS.map(([value,label,icon]) => html`<button type="button" class="studio-visual-chip" data-element="${value}" ${photo ? '' : 'disabled'}><b aria-hidden="true">${icon}</b>${label}</button>`)}</div>`)}
+          ${photo?.overlays.length ? section('layers','عناصر الصورة', html`<div class="studio-visual-layers">${photo.overlays.map((o,i) => html`<button type="button" class="studio-visual-chip" data-layer="${i}" aria-pressed="${String(i === layerIndex)}">${short(o.text || ELEMENTS.find(([key]) => key === o.type)?.[1],32)}</button>`)}</div>`) : ''}`)}
         ${pane('photo', html`
-          ${group('الصور', html`<div class="studio-visual-chips">
+          ${section('photos','الصور', html`<div class="studio-visual-chips">
             ${action('add','إضافة صور','＋',photos().length >= LIMIT)}${action('replace','بدّل الصورة','⇄',!photo)}
             ${action('earlier','قدّمها','→',!photo || photoIndex === 0)}${action('later','أخّرها','←',!photo || photoIndex === photos().length - 1)}
             ${action('remove-photo','حذف الصورة','✕',!photo)}
             ${!photos().length && legacyPaths().length ? action('import','استخدم صور التصميم السابق','↗') : ''}
+            ${photo ? action('copy-all','انسخ التصميم لكل الصور','⧉',photos().length < 2) : ''}
           </div>`)}
-          ${photo ? html`${deck('enter','الصورة دي تدخل إزاي',ENTRIES,photo.enter || '','entry')}
-          ${deck('loop','حركة الصورة المستمرة',LOOPS,photo.loop || 'none','loop')}
-          ${deck('fit','عرض الصورة',FITS,photo.fit || 'auto')}${deck('shade','تظليل الصورة',SHADES,photo.shade || '')}
-          ${action('copy-all','انسخ التصميم لكل الصور','⧉',photos().length < 2)}` : ''}`)}
-        ${pane('page', html`${swatches('accent','لون الصفحة',stack?.accent,'#2563eb')}${action('auto-accent','خد اللون من الصورة','✦',!photo)}`)}
+          ${photo ? html`
+            ${section('photo-entry','الصورة دي تدخل إزاي',deck('enter','',ENTRIES,photo.enter || '','entry'))}
+            ${section('photo-loop','حركة الصورة المستمرة',deck('loop','',LOOPS,photo.loop || 'none','loop'))}
+            ${section('photo-fit','عرض الصورة',deck('fit','',FITS,photo.fit || 'auto'))}
+            ${section('photo-shade','تظليل الصورة',deck('shade','',SHADES,photo.shade || ''))}` : ''}`)}
+        ${pane('page', html`
+          ${section('accent','لون الصفحة',html`${swatches('accent','',stack?.accent,'#2563eb')}${action('auto-accent','خد اللون من الصورة','✦',!photo)}`)}
+          ${section('marquee','الشريط المتحرك',html`
+            ${toggle('marquee-enabled','إظهار الشريط',marquee().enabled)}
+            ${deck('marquee-position','مكان الشريط',[['above','فوق الصور'],['below','تحت الصور']],marquee().position)}
+          `)}
+          ${section('hint','توجيه السحب',html`
+            ${deck('scroll-hint','',SCROLL_HINTS,hint().style,'hint')}
+            ${hint().style === 'progress' ? toggle('hint-gradient','تدرّج بلون الحملة',hint().gradient) : ''}
+          `)}`)}
       </fieldset>`);
 
     el.dataset.selected = String(Boolean(item));
-    render(inspector, html`<header><h4>العنصر المختار</h4>${item ? html`<button type="button" class="studio-visual-chip" data-action="deselect">تمام</button>` : ''}</header>
+    render(inspector, html`<header class="studio-visual-panel-head"><h4>العنصر المختار</h4>${item ? html`
+      <div>${allSectionsButton}<button type="button" class="studio-visual-chip" data-action="deselect">تمام</button></div>` : ''}</header>
       ${item ? html`<fieldset ${canEdit() ? '' : 'disabled'}>
-        ${TEXT_TYPES.has(item.type) || layerIndex === 'strip' ? html`<label class="studio-visual-field">
-          <span>الكلام</span><textarea data-field="text" rows="2">${item.text || ''}</textarea></label>` : html`<p class="studio-visual-muted">${layerName}</p>`}
-        ${item.type === 'text' ? html`${deck('fx','تأثير الكلام',EFFECTS,item.fx || '','effect')}
-          ${swatches('fxc','لون التأثير',item.fxc,stack?.accent || '#2563eb')}` : ''}
-        ${TEXT_TYPES.has(item.type) ? deck('font','الخط',FONTS,item.font || '','font') : ''}
-        ${TEXT_TYPES.has(item.type) ? deck('sh','ظل للنص',TEXT_SHADOWS,item.sh === '' ? '' : 'soft') : ''}
-        ${swatches('color','اللون',item.color,'#ffffff')}
-        ${layerIndex !== 'strip' ? html`${deck('in','بيدخل إزاي',TEXT_ENTRIES,item.in || 'pop','text-entry')}
-          ${deck('anim','وبعدها يفضل',TEXT_LOOPS,item.anim || 'none','loop')}
-          <div class="studio-visual-ranges">
+        ${editableText ? section('copy','الكلام',html`
+          <label class="studio-visual-field"><textarea aria-label="الكلام" data-field="text" rows="2">${item.text || ''}</textarea></label>
+          <p class="studio-visual-copy-warning" data-copy-warning role="status"></p>`) : html`<p class="studio-visual-muted">${layerName}</p>`}
+        ${item.type === 'text' ? section('effect','تأثير الكلام',html`
+          ${deck('fx','',EFFECTS,item.fx || '','effect')}${swatches('fxc','لون التأثير',item.fxc,stack?.accent || '#2563eb')}`) : ''}
+        ${TEXT_TYPES.has(item.type) ? section('font','الخط',deck('font','',FONTS,item.font || '','font')) : ''}
+        ${TEXT_TYPES.has(item.type) ? section('shadow','ظل النص',deck('sh','',TEXT_SHADOWS,item.sh === '' ? '' : 'soft')) : ''}
+        ${section('color','اللون',swatches('color','',item.color,'#ffffff'))}
+        ${layerIndex !== 'strip' ? html`
+          ${section('entry','بيدخل إزاي',deck('in','',TEXT_ENTRIES,item.in || 'pop','text-entry'))}
+          ${section('loop','وبعدها يفضل',deck('anim','',TEXT_LOOPS,item.anim || 'none','loop'))}` : ''}
+        ${section('geometry','الحجم والمكان',layerIndex !== 'strip' ? html`<div class="studio-visual-ranges">
             ${field('size','الحجم',item.size ?? 1,.6,2.5,.1)}${field('rot','اللفّ',item.rot ?? 0,-180,180)}
             ${field('x','يمين وشمال',item.x ?? 50,0,100,.1)}${field('y','فوق وتحت',item.y ?? 45,0,100,.1)}
-          </div>` : field('rot','اللفّ',item.rot ?? -3,-20,20)}
-        <div class="studio-visual-chips">${action('duplicate','نسخة','⧉',layerIndex === 'strip')}${action('remove-layer','مسح','✕')}</div>
+          </div>` : field('rot','اللفّ',item.rot ?? -3,-20,20))}
+        ${editableText ? section('library','نصوص جاهزة',copyLibrary()) : ''}
+        <div class="studio-visual-chips studio-visual-layer-actions">${action('duplicate','نسخة','⧉',layerIndex === 'strip')}${action('remove-layer','مسح','✕')}</div>
       </fieldset>` : html`<p class="studio-visual-muted">دوس على النص أو العنصر في المعاينة علشان تعدّله.</p>`}`);
     samples(tools);
     samples(inspector);
+    updateWarnings(item?.text);
+    updateSectionsButton(tools);
+    updateSectionsButton(inspector);
+    if (focusPanel && focusAttributes.length) {
+      const selector = focusAttributes.map(attr => '[' + attr + '="' + CSS.escape(active.getAttribute(attr)) + '"]').join('');
+      const scope = active.hasAttribute('data-copy-index') ? focusPanel.querySelector('[data-copy-panel="' + copyCategory + '"]') : focusPanel;
+      scope?.querySelector(selector)?.focus({ preventScroll:true });
+    }
     undo.disabled = !canEdit() || !history.length;
     el.querySelector('[data-action="full"]').disabled = !photo;
   }
@@ -332,6 +443,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
   }
   function target(key) { return key === 'accent' ? ensure() : PHOTO_FIELDS.has(key) ? current() : selected(); }
   function setValue(key, value, button = false) {
+    if (key === 'accent' && (stack?.accent || '') === value) return;
     const object = target(key);
     if (!object || object[key] === value) return;
     if (button) snapshot();
@@ -342,12 +454,38 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     changed(button);
     if (button && MOTION_FIELDS.has(key)) replay();
   }
+  function setDesignValue(option, key, value) {
+    const current = option === 'marquee' ? marquee() : hint();
+    if (current[key] === value) return;
+    snapshot();
+    ensure();
+    stack.marquee = marquee();
+    stack.scrollHint = hint();
+    stack[option][key] = value;
+    stopPlay();
+    changed();
+  }
+  function applyCopy(index) {
+    const item = selected();
+    const { phrases, visual } = STUDIO_COPY[copyCategory];
+    const text = phrases[index];
+    if (!item || !text) return;
+    snapshot();
+    item.text = text;
+    if (layerIndex !== 'strip') {
+      item.in = visual.in;
+      item.anim = visual.anim;
+      if (item.type === 'text') item.fx = visual.fx;
+    }
+    stopPlay();
+    changed();
+  }
   function applyTemplate(template) {
     const photo = current();
     if (!photo || !template) return;
     snapshot();
     photo.overlays = template.items.slice(0,MAX_LAYERS).map(item => ({
-      ...item, text: short(String(item.text || '').replaceAll('{name}', title || '').replaceAll('{price}', price || 'السعر'),80),
+      ...item, text: short(String(item.text || '').replaceAll('{name}', title || ''),80),
       sh: item.sh ?? (TEXT_TYPES.has(item.type) ? 'soft' : ''),
     }));
     if (template.full) photo.fit = 'fill';
@@ -410,7 +548,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     if (key === 'close') { dialog.close(); return; }
     if (key === 'full') {
       if (!dialog.open) dialog.showModal();
-      if (!frame.getAttribute('src')) frame.src = PATH_ASSET('preview.html?v=20261123-sizing');
+      if (!frame.getAttribute('src')) frame.src = PATH_ASSET('preview.html?v=20261123-studio-v2');
       sizeFrame(); send(); return;
     }
     if (!canEdit()) return;
@@ -463,7 +601,16 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
   el.addEventListener('click', event => {
     const button = event.target.closest('button');
     if (!button || button.disabled) return;
-    const { action:key, tab:name, pick, layer, template, own, element, choice, value, device:mode, overlay } = button.dataset;
+    const { action:key, tab:name, pick, layer, template, own, element, choice, value, device:mode, overlay, copyTab, copyIndex } = button.dataset;
+    if (key === 'sections') {
+      const panel = button.closest('.studio-visual-tools,.studio-visual-inspector');
+      const details = updateSectionsButton(panel), open = details.some(detail => !detail.open);
+      for (const detail of details) detail.open = sections[detail.dataset.section] = open;
+      rememberSections();
+      updateSectionsButton(panel);
+      samples(panel);
+      return;
+    }
     if (key) { void handleAction(key).catch(() => island('error','الخطوة دي ما كملتش. جرّب تاني.')); return; }
     if (mode) {
       device = mode;
@@ -475,9 +622,38 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     if (layer !== undefined) { selectLayer(Number(layer)); return; }
     if (overlay !== undefined) return;
     if (!canEdit()) return;
+    if (copyTab) { switchCopyTab(copyTab); return; }
+    if (copyIndex !== undefined) { applyCopy(Number(copyIndex)); return; }
+    if (choice === 'marquee-position') { setDesignValue('marquee','position',value); return; }
+    if (choice === 'scroll-hint') { setDesignValue('scrollHint','style',value); return; }
     if (template !== undefined) applyTemplate((own === 'true' ? personal : TEMPLATES)[Number(template)]);
     if (element) addElement(element);
     if (choice) setValue(choice,value,true);
+  });
+  el.addEventListener('toggle', event => {
+    const detail = event.target;
+    if (!detail.matches('details[data-section]')) return;
+    const key = detail.dataset.section;
+    if (isOpen(key) !== detail.open) { sections[key] = detail.open; rememberSections(); }
+    const panel = detail.closest('.studio-visual-tools,.studio-visual-inspector');
+    updateSectionsButton(panel);
+    if (detail.open) samples(detail);
+  }, true);
+  el.addEventListener('change', event => {
+    if (!canEdit()) return;
+    const { designToggle } = event.target.dataset;
+    if (designToggle === 'marquee-enabled') setDesignValue('marquee','enabled',event.target.checked);
+    if (designToggle === 'hint-gradient') setDesignValue('scrollHint','gradient',event.target.checked);
+  });
+  inspector.addEventListener('keydown', event => {
+    const key = event.target.dataset.copyTab;
+    if (!key) return;
+    const index = COPY_CATEGORIES.indexOf(key), last = COPY_CATEGORIES.length - 1;
+    const step = getComputedStyle(inspector).direction === 'rtl' ? -1 : 1;
+    const next = { Home:0, End:last, ArrowRight:(index + step + last + 1) % (last + 1), ArrowLeft:(index - step + last + 1) % (last + 1) }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    switchCopyTab(COPY_CATEGORIES[next]);
   });
   // Leave the input mounted while typing, so each edit appears on the photo without losing the caret.
   el.addEventListener('focusin', () => { editedField = undefined; });
@@ -488,6 +664,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     const value = key === 'text' ? short(field.value,80) : field.type === 'range' ? field.valueAsNumber : field.value;
     if (field.value !== value && key === 'text') field.value = value;
     setValue(key,value);
+    if (key === 'text') updateWarnings(value);
     if (key === 'x' || key === 'y') field.value = selected()[key];
   });
 
@@ -501,9 +678,15 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     const overlay = event.target.closest('[data-overlay],[data-resize]');
     if (!overlay || !['Enter',' '].includes(event.key)) return;
     event.preventDefault();
-    if (overlay.hasAttribute('data-resize')) { inspector.querySelector('[data-field="size"]')?.focus({ preventScroll:true }); return; }
-    selectLayer(overlay.dataset.overlay === 'strip' ? 'strip' : Number(overlay.dataset.overlay));
-    inspector.querySelector('[data-field="text"]')?.focus({ preventScroll:true });
+    const resize = overlay.hasAttribute('data-resize');
+    if (!resize) selectLayer(overlay.dataset.overlay === 'strip' ? 'strip' : Number(overlay.dataset.overlay));
+    const input = inspector.querySelector(resize ? '[data-field="size"]' : '[data-field="text"]');
+    if (input) {
+      const detail = input.closest('details');
+      detail.open = sections[detail.dataset.section] = true;
+      rememberSections();
+      input.focus({ preventScroll:true });
+    } else inspector.querySelector('summary')?.focus({ preventScroll:true });
   });
   stage.addEventListener('pointerdown', event => {
     if (playing || !canEdit() || event.button !== 0) return;
@@ -595,7 +778,19 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
   return {
     el, payload: () => stack, pending: () => uploading,
     differsFrom: value => JSON.stringify(clone(value)) !== JSON.stringify(stack),
-    setSaved(value) { stack = clone(value); stopPlay(); draw(); },
+    setSaved(value) {
+      stack = clone(value);
+      photoIndex = clamp(photoIndex,0,photos().length - 1);
+      if (!selected()) layerIndex = -1;
+      stopPlay(); draw();
+    },
+    reset(value) {
+      stack = clone(value);
+      photoIndex = 0; layerIndex = -1; tab = 'templates'; move = undefined; editedField = undefined;
+      history.length = 0;
+      stopPlay(); draw();
+    },
+    setMarqueeSettings(settings) { marqueeSettings = settings; drawStage(); send(); },
     destroy() { stopPlay(); observer.disconnect(); if (dialog.open) dialog.close(); },
   };
 }

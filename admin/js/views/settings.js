@@ -2,6 +2,7 @@ import { t } from '../i18n.js';
 import { html, render, $, $$, icon, skRows, withBusy, done, fail } from '../ui.js';
 import { call, uploadStoreAsset, mediaUrl } from '../api.js';
 import { optimizeUploadImage } from '../image-optimize.js';
+import { mountStudioMarqueeSettings } from '../studio-marquee-settings.js?v=20261123-studio-v2';
 
 const egyptianMobile = /^201[0125][0-9]{8}$/;
 const validNumbers = (numbers) => Array.isArray(numbers) && numbers.length >= 1 &&
@@ -54,9 +55,10 @@ export default {
     render(el, html`<div class="page">${skRows(2, 220)}</div>`);
     const owner = session.role === 'owner';
     const load = async () => {
-      const [r, wa] = await Promise.all([
+      const [r, wa, marquee] = await Promise.all([
         call('settings.get'),
         owner ? call('settings.whatsapp_get') : null,
+        owner ? call('settings.studio_marquee_get') : null,
       ]);
       if (!el.isConnected) return;
       if (r.outcome !== 'ok') { fail(r); return; }
@@ -79,6 +81,17 @@ export default {
               <span class="space"></span><button class="btn btn-primary" data-wa-save>${t('app.save')}</button></div>`
             : html`<p class="note" role="alert">تعذّر تحميل أرقام واتساب.</p><button type="button" class="btn btn-soft" data-wa-retry>${t('app.retry')}</button>`}
         </form>` : ''}
+        ${owner ? html`<form class="card stack" id="studio-marquee">
+          <div class="card-head"><h3>الشريط المتحرك لصفحات المنتجات</h3></div>
+          ${marquee?.outcome === 'ok' ? html`
+            <label class="studio-marquee-check"><input type="checkbox" data-marquee-enabled> <span>تشغيل الشريط في المتجر</span></label>
+            <label class="field"><span>مدة حركة الشريط بالثواني <output data-marquee-seconds></output></span>
+              <input type="range" min="8" max="60" step="1" data-marquee-speed></label>
+            <div class="stack" data-marquee-lines></div>
+            <div class="row wrap"><button type="button" class="btn btn-soft" data-marquee-add>إضافة سطر</button>
+              <span class="space"></span><button class="btn btn-primary" data-marquee-save>احفظ الشريط</button></div>
+          ` : html`<p class="muted">إعداد الشريط غير متاح حاليًا.</p>`}
+          </form>` : ''}
         <form class="card stack" id="contact"><div class="card-head"><h3>${t('settings.contact')}</h3></div>
           <div class="grid2"><label class="field"><span>${t('settings.phone')}</span>${inp('ph', 'phone', 'tel', true, 20)}</label>
             <label class="field"><span>${t('settings.email')}</span>${inp('em', 'contact_email', 'email', true, 254)}</label>
@@ -98,6 +111,7 @@ export default {
         after(await withBusy($('button', e.currentTarget), () => call('settings.update_contact', { version: s.version, whatsapp_e164: s.whatsapp_e164 ?? null, phone: v('#ph'), contact_email: v('#em'), default_locale: $('#lc', el).value, instagram_url: v('#ig'), facebook_url: v('#fb'), tiktok_url: v('#tt') })));
       };
       if (whatsappNumbers) mountWhatsApp($('#whatsapp', el), whatsappNumbers);
+      if (marquee?.outcome === 'ok') mountStudioMarqueeSettings($('#studio-marquee', el), marquee);
       $('[data-wa-retry]', el)?.addEventListener('click', load);
       $('#logo', el)?.addEventListener('change', async (e) => {
         const f = e.target.files[0]; if (!f) return;

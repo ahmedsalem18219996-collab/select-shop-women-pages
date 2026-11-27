@@ -92,6 +92,7 @@ test('a long ribbon fits, moves and resizes in the editor, then renders from the
   const ratio = await ribbon.evaluate(el => [el.offsetWidth / el.offsetParent.clientWidth, el.offsetHeight / el.offsetParent.clientHeight]);
   expect(ratio[0]).toBeCloseTo(.76,1);
   expect(ratio[1]).toBeCloseTo(.09,2);
+  await editor.locator('[data-section="geometry"] summary').click();
   for (const key of ['size','x','y','rot']) await expect(editor.locator('[data-field="' + key + '"]')).toBeVisible();
   const caption = 'اختاري اللون والمقاس اللي يناسبك وعايني القطعة بنفسك قبل ما تدفعي';
   await copy.fill(caption);
@@ -178,6 +179,8 @@ test('library shapes start inside the frame and share the selected element contr
         && (right - left) * (bottom - top) < .3 * frame.width * frame.height;
     });
     expect(valid,type).toBe(true);
+    const geometry = editor.locator('[data-section="geometry"]');
+    if ((await geometry.getAttribute('open')) === null) await geometry.locator('summary').click();
     for (const key of ['size','x','y','rot']) await expect(editor.locator('[data-field="' + key + '"]')).toBeVisible();
     await expect(stage.locator('[data-resize]')).toBeVisible();
     await editor.locator('[data-action="remove-layer"]').click();
@@ -201,6 +204,7 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   await clickPreview(editor.locator('[data-choice="fx"][data-value="aurora"]'));
   await expect(stage.locator('.ssm-fx-aurora')).toHaveText('ستايل يعبّر عنك');
   const inspector = editor.locator('.studio-visual-inspector');
+  await inspector.locator('[data-section="shadow"] summary').click();
   const automaticShadow = inspector.getByRole('button', { name:'تلقائي', exact:true });
   await expect(automaticShadow).toHaveAttribute('aria-pressed','true');
   await expect(stage.locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-soft/);
@@ -230,6 +234,142 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   expect(store.landing.published.studioStack).toEqual(saved);
   await page.reload();
   await expect(stage.locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-none/);
+});
+
+test('the selected element and side library remember collapsible sections and edit approved Arabic presets', async ({ page }) => {
+  const mobile = test.info().project.name === 'mobile';
+  if (mobile) await page.setViewportSize({ width:390, height:844 });
+  const store = newStore();
+  store.landing.draft = { studioStack: { v:1, photos:[{
+    path:'women-storefront/storefront/qa-studio-copy.webp', overlays:[{ type:'text', x:50, y:48, text:'إطلالتك الجاية تبدأ من هنا' }],
+  }] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual');
+  const toolbox = editor.locator('.studio-visual-tools');
+  const templates = toolbox.locator('[data-section="templates"]');
+  await templates.locator('summary').press('Enter');
+  await expect(templates).not.toHaveAttribute('open', '');
+  await expect(templates.locator('[data-template]').first()).toBeHidden();
+  await page.reload();
+  await expect(templates).not.toHaveAttribute('open', '');
+  await toolbox.getByRole('button', { name:'فتح الكل' }).click();
+  await expect(templates).toHaveAttribute('open', '');
+  const selectText = () => editor.locator('.ssm-wrap button[data-overlay="0"]').press('Enter');
+  await selectText();
+  const inspector = editor.locator('.studio-visual-inspector');
+  const text = inspector.locator('[data-field="text"]');
+  await expect(text).toBeFocused();
+  await expect(inspector.locator('[data-section="copy"]')).toHaveAttribute('open', '');
+  await expect(inspector.locator('[data-section="effect"]')).toHaveAttribute('open', '');
+  await expect(inspector.locator('[data-section="font"]')).not.toHaveAttribute('open', '');
+  expect(await inspector.locator('summary').first().evaluate(summary => summary.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  const take = async (file, locator) => {
+    if (!mobile) return;
+    await locator.evaluate(element => element.scrollIntoView({ block:'center' }));
+    await page.screenshot({ path:test.info().outputPath(file), animations:'disabled', scale:'css' });
+  };
+  await take('studio-inspector-expanded.png', inspector.locator('[data-section="effect"]'));
+  await inspector.getByRole('button', { name:'فتح الكل' }).press('Enter');
+  await expect(inspector.locator('[data-section="font"]')).toHaveAttribute('open', '');
+  await inspector.getByRole('button', { name:'قفل الكل' }).press('Enter');
+  await expect(inspector.locator('details[open]')).toHaveCount(0);
+  await expect(text).toBeHidden();
+  await take('studio-inspector-collapsed.png', inspector);
+  const library = inspector.locator('[data-section="library"]');
+  await library.locator('summary').press('Space');
+  const titleTab = library.getByRole('tab', { name:'عناوين' });
+  await expect(titleTab).toHaveAttribute('aria-selected', 'true');
+  await take('studio-copy-library.png', library);
+  await titleTab.press('ArrowLeft');
+  const subtitleTab = library.getByRole('tab', { name:'سطر تحت العنوان' });
+  await expect(subtitleTab).toBeFocused();
+  await expect(subtitleTab).toHaveAttribute('aria-selected', 'true');
+  await library.getByRole('button', { name:'شوفي القطعة وعايني قبل ما تدفعي' }).click();
+  await expect(editor.locator('.ssm-o-text')).toHaveText('شوفي القطعة وعايني قبل ما تدفعي');
+  await inspector.locator('[data-section="copy"] summary').click();
+  await expect(text).toHaveValue('شوفي القطعة وعايني قبل ما تدفعي');
+  await text.fill('خصم ٤٥٠ جنيه خلال ٣ أيام');
+  await expect(inspector.getByRole('status')).toContainText('غير مسموح');
+  await expect(inspector.getByRole('status')).toContainText('شيلي رقم السعر');
+  await expect(text).toBeFocused();
+  await text.fill('تتلبس في الشغل وفي الخروجة');
+  await expect(inspector.getByRole('status')).toBeHidden();
+  await page.locator('[data-studio-save]').click();
+  await expect.poll(() => store.landing.draft.studioStack.photos[0].overlays[0]).toMatchObject({
+    text:'تتلبس في الشغل وفي الخروجة', in:'blur', anim:'none', fx:'',
+  });
+  await page.reload();
+  await selectText();
+  await expect(library).toHaveAttribute('open', '');
+  await expect(inspector.locator('[data-section="effect"]')).not.toHaveAttribute('open', '');
+});
+
+test('per-design marquee and scroll hints update the previews and round-trip through draft save', async ({ page }) => {
+  const mobile = test.info().project.name === 'mobile';
+  if (mobile) await page.setViewportSize({ width:390, height:844 });
+  const store = newStore();
+  store.landing.draft = { studioStack: { v:1, photos:[
+    { path:'women-storefront/storefront/qa-v2-first.webp', overlays:[] },
+    { path:'women-storefront/storefront/qa-v2-next.webp', overlays:[] },
+  ] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual'), stage = editor.locator('[data-visual-stage]');
+  const pageTab = editor.locator('[data-tab="page"]');
+  await expect(stage).toBeVisible();
+  await expect(stage.locator('.ssm-v2-marquee')).toHaveCount(0);
+  if (await pageTab.isVisible()) await pageTab.click();
+  const marquee = editor.locator('[data-section="marquee"]');
+  await marquee.locator('summary').click();
+  const switcher = marquee.getByRole('switch', { name:'إظهار الشريط' });
+  await expect(switcher).toBeChecked();
+  await marquee.getByRole('button', { name:'تحت الصور' }).click();
+  await expect(stage).toHaveAttribute('data-marquee-position', 'below');
+  await expect(stage.locator('.ssm-v2-marquee')).toBeVisible();
+  await switcher.uncheck();
+  await expect(stage.locator('.ssm-v2-marquee')).toHaveCount(0);
+  await switcher.check();
+  await marquee.getByRole('button', { name:'فوق الصور' }).click();
+  await expect(stage).toHaveAttribute('data-marquee-position', 'above');
+  if (mobile) {
+    await stage.evaluate(element => element.scrollIntoView({ block:'center' }));
+    await page.screenshot({ path:test.info().outputPath('studio-marquee-preview.png'), animations:'disabled', scale:'css' });
+  }
+  const hints = editor.locator('[data-section="hint"]');
+  await hints.locator('summary').click();
+  const cards = hints.locator('[data-choice="scroll-hint"]');
+  await expect(cards).toHaveCount(7);
+  await expect(hints.locator('.ssm-v2-hint')).toHaveCount(6);
+  for (const style of ['pill','arrow','finger','shine','dots','progress','none']) {
+    await cards.filter({ has:page.locator('[data-sample-value="' + style + '"]') }).click();
+    await expect(stage.locator('.ssm-v2-hint[data-style="' + style + '"]')).toHaveCount(style === 'none' ? 0 : 1);
+    if (mobile) {
+      await stage.evaluate(element => element.scrollIntoView({ block:'center' }));
+      await page.screenshot({ path:test.info().outputPath('hint-' + style + '-390.png'), animations:'disabled', scale:'css' });
+    }
+  }
+  await hints.getByRole('button', { name:'خط تقدّم' }).click();
+  await hints.getByRole('switch', { name:'تدرّج بلون الحملة' }).check();
+  await expect(stage.locator('.ssm-v2-hint')).toHaveAttribute('data-gradient', 'true');
+  if (mobile) {
+    await stage.evaluate(element => element.scrollIntoView({ block:'center' }));
+    await page.screenshot({ path:test.info().outputPath('hint-progress-gradient-390.png'), animations:'disabled', scale:'css' });
+    await hints.evaluate(element => element.scrollIntoView({ block:'center' }));
+    await page.screenshot({ path:test.info().outputPath('studio-scroll-hint-cards.png'), animations:'disabled', scale:'css' });
+  }
+  await editor.locator('[data-action="full"]').click();
+  const preview = editor.frameLocator('iframe');
+  await expect(preview.locator('.ssm-v2-marquee')).toBeVisible();
+  await expect(preview.locator('.ssm-v2-hint')).toHaveAttribute('data-gradient', 'true');
+  await editor.locator('[data-action="close"]').click();
+  await page.locator('[data-studio-save]').click();
+  await expect.poll(() => store.landing.draft.studioStack).toMatchObject({
+    marquee:{ enabled:true, position:'above' }, scrollHint:{ style:'progress', gradient:true },
+  });
+  await page.reload();
+  await expect(stage.locator('.ssm-v2-hint')).toHaveAttribute('data-gradient', 'true');
+  await expect(stage).toHaveAttribute('data-marquee-position', 'above');
 });
 
 // The mobile tab bar is fixed over the bottom of the viewport: centre the element first so the click never lands on the bar.
