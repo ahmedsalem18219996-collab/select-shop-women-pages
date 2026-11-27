@@ -145,7 +145,8 @@ function trap(container) {
 }
 // A bottom sheet on phones, a centred dialog from 760px.
 export function sheet({ title, body, foot = '', wide = false, onMount }) {
-  lastFocus = document.activeElement;
+  const opener = document.activeElement;
+  lastFocus = opener;
   const layer = document.getElementById('layer');
   render(layer, html`<div class="scrim" data-close></div>
     <section class="sheet ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
@@ -158,7 +159,11 @@ export function sheet({ title, body, foot = '', wide = false, onMount }) {
   $$('[data-close]', layer).forEach((b) => b.addEventListener('click', closeLayer));
   trap(box);
   onMount?.(box);
-  setTimeout(() => ($('input, select, textarea, button.btn-primary', $('.sheet-body', box)) || $('[data-close].icon-btn', box))?.focus(), 30);
+  setTimeout(() => {
+    const active = document.activeElement;
+    if (!box.isConnected || (active !== opener && active !== document.body)) return;
+    ($('input, select, textarea, button.btn-primary', $('.sheet-body', box)) || $('[data-close].icon-btn', box))?.focus();
+  }, 30);
   return box;
 }
 export function confirmDialog({ title, text, okText = t('app.confirm'), danger = false }) {
