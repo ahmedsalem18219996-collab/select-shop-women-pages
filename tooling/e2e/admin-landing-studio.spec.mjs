@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 
 // Admin Landing Studio against an in-memory Admin API. Never reaches live Supabase: every Admin call is answered
 // here, storage images are served locally and any other supabase.co request is aborted.
@@ -8,6 +7,7 @@ test.use({ bypassCSP: true });
 
 const STORAGE = 'https://byluoipdunralsurwebt.supabase.co/storage/v1/object/public/';
 const IMG = new URL('../../assets/catalog-thumbs/005a3ee1a8504efca19a780f21981d33.jpg.w400.webp', import.meta.url);
+const uploadImage = async () => ({ name: 'photo.webp', mimeType: 'image/webp', buffer: await readFile(IMG) });
 const GENERATIVE = /gemini|generativelanguage|aistudio|makersuite|openai|stability\.ai|replicate\.com|midjourney|huggingface|imagen/i;
 const OWNER = { role: 'owner', email: 'qa-owner@example.test', permissions: [] };
 const STAFF = { role: 'staff', email: 'qa-staff@example.test', permissions: ['products.view', 'products.edit'] };
@@ -74,6 +74,116 @@ const openStudio = async (page) => {
   if ((await legacy.getAttribute('aria-expanded')) === 'false') await legacy.click();
 };
 
+test('a long ribbon fits, moves and resizes in the editor, then renders from the saved design', async ({ page, request }) => {
+  const mobile = test.info().project.name === 'mobile';
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+  const store = newStore();
+  store.landing.draft = { studioStack: { v: 1, photos: [
+    { path: 'women-storefront/storefront/qa-ribbon.webp', overlays: [] },
+  ] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual'), stage = editor.locator('[data-visual-stage]');
+  await expect(editor).toBeVisible();
+  const elementsTab = editor.locator('[data-tab="elements"]');
+  if (await elementsTab.isVisible()) await elementsTab.click();
+  await editor.locator('[data-element="strip"]').click();
+  const ribbon = stage.locator('.ssm-o-ribbon'), copy = editor.locator('[data-field="text"]');
+  const ratio = await ribbon.evaluate(el => [el.offsetWidth / el.offsetParent.clientWidth, el.offsetHeight / el.offsetParent.clientHeight]);
+  expect(ratio[0]).toBeCloseTo(.76,1);
+  expect(ratio[1]).toBeCloseTo(.09,2);
+  for (const key of ['size','x','y','rot']) await expect(editor.locator('[data-field="' + key + '"]')).toBeVisible();
+  const caption = 'اختاري اللون والمقاس اللي يناسبك وعايني القطعة بنفسك قبل ما تدفعي';
+  await copy.fill(caption);
+  const label = ribbon.locator('.ssm-ribbon-label');
+  await expect(label).toHaveText(caption);
+  const labelFits = locator => locator.evaluate(el => {
+    const line = parseFloat(getComputedStyle(el).lineHeight);
+    return el.scrollWidth <= el.clientWidth && el.scrollHeight <= Math.min(el.parentElement.clientHeight,line * 2) + 1;
+  });
+  await expect.poll(() => labelFits(label)).toBe(true);
+  async function drag(target, dx, dy) {
+    await target.scrollIntoViewIfNeeded();
+    const rect = await target.boundingBox();
+    const x = Math.round(rect.x + rect.width / 2), y = Math.round(rect.y + rect.height / 2);
+    if (mobile) {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchStart', touchPoints:[{x,y}] });
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchMove', touchPoints:[{x:x + dx,y:y + dy}] });
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchEnd', touchPoints:[] });
+      await cdp.detach();
+    } else {
+      await page.mouse.move(x,y);
+      await page.mouse.down();
+      await page.mouse.move(x + dx,y + dy,{ steps:4 });
+      await page.mouse.up();
+    }
+  }
+  await drag(label,10,-18);
+  await expect(editor.locator('[data-field="x"]')).not.toHaveValue('50');
+  await expect(editor.locator('[data-field="y"]')).not.toHaveValue('82');
+  await drag(stage.locator('[data-resize]'),-35,-12);
+  await expect(editor.locator('[data-field="size"]')).not.toHaveValue('1');
+  await editor.locator('[data-field="rot"]').fill('8');
+  await clickPreview(page.locator('[data-studio-save]'));
+  await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status','draft');
+  const saved = store.landing.draft;
+  const layer = saved.studioStack.photos[0].overlays[0];
+  expect(layer).toMatchObject({ type:'badge',fx:'ribbon',rot:8,text:caption });
+  expect(layer.size).not.toBe(1);
+  expect(layer.x).not.toBe(50);
+  expect(layer.y).not.toBe(82);
+  await page.reload();
+  await expect(stage.locator('.ssm-ribbon-label')).toHaveText(caption);
+  try {
+    const publishedFixture = await request.post('/__mock/landing', { data:{ code:'SS-1008', design:saved } });
+    expect(publishedFixture.status()).toBe(204);
+    await page.emulateMedia({ reducedMotion:'reduce' });
+    await page.goto('/lp/ss-1008/');
+    await expect(page.locator('.lp-studio-stack')).toHaveCount(0);
+    await page.locator('#lpForm').scrollIntoViewIfNeeded();
+    const publicRibbon = page.locator('.lp-studio-stack .ssm-o-ribbon');
+    const publicLabel = publicRibbon.locator('.ssm-ribbon-label');
+    await expect(publicLabel).toHaveText(caption);
+    await expect.poll(() => labelFits(publicLabel)).toBe(true);
+    for (const [property,value] of [['--ribbon-x',layer.x + '%'], ['--ribbon-y',layer.y + '%'], ['--s',String(layer.size)], ['--rot','8deg']]) {
+      await expect(publicRibbon).toHaveCSS(property,value);
+    }
+  } finally {
+    await request.post('/__mock/landing', { data:{ code:'SS-1008', design:null } });
+  }
+});
+
+test('library shapes start inside the frame and share the selected element controls', async ({ page }) => {
+  const store = newStore();
+  store.landing.draft = { studioStack: { v: 1, photos: [
+    { path:'women-storefront/storefront/qa-shapes.webp', overlays:[] },
+  ] } };
+  await signIn(page, OWNER, store);
+  await page.goto('/admin/#/studio/SS-1008');
+  const editor = page.locator('.studio-visual'), stage = editor.locator('[data-visual-stage]');
+  await expect(editor).toBeVisible();
+  const elementsTab = editor.locator('[data-tab="elements"]');
+  if (await elementsTab.isVisible()) await elementsTab.click();
+  for (const type of ['badge','arrow','dot','circle','callout','icon']) {
+    await editor.locator('[data-element="' + type + '"]').click();
+    const shape = stage.locator('.ssm-o-' + type);
+    await expect(shape).toBeVisible();
+    const valid = await shape.evaluate(el => {
+      const frame = el.closest('.ssm-wrap').getBoundingClientRect();
+      const bounds = [el.getBoundingClientRect(), ...[...el.closest('.ssm-layer').querySelectorAll('line')].map(l => l.getBoundingClientRect())];
+      const left = Math.min(...bounds.map(b => b.left)), right = Math.max(...bounds.map(b => b.right));
+      const top = Math.min(...bounds.map(b => b.top)), bottom = Math.max(...bounds.map(b => b.bottom));
+      return left >= frame.left && right <= frame.right && top >= frame.top && bottom <= frame.bottom
+        && (right - left) * (bottom - top) < .3 * frame.width * frame.height;
+    });
+    expect(valid,type).toBe(true);
+    for (const key of ['size','x','y','rot']) await expect(editor.locator('[data-field="' + key + '"]')).toBeVisible();
+    await expect(stage.locator('[data-resize]')).toBeVisible();
+    await editor.locator('[data-action="remove-layer"]').click();
+  }
+});
+
 test('the visual Studio applies cards, selects text on the phone, replays motion, and saves the same payload', async ({ page }) => {
   const store = newStore();
   await signIn(page, OWNER, store);
@@ -81,14 +191,14 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   const editor = page.locator('.studio-visual');
   const stage = editor.locator('[data-visual-stage]');
   await expect(page.locator('[data-legacy-studio]')).toHaveAttribute('aria-expanded','false');
-  await editor.locator('[data-stack-files]').setInputFiles([fileURLToPath(IMG), fileURLToPath(IMG)]);
+  await editor.locator('[data-stack-files]').setInputFiles([await uploadImage(), await uploadImage()]);
   await expect(editor.locator('.studio-visual-thumb')).toHaveCount(2);
   await editor.locator('[data-template="0"][data-own="false"]').click();
   await stage.locator('button[data-overlay="1"]').click();
   const copy = editor.locator('[data-field="text"]');
   await expect(copy).toHaveValue(/النهارده/);
   await copy.fill('ستايل يعبّر عنك');
-  await editor.locator('[data-choice="fx"][data-value="aurora"]').click();
+  await clickPreview(editor.locator('[data-choice="fx"][data-value="aurora"]'));
   await expect(stage.locator('.ssm-fx-aurora')).toHaveText('ستايل يعبّر عنك');
   const inspector = editor.locator('.studio-visual-inspector');
   const automaticShadow = inspector.getByRole('button', { name:'تلقائي', exact:true });
@@ -106,8 +216,8 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   await expect(editor.frameLocator('iframe').locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-none/);
   await editor.locator('[data-device="desktop"]').click();
   await expect(editor.locator('[data-device="desktop"]')).toHaveAttribute('aria-pressed','true');
-  await editor.locator('[data-action="close"]').click();
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(editor.locator('[data-action="close"]'));
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status','draft');
   const saved = store.landing.draft.studioStack;
   expect(saved.v).toBe(1);
@@ -122,13 +232,18 @@ test('the visual Studio applies cards, selects text on the phone, replays motion
   await expect(stage.locator('.ssm-fx-aurora')).toHaveClass(/ssm-sh-none/);
 });
 
+// The mobile tab bar is fixed over the bottom of the viewport: centre the element first so the click never lands on the bar.
+const clickPreview = async (locator) => {
+  await locator.evaluate(element => element.scrollIntoView({ block:'center', behavior:'instant' }));
+  await locator.click();
+};
 test('Owner: uploads the 3 marketing images by hand, edits every control, saves a draft, reopens it, publishes', async ({ page }) => {
   const store = newStore();
   await signIn(page, OWNER, store);
   await openStudio(page);
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'new');
   for (const slot of ['hero', 'features', 'closing']) {
-    await page.locator(`[data-slot-input=${slot}]`).setInputFiles(fileURLToPath(IMG));
+    await page.locator(`[data-slot-input=${slot}]`).setInputFiles(await uploadImage());
     await expect(page.locator(`[data-slot=${slot}] img`)).toHaveAttribute('src', /women-storefront\/storefront\/studio-\d\.webp$/);
   }
   expect(store.ops.filter(o => o.op === 'upload')).toEqual([
@@ -141,29 +256,29 @@ test('Owner: uploads the 3 marketing images by hand, edits every control, saves 
     await page.locator(`select[name=${name}]`).selectOption(value);
   }
   await page.locator('[name=ctaText]').fill('احجزي قطعتك');
-  await page.locator('[data-section-up=closing]').click(); // verify manual reorder while keeping the product/order block last
-  await page.locator('label.switch', { has: page.locator('[data-section-visible=closing]') }).click();
+  await clickPreview(page.locator('[data-section-up=closing]')); // verify manual reorder while keeping the product/order block last
+  await clickPreview(page.locator('label.switch', { has: page.locator('[data-section-visible=closing]') }));
   await expect(page.locator('[data-section-visible=closing]')).not.toBeChecked();
   // The live preview is the real page fed the unsaved draft; ordering is off inside it.
   const mobile = page.frameLocator('[data-preview-frame=mobile]');
   await expect(mobile.locator('.studio-hero h2')).toHaveText('جاكيت جلد للشتا');
-  await mobile.locator('.studio-hero h2').click();
+  await clickPreview(mobile.locator('.studio-hero h2'));
   await expect(page.locator('[name=title]')).toBeFocused();
-  await mobile.locator('.studio-hero [data-studio-image=hero]').click();
+  await clickPreview(mobile.locator('.studio-hero [data-studio-image=hero]'));
   await expect(page.locator('[data-slot-upload=hero]')).toBeFocused();
-  await mobile.locator('.studio-hero [data-studio-cta]').first().click();
+  await clickPreview(mobile.locator('.studio-hero [data-studio-cta]').first());
   await expect(page.locator('[name=ctaText]')).toBeFocused();
-  await mobile.locator('#lpForm h2').click();
+  await clickPreview(mobile.locator('#lpForm h2'));
   await expect(page.locator('[name=cardTitle]')).toBeFocused();
   await expect(mobile.locator('.studio-closing')).toHaveCount(0);
   await expect(mobile.locator('.studio-media [data-studio-cta]').first()).toHaveText('احجزي قطعتك');
   await mobile.locator('#lpForm').evaluate(f => f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   await expect(mobile.locator('#lpStatus')).toContainText('معاينة فقط');
-  await page.locator('[data-preview=desktop]').click();
+  await clickPreview(page.locator('[data-preview=desktop]'));
   await expect(page.frameLocator('[data-preview-frame=desktop]').locator('.studio-features li')).toHaveText(['بطانة دافية']);
   await expect(page.locator('[data-studio-publish]')).toBeDisabled(); // unsaved changes cannot be published
 
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
   const saved = store.ops.find(o => o.op === 'landing.save').args;
   expect(saved.version).toBe(0);
@@ -193,11 +308,11 @@ test('Staff with edit rights saves drafts but has no publish control', async ({ 
   await signIn(page, STAFF, store);
   await openStudio(page);
   await expect(page.locator('[data-studio-publish], [data-studio-unpublish]')).toHaveCount(0);
-  await page.locator('[data-slot-input=hero]').setInputFiles(fileURLToPath(IMG));
+  await page.locator('[data-slot-input=hero]').setInputFiles(await uploadImage());
   await expect(page.locator('[data-slot=hero] img')).toHaveAttribute('src', /women-storefront\/storefront\/studio-1\.webp$/);
   expect(store.ops.filter(o => o.op === 'upload')).toEqual([{ op: 'upload', code: 'SS-1008' }]);
   await page.locator('[name=title]').fill('عنوان من الموظفة');
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
   expect(store.ops.filter(o => o.op === 'landing.publish')).toHaveLength(0);
 });
@@ -229,7 +344,7 @@ test('Owner: motion mode, per-photo entry direction, hint text and a main colour
   await expect(mobile.locator('html')).toHaveAttribute('data-motion', 'cinematic');
   await expect(mobile.locator('.mo-hint .mo-txt')).toHaveText('اسحبي لتحت');
   await expect(mobile.locator('#lpAddCart')).toHaveCSS('background-color', 'rgb(200, 16, 46)');
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect(page.locator('[data-studio-status]')).toHaveAttribute('data-studio-status', 'draft');
   const saved = store.ops.find(o => o.op === 'landing.save').args.design;
   expect(saved.motion).toEqual({ mode: 'cinematic', hint: 'اسحبي لتحت', dirs: ['side', 'top', 'side'] });
@@ -239,13 +354,13 @@ test('Owner: motion mode, per-photo entry direction, hint text and a main colour
     await page.screenshot({ path: test.info().outputPath('studio-motion.png') });
   }
 
-  await page.locator('[data-accent-clear]').click();
+  await clickPreview(page.locator('[data-accent-clear]'));
   await expect(mobile.locator('html')).not.toHaveAttribute('data-studio-accent', /.*/);
   await page.locator('select[name=motionMode]').selectOption('none');
   await expect(mobile.locator('html')).not.toHaveAttribute('data-motion', /.*/);
   await expect(mobile.locator('.mo-stack')).toHaveCount(0);
   await expect(mobile.locator('#lpStage')).toBeVisible();
-  await page.locator('[data-studio-save]').click();
+  await clickPreview(page.locator('[data-studio-save]'));
   await expect.poll(() => store.ops.filter(o => o.op === 'landing.save').length).toBe(2);
   const second = store.ops.filter(o => o.op === 'landing.save')[1].args.design;
   expect(second.accent).toBe('');
