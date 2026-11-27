@@ -112,7 +112,7 @@ function backend(seed) {
   return { s, handle, upload };
 }
 
-async function open(page, b, session) {
+async function open(page, b, session, route = '') {
   await page.addInitScript(({ email }) => {
     sessionStorage.setItem('wa.session', JSON.stringify({ access_token: 'local-qa-only', refresh_token: 'local-qa-refresh', expires_at: Date.now() + 3600_000, email }));
   }, { email: session.email });
@@ -132,7 +132,7 @@ async function open(page, b, session) {
     if (url.hostname.endsWith('.supabase.co')) return route.abort('blockedbyclient');
     return route.continue();
   });
-  await page.goto(target, { waitUntil: 'domcontentloaded' });
+  await page.goto(target + route, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('a[href="#/products"]:visible').first()).toBeVisible({ timeout: 15000 });
 }
 
@@ -490,6 +490,7 @@ test('unsaved guard: browser back and reload ask; no prompt without typing, for 
   await page.locator('button[data-new]:visible').first().click();
   await page.locator('#c-title').fill('جيبة');
   await page.locator('#c-price').fill('300');
+  await expect(page.locator('[data-create]')).toBeEnabled();
   await page.locator('[data-create]').click();
   await expect(page).toHaveURL(/#\/products\/SS-9101$/);
   expect(asked).toEqual([]); // saving never asks
@@ -654,8 +655,7 @@ test('mobile owner can archive a draft, but staff cannot; product history is ret
   };
   const b = backend({ product, listExisting: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await open(page, b, owner);
-  await page.goto(target + '#/products?status=draft');
+  await open(page, b, owner, '#/products?status=draft');
   const card = page.locator('[data-mobile-product="SS-9101"]');
   await expect(card).toBeVisible();
   await expect(card.locator('[data-archive-mobile]')).toHaveText('أرشفة المنتج');
@@ -722,9 +722,8 @@ test('owner can delete one colour photo; mobile photo actions never overlap', as
     { media_id: 'm1', position: 1, scope: 'variant', variant_position: 0, storage_path: svg('#6E4B3A'), alt_text: '', hidden: false }
   ];
   await page.setViewportSize({ width: 390, height: 844 });
-  await open(page, b, owner);
-  await page.evaluate(() => sessionStorage.setItem('wa.ptab', 'colours'));
-  await page.goto(target + '#/products/SS-9101');
+  await page.addInitScript(() => sessionStorage.setItem('wa.ptab', 'colours'));
+  await open(page, b, owner, '#/products/SS-9101');
   const card = page.locator('[data-colour]').first();
   const photos = card.locator('figure.thumb');
   await expect(photos).toHaveCount(2);
