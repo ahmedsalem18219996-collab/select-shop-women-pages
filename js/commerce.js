@@ -3,7 +3,7 @@
  * NO service-role credentials, client prices, variant UUIDs or direct table writes.
  * All totals and the transaction are authoritative on Supabase.
  */
-import { recordOrderAttribution } from "./order-attribution.js";
+import { recordOrderAttribution } from "./order-attribution.js?v=20261127-expiry";
 
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
 
