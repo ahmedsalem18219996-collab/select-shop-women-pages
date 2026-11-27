@@ -507,6 +507,26 @@ test('unsaved guard: browser back and reload ask; no prompt without typing, for 
 });
 
 
+test('new-model sheet keeps focus on a field chosen before its initial focus runs', async ({ page }) => {
+  await open(page, backend(), owner);
+  await page.locator('a[href="#/products"]:visible').first().click();
+  const newModel = page.locator('button[data-new]:visible').first();
+  await expect(newModel).toBeVisible();
+
+  // Freeze the clock so the field gets focus before the sheet's delayed autofocus.
+  await page.clock.install();
+  await page.clock.pauseAt(Date.now() + 1000);
+  await newModel.focus();
+  await newModel.dispatchEvent('click');
+  const price = page.locator('#c-price');
+  await price.focus();
+  await expect(price).toBeFocused();
+  await page.clock.runFor(50);
+  await page.keyboard.insertText('300');
+  await expect(price).toHaveValue('300');
+  await expect(page.locator('#c-title')).toHaveValue('');
+});
+
 test('staff picker searches colours and saves a two-tone garment as one option with its own photos', async ({ page }) => {
   const b = backend();
   await open(page, b, owner);
