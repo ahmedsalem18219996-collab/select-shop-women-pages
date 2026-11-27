@@ -108,7 +108,6 @@ test('multi-product COD order: three products from one page become ONE order wit
   await expect(page).toHaveURL(/order-success/);
   await expect(page.locator('#orderCode')).toHaveText(/^ORD-/);
 
-  await expect.poll(async () => (await mockLog(request)).attributions.length).toBe(before.attributions.length + 1);
   const log = await mockLog(request);
   expect(log.orders.length - before.orders.length).toBe(1);
   const order = log.orders.at(-1);

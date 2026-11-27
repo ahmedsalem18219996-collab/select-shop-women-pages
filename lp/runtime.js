@@ -308,42 +308,21 @@ export function rememberPageCredit(/** @type {string} */ id, /** @type {string} 
     sessionStorage.setItem(PAGE_ATTRIBUTION_KEY, JSON.stringify({ id, variant, code: codes[0], codes: codes.slice(-50), adProduct }));
   } catch { /* optional */ }
 }
-const ATTRIBUTION_MODULE = "../js/order-attribution.js?v=20261127-expiry";
-const ATTRIBUTION_PREFIX = "women.order.attribution.v2:";
-let attributionModule;
-let attributionTracker;
-const loadAttribution = () => attributionModule ||= import(ATTRIBUTION_MODULE)
-  .catch(() => import(ATTRIBUTION_MODULE + "&retry=1"))
-  .then(tracker => { attributionTracker = tracker; return tracker; }, () => null);
-
-function recordLpAttribution(/** @type {string} */ publicOrderCode, /** @type {string} */ idempotencyKey) {
-  if (attributionTracker) {
-    attributionTracker.recordOrderAttribution(publicOrderCode, idempotencyKey);
-    return;
-  }
-  // Keep a copy before showing confirmation even if both module downloads fail.
+/** Fire-and-forget after a CONFIRMED order: never delays or blocks checkout, never carries buyer data. */
+function sendAttribution(/** @type {string} */ code, /** @type {string} */ key) {
   try {
-    const key = ATTRIBUTION_PREFIX + publicOrderCode;
     const ad = JSON.parse(sessionStorage.getItem(AD_KEY) || "null");
-    const params = { ...ad, .../** @type {any} */ (window).womenMetaIds?.() };
-    if (Object.keys(params).length && !localStorage.getItem(key)) {
-      localStorage.setItem(key, JSON.stringify({ publicOrderCode, idempotencyKey, params, queuedAt: Date.now() }));
-      const keys = Object.keys(localStorage).filter(key => key.startsWith(ATTRIBUTION_PREFIX));
-      if (keys.length > 5) {
-        const queuedAt = (/** @type {string} */ k) => {
-          try { return Number(JSON.parse(localStorage.getItem(k) || "null")?.queuedAt) || 0; } catch { return 0; }
-        };
-        keys.sort((a, b) => queuedAt(b) - queuedAt(a)).slice(5).forEach(k => localStorage.removeItem(k));
-      }
-    }
-  } catch { /* Attribution storage must not hold up the order. */ }
-  void loadAttribution().then(tracker => tracker?.recordOrderAttribution(publicOrderCode, idempotencyKey));
+    const params = { ...(ad && typeof ad === "object" ? ad : {}), .../** @type {any} */ (window).womenMetaIds?.() }; // + Meta's fbp/fbc
+    if (!Object.keys(params).length || !key) return;
+    void fetch(BRIDGE + "/orders/attribution", { method: "POST", mode: "cors", credentials: "omit", keepalive: true,
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: key, publicOrderCode: code, params }) }).catch(() => null);
+  } catch { /* attribution is optional */ }
 }
 
 /** Product Landing Studio: the Owner-published design (or, inside the Admin preview, the live draft). */
 const STUDIO_MODULE = "./studio-design.js?v=20261120-motion";
 const RELATED_MODULE = "./related.js?v=20261122-studio";
-const MOTION_MODULE = "./motion.js?v=20261123-sizing";
+const MOTION_MODULE = "./motion.js?v=20261122-studio";
 const loadMotion = async () => /** @type {typeof import("./motion.js")} */ (await import(MOTION_MODULE));
 let motionOn = false;
 /** motion.js loads only for a design with a motion mode. */
@@ -1135,7 +1114,6 @@ async function init() {
   form.addEventListener("focusin", () => {
     if (started || !product) return;
     started = true;
-    void loadAttribution();
     funnel("begin_checkout", { currency: "EGP", lp_id: page.id, lp_variant: variantId,
       items: currentLines().map(l => ({ item_id: l.publicCode,
         item_variant: mixMode ? "one_size" : variantLabel(), quantity: l.quantity })) });
@@ -1203,20 +1181,15 @@ async function init() {
       confirmedShippingTotalPiastres: minorOf(q.shippingTotal),
       confirmedGrandTotalPiastres: minorOf(q.grandTotal),
     };
-    void loadAttribution();
     try {
       const reply = await api("/orders", "POST", payload, 20000);
       if (!ORDER_CODE.test(reply.publicOrderCode)) throw Object.assign(new Error("write_unconfirmed"), { status: 503 });
-      recordLpAttribution(reply.publicOrderCode, payload.idempotencyKey);
       done(reply.publicOrderCode, q, lines, payload.idempotencyKey);
+      sendAttribution(reply.publicOrderCode, payload.idempotencyKey);
       return;
     } catch (err) {
       const error = /** @type {any} */ (err), data = error?.data || {};
-      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) {
-        recordLpAttribution(data.publicOrderCode, payload.idempotencyKey);
-        done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines, payload.idempotencyKey);
-        return;
-      }
+      if (error?.message === "idempotency_conflict" && ORDER_CODE.test(data.publicOrderCode)) { done(data.publicOrderCode, data.grandTotal ? { ...q, grandTotal: data.grandTotal } : q, lines, payload.idempotencyKey); sendAttribution(data.publicOrderCode, payload.idempotencyKey); return; }
       if (error?.message === "order_cancelled") { forgetOrderKey(); say("الطلب اللي فات اتلغى من المتجر. تقدري تسجلي طلب جديد.", true); }
       else if (error?.message === "checkout_changed") {
         say("السعر أو الشحن اتغير. راجعي الإجمالي الجديد وأكدي تاني.", true);
@@ -1253,14 +1226,5 @@ async function init() {
 // Side effects only on a landing page (/collections/ imports the helpers).
 if (typeof document !== "undefined" && document.getElementById("lp-data")) {
   try { localStorage.setItem(VARIANT_KEY, document.documentElement.dataset.v === "b" ? "b" : "a"); } catch { /* private mode */ }
-  if (window === window.top) {
-    const loadPending = () => {
-      try {
-        if (Object.keys(localStorage).some(key => key.startsWith(ATTRIBUTION_PREFIX))) void loadAttribution();
-      } catch { /* Checkout works with storage disabled. */ }
-    };
-    loadPending();
-    addEventListener("pageshow", event => { if (event.persisted) loadPending(); });
-  }
   void init();
 }

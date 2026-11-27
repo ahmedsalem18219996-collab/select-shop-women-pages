@@ -1,4 +1,4 @@
-import { applyAccent, mountStack } from './motion.js?v=20261123-sizing';
+import { applyAccent, mountStack } from './motion.js?v=20261122-shadow';
 import { mediaUrl } from '../js/api.js';
 
 const target = document.getElementById('stack');

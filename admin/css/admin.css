@@ -205,9 +205,6 @@ svg { width: 1.25em; height: 1.25em; flex: none; fill: none; stroke: currentColo
 .tab.plus:active span { transform: scale(.9) rotate(90deg); }
 .tab .dot, .nav .dot { position: absolute; top: 4px; inset-inline-end: calc(50% - 20px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 10px; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
 
-/* Keyboard focus and scrollIntoView keep targets clear of the fixed tab bar (WCAG 2.4.11). */
-@media (max-width: 1023px) { html { scroll-padding-bottom: calc(var(--tab) + 28px + env(safe-area-inset-bottom, 0px)); } }
-
 @media (min-width: 1024px) {
   .shell { display: grid; grid-template-columns: var(--side) 1fr; }
   .sidebar { display: flex; flex-direction: column; position: sticky; top: 0; height: 100dvh; padding: 18px 14px; border-inline-end: 1px solid var(--line); background: var(--surface); gap: 14px; }

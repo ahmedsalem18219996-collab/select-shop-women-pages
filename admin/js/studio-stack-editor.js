@@ -1,7 +1,7 @@
 import { html, render, island, fail, icon } from './ui.js';
 import { uploadLandingImage, mediaUrl } from './api.js';
 import { optimizeUploadImage } from './image-optimize.js';
-import { accentFromImage, applyAccent, fitRibbonLabels, makeStrip, mountPhoto, playEnter, renderOverlays } from '../studio/motion.js?v=20261123-sizing';
+import { accentFromImage, applyAccent, makeStrip, mountPhoto, playEnter, renderOverlays } from '../studio/motion.js?v=20261122-shadow';
 import { EFFECTS, ELEMENTS, ENTRIES, FITS, FONTS, LOOPS, SHADES, TEMPLATES, TEXT_ENTRIES, TEXT_LOOPS } from './studio-visual-options.js';
 
 const PATH = /^women-storefront\/storefront\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(webp|jpg|jpeg|png)$/;
@@ -12,38 +12,18 @@ const PALETTE = ['#FFFFFF','#111111','#2563EB','#D0021B','#FF2D8A','#D8B36A','#1
 const PHOTO_FIELDS = new Set(['enter','loop','fit','shade']);
 const MOTION_FIELDS = new Set(['enter','loop','in','anim','delay']);
 const TEXT_TYPES = new Set(['text','badge','callout']);
-const CONNECTORS = new Set(['arrow','callout']);
 const TEXT_SHADOWS = [['soft','تلقائي'], ['','من غير']];
 const PATH_ASSET = name => new URL('../studio/' + name, import.meta.url).href;
 const blankPhoto = path => ({ path, enter:'', loop:'none', fit:'auto', shade:'', overlays:[] });
-const blankOverlay = type => ({ type, text: TEXT_TYPES.has(type) ? 'اكتب هنا' : '', x:50, y:45, x2:63, y2:51,
-  size:type === 'text' ? 1 : .8, rot:0, in:'pop', anim:'none', sh:TEXT_TYPES.has(type) ? 'soft' : '' });
-const ribbonLayer = strip => ({ ...blankOverlay('badge'), fx:'ribbon', size:1, y:82,
-  text:strip?.text ?? 'شريط هنا', color:strip?.color ?? '', rot:strip?.rot ?? 0 });
-const isRibbon = item => item.type === 'badge' && item.fx === 'ribbon';
+const blankOverlay = type => ({ type, text: TEXT_TYPES.has(type) ? 'اكتب هنا' : '', x:50, y:45, x2:68, y2:52, size:1, rot:0, in:'pop', anim:'none', sh:TEXT_TYPES.has(type) ? 'soft' : '' });
 const short = (text, max) => [...String(text ?? '')].slice(0,max).join('');
 const clamp = (n, min, max) => Math.max(min, Math.min(max, Number(n) || 0));
 const round = n => Math.round(n * 10) / 10;
-function positionLayer(item, axis, value, origin = item) {
-  if (!CONNECTORS.has(item.type)) { item[axis] = value; return; }
-  const end = axis + '2', from = origin[axis], to = origin[end] ?? from;
-  const delta = clamp(value - from, -Math.min(from,to), 100 - Math.max(from,to));
-  item[axis] = round(from + delta);
-  item[end] = round(to + delta);
-}
-function sizeLayer(item, size, origin = item) {
-  if (CONNECTORS.has(item.type)) {
-    const ratio = size / (origin.size ?? 1);
-    item.x2 = round(clamp(origin.x + ((origin.x2 ?? origin.x) - origin.x) * ratio,0,100));
-    item.y2 = round(clamp(origin.y + ((origin.y2 ?? origin.y) - origin.y) * ratio,0,100));
-  }
-  item.size = size;
-}
 const clone = data => data?.v === 1 && Array.isArray(data.photos)
   ? structuredClone({ ...data, photos: data.photos.filter(photo => PATH.test(photo?.path)) }) : undefined;
 
 function loadStyles() {
-  for (const file of ['motion.css?v=20261123-sizing', 'fonts/fonts-studio.css']) {
+  for (const file of ['motion.css?v=20261122-shadow', 'fonts/fonts-studio.css']) {
     const url = PATH_ASSET(file);
     if (document.querySelector('link[href="' + url + '"]')) continue;
     const link = document.createElement('link');
@@ -133,9 +113,8 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     Object.assign(frame.style, { width: w + 'px', height: h + 'px', transform: 'scale(' + scale + ')' });
     frame.parentElement.style.height = Math.floor(h * scale) + 'px';
   }
-  const observer = new ResizeObserver(() => { sizeFrame(); fitRibbonLabels(stage); });
+  const observer = new ResizeObserver(sizeFrame);
   observer.observe(dialog);
-  observer.observe(stage);
   frame.addEventListener('load', send);
 
   function snapshot() {
@@ -188,8 +167,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
       overlay.setAttribute('aria-hidden','true');
     }
     photo.overlays.forEach((item, index) => {
-      if (isRibbon(item)) return; // use the ribbon itself, leaving the caption uncovered
-      for (const end of CONNECTORS.has(item.type) ? [false,true] : [false]) {
+      for (const end of ['arrow','callout'].includes(item.type) ? [false,true] : [false]) {
         const handle = document.createElement('button');
         const [x,y] = editPosition(item,end);
         handle.className = 'studio-visual-handle';
@@ -203,21 +181,6 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
         wrap.append(handle);
       }
     });
-    const active = layer.querySelector('[data-i="' + layerIndex + '"]');
-    if (active) {
-      const box = wrap.getBoundingClientRect(), rect = active.getBoundingClientRect();
-      if (box.width && box.height) {
-        const handle = document.createElement('button');
-        handle.className = 'studio-visual-handle studio-visual-resize';
-        handle.type = 'button';
-        handle.dataset.resize = String(layerIndex);
-        handle.setAttribute('aria-label','غيّر حجم العنصر بالسحب');
-        handle.textContent = '↘';
-        handle.style.left = clamp(Math.max(rect.right - box.left + 4, rect.left - box.left + 36),22,box.width - 22) + 'px';
-        handle.style.top = clamp(Math.max(rect.bottom - box.top + 10, rect.top - box.top + 31),22,box.height - 22) + 'px';
-        wrap.append(handle);
-      }
-    }
   }
 
   function samples(root) {
@@ -318,14 +281,6 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
   }
   function selectLayer(index) {
     if (index === 'strip' ? !current()?.strip : !current()?.overlays[index]) return;
-    if (index === 'strip' && canEdit() && current().overlays.length < MAX_LAYERS) {
-      snapshot();
-      current().overlays.push(ribbonLayer(current().strip));
-      delete current().strip;
-      layerIndex = current().overlays.length - 1;
-      changed();
-      return;
-    }
     stopPlay();
     layerIndex = index;
     draw();
@@ -335,9 +290,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     const object = target(key);
     if (!object || object[key] === value) return;
     if (button) snapshot();
-    if (key === 'size') sizeLayer(object,value);
-    else if (key === 'x' || key === 'y') positionLayer(object,key,value);
-    else object[key] = value;
+    object[key] = value;
     stopPlay();
     changed(button);
     if (button && MOTION_FIELDS.has(key)) replay();
@@ -352,13 +305,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     }));
     if (template.full) photo.fit = 'fill';
     if (template.shade) photo.shade = template.shade;
-    if (template.strip) {
-      const strip = typeof template.strip === 'string' ? { text:template.strip } : template.strip;
-      if (photo.overlays.length < MAX_LAYERS) {
-        photo.overlays.push(ribbonLayer(strip));
-        delete photo.strip;
-      } else photo.strip = structuredClone(strip);
-    }
+    if (template.strip) photo.strip = typeof template.strip === 'string' ? { text:template.strip, rot:-3, color:'' } : structuredClone(template.strip);
     layerIndex = -1;
     changed();
   }
@@ -380,14 +327,14 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
   function addElement(type) {
     const photo = current();
     if (!photo || !ELEMENTS.some(([key]) => key === type)) return;
-    if (type === 'strip') {
-      const index = photo.overlays.findIndex(isRibbon);
-      if (index !== -1 || photo.strip) { selectLayer(index === -1 ? 'strip' : index); return; }
-    }
-    if (photo.overlays.length >= MAX_LAYERS) { island('error','الحد 24 عنصر في الصورة.'); return; }
+    if (type !== 'strip' && photo.overlays.length >= MAX_LAYERS) { island('error','الحد 24 عنصر في الصورة.'); return; }
+    if (type === 'strip' && photo.strip) { selectLayer('strip'); return; }
     snapshot();
-    photo.overlays.push(type === 'strip' ? ribbonLayer() : blankOverlay(type));
-    layerIndex = photo.overlays.length - 1;
+    if (type === 'strip') { photo.strip = {text:'اكتب الشريط هنا',rot:-3,color:''}; layerIndex = 'strip'; }
+    else {
+      photo.overlays.push(blankOverlay(type));
+      layerIndex = photo.overlays.length - 1;
+    }
     changed();
   }
   function movePhoto(offset) {
@@ -410,7 +357,7 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     if (key === 'close') { dialog.close(); return; }
     if (key === 'full') {
       if (!dialog.open) dialog.showModal();
-      if (!frame.getAttribute('src')) frame.src = PATH_ASSET('preview.html?v=20261123-sizing');
+      if (!frame.getAttribute('src')) frame.src = PATH_ASSET('preview.html?v=20261122-shadow');
       sizeFrame(); send(); return;
     }
     if (!canEdit()) return;
@@ -488,7 +435,6 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     const value = key === 'text' ? short(field.value,80) : field.type === 'range' ? field.valueAsNumber : field.value;
     if (field.value !== value && key === 'text') field.value = value;
     setValue(key,value);
-    if (key === 'x' || key === 'y') field.value = selected()[key];
   });
 
   stage.addEventListener('click', event => {
@@ -498,47 +444,37 @@ export function createStudioStackEditor({ code, title, price, initial, legacyPat
     else if (overlay && !canEdit()) selectLayer(Number(overlay.dataset.overlay));
   });
   stage.addEventListener('keydown', event => {
-    const overlay = event.target.closest('[data-overlay],[data-resize]');
+    const overlay = event.target.closest('[data-overlay]');
     if (!overlay || !['Enter',' '].includes(event.key)) return;
     event.preventDefault();
-    if (overlay.hasAttribute('data-resize')) { inspector.querySelector('[data-field="size"]')?.focus({ preventScroll:true }); return; }
     selectLayer(overlay.dataset.overlay === 'strip' ? 'strip' : Number(overlay.dataset.overlay));
     inspector.querySelector('[data-field="text"]')?.focus({ preventScroll:true });
   });
   stage.addEventListener('pointerdown', event => {
     if (playing || !canEdit() || event.button !== 0) return;
-    const hit = event.target.closest('[data-overlay],[data-resize]');
+    const hit = event.target.closest('[data-overlay]');
     if (!hit) {
       if (layerIndex !== -1 && !event.target.closest('[data-action]')) { layerIndex = -1; draw(); }
       return;
     }
     if (hit.dataset.overlay === 'strip') return;
-    const index = Number(hit.dataset.overlay ?? hit.dataset.resize), item = current()?.overlays[index];
+    const index = Number(hit.dataset.overlay), item = current()?.overlays[index];
     if (!item) return;
     const box = stage.querySelector('.ssm-wrap').getBoundingClientRect();
-    const end = hit.dataset.end === '1' || (hit.matches('.ssm-o') && CONNECTORS.has(item.type));
+    const end = hit.dataset.end === '1' || (hit.matches('.ssm-o') && ['callout','arrow'].includes(item.type));
     const [x,y] = editPosition(item,end);
-    const origin = { x:item.x, y:item.y, x2:item.x2, y2:item.y2, size:item.size ?? 1 };
-    const rect = stage.querySelector('[data-i="' + index + '"]').getBoundingClientRect();
-    const sizing = hit.hasAttribute('data-resize'), centerX = rect.left + rect.width / 2, centerY = rect.top + rect.height / 2;
-    move = { index,item,origin,pointer:event.pointerId,x,y,end,box,startX:event.clientX,startY:event.clientY,centerX,centerY,sizing,moved:false };
+    move = { index, item, pointer:event.pointerId, x,y, end, box, startX:event.clientX, startY:event.clientY, moved:false };
     stage.setPointerCapture(event.pointerId);
   });
   stage.addEventListener('pointermove', event => {
     if (!move || move.pointer !== event.pointerId || move.item.lock) return;
-    const { startX,startY,box,item,end,x,y,index,origin,centerX,centerY,sizing } = move;
+    const { startX,startY,box,item,end,x,y,index } = move;
     const dx = event.clientX - startX, dy = event.clientY - startY;
     if (!move.moved && Math.hypot(dx,dy) < 4) return;
     if (!move.moved) { snapshot(); move.moved = true; layerIndex = index; }
-    if (sizing) {
-      const distance = Math.hypot(event.clientX - centerX,event.clientY - centerY);
-      const initial = Math.max(10,Math.hypot(startX - centerX,startY - centerY));
-      sizeLayer(item,round(clamp(origin.size * distance / initial,.6,2.5)),origin);
-    } else {
-      const nextX = round(clamp(x + dx / box.width * 100,0,100)), nextY = round(clamp(y + dy / box.height * 100,0,100));
-      if (end) { item.x2 = nextX; item.y2 = nextY; }
-      else { positionLayer(item,'x',nextX,origin); positionLayer(item,'y',nextY,origin); }
-    }
+    const nextX = round(clamp(x + dx / box.width * 100,0,100)), nextY = round(clamp(y + dy / box.height * 100,0,100));
+    if (end) { item.x2 = nextX; item.y2 = nextY; }
+    else { item.x = nextX; item.y = nextY; }
     drawStage();
   });
   function endMove(event) {

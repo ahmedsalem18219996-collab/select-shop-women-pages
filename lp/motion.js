@@ -253,7 +253,7 @@ export async function publishedStudio(/** @type {any} */ design) {
     });
   }
   const asset = (/** @type {string} */ path) => new URL(path, STUDIO_ASSETS).href;
-  const styles = ["motion.css?v=20261123-sizing", "fonts/fonts-studio.css"].map(path => new Promise((resolve, reject) => {
+  const styles = ["motion.css?v=20261122-shadow", "fonts/fonts-studio.css"].map(path => new Promise((resolve, reject) => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = asset(path);
@@ -261,7 +261,7 @@ export async function publishedStudio(/** @type {any} */ design) {
     link.onerror = reject;
     document.head.append(link);
   }));
-  const [studio] = await Promise.all([import(asset("motion.js?v=20261123-sizing")), ...styles]);
+  const [studio] = await Promise.all([import(asset("motion.js?v=20261122-shadow")), ...styles]);
   const section = document.createElement("section");
   section.className = "lp-studio-stack ssm-stack--light";
   section.setAttribute("aria-label", "صور وتفاصيل القطعة");
