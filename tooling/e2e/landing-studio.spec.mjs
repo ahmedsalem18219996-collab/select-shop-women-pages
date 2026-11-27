@@ -310,16 +310,16 @@ test("campaign attribution sends from checkout even if localStorage.setItem fail
   expect(await pendingAttributionCodes(page)).toEqual([]);
 });
 
-test("campaign attribution ignores malformed and 24-hour-old copies and keeps at most five", async ({ page, context }) => {
+test("campaign attribution ignores malformed copies and keeps at most five", async ({ page, context }) => {
   const state = await attributionReplies(context);
   await page.addInitScript(prefix => {
     const now = Date.now();
-    for (const [i, digit] of [..."23456789"].entries()) {
+    for (const [i, digit] of [..."3456789"].entries()) {
       const publicOrderCode = "ORD-AAAAAAA" + digit;
       localStorage.setItem(prefix + publicOrderCode, JSON.stringify({
         publicOrderCode, idempotencyKey: "attribution-fixture-" + digit,
-        queuedAt: i === 0 ? now - 86400000 : now - 200 + i,
-        params: i === 1 ? ["invalid"] : { campaign: "valid" },
+        queuedAt: now - 200 + i,
+        params: i === 0 ? ["invalid"] : { campaign: "valid" },
       }));
     }
   }, pendingPrefix);
@@ -327,6 +327,111 @@ test("campaign attribution ignores malformed and 24-hour-old copies and keeps at
   await expect.poll(() => state.sent.length).toBe(5);
   expect(await pendingAttributionCodes(page)).toEqual([..."56789"].map(digit => "ORD-AAAAAAA" + digit));
   expect(state.sent.map(r => r.publicOrderCode).sort()).toEqual(await pendingAttributionCodes(page));
+});
+
+async function seedPendingAttribution(page, ages) {
+  await page.goto("/");
+  return page.evaluate(({ prefix, ages }) => ages.map((age, i) => {
+    const publicOrderCode = "ORD-AAAAAAA" + (i + 2);
+    localStorage.setItem(prefix + publicOrderCode, JSON.stringify({
+      publicOrderCode, idempotencyKey: "attribution-fixture-" + (i + 2),
+      queuedAt: Date.now() - age, params: { campaign: "valid" },
+    }));
+    return publicOrderCode;
+  }), { prefix: pendingPrefix, ages });
+}
+
+test("campaign attribution expires local copies at two hours and still retries younger copies", async ({ page, context }) => {
+  const state = await attributionReplies(context);
+  const twoHours = 2 * 60 * 60 * 1000;
+  const [, recent] = await seedPendingAttribution(page, [twoHours, twoHours - 60 * 1000]);
+  await page.reload();
+  await expect.poll(() => state.sent.map(r => r.publicOrderCode)).toContain(recent);
+  expect(await pendingAttributionCodes(page)).toEqual([recent]);
+  expect(state.sent.map(r => r.publicOrderCode)).toEqual([recent]);
+});
+
+for (const [reason, status, json] of [
+  ["expired order", 404, { outcome: "not_found" }],
+  ["invalid attribution", 400, { outcome: "invalid" }],
+  ["invalid request", 400, { error: "invalid_request" }],
+]) {
+  test(`campaign attribution drops its local copy on a terminal ${reason} rejection`, async ({ page, context }) => {
+    let attempts = 0;
+    await context.route("**/orders/attribution", route => {
+      attempts++;
+      return route.fulfill({ status, json });
+    });
+    const [code] = await seedPendingAttribution(page, [0]);
+    expect(await pendingAttributionCodes(page)).toEqual([code]);
+    await page.reload();
+    await expect.poll(() => attempts).toBe(1);
+    await expect.poll(() => pendingAttributionCodes(page)).toEqual([]);
+    await page.goto("/cart/");
+    expect(attempts).toBe(1);
+  });
+}
+
+test("campaign attribution keeps its local copy after a network error and a 503 until a successful retry", async ({ page, context }) => {
+  let attempts = 0;
+  await context.route("**/orders/attribution", route => {
+    attempts++;
+    if (attempts === 1) return route.abort("failed");
+    if (attempts === 2) return route.fulfill({ status: 503, json: { outcome: "invalid" } });
+    return route.fulfill({ status: 200, json: { outcome: "saved" } });
+  });
+  const [code] = await seedPendingAttribution(page, [0]);
+  const isAttribution = request => request.url().endsWith("/orders/attribution");
+  const networkFailure = page.waitForEvent("requestfailed", { predicate: isAttribution });
+  await page.reload();
+  await networkFailure;
+  expect(await pendingAttributionCodes(page)).toEqual([code]);
+  const unavailable = page.waitForResponse(reply => isAttribution(reply) && reply.status() === 503);
+  await page.reload();
+  await unavailable;
+  expect(await pendingAttributionCodes(page)).toEqual([code]);
+  await page.reload();
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual([]);
+  expect(attempts).toBe(3);
+});
+
+async function placeDirectCampaignOrder(page) {
+  await page.goto(LP + "?utm_source=meta&utm_campaign=module-load");
+  await page.fill("[name=name]", "اختبار آلي");
+  await page.fill("[name=phone]", "01012345678");
+  await page.locator("[name=region]").selectOption("cairo");
+  await page.fill("[name=address]", "عنوان اختبار فقط، شارع ١");
+  await expect(page.locator("#lpTotal")).toHaveText("١٬٢٧٠ ج");
+  await page.locator("#lpOrder").click();
+  await expect(page.locator("#lpDoneCode")).toHaveText(/^ORD-/);
+  return page.locator("#lpDoneCode").textContent();
+}
+
+test("campaign attribution retries a failed module download on direct checkout", async ({ page, context, request }) => {
+  const attempts = [];
+  await context.route(url => url.pathname === "/js/order-attribution.js", route => {
+    attempts.push(route.request().url());
+    return attempts.length === 1 ? route.abort("failed") : route.continue();
+  });
+  const code = await placeDirectCampaignOrder(page);
+  await expect.poll(async () => (await mockLog(request)).attributions.some(a => a.publicOrderCode === code)).toBe(true);
+  expect(attempts).toHaveLength(2);
+  expect(new URL(attempts[0]).searchParams.get("v")).toBeTruthy();
+  expect(attempts[0]).not.toBe(attempts[1]);
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual([]);
+});
+
+test("campaign attribution keeps a local copy when both direct checkout module downloads fail", async ({ page, context, request }) => {
+  const moduleUrl = url => url.pathname === "/js/order-attribution.js";
+  const fail = route => route.abort("failed");
+  await context.route(moduleUrl, fail);
+  const code = await placeDirectCampaignOrder(page);
+  expect(await pendingAttributionCodes(page)).toEqual([code]);
+  expect((await mockLog(request)).attributions.some(a => a.publicOrderCode === code)).toBe(false);
+  await context.unroute(moduleUrl, fail);
+  await page.goto("/cart/");
+  await expect.poll(async () => (await mockLog(request)).attributions.find(a => a.publicOrderCode === code)?.params.campaign).toBe("module-load");
+  await expect.poll(() => pendingAttributionCodes(page)).toEqual([]);
 });
 
 test("hidden sections and an empty design: hidden parts disappear, no design = the standard page", async ({ page, request }) => {

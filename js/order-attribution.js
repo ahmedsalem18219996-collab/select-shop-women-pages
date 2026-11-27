@@ -1,6 +1,6 @@
 const endpoint = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-store-bridge/orders/attribution";
 const prefix = "women.order.attribution.v2:";
-const lifetime = 24 * 60 * 60 * 1000;
+const lifetime = 2 * 60 * 60 * 1000;
 const fields = ["source", "medium", "campaign", "content", "term", "adset", "ad", "landing", "fbp", "fbc"];
 const active = new Map();
 
@@ -67,9 +67,14 @@ async function send({ key, saved, payload }) {
   try {
     // A string uses text/plain. No CORS preflight needs to survive the page exit.
     const reply = await fetch(endpoint, { method: "POST", mode: "cors", credentials: "omit", keepalive: true, body });
-    if (!reply.ok) return;
-    const { outcome } = await reply.json();
-    if (saved && (outcome === "saved" || outcome === "duplicate") && localStorage.getItem(key) === saved) {
+    const { status } = reply;
+    if (!reply.ok && status !== 400 && status !== 404) return;
+    const { outcome, error } = await reply.json();
+    const settled = reply.ok
+      ? outcome === "saved" || outcome === "duplicate"
+      : (status === 404 && outcome === "not_found") ||
+        (status === 400 && (outcome === "invalid" || error === "invalid_request"));
+    if (saved && settled && localStorage.getItem(key) === saved) {
       localStorage.removeItem(key);
     }
   } catch { if (!saved) beacon(body); }
