@@ -87,6 +87,7 @@ async function mockApi(req, url, body) {
   if (p === "/women-store-bridge/orders/attribution" && req.method === "POST") {
     const known = [...keys.entries()].some(([k, v]) => k === body?.idempotencyKey && v.code === body?.publicOrderCode);
     if (!known) return [404, { error: "not_found" }];
+    if (log.attributions.some(saved => saved.publicOrderCode === body.publicOrderCode)) return [200, { outcome: "duplicate" }];
     log.attributions.push(body);
     return [200, { outcome: "saved" }];
   }
@@ -139,7 +140,9 @@ async function mockApi(req, url, body) {
     if (b.confirmedGrandTotalPiastres !== q.grandTotal.amountMinor || b.confirmedShippingTotalPiastres !== q.shippingTotal.amountMinor
       || b.confirmedMerchandiseSubtotalPiastres !== q.merchandiseSubtotal.amountMinor) return [409, { error: "checkout_changed" }];
     for (const l of b.lines) if (stock.has(l.publicCode)) stock.set(l.publicCode, stock.get(l.publicCode) - l.quantity);
-    const code = "ORD-" + String(23456789 + keys.size).replace(/[01]/g, "2");
+    const alphabet = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
+    const code = "ORD-" + keys.size.toString(alphabet.length).padStart(8, "0")
+      .replace(/./g, digit => alphabet[parseInt(digit, alphabet.length)]);
     keys.set(b.idempotencyKey, { code, intent, total: q.grandTotal.amountMinor });
     log.orders.push({ lines: b.lines, region: b.deliveryRegionKey, buyer: b.buyer, total: q.grandTotal.amountMinor,
       shipping: q.shippingTotal.amountMinor, key: b.idempotencyKey });

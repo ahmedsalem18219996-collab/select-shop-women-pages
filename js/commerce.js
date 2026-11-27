@@ -3,6 +3,8 @@
  * NO service-role credentials, client prices, variant UUIDs or direct table writes.
  * All totals and the transaction are authoritative on Supabase.
  */
+import { recordOrderAttribution } from "./order-attribution.js?v=20261127-expiry";
+
 const API = "https://byluoipdunralsurwebt.supabase.co/functions/v1/women-checkout";
 
 // Anonymous first-party product-view tracking for the Owner dashboard.
@@ -472,13 +474,7 @@ export async function showCheckout(live=false){
     try{
       const reply=await api("/orders","POST",payload);
       if(!/^ORD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(reply.publicOrderCode))throw new Error("write_unconfirmed");
-      // Ad attribution (utm_*, ad set from the landing page visit): write-once, after the confirmed order, never blocking.
-      try {
-        const ad=JSON.parse(sessionStorage.getItem("women.ad.params.v1")||"null");
-        const params={...(ad&&typeof ad==="object"?ad:{}),...(window.womenMetaIds?.()||{})}; // + Meta's fbp/fbc for the server's Conversions API
-        if(Object.keys(params).length)void fetch(API.replace("/women-checkout","/women-store-bridge")+"/orders/attribution",{method:"POST",mode:"cors",credentials:"omit",keepalive:true,
-          headers:{"Content-Type":"application/json"},body:JSON.stringify({idempotencyKey:payload.idempotencyKey,publicOrderCode:reply.publicOrderCode,params})}).catch(()=>null);
-      } catch { /* attribution is optional */ }
+      recordOrderAttribution(reply.publicOrderCode,payload.idempotencyKey);
       // Meta Lead is emitted only here, after the server creates the order (Purchase comes from the server once it is
       // confirmed). Event id = "lead-" + SHA-256 of the order's idempotency key, as the server sends it, so the two
       // deduplicate and the key itself never reaches Meta. No crypto.subtle: no browser Lead (the server still sends it).
